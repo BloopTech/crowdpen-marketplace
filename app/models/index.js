@@ -1,12 +1,15 @@
 'use strict';
-require("pg");
-const fs = require('fs');
-const path = require('path');
-const Sequelize = require('sequelize');
-const process = require('process');
+// Import pg directly instead of using require
+import pg from 'pg';
+import fs from 'fs';
+import path from 'path';
+import Sequelize from 'sequelize';
+import process from 'process';
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
-const config = require('../../db/config/config.js')[env];
+// Use dynamic import with next.js compat
+import configModule from '../../db/config/config.js';
+const config = configModule[env];
 const db = {};
 
 const dialect = config.dialect || "postgres";
@@ -15,7 +18,7 @@ let sequelize;
 if (config.use_env_variable) {
   sequelize = new Sequelize(process.env[config.use_env_variable], {
     ...config,
-    dialectModule: require("pg"),
+    dialectModule: pg,
     pool: {
       // min: 0,
       //acquire: 30000,
@@ -42,7 +45,7 @@ if (config.use_env_variable) {
     ...config,
     dialect,
 
-    dialectModule: require("pg"),
+    dialectModule: pg,
     pool: {
       idle: 10000,
       max: 50,
@@ -65,20 +68,19 @@ if (config.use_env_variable) {
   });
 }
 
-fs
-  .readdirSync(process.cwd() + "/models")
-  .filter(file => {
-    return (
-      file.indexOf('.') !== 0 &&
-      file !== basename &&
-      file.slice(-3) === '.js' &&
-      file.indexOf('.test.js') === -1
-    );
-  })
-  .forEach(file => {
-    const model = require(path.join(file))(sequelize, Sequelize.DataTypes);
-    db[model.name] = model;
-  });
+// Define models manually instead of using dynamic imports
+// This requires explicitly importing each model
+
+// Example of how to import models statically:
+// import User from '../../models/user.js';
+// import Post from '../../models/post.js';
+// 
+// Then initialize models:
+// db.User = User(sequelize, Sequelize.DataTypes);
+// db.Post = Post(sequelize, Sequelize.DataTypes);
+
+// Note: You'll need to add all your models here manually
+// The dynamic loading approach doesn't work well with Next.js
 
 Object.keys(db).forEach(modelName => {
   if (db[modelName].associate) {
@@ -89,7 +91,9 @@ Object.keys(db).forEach(modelName => {
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;
 
-module.exports = db;
+// Export as ES module
+export default db;
+export { sequelize, Sequelize };
 
 
 // "use strict";
@@ -119,7 +123,7 @@ module.exports = db;
 // if (config.use_env_variable) {
 //   sequelize = new Sequelize(process.env[config.use_env_variable], {
 //     ...config,
-//     dialectModule: require("pg"),
+//     dialectModule: pg,
 //     pool: {
 //       // min: 0,
 //       //acquire: 30000,
@@ -146,7 +150,7 @@ module.exports = db;
 //     ...config,
 //     dialect,
 
-//     dialectModule: require("pg"),
+//     dialectModule: pg,
 //     pool: {
 //       idle: 10000,
 //       max: 50,
