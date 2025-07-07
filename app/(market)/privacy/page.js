@@ -17,7 +17,7 @@ export default function PrivacyPage() {
         cartItemCount={0}
       />
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="container mx-auto px-4 py-8 max-w-4xl mt-[4rem]">
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Privacy Policy</CardTitle>

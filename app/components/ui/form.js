@@ -18,6 +18,7 @@ import { Label } from "./label";
 const Form = FormProvider;
 
 const FormFieldContext = createContext();
+const FormItemContext = createContext();
 
 const FormField = ({ ...props }) => {
   return (
@@ -49,8 +50,6 @@ const useFormField = () => {
     ...fieldState,
   };
 };
-
-const FormItemContext = createContext();
 
 const FormItem = forwardRef(({ className, ...props }, ref) => {
   const id = useId();

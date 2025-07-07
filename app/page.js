@@ -111,7 +111,7 @@ export default function AmazonStyleMarketplace() {
         cartItemCount={cartItems.length}
       />
 
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6 mt-[4rem]">
         <div className="flex gap-6">
           {/* Desktop Sidebar */}
           <aside className="hidden lg:block w-64 shrink-0">

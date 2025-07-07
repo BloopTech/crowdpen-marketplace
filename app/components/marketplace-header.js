@@ -1,19 +1,19 @@
-"use client"
-import { Search, ShoppingCart, Heart, User, ArrowLeft } from "lucide-react"
-import { Button } from "../components/ui/button"
-import { Input } from "../components/ui/input"
-import { Badge } from "../components/ui/badge"
+"use client";
+import { Search, ShoppingCart, Heart, User, ArrowLeft } from "lucide-react";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Badge } from "../components/ui/badge";
 import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
   NavigationMenuList,
   NavigationMenuTrigger,
-} from "../components/ui/navigation-menu"
-import { categories } from "../lib/data"
-import Link from "next/link"
-
-
+} from "../components/ui/navigation-menu";
+import { categories } from "../lib/data";
+import Link from "next/link";
+import logo from "../../public/crowdpen_icon.png";
+import Image from "next/image";
 
 export default function MarketplaceHeader({
   searchQuery,
@@ -22,39 +22,29 @@ export default function MarketplaceHeader({
   cartItemCount,
 }) {
   return (
-    <header className="border-b bg-white sticky top-0 z-50">
-      {/* Top Bar */}
-      <div className="bg-gray-900 text-white text-xs py-1">
-        <div className="container mx-auto px-4 flex justify-between items-center">
-          <a
-            href="https://crowdpen.co"
-            className="flex items-center gap-2 hover:text-gray-300 transition-colors"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            <span>Back to the CrowdPen dashboard</span>
-          </a>
-          <div className="flex items-center gap-4">
-            <Link href="/creator/apply" className="hover:text-gray-300">
-              <span>Become a Creator</span>
-            </Link>
-            <Link href="/help" className="hover:text-gray-300">
-              <span>Help & Support</span>
-            </Link>
-          </div>
-        </div>
-      </div>
-
+    <header className="border-b bg-white sticky top-15 z-5">
       {/* Main Header */}
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center gap-4">
+      <div className="md:px-10 px-5 py-4 w-full">
+        <div className="flex items-center space-x-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">CP</span>
+          <Link
+            href="/"
+            className="flex items-center hover:opacity-80 transition-opacity"
+          >
+            <div className="-ml-7">
+              <Image
+                src={logo}
+                alt="logo"
+                width={85}
+                height={85}
+                style={{ height: "auto" }}
+                priority
+                className="dark:invert"
+              />
             </div>
-            <h1 className="text-xl font-bold hidden sm:block">CrowdPen Market</h1>
+            <h1 className="text-xl font-bold hidden sm:block">
+              CrowdPen Market
+            </h1>
           </Link>
 
           {/* Search Bar */}
@@ -68,7 +58,11 @@ export default function MarketplaceHeader({
                 className="pr-12 h-10"
                 onKeyDown={(e) => e.key === "Enter" && onSearch()}
               />
-              <Button onClick={onSearch} size="sm" className="absolute right-1 top-1 h-8">
+              <Button
+                onClick={onSearch}
+                size="sm"
+                className="absolute right-1 top-1 h-8"
+              >
                 <Search className="h-4 w-4" />
               </Button>
             </div>
@@ -109,10 +103,12 @@ export default function MarketplaceHeader({
               <NavigationMenuItem>
                 <NavigationMenuTrigger>All Categories</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid w-96 gap-3 p-4">
+                  <div className="grid w-96 gap-3 p-4 bg-white">
                     {categories.map((category) => (
                       <div key={category.name}>
-                        <h4 className="font-semibold text-sm mb-2">{category.name}</h4>
+                        <h4 className="font-semibold text-sm mb-2">
+                          {category.name}
+                        </h4>
                         <div className="grid grid-cols-2 gap-1">
                           {category.subcategories.map((sub) => (
                             <button
@@ -131,7 +127,11 @@ export default function MarketplaceHeader({
 
               {categories.slice(0, 4).map((category) => (
                 <NavigationMenuItem key={category.name}>
-                  <Link href={`/category/${category.name.toLowerCase().replace(/\s+/g, "-")}`}>
+                  <Link
+                    href={`/category/${category.name
+                      .toLowerCase()
+                      .replace(/\s+/g, "-")}`}
+                  >
                     <Button variant="ghost" size="sm">
                       {category.name}
                     </Button>
@@ -143,5 +143,5 @@ export default function MarketplaceHeader({
         </div>
       </div>
     </header>
-  )
+  );
 }

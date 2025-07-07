@@ -53,7 +53,7 @@ export default function AuthorProfilePage() {
         cartItemCount={cartItems.length}
       />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 mt-[4rem]">
         {/* Author Header */}
         <Card className="mb-8">
           <CardContent className="p-8">
