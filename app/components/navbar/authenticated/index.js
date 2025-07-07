@@ -37,7 +37,7 @@ export default function AuthenticatedNavBar() {
     <nav className="fixed left-0 top-0 z-10 w-full">
       <div className="flex md:px-10 px-5 bg-white text-black dark:bg-[#121212] dark:text-white items-center h-auto justify-center">
         <div className={`flex grow -ml-7`}>
-          <Link href="/">
+          <Link href="https://crowdpen.co">
             <Image
               src={logo}
               alt="logo"

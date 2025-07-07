@@ -111,7 +111,7 @@ export default function NotificationUser(props) {
                   </div>
                   <div className="bg-gray-50 p-1 dark:bg-[#1a1a1a] dark:border-t dark:border-[#f2f2f2]">
                     <Link
-                      href="/creator/notifications"
+                      href="https://crowdpen.co/creator/notifications"
                       className="flow-root hover:underline rounded-md p-1 transition duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-inherit focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
                     >
                       <div className="flex items-center">

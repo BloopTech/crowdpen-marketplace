@@ -35,7 +35,7 @@ function UnauthenticatedNavBar(props) {
       <div className="lg:flex lg:justify-between lg:items-center md:px-10 px-5 bg-white text-black dark:bg-[#121212] dark:text-white">
         <div className="flex justify-between items-center -ml-7">
           <div>
-            <Link href="/">
+            <Link href="https://crowdpen.co">
               <Image
                 src={logo}
                 alt="logo"
@@ -63,13 +63,13 @@ function UnauthenticatedNavBar(props) {
           } `}
         >
           <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-slate-200 dark:hover:text-black  hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
-            <Link href="stories">Stories</Link>
+            <Link href="https://crowdpen.co/stories">Stories</Link>
           </li>
           <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-slate-200 dark:hover:text-black  hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
-            <Link href="/pens">Pens</Link>
+            <Link href="https://crowdpen.co/pens">Pens</Link>
           </li>
           <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-slate-200 dark:hover:text-black hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
-            <Link href="/challenges">Challenges</Link>
+            <Link href="https://crowdpen.co/challenges">Challenges</Link>
           </li>
           <li
             className="font-poynterroman duration-500 mr-4 text-base hover:bg-slate-200 dark:hover:text-black hover:rounded-[10px] w-[5.5rem] h-9 mt-3 lg:mt-0 font-semibold flex items-center justify-center cursor-pointer"
@@ -80,7 +80,7 @@ function UnauthenticatedNavBar(props) {
           <li
             className={`font-poynterroman mt-3 lg:mt-0 bg-black font-semibold text-white rounded-[10px] w-[5.5rem] h-9 text-base hover:bg-white hover:text-black hover:border-black hover:border-2 cursor-pointer flex items-center justify-center dark:text-black dark:bg-[#d3a155] dark:hover:bg-[#f2f2f2] dark:hover:text-black  mr-4`}
             onClick={() =>
-              router.push(`/signup?callbackUrl=${encodeURIComponent(callback)}`)
+              router.push(`https://crowdpen.co/signup?callbackUrl=${encodeURIComponent(callback)}`)
             }
           >
             Sign Up
