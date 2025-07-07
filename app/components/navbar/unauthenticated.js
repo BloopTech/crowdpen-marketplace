@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import logo from "../../../public/crowdpen_icon.png";
-import { useRouter } from "next/router";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import {
   Menu,
@@ -17,14 +17,10 @@ function UnauthenticatedNavBar(props) {
   const { data: session } = useSession();
   const { theme, setTheme } = useTheme();
   const router = useRouter();
-  const { callbackUrl } = router.query;
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl');
 
-  const callback =
-    callbackUrl !== undefined
-      ? callbackUrl
-      : router?.asPath
-      ? `${process.env.NEXTAUTH_URL}${router?.asPath}`
-      : "/";
+  const callback = callbackUrl || '/';
 
   useEffect(() => {
     setMounted(true);
