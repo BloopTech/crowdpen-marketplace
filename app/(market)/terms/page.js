@@ -17,7 +17,7 @@ export default function TermsPage() {
         cartItemCount={0}
       />
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl mt-[4rem]">
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl">Terms of Service</CardTitle>

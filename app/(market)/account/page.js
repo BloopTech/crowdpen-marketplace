@@ -61,7 +61,7 @@ export default function AccountPage() {
         cartItemCount={0}
       />
 
-      <div className="container mx-auto px-4 py-8 mt-[4rem]">
+      <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-4 mb-8">
           <Avatar className="h-16 w-16">
             <AvatarFallback className="text-lg">

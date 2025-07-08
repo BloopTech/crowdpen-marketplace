@@ -72,7 +72,7 @@ export default function HelpPage() {
         cartItemCount={0}
       />
 
-      <div className="container mx-auto px-4 py-8 mt-[4rem]">
+      <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-4">Help & Support</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">

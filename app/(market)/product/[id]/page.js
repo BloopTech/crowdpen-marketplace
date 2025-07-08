@@ -69,7 +69,7 @@ export default function ProductDetailPage() {
         cartItemCount={cartItems.length}
       />
 
-      <div className="container mx-auto px-4 py-8 mt-[4rem]">
+      <div className="container mx-auto px-4 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Product Images */}
           <div className="space-y-4">

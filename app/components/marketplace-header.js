@@ -14,6 +14,9 @@ import { categories } from "../lib/data";
 import Link from "next/link";
 import logo from "../../public/crowdpen_icon.png";
 import Image from "next/image";
+import { useSession } from "next-auth/react";
+import { UserId } from "./ui/userId";
+import { useHome } from "../context";
 
 export default function MarketplaceHeader({
   searchQuery,
@@ -21,8 +24,33 @@ export default function MarketplaceHeader({
   onSearch,
   cartItemCount,
 }) {
+  const { openLoginDialog } = useHome();
+  const { data: session } = useSession();
+
   return (
-    <header className="border-b bg-white sticky top-15 z-5">
+    <header className="border-b bg-white sticky top-0 z-5">
+      {/* Top Bar */}
+      <div className="bg-gray-900 text-white text-xs py-1">
+        <div className="container mx-auto px-4 flex justify-between items-center">
+          <Link
+            href="https://crowdpen.co"
+            className="flex items-center gap-2 hover:text-gray-300 transition-colors"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <ArrowLeft className="h-3 w-3" />
+            <span>Back to the CrowdPen dashboard</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/creator/apply" className="hover:text-gray-300">
+              <span>Become a Creator</span>
+            </Link>
+            <Link href="/help" className="hover:text-gray-300">
+              <span>Help & Support</span>
+            </Link>
+          </div>
+        </div>
+      </div>
       {/* Main Header */}
       <div className="md:px-10 px-5 py-4 w-full">
         <div className="flex items-center space-x-4">
@@ -70,12 +98,14 @@ export default function MarketplaceHeader({
 
           {/* User Actions */}
           <div className="flex items-center gap-2">
-            <Link href="/account">
-              <Button variant="ghost" size="sm">
+            {session ? (
+              <UserId />
+            ) : (
+              <Button variant="ghost" size="sm" onClick={openLoginDialog}>
                 <User className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Account</span>
               </Button>
-            </Link>
+            )}
             <Link href="/wishlist">
               <Button variant="ghost" size="sm">
                 <Heart className="h-4 w-4 mr-2" />

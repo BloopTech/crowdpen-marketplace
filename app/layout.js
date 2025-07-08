@@ -3,10 +3,11 @@ import "./globals.css";
 import { getServerSession } from "next-auth";
 import SessionProvider from "./components/SessionProvider";
 import { authOptions } from "./api/auth/[...nextauth]/route";
-import OfficialNavbar from "./components/navbar";
 import GoogleAnalytics from "./components/googleAnalytics";
 import { ThemeProvider } from "next-themes";
-import { SWRConfig } from 'swr'
+import { SWRConfig } from "swr";
+import { HomeProvider } from "./context";
+import Login from "./(auth)/login";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,7 +37,7 @@ export default async function RootLayout({ children }) {
       method: "GET",
     });
     return response.json();
-  }
+  };
 
   return (
     <html
@@ -55,10 +56,10 @@ export default async function RootLayout({ children }) {
               {process.env.NEXT_PUBLIC_GA_ID && (
                 <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
               )}
-              <main className="flex flex-col w-full">
-                <OfficialNavbar />
-                {children}
-              </main>
+              <HomeProvider>
+                <main className="flex flex-col w-full">{children}</main>
+                <Login />
+              </HomeProvider>
             </SWRConfig>
           </SessionProvider>
         </ThemeProvider>

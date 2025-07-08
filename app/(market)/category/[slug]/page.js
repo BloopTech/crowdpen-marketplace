@@ -94,7 +94,7 @@ export default function CategoryPage() {
           onSearch={() => {}}
           cartItemCount={cartItems.length}
         />
-        <div className="container mx-auto px-4 py-8 text-center mt-[4rem]">
+        <div className="container mx-auto px-4 py-8 text-center">
           <h1 className="text-2xl font-bold mb-4">Category Not Found</h1>
           <Link href="/">
             <Button>Back to Home</Button>
@@ -113,7 +113,7 @@ export default function CategoryPage() {
         cartItemCount={cartItems.length}
       />
 
-      <div className="container mx-auto px-4 py-8 mt-[4rem]">
+      <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-6">
           <Link href="/">
