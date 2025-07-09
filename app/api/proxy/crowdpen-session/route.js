@@ -11,7 +11,7 @@ export async function GET(request) {
     console.log("Fetching Crowdpen session via proxy...");
     
     // Get all cookies from the request to forward to Crowdpen
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
     
     // Log all cookies we found
