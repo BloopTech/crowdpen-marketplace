@@ -6,12 +6,15 @@ import sequelize from "../../../models";
 import Email from "next-auth/providers/email";
 import GitHub from "next-auth/providers/github";
 import Google from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { getUserId } from "../../../cacher";
+import sendVerificationRequest from "../../../lib/EmailVerification";
 
 export const authOptions = {
   providers: [
     Email({
       maxAge: 60 * 60,
+      sendVerificationRequest,
     }),
     GitHub({
       clientId: process.env.GITHUB_CLIENT_ID,
@@ -28,11 +31,46 @@ export const authOptions = {
         timeout: 40000,
       },
     }),
+    // Add credentials provider for Crowdpen SSO
+    CredentialsProvider({
+      id: "credentials",
+      name: "Crowdpen",
+      credentials: {
+        email: { label: "Email", type: "email" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.email) {
+          return null;
+        }
+
+        try {
+          // Find the user in the database with the email from Crowdpen
+          const user = await sequelize.models.User.findOne({
+            where: { email: credentials.email.toLowerCase() }
+          });
+
+          if (!user) {
+            return null;
+          }
+
+          // Return the user object which will be saved in the JWT token
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image
+          };
+        } catch (error) {
+          console.error("Credentials authorize error:", error);
+          return null;
+        }
+      },
+    }),
   ],
 
   adapter: SequelizeAdapter(sequelize),
   pages: {
-    signIn: "https://crowdpen.co/login",
+    // Don't override the signIn page - let NextAuth handle it locally
     //signOut: "/auth/signout",
     //error: "/auth/error", // Error code passed in query string as ?error=
     verifyRequest: `https://crowdpen.co/verify-request`, // (used for check email message)
