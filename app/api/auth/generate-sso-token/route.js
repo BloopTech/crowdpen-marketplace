@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../[...nextauth]/route";
-import sequelize from "../../../../lib/db";
 import crypto from "crypto";
+import sequelize from "../../../models";
 
 /**
  * Generates a temporary SSO token for the current user

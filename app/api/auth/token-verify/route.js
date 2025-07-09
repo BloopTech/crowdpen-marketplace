@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import sequelize from "../../../../lib/db";
+import sequelize from "../../../models";
 import crypto from "crypto";
 
 /**
@@ -20,7 +20,7 @@ export async function POST(request) {
     // Find the token in the database - assuming there's a UserToken model or similar
     // that stores temporary authentication tokens shared between Crowdpen and marketplace
     // This is a simplified implementation - in production you'd want to use proper JWT or similar
-    const userToken = await sequelize.models.UserToken.findOne({
+    const userToken = await sequelize.models.VerificationToken.findOne({
       where: { token },
       include: [{
         model: sequelize.models.User,

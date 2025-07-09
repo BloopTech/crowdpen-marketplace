@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../[...nextauth]/route";
 import { signIn } from "next-auth/react";
-import sequelize from "../../../../lib/db";
+import User from "../../../models/User";
+
 
 /**
  * Direct sign-in API for Crowdpen SSO
@@ -20,7 +21,7 @@ export async function POST(request) {
     console.log(`Attempting to directly sign in user: ${email}`);
     
     // Find the user in the database
-    const user = await sequelize.models.User.findOne({
+    const user = await User.findOne({
       where: { email: email.toLowerCase() }
     });
 

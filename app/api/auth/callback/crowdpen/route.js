@@ -51,7 +51,7 @@ export async function GET(request) {
       withCredentials: true
     });
     
-    console.log('Crowdpen session response status:', response.status);
+    console.log('Crowdpen session response status callback:', response.status);
     
     // If we found a valid user session, use it to sign in
     if (response?.data?.user?.email) {
