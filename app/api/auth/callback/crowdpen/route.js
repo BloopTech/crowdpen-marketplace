@@ -1,91 +1,124 @@
 import { NextResponse } from "next/server";
-import axios from "axios";
-import { cookies } from 'next/headers';
 
 /**
  * Handle Crowdpen authentication callback
- * This endpoint is called when a user is redirected back from Crowdpen's login page
  * 
- * After logging in at Crowdpen, the user should have valid Crowdpen cookies
- * We need to check for these cookies and sign in the user with our local NextAuth
+ * This endpoint is called when the user is redirected back from Crowdpen
+ * after a successful login. It should receive a token or email parameter
+ * that we can use to authenticate the user in our app.
  */
 export async function GET(request) {
   try {
-    console.log('Crowdpen callback handler activated');
+    console.log('Crowdpen SSO callback handler activated');
     
-    // Try multiple methods to get the user's identity
-    // Method 1: Check if Crowdpen passed email directly in the URL params
     const url = new URL(request.url);
     const email = url.searchParams.get("email");
-    let callbackUrl = url.searchParams.get("callbackUrl") || '/';
+    const token = url.searchParams.get("token");
+    const state = url.searchParams.get("state");
     
-    if (email) {
-      console.log(`Email provided directly in URL params: ${email}`);
-      
-      // Redirect to NextAuth credentials endpoint with the email
-      const signInUrl = `/api/auth/signin/credentials?${new URLSearchParams({
-        email,
-        callbackUrl
-      }).toString()}`;
-      
-      console.log(`Redirecting to sign in: ${signInUrl}`);
-      return NextResponse.redirect(new URL(signInUrl, request.url));
-    }
-    
-    // Method 2: Check for Crowdpen session cookies
-    console.log('Checking for Crowdpen session cookies');
-    
-    // Get all the cookies from the request
-    const cookieStore = cookies();
-    const allCookies = cookieStore.getAll();
-    const cookieHeader = allCookies
-      .map(cookie => `${cookie.name}=${cookie.value}`)
-      .join('; ');
-    
-    // Important: Add timestamp to prevent caching
-    const timestamp = new Date().getTime();
-    
-    // Make request to Crowdpen session endpoint with all cookies
-    const response = await axios.get(`https://crowdpen.co/api/auth/session?_=${timestamp}`, {
-      headers: { Cookie: cookieHeader },
-      withCredentials: true
+    // Create a client-side script to handle the token and state
+    // This is necessary because we need to access localStorage which can only be done client-side
+    const handleCallbackScript = `
+      <html>
+      <head><title>Completing login...</title></head>
+      <body>
+        <h2>Completing your login...</h2>
+        <p>Please wait while we redirect you...</p>
+        <script>
+          // Function to safely get localStorage items
+          function getLocalStorageItem(key) {
+            try {
+              return window.localStorage.getItem(key);
+            } catch (e) {
+              console.error('Error accessing localStorage:', e);
+              return null;
+            }
+          }
+          
+          // Get stored state and return URL
+          const storedState = getLocalStorageItem('crowdpen_sso_state');
+          const returnTo = getLocalStorageItem('crowdpen_sso_returnTo') || '/';
+          const receivedState = "${state || ''}";
+          const receivedEmail = "${email || ''}";
+          
+          // Main function to handle authentication
+          async function completeAuthentication() {
+            try {
+              // Clear the SSO state from localStorage
+              localStorage.removeItem('crowdpen_sso_state');
+              localStorage.removeItem('crowdpen_sso_returnTo');
+              
+              // If we have an email directly, use it
+              if (receivedEmail) {
+                console.log("Email received from Crowdpen:", receivedEmail);
+                window.location.href = '/api/auth/signin/credentials?email=' + 
+                  encodeURIComponent(receivedEmail) + '&callbackUrl=' + 
+                  encodeURIComponent(returnTo);
+                return;
+              }
+              
+              // Otherwise check for session through the proxy API
+              console.log("Checking for Crowdpen session...");
+              const response = await fetch('/api/proxy/crowdpen-session', {
+                credentials: 'include',
+                cache: 'no-store'
+              });
+              
+              const data = await response.json();
+              
+              if (data?.user?.email) {
+                // We found a user email, proceed with login
+                console.log("Found user email from session:", data.user.email);
+                window.location.href = '/api/auth/signin/credentials?email=' + 
+                  encodeURIComponent(data.user.email) + '&callbackUrl=' + 
+                  encodeURIComponent(returnTo);
+              } else {
+                // No session found - show error
+                console.error("No valid Crowdpen session or email found");
+                window.location.href = '/login?error=NoSession&message=No+valid+Crowdpen+session+found';
+              }
+            } catch (error) {
+              console.error("Error during SSO completion:", error);
+              window.location.href = '/login?error=SSOError&message=' + 
+                encodeURIComponent(error.message);
+            }
+          }
+          
+          // Execute the authentication flow
+          completeAuthentication();
+        </script>
+      </body>
+      </html>
+    `;
+
+    // Return the HTML with the script that will handle the callback client-side
+    return new NextResponse(handleCallbackScript, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/html',
+      },
     });
     
-    console.log('Crowdpen session response status callback:', response.status);
-    
-    // If we found a valid user session, use it to sign in
-    if (response?.data?.user?.email) {
-      const userEmail = response.data.user.email;
-      console.log(`Found valid Crowdpen session for: ${userEmail}`);
-      
-      // Redirect to NextAuth credentials endpoint with the email
-      const signInUrl = `/api/auth/signin/credentials?${new URLSearchParams({
-        email: userEmail,
-        callbackUrl
-      }).toString()}`;
-      
-      console.log(`Redirecting to sign in: ${signInUrl}`);
-      return NextResponse.redirect(new URL(signInUrl, request.url));
-    }
-    
-    // For development testing only
-    if (process.env.NODE_ENV === 'development') {
-      console.log('DEV MODE: Using test email for development');
-      const testEmail = 'test@example.com';
-      
-      const signInUrl = `/api/auth/signin/credentials?${new URLSearchParams({
-        email: testEmail,
-        callbackUrl
-      }).toString()}`;
-      
-      return NextResponse.redirect(new URL(signInUrl, request.url));
-    }
-    
-    // No valid session found
-    console.log('No Crowdpen session found, redirecting to login page');
-    return NextResponse.redirect(new URL('/login?error=NoSession&message=No+valid+Crowdpen+session+found', request.url));
   } catch (error) {
     console.error("Crowdpen callback error:", error.message, error.stack);
-    return NextResponse.redirect(new URL(`/login?error=CallbackError&message=${encodeURIComponent(error.message)}`, request.url));
+    
+    // Return an error page
+    const errorHtml = `
+      <html>
+      <head><title>Login Error</title></head>
+      <body>
+        <h2>Login Error</h2>
+        <p>There was an error completing your login: ${error.message}</p>
+        <p><a href="/login">Return to login</a></p>
+      </body>
+      </html>
+    `;
+    
+    return new NextResponse(errorHtml, {
+      status: 500,
+      headers: {
+        'Content-Type': 'text/html',
+      },
+    });
   }
 }

@@ -76,7 +76,6 @@ export const authOptions = {
     verifyRequest: `https://crowdpen.co/verify-request`, // (used for check email message)
     newUser: "https://crowdpen.co/new-user", // New users will be directed here on first sign in (leave the property out if not of interest)
   },
-  adapter: SequelizeAdapter(sequelize),
   callbacks: {
     async session({ session, token, user }) {
       const useremail = session?.user?.email;

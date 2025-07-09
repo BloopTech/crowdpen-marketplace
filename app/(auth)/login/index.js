@@ -119,51 +119,32 @@ export default function Login() {
     setLoginError('');
     
     try {
-      // First, check if the user is already logged in on Crowdpen
-      console.log('Checking for existing Crowdpen session...');
-      const response = await fetch('/api/proxy/crowdpen-session', {
-        credentials: 'include',
-        cache: 'no-store'
-      });
+      // Generate a state parameter to prevent CSRF attacks
+      const state = Math.random().toString(36).substring(2, 15);
       
-      const data = await response.json();
-      console.log('Crowdpen session response:', data);
+      // Store the state in localStorage to verify when we return
+      localStorage.setItem('crowdpen_sso_state', state);
       
-      // If we found an active Crowdpen session with user data, use it to sign in
-      if (data?.user?.email) {
-        console.log(`Found active Crowdpen session for: ${data.user.email}`);
-        
-        // Use the email from the Crowdpen session to sign in here
-        const result = await signIn('credentials', {
-          redirect: false,
-          email: data.user.email
-        });
-        
-        console.log('Sign in result:', result);
-        
-        if (result?.error) {
-          setLoginError(`Authentication error: ${result.error}`);
-        } else {
-          // Success! Close dialog and redirect
-          console.log('Successfully signed in with Crowdpen session');
-          closeLoginDialog();
-          router.push(result.url || callback || '/');
-          return;
-        }
-      } else {
-        // No active Crowdpen session found, redirect to Crowdpen login
-        console.log('No active Crowdpen session found. Redirecting to Crowdpen login...');
-        
-        // Build the callback URL to return to after Crowdpen login
-        const callbackUrl = encodeURIComponent(`${window.location.origin}/api/auth/callback/crowdpen`);
-        const crowdpenLoginUrl = `https://crowdpen.co/login?callbackUrl=${callbackUrl}`;
-        
-        console.log(`Redirecting to: ${crowdpenLoginUrl}`);
-        window.location.href = crowdpenLoginUrl;
-      }
+      // Store the callback URL to return to after login
+      const returnTo = callback || '/';
+      localStorage.setItem('crowdpen_sso_returnTo', returnTo);
+      
+      // Get the current app domain for the callback
+      const appDomain = window.location.origin;
+      
+      // Build the callback URL for Crowdpen to redirect back to
+      const callbackUrl = encodeURIComponent(
+        `${appDomain}/api/auth/callback/crowdpen?state=${state}`
+      );
+      
+      // Redirect to Crowdpen login with our callback URL
+      const crowdpenLoginUrl = `https://crowdpen.co/login?sso=true&callbackUrl=${callbackUrl}`;
+      
+      console.log(`Redirecting to Crowdpen for SSO: ${crowdpenLoginUrl}`);
+      window.location.href = crowdpenLoginUrl;
     } catch (error) {
       console.error('Crowdpen login error:', error);
-      setLoginError(`Error: ${error.message}`);
+      setLoginError(`Error starting login: ${error.message}`);
       setIsCrowdpenLoading(false);
       setDisabled(false);
     }
