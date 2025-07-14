@@ -1,10 +1,54 @@
+// Import sequelize from the separate database configuration file
+import sequelize from "./database";
 import { Sequelize } from "sequelize";
 
-const sequelize = new Sequelize(process.env.DB_URL, {
-  dialect: "postgres",
-  dialectModule: require("pg"),
-  logging: false,
-  pool: { max: 5, min: 1, idle: 10000, acquire: 30000 },
+// Import all model files explicitly
+import User from "./User";
+import MarketplaceAddress from "./MarketplaceAddress";
+import MarketplaceCart from "./MarketplaceCart";
+import MarketplaceCartItems from "./MarketplaceCartItems";
+import MarketplaceCategory from "./MarketplaceCategory";
+import MarketplaceOrder from "./MarketplaceOrder";
+import MarketplaceOrderItems from "./MarketplaceOrderItems";
+import MarketplaceProduct from "./MarketplaceProduct";
+import MarketplaceProductTags from "./MarketplaceProductTags";
+import MarketplaceProductVariation from "./MarketplaceProductVariation";
+import MarketplaceReview from "./MarketplaceReview";
+import MarketplaceSubCategory from "./MarketplaceSubCategory";
+import MarketplaceTags from "./MarketplaceTags";
+import MarketPlaceWishlists from "./MarketPlaceWishlists";
+import SubscriptionPayment from "./subscriptionpayment";
+
+// Create models object
+const db = {
+  User,
+  MarketplaceAddress,
+  MarketplaceCart,
+  MarketplaceCartItems,
+  MarketplaceCategory,
+  MarketplaceOrder,
+  MarketplaceOrderItems,
+  MarketplaceProduct,
+  MarketplaceProductTags,
+  MarketplaceProductVariation,
+  MarketplaceReview,
+  MarketplaceSubCategory,
+  MarketplaceTags,
+  MarketPlaceWishlists,
+  SubscriptionPayment
+};
+
+// Initialize all associations after all models are loaded
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
 });
 
-export default sequelize;
+// Add sequelize instance and Sequelize class to the db object
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+
+// Export the db object with all models and sequelize instances
+export default db;
+export { db };

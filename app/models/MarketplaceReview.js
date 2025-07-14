@@ -1,16 +1,16 @@
 "use strict";
 import { Model, DataTypes } from "sequelize";
-import sequelize from "./index";
+import sequelize from "./database";
 
-class Review extends Model {
+class MarketplaceReview extends Model {
   static associate(models) {
     // Define associations
-    Review.belongsTo(models.Product, { foreignKey: 'productId' });
-    Review.belongsTo(models.User, { foreignKey: 'userId' });
+    MarketplaceReview.belongsTo(models.MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
+    MarketplaceReview.belongsTo(models.User, { foreignKey: 'user_id' });
   }
 }
 
-Review.init(
+MarketplaceReview.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -18,15 +18,15 @@ Review.init(
       primaryKey: true,
       allowNull: false
     },
-    productId: {
+    marketplace_product_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'products',
+        model: 'marketplace_products',
         key: 'id'
       }
     },
-    userId: {
+    user_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
@@ -63,9 +63,12 @@ Review.init(
   },
   {
     sequelize,
-    modelName: "Review",
-    tableName: "reviews"
+    modelName: "MarketplaceReview",
+    tableName: "marketplace_reviews"
   }
 );
 
-export default Review;
+// MarketplaceReview.belongsTo(MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
+// MarketplaceReview.belongsTo(User, { foreignKey: 'user_id' });
+
+export default MarketplaceReview;

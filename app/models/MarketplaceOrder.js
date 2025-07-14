@@ -1,17 +1,17 @@
 "use strict";
 import { Model, DataTypes } from "sequelize";
-import sequelize from "./index";
+import sequelize from "./database";
 
-class Order extends Model {
+class MarketplaceOrder extends Model {
   static associate(models) {
     // Define associations
-    Order.belongsTo(models.User, { foreignKey: 'userId' });
-    Order.hasMany(models.OrderItem, { foreignKey: 'orderId' });
-    Order.belongsTo(models.Address, { foreignKey: 'billingAddressId', as: 'billingAddress' });
+    MarketplaceOrder.belongsTo(models.User, { foreignKey: 'user_id' });
+    MarketplaceOrder.hasMany(models.MarketplaceOrderItems, { foreignKey: 'marketplace_order_id' });
+    MarketplaceOrder.belongsTo(models.MarketplaceAddress, { foreignKey: 'marketplace_address_id' });
   }
 }
 
-Order.init(
+MarketplaceOrder.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -19,7 +19,7 @@ Order.init(
       primaryKey: true,
       allowNull: false
     },
-    userId: {
+    user_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
@@ -27,15 +27,15 @@ Order.init(
         key: 'id'
       }
     },
-    orderNumber: {
+    order_number: {
       type: DataTypes.STRING,
       unique: true,
       allowNull: false
     },
-    billingAddressId: {
+    marketplace_address_id: {
       type: DataTypes.UUID,
       references: {
-        model: 'addresses',
+        model: 'marketplace_addresses',
         key: 'id'
       }
     },
@@ -85,9 +85,13 @@ Order.init(
   },
   {
     sequelize,
-    modelName: "Order",
-    tableName: "orders"
+    modelName: "MarketplaceOrder",
+    tableName: "marketplace_orders"
   }
 );
 
-export default Order;
+// MarketplaceOrder.belongsTo(User, { foreignKey: 'user_id' });
+// MarketplaceOrder.hasMany(MarketplaceOrderItems, { foreignKey: 'marketplace_order_id' });
+// MarketplaceOrder.belongsTo(MarketplaceAddress, { foreignKey: 'marketplace_address_id' });
+
+export default MarketplaceOrder;

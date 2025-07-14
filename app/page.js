@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -9,105 +9,49 @@ import {
   SelectValue,
 } from "./components/ui/select";
 import { Button } from "./components/ui/button";
-import { LayoutGrid, List, Filter } from "lucide-react";
+import { LayoutGrid, List, Filter, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "./components/ui/sheet";
 import MarketplaceHeader from "./components/marketplace-header";
 import FilterSidebar from "./components/filter-sidebar";
 import ProductCard from "./components/product-card";
-import { mockResources } from "./lib/data";
 import { useRouter } from "next/navigation";
 import Login from "./(auth)/login";
+import { useHome } from "./context";
 
 export default function AmazonStyleMarketplace() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [cartItems, setCartItems] = useState([]);
   const [wishlist, setWishlist] = useState([]);
-  const [filters, setFilters] = useState({
-    category: "All",
-    priceRange: [0, 200],
-    rating: 0,
-    deliveryTime: "",
-    license: "",
-    sortBy: "featured",
-  });
+  
+  // Use the context instead of local state for filters and data
+  const { 
+    filters, 
+    updateFilters, 
+    clearFilters,
+    products, 
+    totalProducts,
+    isProductsLoading,
+    isProductsFetching,
+    productsError,
+    categories,
+    isCategoriesLoading,
+    tags,
+    isTagsLoading,
+    currentPage,
+    totalPages,
+    nextPage,
+    prevPage
+  } = useHome();
 
-  const filteredResources = useMemo(() => {
-    const filtered = mockResources.filter((resource) => {
-      // Search filter
-      const matchesSearch =
-        appliedSearch === "" ||
-        resource.title.toLowerCase().includes(appliedSearch.toLowerCase()) ||
-        resource.description
-          .toLowerCase()
-          .includes(appliedSearch.toLowerCase()) ||
-        resource.tags.some((tag) =>
-          tag.toLowerCase().includes(appliedSearch.toLowerCase())
-        );
-
-      // Category filter
-      const matchesCategory =
-        filters.category === "All" || resource.category === filters.category;
-
-      // Price filter
-      const matchesPrice =
-        resource.price >= filters.priceRange[0] &&
-        resource.price <= filters.priceRange[1];
-
-      // Rating filter
-      const matchesRating =
-        filters.rating === 0 || resource.rating >= filters.rating;
-
-      // License filter
-      const matchesLicense =
-        filters.license === "" || resource.license.includes(filters.license);
-
-      // Delivery filter
-      const matchesDelivery =
-        filters.deliveryTime === "" ||
-        resource.deliveryTime === filters.deliveryTime;
-
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesPrice &&
-        matchesRating &&
-        matchesLicense &&
-        matchesDelivery
-      );
-    });
-
-    // Sort resources
-    filtered.sort((a, b) => {
-      switch (filters.sortBy) {
-        case "price-low":
-          return a.price - b.price;
-        case "price-high":
-          return b.price - a.price;
-        case "rating":
-          return b.rating - a.rating;
-        case "newest":
-          return (
-            new Date(b.lastUpdated).getTime() -
-            new Date(a.lastUpdated).getTime()
-          );
-        case "popular":
-          return b.downloads - a.downloads;
-        default: // featured
-          return b.featured ? 1 : -1;
-      }
-    });
-
-    return filtered;
-  }, [appliedSearch, filters]);
+  // We don't need the filteredResources useMemo anymore as data is filtered by the API
+  // and exposed through the context
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-    } else {
-      setAppliedSearch(searchQuery);
+      // Update context filters instead of local state
+      updateFilters({ search: searchQuery.trim() });
     }
   };
 
@@ -122,17 +66,8 @@ export default function AmazonStyleMarketplace() {
         : [...prev, resourceId]
     );
   };
-
-  const handleClearFilters = () => {
-    setFilters({
-      category: "All",
-      priceRange: [0, 200],
-      rating: 0,
-      deliveryTime: "",
-      license: "",
-      sortBy: "featured",
-    });
-  };
+  
+  // Use clearFilters from context instead
 
   return (
     <>
@@ -151,8 +86,8 @@ export default function AmazonStyleMarketplace() {
               <div className="sticky top-24">
                 <FilterSidebar
                   filters={filters}
-                  onFiltersChange={setFilters}
-                  onClearFilters={handleClearFilters}
+                  onFiltersChange={updateFilters}
+                  onClearFilters={clearFilters}
                 />
               </div>
             </aside>
@@ -163,8 +98,8 @@ export default function AmazonStyleMarketplace() {
               <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-lg shadow-sm">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-muted-foreground">
-                    {filteredResources.length.toLocaleString()} results
-                    {appliedSearch && ` for "${appliedSearch}"`}
+                    {totalProducts.toLocaleString()} results
+                    {filters.search && ` for "${filters.search}"`}
                   </span>
 
                   {/* Mobile Filter Button */}
@@ -178,8 +113,8 @@ export default function AmazonStyleMarketplace() {
                     <SheetContent side="left" className="w-80">
                       <FilterSidebar
                         filters={filters}
-                        onFiltersChange={setFilters}
-                        onClearFilters={handleClearFilters}
+                        onFiltersChange={updateFilters}
+                        onClearFilters={clearFilters}
                       />
                     </SheetContent>
                   </Sheet>
@@ -188,10 +123,8 @@ export default function AmazonStyleMarketplace() {
                 <div className="flex items-center gap-4">
                   {/* Sort */}
                   <Select
-                    value={filters.sortBy}
-                    onValueChange={(value) =>
-                      setFilters({ ...filters, sortBy: value })
-                    }
+                    value={filters.sort}
+                    onValueChange={(value) => updateFilters({ sort: value })}
                   >
                     <SelectTrigger className="w-48">
                       <SelectValue />
@@ -232,43 +165,95 @@ export default function AmazonStyleMarketplace() {
                 </div>
               </div>
 
-              {/* Products Grid */}
-              {filteredResources.length === 0 ? (
+              {/* Loading State */}
+              {isProductsLoading && (
+                <div className="flex justify-center items-center py-12 bg-white rounded-lg">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="ml-2">Loading products...</span>
+                </div>
+              )}
+              
+              {/* Error State */}
+              {productsError && (
                 <div className="text-center py-12 bg-white rounded-lg">
-                  <div className="text-6xl mb-4">🔍</div>
+                  <div className="text-6xl mb-4">⚠️</div>
                   <h3 className="text-xl font-semibold mb-2">
-                    No products found
+                    Error loading products
                   </h3>
                   <p className="text-muted-foreground mb-4">
-                    Try adjusting your search or filters
+                    {productsError.message || 'Something went wrong while fetching products'}
                   </p>
-                  <Button onClick={handleClearFilters}>
-                    Clear all filters
+                  <Button onClick={() => window.location.reload()}>
+                    Try again
                   </Button>
                 </div>
-              ) : (
-                <div
-                  className={`grid gap-4 ${
-                    viewMode === "grid"
-                      ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
-                      : "grid-cols-1"
-                  }`}
-                >
-                  {filteredResources.map((resource) => (
-                    <ProductCard
-                      key={resource.id}
-                      resource={resource}
-                      onAddToCart={handleAddToCart}
-                      onToggleWishlist={handleToggleWishlist}
-                    />
-                  ))}
-                </div>
+              )}
+              
+              {/* Products Grid */}
+              {!isProductsLoading && !productsError && (
+                <>
+                  {products.length === 0 ? (
+                    <div className="text-center py-12 bg-white rounded-lg">
+                      <div className="text-6xl mb-4">🔍</div>
+                      <h3 className="text-xl font-semibold mb-2">
+                        No products found
+                      </h3>
+                      <p className="text-muted-foreground mb-4">
+                        Try adjusting your search or filters
+                      </p>
+                      <Button onClick={clearFilters}>
+                        Clear all filters
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div
+                        className={`grid gap-4 ${
+                          viewMode === "grid"
+                            ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4"
+                            : "grid-cols-1"
+                        }`}
+                      >
+                        {products.map((product) => (
+                          <ProductCard
+                            key={product.id}
+                            resource={product}
+                            onAddToCart={handleAddToCart}
+                            onToggleWishlist={handleToggleWishlist}
+                          />
+                        ))}
+                      </div>
+                      
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="flex justify-center mt-8 gap-2">
+                          <Button 
+                            variant="outline" 
+                            onClick={prevPage}
+                            disabled={currentPage === 1 || isProductsFetching}
+                          >
+                            Previous
+                          </Button>
+                          <span className="py-2 px-4 bg-muted rounded">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                          <Button 
+                            variant="outline" 
+                            onClick={nextPage}
+                            disabled={currentPage >= totalPages || isProductsFetching}
+                          >
+                            Next
+                          </Button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
               )}
             </main>
           </div>
         </div>
       </div>
-    
     </>
   );
 }

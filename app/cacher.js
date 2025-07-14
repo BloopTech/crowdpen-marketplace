@@ -1,7 +1,7 @@
 import { Op } from "sequelize";
-import User from "./models/User";
-import SubscriptionPayment from "./models/subscriptionpayment";
+import { db } from "./models";
 
+const { User, SubscriptionPayment } = db;
 
 export const getUserId = async (userId) => {
   const currentDate = new Date();

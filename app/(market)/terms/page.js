@@ -84,7 +84,7 @@ export default function TermsPage() {
               <section>
                 <h2 className="text-xl font-semibold mb-3">6. Contact Information</h2>
                 <p className="text-muted-foreground">
-                  If you have any questions about these Terms of Service, please contact us at legal@crowdpen.com
+                  If you have any questions about these Terms of Service, please contact us at legal@crowdpen.co
                 </p>
               </section>
             </div>

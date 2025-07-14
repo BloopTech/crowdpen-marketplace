@@ -195,7 +195,7 @@ export default function HelpPage() {
                       <Mail className="h-5 w-5 text-purple-600" />
                       <div>
                         <div className="font-medium">Email Support</div>
-                        <div className="text-sm text-muted-foreground">support@crowdpen.com</div>
+                        <div className="text-sm text-muted-foreground">support@crowdpen.co</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">

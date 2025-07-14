@@ -1,15 +1,15 @@
 "use strict";
 import { Model, DataTypes } from "sequelize";
-import sequelize from "./index";
+import sequelize from "./database";
 
-class ProductVariation extends Model {
+class MarketplaceProductVariation extends Model {
   static associate(models) {
     // Define associations
-    ProductVariation.belongsTo(models.Product, { foreignKey: 'productId' });
+    MarketplaceProductVariation.belongsTo(models.MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
   }
 }
 
-ProductVariation.init(
+MarketplaceProductVariation.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -17,11 +17,11 @@ ProductVariation.init(
       primaryKey: true,
       allowNull: false
     },
-    productId: {
+    marketplace_product_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: 'products',
+        model: 'marketplace_products',
         key: 'id'
       }
     },
@@ -43,9 +43,11 @@ ProductVariation.init(
   },
   {
     sequelize,
-    modelName: "ProductVariation",
-    tableName: "product_variations"
+    modelName: "MarketplaceProductVariation",
+    tableName: "marketplace_product_variations"
   }
 );
 
-export default ProductVariation;
+//MarketplaceProductVariation.belongsTo(MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
+
+export default MarketplaceProductVariation;

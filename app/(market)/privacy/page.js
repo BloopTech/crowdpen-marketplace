@@ -70,7 +70,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-xl font-semibold mb-3">Contact Us</h2>
                 <p className="text-muted-foreground">
-                  If you have questions about this Privacy Policy, please contact us at privacy@crowdpen.com
+                  If you have questions about this Privacy Policy, please contact us at privacy@crowdpen.co
                 </p>
               </section>
             </div>

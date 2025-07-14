@@ -78,7 +78,7 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
         </CardHeader>
         <CardContent>
           <Slider
-            value={filters.priceRange}
+            value={filters?.priceRange}
             onValueChange={(value) => onFiltersChange({ ...filters, priceRange: value })}
             max={200}
             min={0}
@@ -86,8 +86,8 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
             className="w-full"
           />
           <div className="flex justify-between text-xs text-muted-foreground mt-2">
-            <span>${filters.priceRange[0]}</span>
-            <span>${filters.priceRange[1]}</span>
+            <span>${filters?.priceRange?.length ? filters?.priceRange[0] : 0}</span>
+            <span>${filters?.priceRange?.length ? filters?.priceRange[1] : 200}</span>
           </div>
         </CardContent>
       </Card>

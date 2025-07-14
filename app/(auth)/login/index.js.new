@@ -8,22 +8,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog";
+import { HomeContext } from "../../context";
 import { LoaderCircle } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
-import { useHome } from "../../context";
 
 // Login component that integrates with Crowdpen SSO
 export default function Login() {
   // Get context safely with useContext
+  const context = useContext(HomeContext);
   
-  
-  // State for Crowdpen SSO login - declare before any conditional returns
-  const [isCrowdpenLoading, setIsCrowdpenLoading] = useState(false);
-  
+  // If context isn't available yet, render nothing
+  if (!context) return null;
   
   // Now we can safely use the context
-  const { loginDialog, closeLoginDialog } = useHome();
+  const { loginDialog, closeLoginDialog } = context;
+  
+  // State for Crowdpen SSO login
+  const [isCrowdpenLoading, setIsCrowdpenLoading] = useState(false);
   
   // Handle SSO login with Crowdpen credentials
   const handleCrowdpenLogin = async () => {

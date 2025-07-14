@@ -1,6 +1,6 @@
 "use strict";
 import { Model, DataTypes } from "sequelize";
-import sequelize from "./index";
+import sequelize from "./database";
 
 class User extends Model {
   /**
@@ -9,7 +9,17 @@ class User extends Model {
    * The `models/index` file will call this method automatically.
    */
   static associate(models) {
-    // define association here
+    // Define associations
+    User.hasMany(models.MarketplaceProduct, { foreignKey: 'user_id' });
+    User.hasMany(models.MarketplaceAddress, { foreignKey: 'user_id' });
+    User.hasMany(models.MarketplaceCart, { foreignKey: 'user_id' });
+    User.hasMany(models.MarketplaceOrder, { foreignKey: 'user_id' });
+    User.hasMany(models.MarketplaceReview, { foreignKey: 'user_id' });
+    User.belongsToMany(models.MarketplaceProduct, { 
+      through: models.MarketPlaceWishlists, 
+      foreignKey: 'user_id', 
+      as: 'wishlistedProducts' 
+    });
   }
 }
 
@@ -91,5 +101,15 @@ User.init(
   }
 );
 
+// User.hasMany(MarketplaceProduct, { foreignKey: "user_id" });
+// User.hasMany(MarketplaceAddress, { foreignKey: "user_id" });
+// User.hasMany(MarketplaceCart, { foreignKey: "user_id" });
+// User.hasMany(MarketplaceOrder, { foreignKey: "user_id" });
+// User.hasMany(MarketplaceReview, { foreignKey: "user_id" });
+// User.belongsToMany(MarketplaceProduct, {
+//   through: "MarketplaceWishlists",
+//   foreignKey: "user_id",
+//   as: "wishlistedProducts",
+// });
 
 export default User;

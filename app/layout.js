@@ -8,6 +8,9 @@ import { ThemeProvider } from "next-themes";
 import { SWRConfig } from "swr";
 import { HomeProvider } from "./context";
 import Login from "./(auth)/login";
+import QueryProvider from "./components/QueryProvider";
+import { NuqsAdapter } from 'nuqs/adapters/next/app';
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -48,19 +51,22 @@ export default async function RootLayout({ children }) {
       <body className="antialiased scroll-auto w-full">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <SessionProvider session={session}>
-            <SWRConfig
-              value={{
-                fetcher,
-              }}
-            >
-              {process.env.NEXT_PUBLIC_GA_ID && (
-                <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
-              )}
-              <HomeProvider>
-                <main className="flex flex-col w-full">{children}</main>
-                <Login />
-              </HomeProvider>
-            </SWRConfig>
+            <QueryProvider>
+              
+                {process.env.NEXT_PUBLIC_GA_ID && (
+                  <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+                )}
+
+                <NuqsAdapter>
+                  <HomeProvider>
+                    <main className="flex flex-col w-full">
+                      {children}
+                    </main>
+                    <Login />
+                  </HomeProvider>
+                </NuqsAdapter>
+                
+            </QueryProvider>
           </SessionProvider>
         </ThemeProvider>
       </body>

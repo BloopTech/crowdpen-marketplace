@@ -1,16 +1,16 @@
 "use strict";
 import { Model, DataTypes } from "sequelize";
-import sequelize from "./index";
+import sequelize from "./database";
 
-class Address extends Model {
+class MarketplaceAddress extends Model {
   static associate(models) {
     // Define associations
-    Address.belongsTo(models.User, { foreignKey: 'userId' });
-    Address.hasMany(models.Order, { foreignKey: 'billingAddressId', as: 'billingAddress' });
+    MarketplaceAddress.belongsTo(models.User, { foreignKey: 'user_id' });
+    MarketplaceAddress.hasMany(models.MarketplaceOrder, { foreignKey: 'marketplace_address_id' });
   }
 }
 
-Address.init(
+MarketplaceAddress.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -18,7 +18,7 @@ Address.init(
       primaryKey: true,
       allowNull: false
     },
-    userId: {
+    user_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
@@ -67,9 +67,12 @@ Address.init(
   },
   {
     sequelize,
-    modelName: "Address",
-    tableName: "addresses"
+    modelName: "MarketplaceAddress",
+    tableName: "marketplace_addresses"
   }
 );
 
-export default Address;
+// MarketplaceAddress.belongsTo(User, { foreignKey: 'user_id' });
+// MarketplaceAddress.hasMany(MarketplaceOrder, { foreignKey: 'marketplace_address_id' });
+
+export default MarketplaceAddress;
