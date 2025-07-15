@@ -142,12 +142,12 @@ export default function CreateProductPage() {
   }, [formData.marketplace_category_id, formData.marketplace_subcategory_id, subCategories]);
 
   // Check if user is authenticated
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      toast.error("You must be logged in to create a product");
-      router.push("/login?redirect=/product/create");
-    }
-  }, [status, router]);
+  // useEffect(() => {
+  //   if (status === "unauthenticated") {
+  //     toast.error("You must be logged in to create a product");
+  //     router.push("/login?redirect=/product/create");
+  //   }
+  // }, [status, router]);
 
   // Handle form input changes
   const handleChange = (e) => {
