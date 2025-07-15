@@ -17,7 +17,7 @@ import MarketplaceReview from "./MarketplaceReview";
 import MarketplaceSubCategory from "./MarketplaceSubCategory";
 import MarketplaceTags from "./MarketplaceTags";
 import SubscriptionPayment from "./subscriptionpayment";
-import MarketplaceWishlists from "./MarketplaceWishlists";
+import MarketplaceWishlists from "./wishlists";
 
 // Create models object
 const db = {
