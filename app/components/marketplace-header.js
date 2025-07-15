@@ -17,15 +17,13 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { UserId } from "./ui/userId";
 import { useHome } from "../context";
+import { useRouter } from "next/navigation";
 
-export default function MarketplaceHeader({
-  searchQuery,
-  onSearchChange,
-  onSearch,
-  cartItemCount,
-}) {
+export default function MarketplaceHeader(props) {
+  const { searchQuery, onSearchChange, onSearch, cartItemCount } = props;
   const { openLoginDialog } = useHome();
   const { data: session } = useSession();
+  const router = useRouter();
 
   return (
     <header className="border-b bg-white sticky top-0 z-5">
@@ -123,6 +121,13 @@ export default function MarketplaceHeader({
                 )}
               </Button>
             </Link>
+            <Button
+              size="sm"
+              className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
+              onClick={() => router.push('/product/create')}
+            >
+              Create
+            </Button>
           </div>
         </div>
 

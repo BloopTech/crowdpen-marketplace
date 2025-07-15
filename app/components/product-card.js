@@ -8,7 +8,8 @@ import { Heart, ShoppingCart, Star, Download, FileText } from "lucide-react"
 import Link from "next/link"
 
 
-export default function ProductCard({ resource, onAddToCart, onToggleWishlist }) {
+export default function ProductCard(props) {
+  const { resource, onAddToCart, onToggleWishlist } = props;
   const discountPercentage = resource.originalPrice
     ? Math.round(((resource.originalPrice - resource.price) / resource.originalPrice) * 100)
     : 0

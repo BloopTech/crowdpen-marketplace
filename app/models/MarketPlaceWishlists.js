@@ -2,15 +2,15 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "./database";
 
-class MarketPlaceWishlists extends Model {
+class MarketplaceWishlists extends Model {
   static associate(models) {
     // Define associations
-    MarketPlaceWishlists.belongsTo(models.User, { foreignKey: 'user_id' });
-    MarketPlaceWishlists.belongsTo(models.MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
+    MarketplaceWishlists.belongsTo(models.User, { foreignKey: 'user_id' });
+    MarketplaceWishlists.belongsTo(models.MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
   }
 }
 
-MarketPlaceWishlists.init(
+MarketplaceWishlists.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -41,7 +41,7 @@ MarketPlaceWishlists.init(
   },
   {
     sequelize,
-    modelName: "MarketPlaceWishlists",
+    modelName: "MarketplaceWishlists",
     tableName: "marketplace_wishlists",
     indexes: [
       {
@@ -55,4 +55,4 @@ MarketPlaceWishlists.init(
 // MarketPlaceWishlists.belongsTo(User, { foreignKey: 'user_id' });
 // MarketPlaceWishlists.belongsTo(MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
 
-export default MarketPlaceWishlists;
+export default MarketplaceWishlists;

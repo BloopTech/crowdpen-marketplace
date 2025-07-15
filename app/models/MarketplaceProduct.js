@@ -23,7 +23,7 @@ class MarketplaceProduct extends Model {
       foreignKey: 'marketplace_product_id',
       as: 'tags' // Add a unique alias for clarity
     });
-    MarketplaceProduct.belongsToMany(models.User, { through: models.MarketPlaceWishlists, foreignKey: 'marketplace_product_id', as: 'wishlistedBy' });
+    MarketplaceProduct.belongsToMany(models.User, { through: models.MarketplaceWishlists, foreignKey: 'marketplace_product_id', as: 'wishlistedBy' });
     MarketplaceProduct.belongsToMany(models.MarketplaceCart, { 
       through: models.MarketplaceCartItems, 
       foreignKey: 'marketplace_product_id',

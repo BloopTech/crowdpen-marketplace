@@ -16,7 +16,7 @@ class User extends Model {
     User.hasMany(models.MarketplaceOrder, { foreignKey: 'user_id' });
     User.hasMany(models.MarketplaceReview, { foreignKey: 'user_id' });
     User.belongsToMany(models.MarketplaceProduct, { 
-      through: models.MarketPlaceWishlists, 
+      through: models.MarketplaceWishlists, 
       foreignKey: 'user_id', 
       as: 'wishlistedProducts' 
     });

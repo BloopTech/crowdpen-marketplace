@@ -16,8 +16,8 @@ import MarketplaceProductVariation from "./MarketplaceProductVariation";
 import MarketplaceReview from "./MarketplaceReview";
 import MarketplaceSubCategory from "./MarketplaceSubCategory";
 import MarketplaceTags from "./MarketplaceTags";
-import MarketPlaceWishlists from "./MarketPlaceWishlists";
 import SubscriptionPayment from "./subscriptionpayment";
+import MarketplaceWishlists from "./MarketplaceWishlists";
 
 // Create models object
 const db = {
@@ -34,7 +34,7 @@ const db = {
   MarketplaceReview,
   MarketplaceSubCategory,
   MarketplaceTags,
-  MarketPlaceWishlists,
+  MarketplaceWishlists,
   SubscriptionPayment
 };
 

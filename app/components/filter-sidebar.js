@@ -84,8 +84,9 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
             min={0}
             step={5}
             className="w-full"
+            defaultValue={[filters?.priceRange?.length ? filters?.priceRange[0] : 0, filters?.priceRange?.length ? filters?.priceRange[1] : 200]}
           />
-          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+          <div className="flex justify-between text-xs mt-2">
             <span>${filters?.priceRange?.length ? filters?.priceRange[0] : 0}</span>
             <span>${filters?.priceRange?.length ? filters?.priceRange[1] : 200}</span>
           </div>
