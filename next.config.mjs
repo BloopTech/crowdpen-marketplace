@@ -7,6 +7,11 @@ const nextConfig = {
     ];
     return config;
   },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '10mb',
+    },
+  },
   reactStrictMode: true,
   env: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
