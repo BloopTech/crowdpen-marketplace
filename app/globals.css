@@ -42,6 +42,12 @@
   --font-poynteritalic: PoynterItalic, sans-serif;
   --animate-toastIn: toastIn 0.3s .8s both;
   --animate-toastOut: toastOut 0.3s .8s both;
+  --color-primary: #009EF7;
+  --color-success: #2CDA94;
+  --color-secondary: #0080C4;
+  --color-tertiary: #262161;
+  --color-text: #282828;
+  --color-background: #F4F4F4;
 
   @keyframes toastIn {
     0% {

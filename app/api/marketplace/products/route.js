@@ -129,6 +129,7 @@ export async function GET(request) {
               as: "productTags",
             },
           ],
+          order: [["createdAt", "DESC"]],
           //transaction: t,
         });
 

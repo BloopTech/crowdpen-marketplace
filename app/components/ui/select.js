@@ -1,139 +1,308 @@
 "use client"
 
 import React, {forwardRef} from "react"
-import * as SelectPrimitive from "@radix-ui/react-select"
+import * as SelectPrimitives from "@radix-ui/react-select"
 import { Check, ChevronDown, ChevronUp } from "lucide-react"
 
-import { cn } from "../../lib/utils"
+import { cn, focusInput, hasErrorInput } from "../../lib/utils"
 
-const Select = SelectPrimitive.Root
+import { format } from "date-fns";
 
-const SelectGroup = SelectPrimitive.Group
+import { DateRange } from "react-day-picker";
 
-const SelectValue = SelectPrimitive.Value
 
-const SelectTrigger = forwardRef(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Trigger
-    ref={ref}
-    className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
-      className
-    )}
-    {...props}
-  >
-    {children}
-    <SelectPrimitive.Icon asChild>
-      <ChevronDown className="h-4 w-4 opacity-50" />
-    </SelectPrimitive.Icon>
-  </SelectPrimitive.Trigger>
-))
-SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
+const Select = SelectPrimitives.Root;
+Select.displayName = "Select";
 
-const SelectScrollUpButton = forwardRef(({ className, ...props }, ref) => (
-  <SelectPrimitive.ScrollUpButton
-    ref={ref}
-    className={cn(
-      "flex cursor-default items-center justify-center py-1",
-      className
-    )}
-    {...props}
-  >
-    <ChevronUp className="h-4 w-4" />
-  </SelectPrimitive.ScrollUpButton>
-))
-SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName
+const SelectGroup = SelectPrimitives.Group;
+SelectGroup.displayName = "SelectGroup";
 
-const SelectScrollDownButton = forwardRef(({ className, ...props }, ref) => (
-  <SelectPrimitive.ScrollDownButton
-    ref={ref}
-    className={cn(
-      "flex cursor-default items-center justify-center py-1",
-      className
-    )}
-    {...props}
-  >
-    <ChevronDown className="h-4 w-4" />
-  </SelectPrimitive.ScrollDownButton>
-))
-SelectScrollDownButton.displayName =
-  SelectPrimitive.ScrollDownButton.displayName
+const SelectValue = SelectPrimitives.Value;
+SelectValue.displayName = "SelectValue";
 
-const SelectContent = forwardRef(({ className, children, position = "popper", ...props }, ref) => (
-  <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
-      ref={ref}
+const selectTriggerStyles = [
+  cn(
+    // base
+    "group/trigger flex w-full select-none items-center justify-between gap-2 truncate rounded-md border px-3 py-2 shadow-sm outline-none transition sm:text-sm",
+    // border color
+    "border-gray-300 dark:border-gray-800",
+    // text color
+    "text-gray-900 dark:text-gray-50",
+    // placeholder
+    "data-[placeholder]:text-gray-500 data-[placeholder]:dark:text-gray-500",
+    // background color
+    "bg-white dark:bg-gray-950",
+    // hover
+    "hover:bg-gray-50 hover:dark:bg-gray-950/50",
+    // disabled
+    "data-[disabled]:bg-gray-100 data-[disabled]:text-gray-400",
+    "data-[disabled]:dark:border-gray-700 data-[disabled]:dark:bg-gray-800 data-[disabled]:dark:text-gray-500",
+    focusInput
+    // invalid (optional)
+    // "aria-[invalid=true]:dark:ring-red-400/20 aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-red-200 aria-[invalid=true]:border-red-500 invalid:ring-2 invalid:ring-red-200 invalid:border-red-500"
+  ),
+];
+
+const SelectTrigger = forwardRef(
+  ({ className, hasError, children, ...props }, forwardedRef) => {
+    return (
+      <SelectPrimitives.Trigger
+        ref={forwardedRef}
+        className={cn(
+          selectTriggerStyles,
+          hasError ? hasErrorInput : "",
+          className
+        )}
+        {...props}
+      >
+        <span className="truncate">{children}</span>
+        <SelectPrimitives.Icon asChild>
+          <ChevronDown
+            className={cn(
+              // base
+              "-mr-1 size-5 shrink-0",
+              // text color
+              "text-gray-400 dark:text-gray-600",
+              // disabled
+              "group-data-[disabled]/trigger:text-gray-300 group-data-[disabled]/trigger:dark:text-gray-600"
+            )}
+          />
+        </SelectPrimitives.Icon>
+      </SelectPrimitives.Trigger>
+    );
+  }
+);
+
+SelectTrigger.displayName = "SelectTrigger";
+
+const SelectScrollUpButton = forwardRef(
+  ({ className, ...props }, forwardedRef) => (
+    <SelectPrimitives.ScrollUpButton
+      ref={forwardedRef}
       className={cn(
-        "relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
-        position === "popper" &&
-          "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+        "flex cursor-default items-center justify-center py-1",
         className
       )}
-      position={position}
       {...props}
     >
-      <SelectScrollUpButton />
-      <SelectPrimitive.Viewport
+      <ChevronUp className="size-3 shrink-0" aria-hidden="true" />
+    </SelectPrimitives.ScrollUpButton>
+  )
+);
+SelectScrollUpButton.displayName = SelectPrimitives.ScrollUpButton.displayName;
+
+const SelectScrollDownButton = forwardRef(
+  ({ className, ...props }, forwardedRef) => (
+    <SelectPrimitives.ScrollDownButton
+      ref={forwardedRef}
+      className={cn(
+        "flex cursor-default items-center justify-center py-1",
+        className
+      )}
+      {...props}
+    >
+      <ChevronDown className="size-3 shrink-0" aria-hidden="true" />
+    </SelectPrimitives.ScrollDownButton>
+  )
+);
+SelectScrollDownButton.displayName =
+  SelectPrimitives.ScrollDownButton.displayName;
+
+const SelectContent = forwardRef(
+  (
+    {
+      className,
+      position = "popper",
+      children,
+      sideOffset = 8,
+      collisionPadding = 10,
+      ...props
+    },
+    forwardedRef
+  ) => (
+    <SelectPrimitives.Portal>
+      <SelectPrimitives.Content
+        ref={forwardedRef}
         className={cn(
-          "p-1",
-          position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+          // base
+          "relative z-50 overflow-hidden rounded-md border shadow-xl shadow-black/[2.5%]",
+          // widths
+          "min-w-[calc(var(--radix-select-trigger-width)-2px)] max-w-[95vw]",
+          // heights
+          "max-h-[--radix-select-content-available-height]",
+          // background color
+          "bg-white dark:bg-gray-950",
+          // text color
+          "text-gray-900 dark:text-gray-50",
+          // border color
+          "border-gray-200 dark:border-gray-800",
+          // transition
+          "will-change-[transform,opacity]",
+          // "data-[state=open]:animate-slideDownAndFade",
+          "data-[state=closed]:animate-hide",
+          "data-[side=bottom]:animate-slideDownAndFade data-[side=left]:animate-slideLeftAndFade data-[side=right]:animate-slideRightAndFade data-[side=top]:animate-slideUpAndFade",
+          className
         )}
+        sideOffset={sideOffset}
+        position={position}
+        collisionPadding={collisionPadding}
+        // Enhanced Modal-compatible dropdown behavior
+        onEscapeKeyDown={(e) => {
+          // Don't let Escape key close the dropdown if within a modal
+          if (document.querySelector('[role="dialog"]')) {
+            e.preventDefault();
+          }
+          if (props.onEscapeKeyDown) props.onEscapeKeyDown(e);
+        }}
+        onPointerDownOutside={(e) => {
+          // Pass the event to the original handler if provided
+          if (props.onPointerDownOutside) props.onPointerDownOutside(e);
+        }}
+        {...props}
       >
-        {children}
-      </SelectPrimitive.Viewport>
-      <SelectScrollDownButton />
-    </SelectPrimitive.Content>
-  </SelectPrimitive.Portal>
-))
-SelectContent.displayName = SelectPrimitive.Content.displayName
+        <SelectScrollUpButton />
+        <SelectPrimitives.Viewport
+          className={cn(
+            "p-1",
+            position === "popper" &&
+              "h-[var(--radix-select-trigger-height)] w-full min-w-[calc(var(--radix-select-trigger-width))]"
+          )}
+        >
+          {children}
+        </SelectPrimitives.Viewport>
+        <SelectScrollDownButton />
+      </SelectPrimitives.Content>
+    </SelectPrimitives.Portal>
+  )
+);
 
-const SelectLabel = forwardRef(({ className, ...props }, ref) => (
-  <SelectPrimitive.Label
-    ref={ref}
-    className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
-    {...props}
-  />
-))
-SelectLabel.displayName = SelectPrimitive.Label.displayName
+SelectContent.displayName = "SelectContent";
 
-const SelectItem = forwardRef(({ className, children, ...props }, ref) => (
-  <SelectPrimitive.Item
-    ref={ref}
+const SelectGroupLabel = forwardRef(({ className, ...props }, forwardedRef) => (
+  <SelectPrimitives.Label
+    ref={forwardedRef}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      // base
+      "px-3 py-2 text-xs font-medium tracking-wide",
+      // text color
+      "text-gray-500 dark:text-gray-500",
       className
     )}
     {...props}
-  >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
-      <SelectPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
-      </SelectPrimitive.ItemIndicator>
-    </span>
+  />
+));
 
-    <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
-  </SelectPrimitive.Item>
-))
-SelectItem.displayName = SelectPrimitive.Item.displayName
+SelectGroupLabel.displayName = "SelectGroupLabel";
 
-const SelectSeparator = forwardRef(({ className, ...props }, ref) => (
-  <SelectPrimitive.Separator
-    ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-muted", className)}
+const SelectItem = forwardRef(
+  ({ className, children, ...props }, forwardedRef) => {
+    return (
+      <SelectPrimitives.Item
+        ref={forwardedRef}
+        className={cn(
+          // base
+          "grid cursor-pointer grid-cols-[1fr_20px] gap-x-2 rounded px-3 py-2 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
+          // text color
+          "text-gray-900 dark:text-gray-50",
+          // disabled
+          "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
+          // focus
+          "focus-visible:bg-gray-100 focus-visible:dark:bg-gray-900",
+          // hover
+          "hover:bg-gray-100 hover:dark:bg-gray-900",
+          className
+        )}
+        {...props}
+      >
+        <SelectPrimitives.ItemText className="flex-1 truncate">
+          {children}
+        </SelectPrimitives.ItemText>
+        <SelectPrimitives.ItemIndicator>
+          <Check
+            className="size-5 shrink-0 text-gray-800 dark:text-gray-200"
+            aria-hidden="true"
+          />
+        </SelectPrimitives.ItemIndicator>
+      </SelectPrimitives.Item>
+    );
+  }
+);
+
+SelectItem.displayName = "SelectItem";
+
+const SelectItemPeriod = forwardRef(
+  ({ className, children, period, ...props }, forwardedRef) => {
+    return (
+      <SelectPrimitives.Item
+        ref={forwardedRef}
+        className={cn(
+          // base
+          "relative flex cursor-pointer items-center rounded py-2 pl-8 pr-3 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
+          // text color
+          "text-gray-900 dark:text-gray-50",
+          // disabled
+          "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
+          // focus
+          "focus-visible:bg-gray-100 focus-visible:dark:bg-gray-900",
+          // hover
+          "hover:bg-gray-100 hover:dark:bg-gray-900",
+          className
+        )}
+        {...props}
+      >
+        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+          <SelectPrimitives.ItemIndicator>
+            <Check
+              className="size-5 shrink-0 text-gray-800 dark:text-gray-200"
+              aria-hidden="true"
+            />
+          </SelectPrimitives.ItemIndicator>
+        </span>
+        <div className="flex w-full items-center">
+          {/* adapt width accordingly if you use longer names for periods */}
+          <span className="w-40 sm:w-32">
+            <SelectPrimitives.ItemText>{children}</SelectPrimitives.ItemText>
+          </span>
+          <span>
+            {period?.from && period?.to && (
+              <span className="whitespace-nowrap font-normal text-gray-400">
+                {format(period.from, "MMM d, yyyy")} –{" "}
+                {format(period.to, "MMM d, yyyy")}
+              </span>
+            )}
+          </span>
+        </div>
+      </SelectPrimitives.Item>
+    );
+  }
+);
+
+SelectItemPeriod.displayName = "SelectItemPeriod";
+
+const SelectSeparator = forwardRef(({ className, ...props }, forwardedRef) => (
+  <SelectPrimitives.Separator
+    ref={forwardedRef}
+    className={cn(
+      // base
+      "-mx-1 my-1 h-px",
+      // background color
+      "bg-gray-300 dark:bg-gray-700",
+      className
+    )}
     {...props}
   />
-))
-SelectSeparator.displayName = SelectPrimitive.Separator.displayName
+));
+
+SelectSeparator.displayName = "SelectSeparator";
 
 export {
   Select,
-  SelectGroup,
-  SelectValue,
-  SelectTrigger,
   SelectContent,
-  SelectLabel,
+  SelectGroup,
+  SelectGroupLabel,
   SelectItem,
+  SelectItemPeriod,
   SelectSeparator,
-  SelectScrollUpButton,
-  SelectScrollDownButton,
-}
+  SelectTrigger,
+  SelectValue,
+};

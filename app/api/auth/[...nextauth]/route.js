@@ -150,7 +150,7 @@ export const authOptions = {
           try {          
             // Since Crowdpen and Crowdpen-Marketplace share the same database,
             // we can look up the user by email
-            const user = await prisma.user.findUnique({
+            const user = await sequelize.models.User.findOne({
               where: { email: decodedToken.email },
             });
             
@@ -161,7 +161,7 @@ export const authOptions = {
               if ((decodedToken.name && user.name !== decodedToken.name) ||
                   (decodedToken.image && user.image !== decodedToken.image)) {
                 console.log('Updating user data from token');
-                await prisma.user.update({
+                await sequelize.models.User.update({
                   where: { id: user.id },
                   data: {
                     name: decodedToken.name || user.name,
@@ -177,7 +177,7 @@ export const authOptions = {
             // create a new one based on the token data
             console.log('Creating new user from Crowdpen data');
             
-            const newUser = await prisma.user.create({
+            const newUser = await sequelize.models.User.create({
               data: {
                 email: decodedToken.email,
                 name: decodedToken.name || '',
@@ -209,33 +209,33 @@ export const authOptions = {
   },
   callbacks: {
     // Add token callback to include user data in JWT for Crowdpen SSO
-    async jwt({ token, user, account }) {
-      // If the user just signed in, add their data to the token
-      if (user) {
-        token.id = user.id;
-        token.email = user.email;
-        token.name = user.name;
-        token.image = user.image;
-        token.provider = account?.provider;
-      }
-      return token;
-    },
+    // async jwt({ token, user, account }) {
+    //   // If the user just signed in, add their data to the token
+    //   if (user) {
+    //     token.id = user.id;
+    //     token.email = user.email;
+    //     token.name = user.name;
+    //     token.image = user.image;
+    //     token.provider = account?.provider;
+    //   }
+    //   return token;
+    // },
     
     async session({ session, token, user }) {
       // For JWT sessions
-      if (token && !user) {
-        session.user = session.user || {};
-        session.user.id = token.id;
-        session.user.name = token.name;
-        session.user.email = token.email;
-        session.user.image = token.image;
-      }
+      // if (token && !user) {
+      //   session.user = session.user || {};
+      //   session.user.id = token.id;
+      //   session.user.name = token.name;
+      //   session.user.email = token.email;
+      //   session.user.image = token.image;
+      // }
       
-      const useremail = session?.user?.email;
-      
-      if (session && user?.email === useremail) {
+      //const useremail = session?.user?.email;
+      //006d987a-2a5c-49b3-8789-82b69ea49bff
+      //if (session && user?.email === useremail) {
         try {
-          const response = await getUserId(user?.id);
+          const response = await getUserId("2012239a-0286-4026-8ed5-24cb41997b92");
 
           session.user.lastLoginDate = response?.lastLoginDate || null;
           session.user.loginStreak = response?.loginStreak || null;
@@ -264,7 +264,7 @@ export const authOptions = {
         } catch (error) {
           console.log("Session enhancement error:", error);
         }
-      }
+      //}
       return session;
     },
     

@@ -70,13 +70,13 @@ export default function ProductCard(props) {
 
           {/* Author */}
           <div className="flex items-center gap-1 mb-2">
-            <Link href={`/author/${resource.author.toLowerCase().replace(/\s+/g, "-")}`}>
+            <Link href={`/author/${resource?.author?.toLowerCase().replace(/\s+/g, "-")}`}>
               <span className="text-xs text-purple-600 hover:underline cursor-pointer">{resource.author}</span>
             </Link>
             <div className="flex items-center gap-1">
               <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
               <span className="text-xs text-muted-foreground">
-                {resource.authorRating} ({resource.authorSales.toLocaleString()})
+                {resource?.rating} ({resource?.reviewCount})
               </span>
             </div>
           </div>
@@ -88,31 +88,31 @@ export default function ProductCard(props) {
                 <Star
                   key={i}
                   className={`h-3 w-3 ${
-                    i < Math.floor(resource.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                    i < Math.floor(resource?.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
                   }`}
                 />
               ))}
             </div>
-            <span className="text-xs text-muted-foreground">({resource.reviewCount})</span>
+            <span className="text-xs text-muted-foreground">({resource?.reviewCount})</span>
           </div>
 
           {/* Features */}
           <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
             <div className="flex items-center gap-1">
               <Download className="h-3 w-3" />
-              <span>{resource.deliveryTime}</span>
+              <span>{resource?.deliveryTime}</span>
             </div>
             <div className="flex items-center gap-1">
               <FileText className="h-3 w-3" />
-              <span>{resource.fileType}</span>
+              <span>{resource?.fileType}</span>
             </div>
           </div>
 
           {/* Price */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-lg font-bold">${resource.price}</span>
-            {resource.originalPrice && (
-              <span className="text-sm text-muted-foreground line-through">${resource.originalPrice}</span>
+            <span className="text-lg font-bold">${resource?.price}</span>
+            {resource?.originalPrice && (
+              <span className="text-sm text-muted-foreground line-through">${resource?.originalPrice}</span>
             )}
           </div>
 

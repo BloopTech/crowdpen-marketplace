@@ -9,8 +9,8 @@ import { SWRConfig } from "swr";
 import { HomeProvider } from "./context";
 import Login from "./(auth)/login";
 import QueryProvider from "./components/QueryProvider";
-import { NuqsAdapter } from 'nuqs/adapters/next/app';
-
+import { NuqsAdapter } from "nuqs/adapters/next/app";
+import { Toaster } from "sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,20 +52,28 @@ export default async function RootLayout({ children }) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <SessionProvider session={session}>
             <QueryProvider>
-              
-                {process.env.NEXT_PUBLIC_GA_ID && (
-                  <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
-                )}
+              {process.env.NEXT_PUBLIC_GA_ID && (
+                <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+              )}
 
-                <NuqsAdapter>
-                  <HomeProvider>
-                    <main className="flex flex-col w-full">
-                      {children}
-                    </main>
-                    <Login />
-                  </HomeProvider>
-                </NuqsAdapter>
-                
+              <NuqsAdapter>
+                <HomeProvider>
+                  <Toaster
+                    position="top-right"
+                    expand={true}
+                    richColors
+                    closeButton
+                    // toastOptions={{
+                    //   style: {
+                    //     fontFamily: "var(--font-poppins)",
+                    //   },
+                    // }}
+                  />
+
+                  <main className="flex flex-col w-full">{children}</main>
+                  <Login />
+                </HomeProvider>
+              </NuqsAdapter>
             </QueryProvider>
           </SessionProvider>
         </ThemeProvider>

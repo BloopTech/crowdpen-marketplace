@@ -1,5 +1,6 @@
 "use client";
-import { Search, ShoppingCart, Heart, User, ArrowLeft } from "lucide-react";
+import React, { useState } from "react";
+import { Search, ShoppingCart, Heart, User, ArrowLeft, LoaderCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -24,6 +25,27 @@ export default function MarketplaceHeader(props) {
   const { openLoginDialog } = useHome();
   const { data: session } = useSession();
   const router = useRouter();
+
+  const [loading, setLoading] = useState(false);
+
+  const createCategory = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    try{
+      await fetch("/api/marketplace/categories/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }catch(error){
+      console.log(error);
+    }finally{
+      setLoading(false);
+    }
+  };
+    
 
   return (
     <header className="border-b bg-white sticky top-0 z-5">
@@ -125,6 +147,7 @@ export default function MarketplaceHeader(props) {
               size="sm"
               className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
               onClick={() => router.push('/product/create')}
+              //onClick={createCategory}
             >
               Create
             </Button>
