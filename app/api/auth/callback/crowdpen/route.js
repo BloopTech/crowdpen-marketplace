@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 // Get the app URL from environment variables
-const APP_URL = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_NEXTAUTH_URL || 'http://localhost:3000';
+const APP_URL = process.env.NEXTAUTH_URL;
 
 /**
  * Handle Crowdpen authentication callback

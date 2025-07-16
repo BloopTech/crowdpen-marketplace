@@ -190,7 +190,7 @@ export async function createProduct(prevState, queryData) {
   //formData.append("user_id", session.user.id);
   
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_NEXTAUTH_URL;
+  const origin = process.env.NEXTAUTH_URL;
   const url = new URL("/api/marketplace/products/create", origin).toString();
   
   const response = await fetch(url, {

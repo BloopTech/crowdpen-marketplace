@@ -13,7 +13,7 @@ import axios from 'axios';
 import { cookies } from "next/headers";
 
 // Determine the absolute URL for the app
-const absoluteUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_NEXTAUTH_URL || 'http://localhost:3000';
+const absoluteUrl = process.env.NEXTAUTH_URL;
 console.log('NextAuth using absolute URL:', absoluteUrl);
 
 export const authOptions = {
@@ -272,7 +272,7 @@ export const authOptions = {
        console.log('NextAuth redirect callback with:', { url, baseUrl });
        
        // Always use the absolute URL from environment variables if available
-       const effectiveBaseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_NEXTAUTH_URL || baseUrl;
+       const effectiveBaseUrl = process.env.NEXTAUTH_URL || baseUrl;
 
        // If URL starts with '?', it's a query string relative to base
        if (url.startsWith('?')) {

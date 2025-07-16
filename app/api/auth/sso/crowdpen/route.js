@@ -36,7 +36,7 @@ export async function GET(request) {
     });
     
     // Determine the callback URL for Crowdpen to redirect back to
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_NEXTAUTH_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXTAUTH_URL;
     const callbackUri = `${baseUrl}/api/auth/callback/crowdpen`;
     
     // Build the Crowdpen login URL with proper parameters

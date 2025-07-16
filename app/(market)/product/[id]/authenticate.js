@@ -25,7 +25,7 @@ export async function addProductWishlist(prevState, queryData) {
 
   // For server actions, we need to use an absolute URL
   const origin =
-    process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_NEXTAUTH_URL;
+    process.env.NEXTAUTH_URL;
   const url = new URL(
     `/app/api/marketplace/products/item/${productId}/wishlist`,
     origin
