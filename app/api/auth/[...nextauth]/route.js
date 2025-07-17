@@ -142,7 +142,7 @@ export const authOptions = {
         timeout: 40000,
       },
     }),
-    // Unified credentials provider for both email and token authentication
+    // Unified credentials provider for both email and SSO authentication
     CredentialsProvider({
       id: "credentials",
       name: "Credentials",
@@ -160,7 +160,7 @@ export const authOptions = {
         
         // Handle SSO user data authentication
         if (credentials?.user) {
-          console.log('Processing SSO user data authentication');
+          console.log('=== SSO USER DATA AUTH START ===');
           const result = await handleUserData(credentials.user);
           console.log('SSO auth result:', result ? 'SUCCESS' : 'FAILED');
           return result;
@@ -203,7 +203,8 @@ export const authOptions = {
         hasSession: !!session,
         hasToken: !!token,
         hasUser: !!user,
-        userEmail: user?.email || 'N/A'
+        userEmail: user?.email || token?.email || 'N/A',
+        sessionStrategy: 'database'
       });
       
       // For database sessions, user object is available directly
@@ -213,9 +214,31 @@ export const authOptions = {
         session.user.email = user.email;
         session.user.image = user.image;
         
-        console.log('=== SESSION CREATED SUCCESSFULLY ===');
+        console.log('=== DATABASE SESSION CREATED SUCCESSFULLY ===');
         console.log('Session user:', user.email);
         return session;
+      }
+      
+      // Handle JWT fallback case (credentials provider)
+      if (session && token && !user) {
+        console.log('=== JWT SESSION DETECTED - CONVERTING TO DATABASE ===');
+        
+        // Get user from database using token data
+        try {
+          const dbUser = await getUserById(token.sub || token.id);
+          if (dbUser) {
+            session.user.id = dbUser.id;
+            session.user.name = dbUser.name;
+            session.user.email = dbUser.email;
+            session.user.image = dbUser.image;
+            
+            console.log('=== JWT TO DATABASE SESSION CONVERSION SUCCESS ===');
+            console.log('Converted session user:', dbUser.email);
+            return session;
+          }
+        } catch (error) {
+          console.error('Failed to convert JWT to database session:', error);
+        }
       }
       
       console.log('=== SESSION CALLBACK - NO USER DATA AVAILABLE ===');

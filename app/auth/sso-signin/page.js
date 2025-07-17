@@ -24,31 +24,23 @@ export default function SSOSignInPage() {
         
         console.log('Processing SSO sign-in with user data:', user.substring(0, 100) + '...');
         
-        // Make direct API call to create session instead of using NextAuth signIn
-        console.log('Making direct API call to create SSO session');
+        // Use NextAuth signIn with credentials provider
+        console.log('Using NextAuth signIn with credentials provider');
         
-        const response = await fetch('/api/auth/signin/credentials', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            user,
-            redirect: 'false',
-            json: 'true'
-          })
+        const result = await signIn('credentials', {
+          user, // Pass user data directly
+          redirect: false,
         });
         
-        const result = await response.json();
-        console.log('Direct API SignIn result:', JSON.stringify(result, null, 2));
+        console.log('Credentials SignIn result:', JSON.stringify(result, null, 2));
         
-        if (response.ok && result?.url) {
+        if (result?.ok) {
           setStatus('success');
           console.log('SSO sign-in successful, redirecting to:', callbackUrl);
           // Use window.location.href to ensure session is established
           window.location.href = callbackUrl || '/';
         } else {
-          throw new Error(result?.error || `Sign in failed: ${response.status}`);
+          throw new Error(result?.error || 'Credentials sign in failed');
         }
       } catch (error) {
         console.error('SSO processing error:', error);
