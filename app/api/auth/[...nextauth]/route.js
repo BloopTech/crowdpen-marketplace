@@ -17,7 +17,7 @@ const absoluteUrl = process.env.NEXTAUTH_URL;
 console.log('NextAuth using absolute URL:', absoluteUrl);
 
 // Helper function for SSO user data authentication
-async function handleUserData(userData) {
+export async function handleUserData(userData) {
   try {
     console.log('=== SSO USER DATA AUTH START ===');
     console.log('User data provided:', userData ? 'YES' : 'NO');

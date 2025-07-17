@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { handleUserData } from '../../[...nextauth]/route';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '../../[...nextauth]/route';
 
 export async function GET(request) {
   try {
@@ -6,16 +9,16 @@ export async function GET(request) {
     const user = searchParams.get('user'); // User data passed as JSON string from Crowdpen
     const callbackUrl = searchParams.get('callbackUrl') || '/';
     
-    console.log('SSO callback received:', { 
+    console.log('=== SSO CALLBACK RECEIVED ===');
+    console.log('SSO callback params:', { 
       user: user ? 'present' : 'missing',
       callbackUrl 
     });
     
     if (user) {
-      // User data callback - pass user data directly to sign-in page
       try {
         const userData = JSON.parse(decodeURIComponent(user));
-        console.log('Received user data for:', userData.email);
+        console.log('Parsed user data for:', userData.email);
         
         // Validate user data
         if (!userData.email) {
@@ -23,16 +26,51 @@ export async function GET(request) {
           return NextResponse.redirect(new URL('/auth/error?error=InvalidUserData', request.url));
         }
         
-        // Redirect to client-side sign-in handler with user data
-        const response = NextResponse.redirect(new URL(`/auth/sso-signin?user=${encodeURIComponent(user)}&callbackUrl=${encodeURIComponent(callbackUrl)}`, request.url));
-        return response;
+        // Create or find user in database using handleUserData
+        console.log('=== CREATING DATABASE USER FROM SSO DATA ===');
+        const dbUser = await handleUserData(JSON.stringify(userData));
+        
+        if (!dbUser) {
+          console.error('Failed to create/find user in database');
+          return NextResponse.redirect(new URL('/auth/error?error=UserCreationFailed', request.url));
+        }
+        
+        console.log('=== DATABASE USER CREATED/FOUND ===');
+        console.log('User ID:', dbUser.id, 'Email:', dbUser.email);
+        
+        // Create NextAuth session by making a request to the credentials endpoint
+        const baseUrl = new URL(request.url).origin;
+        const signInResponse = await fetch(`${baseUrl}/api/auth/signin/credentials`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            user: JSON.stringify(userData),
+            redirect: 'false',
+            json: 'true'
+          })
+        });
+        
+        console.log('=== SIGNIN RESPONSE ===');
+        console.log('Status:', signInResponse.status);
+        
+        if (signInResponse.ok) {
+          console.log('=== SSO SESSION CREATED SUCCESSFULLY ===');
+          // Redirect to the callback URL
+          return NextResponse.redirect(new URL(callbackUrl, request.url));
+        } else {
+          console.error('Failed to create session via credentials endpoint');
+          return NextResponse.redirect(new URL('/auth/error?error=SessionCreationFailed', request.url));
+        }
+        
       } catch (parseError) {
         console.error('Failed to parse user data:', parseError);
         return NextResponse.redirect(new URL('/auth/error?error=InvalidUserData', request.url));
       }
     } else {
-      console.error('No token or user data provided in SSO callback');
-      return NextResponse.redirect(new URL('/auth/error?error=NoToken', request.url));
+      console.error('No user data provided in SSO callback');
+      return NextResponse.redirect(new URL('/auth/error?error=NoUserData', request.url));
     }
     
   } catch (error) {
