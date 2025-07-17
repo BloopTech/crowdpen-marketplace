@@ -45,6 +45,7 @@ const nextConfig = {
     CLOUDFLARE_R2_PUBLIC_URL: process.env.CLOUDFLARE_R2_PUBLIC_URL,
     CLOUDFLARE_R2_BUCKET_NAME: process.env.CLOUDFLARE_R2_BUCKET_NAME,
     CLOUDFLARE_R2_TOKEN_VALUE: process.env.CLOUDFLARE_R2_TOKEN_VALUE,
+    CROWDPEN_URL: process.env.CROWDPEN_URL
   },
   images: {
     remotePatterns: [

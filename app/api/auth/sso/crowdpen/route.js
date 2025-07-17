@@ -40,7 +40,7 @@ export async function GET(request) {
     const callbackUri = `${baseUrl}/api/auth/callback/crowdpen`;
     
     // Build the Crowdpen login URL with proper parameters
-    const crowdpenUrl = process.env.NEXT_PUBLIC_CROWDPEN_URL || 'https://crowdpen.co';
+    const crowdpenUrl = process.env.CROWDPEN_URL || 'https://crowdpen.co';
     const loginUrl = `${crowdpenUrl}/login?sso=marketplace&callbackUrl=${encodeURIComponent(callbackUri)}&state=${encodeURIComponent(state)}`;
     
     console.log('Redirecting to Crowdpen login at:', loginUrl);

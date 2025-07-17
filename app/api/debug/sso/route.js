@@ -42,7 +42,7 @@ export async function GET(request) {
       env: {
         NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'Not set',
         NEXT_PUBLIC_NEXTAUTH_URL: process.env.NEXT_PUBLIC_NEXTAUTH_URL || 'Not set',
-        NEXT_PUBLIC_CROWDPEN_URL: process.env.NEXT_PUBLIC_CROWDPEN_URL || 'Not set',
+        CROWDPEN_URL: process.env.CROWDPEN_URL || 'Not set',
         NODE_ENV: process.env.NODE_ENV || 'Not set',
       }
     };

@@ -52,7 +52,7 @@ export async function POST(request) {
     }
     
     // Verify the token with Crowdpen
-    const crowdpenUrl = process.env.NEXT_PUBLIC_CROWDPEN_URL || 'https://crowdpen.co';
+    const crowdpenUrl = process.env.CROWDPEN_URL || 'https://crowdpen.co';
     const verifyResponse = await axios.post(
       `${crowdpenUrl}/api/auth/verify-session`, 
       { sessionToken },

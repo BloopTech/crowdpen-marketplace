@@ -38,7 +38,7 @@ export async function GET(request) {
     console.log("Fetching Crowdpen session via proxy...");
     
     // Get Crowdpen URL from environment, fallback to production URL
-    const crowdpenUrl = process.env.NEXT_PUBLIC_CROWDPEN_URL || 'https://crowdpen.co';
+    const crowdpenUrl = process.env.CROWDPEN_URL || 'https://crowdpen.co';
     
     // Extract all authentication cookies to forward
     const authCookies = getCrowdpenAuthCookies(request);

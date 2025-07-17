@@ -19,12 +19,14 @@ import { useSession } from "next-auth/react";
 import { UserId } from "./ui/userId";
 import { useHome } from "../context";
 import { useRouter } from "next/navigation";
+import { useCrowdpenSSO } from "../hooks/useCrowdpenSSO";
 
 export default function MarketplaceHeader(props) {
   const { searchQuery, onSearchChange, onSearch, cartItemCount } = props;
   const { openLoginDialog } = useHome();
   const { data: session } = useSession();
   const router = useRouter();
+  const { isCheckingSSO, ssoAvailable, attemptSSOLogin } = useCrowdpenSSO();
 
   const [loading, setLoading] = useState(false);
 
@@ -121,10 +123,28 @@ export default function MarketplaceHeader(props) {
             {session ? (
               <UserId />
             ) : (
-              <Button variant="ghost" size="sm" onClick={openLoginDialog}>
-                <User className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Account</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* {ssoAvailable && (
+                  <Badge variant="secondary" className="text-xs hidden sm:inline">
+                    Crowdpen session active
+                  </Badge>
+                )} */}
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={ssoAvailable ? attemptSSOLogin : openLoginDialog}
+                  disabled={isCheckingSSO}
+                >
+                  {isCheckingSSO ? (
+                    <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <User className="h-4 w-4 mr-2" />
+                  )}
+                  <span className="hidden sm:inline">
+                    {isCheckingSSO ? 'Checking...' : 'Account'}
+                  </span>
+                </Button>
+              </div>
             )}
             <Link href="/wishlist">
               <Button variant="ghost" size="sm">
