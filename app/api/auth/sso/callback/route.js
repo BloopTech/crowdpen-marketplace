@@ -7,18 +7,20 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const user = searchParams.get('user'); // User data passed as JSON string from Crowdpen
+    const provider = searchParams.get('provider'); // Provider used on Crowdpen (email/github/google)
     const callbackUrl = searchParams.get('callbackUrl') || '/';
     
     console.log('=== SSO CALLBACK RECEIVED ===');
     console.log('SSO callback params:', { 
       user: user ? 'present' : 'missing',
+      provider: provider || 'not specified',
       callbackUrl 
     });
     
-    if (user) {
+    if (user && provider) {
       try {
         const userData = JSON.parse(decodeURIComponent(user));
-        console.log('Parsed user data for:', userData.email);
+        console.log('Parsed user data for:', userData.email, 'with provider:', provider);
         
         // Validate user data
         if (!userData.email) {
@@ -26,51 +28,40 @@ export async function GET(request) {
           return NextResponse.redirect(new URL('/auth/error?error=InvalidUserData', request.url));
         }
         
-        // Create or find user in database using handleUserData
-        console.log('=== CREATING DATABASE USER FROM SSO DATA ===');
+        // Validate user exists in database
+        console.log('=== VALIDATING USER EXISTS IN DATABASE ===');
         const dbUser = await handleUserData(JSON.stringify(userData));
         
         if (!dbUser) {
-          console.error('Failed to create/find user in database');
-          return NextResponse.redirect(new URL('/auth/error?error=UserCreationFailed', request.url));
+          console.error('User not found in database - must sign up on Crowdpen first');
+          return NextResponse.redirect(new URL('/auth/error?error=UserNotFound', request.url));
         }
         
-        console.log('=== DATABASE USER CREATED/FOUND ===');
+        console.log('=== DATABASE USER VALIDATED ===');
         console.log('User ID:', dbUser.id, 'Email:', dbUser.email);
         
-        // Create NextAuth session by making a request to the credentials endpoint
-        const baseUrl = new URL(request.url).origin;
-        const signInResponse = await fetch(`${baseUrl}/api/auth/signin/credentials`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            user: JSON.stringify(userData),
-            redirect: 'false',
-            json: 'true'
-          })
-        });
+        // Redirect to provider-specific sign-in page
+        console.log('=== REDIRECTING TO PROVIDER SIGNIN PAGE ===');
+        const signInUrl = new URL('/auth/provider-signin', request.url);
+        signInUrl.searchParams.set('email', userData.email);
+        signInUrl.searchParams.set('provider', provider);
+        signInUrl.searchParams.set('callbackUrl', callbackUrl);
         
-        console.log('=== SIGNIN RESPONSE ===');
-        console.log('Status:', signInResponse.status);
-        
-        if (signInResponse.ok) {
-          console.log('=== SSO SESSION CREATED SUCCESSFULLY ===');
-          // Redirect to the callback URL
-          return NextResponse.redirect(new URL(callbackUrl, request.url));
-        } else {
-          console.error('Failed to create session via credentials endpoint');
-          return NextResponse.redirect(new URL('/auth/error?error=SessionCreationFailed', request.url));
-        }
+        return NextResponse.redirect(signInUrl);
         
       } catch (parseError) {
         console.error('Failed to parse user data:', parseError);
         return NextResponse.redirect(new URL('/auth/error?error=InvalidUserData', request.url));
       }
     } else {
-      console.error('No user data provided in SSO callback');
-      return NextResponse.redirect(new URL('/auth/error?error=NoUserData', request.url));
+      if (!user) {
+        console.error('No user data provided in SSO callback');
+        return NextResponse.redirect(new URL('/auth/error?error=NoUserData', request.url));
+      }
+      if (!provider) {
+        console.error('No provider specified in SSO callback');
+        return NextResponse.redirect(new URL('/auth/error?error=NoProvider', request.url));
+      }
     }
     
   } catch (error) {

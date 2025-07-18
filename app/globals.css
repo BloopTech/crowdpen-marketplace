@@ -4,33 +4,32 @@
 
 @font-face {
   font-family: AvenirNext;
-  src: url("./fonts/AvenirNext.otf") format('opentype');
+  src: url("./fonts/AvenirNext.otf") format("opentype");
 }
 @font-face {
   font-family: AvenirBold;
-  src: url("./fonts/AvenirBold.otf") format('opentype');
+  src: url("./fonts/AvenirBold.otf") format("opentype");
 }
 @font-face {
   font-family: CahuengaLight;
-  src: url("./fonts/CahuengaLight.otf") format('opentype');
+  src: url("./fonts/CahuengaLight.otf") format("opentype");
 }
 @font-face {
   font-family: CahuengaBold;
-  src: url('./fonts/CahuengaBold.otf') format('opentype');
+  src: url("./fonts/CahuengaBold.otf") format("opentype");
 }
 @font-face {
   font-family: CahuengaExtraBold;
-  src: url('./fonts/CahuengaExtraBold.otf') format('opentype');
+  src: url("./fonts/CahuengaExtraBold.otf") format("opentype");
 }
 @font-face {
   font-family: PoynterItalic;
-  src: url("./fonts/PoynterTextItalicThreeRegular.ttf") format('opentype');
+  src: url("./fonts/PoynterTextItalicThreeRegular.ttf") format("opentype");
 }
 @font-face {
   font-family: PoynterRoman;
-  src: url("./fonts/PoynterTextRomanOneRegular.ttf") format('truetype');
+  src: url("./fonts/PoynterTextRomanOneRegular.ttf") format("truetype");
 }
-
 
 @theme {
   --font-avenirbold: AvenirBold, sans-serif;
@@ -40,14 +39,72 @@
   --font-cahuengaextrabold: CahuengaExtraBold, sans-serif;
   --font-poynterroman: PoynterRoman, sans-serif;
   --font-poynteritalic: PoynterItalic, sans-serif;
-  --animate-toastIn: toastIn 0.3s .8s both;
-  --animate-toastOut: toastOut 0.3s .8s both;
-  --color-primary: #009EF7;
-  --color-success: #2CDA94;
-  --color-secondary: #0080C4;
+  --animate-toastIn: toastIn 0.3s 0.8s both;
+  --animate-toastOut: toastOut 0.3s 0.8s both;
+  --color-primary: #009ef7;
+  --color-success: #2cda94;
+  --color-secondary: #0080c4;
   --color-tertiary: #262161;
   --color-text: #282828;
-  --color-background: #F4F4F4;
+  --color-background: #f4f4f4;
+  --animate-hide: hide 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-down-and-fade: slideDownAndFade 150ms
+    cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-left-and-fade: slideLeftAndFade 150ms
+    cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-up-and-fade: slideUpAndFade 150ms
+    cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-slide-right-and-fade: slideRightAndFade 150ms
+    cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes hide {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  @keyframes slideDownAndFade {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slideLeftAndFade {
+    from {
+      opacity: 0;
+      transform: translateX(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+  @keyframes slideUpAndFade {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes slideRightAndFade {
+    from {
+      opacity: 0;
+      transform: translateX(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
 
   @keyframes toastIn {
     0% {

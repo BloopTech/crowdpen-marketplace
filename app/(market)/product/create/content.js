@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { createProduct } from "./authenticate";
+import { createProduct } from "./action";
 import {
   Loader2,
   Upload,

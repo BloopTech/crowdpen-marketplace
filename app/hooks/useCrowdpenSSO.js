@@ -20,7 +20,7 @@ export function useCrowdpenSSO() {
       setIsCheckingSSO(true);
       
       // Skip session check and go directly to Crowdpen SSO endpoint
-      const crowdpenUrl = 'https://crowdpen.co'; // Always use production Crowdpen
+      const crowdpenUrl = 'https://www.crowdpen.co'; // Always use production Crowdpen
       const marketplaceUrl = window.location.origin;
       const callbackUrl = `${marketplaceUrl}/api/auth/sso/callback`;
       

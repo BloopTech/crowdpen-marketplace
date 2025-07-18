@@ -1,6 +1,13 @@
 "use client";
 import React, { useState } from "react";
-import { Search, ShoppingCart, Heart, User, ArrowLeft, LoaderCircle } from "lucide-react";
+import {
+  Search,
+  ShoppingCart,
+  Heart,
+  User,
+  ArrowLeft,
+  LoaderCircle,
+} from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -33,21 +40,20 @@ export default function MarketplaceHeader(props) {
   const createCategory = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
-    try{
+
+    try {
       await fetch("/api/marketplace/categories/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
       });
-    }catch(error){
+    } catch (error) {
       console.log(error);
-    }finally{
+    } finally {
       setLoading(false);
     }
   };
-    
 
   return (
     <header className="border-b bg-white sticky top-0 z-5">
@@ -123,50 +129,80 @@ export default function MarketplaceHeader(props) {
             {session ? (
               <UserId />
             ) : (
-              <div className="flex items-center gap-2">
-                {/* {ssoAvailable && (
-                  <Badge variant="secondary" className="text-xs hidden sm:inline">
-                    Crowdpen session active
-                  </Badge>
-                )} */}
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={ssoAvailable ? attemptSSOLogin : openLoginDialog}
-                  disabled={isCheckingSSO}
-                >
-                  {isCheckingSSO ? (
-                    <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <User className="h-4 w-4 mr-2" />
-                  )}
-                  <span className="hidden sm:inline">
-                    {isCheckingSSO ? 'Checking...' : 'Account'}
-                  </span>
-                </Button>
-              </div>
-            )}
-            <Link href="/wishlist">
-              <Button variant="ghost" size="sm">
-                <Heart className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Wishlist</span>
-              </Button>
-            </Link>
-            <Link href="/cart">
-              <Button variant="ghost" size="sm" className="relative">
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Cart</span>
-                {cartItemCount > 0 && (
-                  <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                    {cartItemCount}
-                  </Badge>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={ssoAvailable ? attemptSSOLogin : openLoginDialog}
+                disabled={isCheckingSSO}
+              >
+                {isCheckingSSO ? (
+                  <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <User className="h-4 w-4 mr-2" />
                 )}
+                <span className="hidden sm:inline">
+                  {isCheckingSSO ? "Checking..." : "Account"}
+                </span>
               </Button>
-            </Link>
+            )}
+            {session ? (
+              <Link href="/wishlist">
+                <Button variant="ghost" size="sm">
+                  <Heart className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Wishlist</span>
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={ssoAvailable ? attemptSSOLogin : openLoginDialog}
+                disabled={isCheckingSSO}
+              >
+                {isCheckingSSO ? (
+                  <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Heart className="h-4 w-4 mr-2" />
+                )}
+                <span className="hidden sm:inline">
+                  {isCheckingSSO ? "Checking..." : "Wishlist"}
+                </span>
+              </Button>
+            )}
+
+            {session ? (
+              <Link href="/cart">
+                <Button variant="ghost" size="sm" className="relative">
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Cart</span>
+                  {cartItemCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      {cartItemCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={ssoAvailable ? attemptSSOLogin : openLoginDialog}
+                disabled={isCheckingSSO}
+              >
+                {isCheckingSSO ? (
+                  <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                )}
+                <span className="hidden sm:inline">
+                  {isCheckingSSO ? "Checking..." : "Cart"}
+                </span>
+              </Button>
+            )}
             <Button
               size="sm"
               className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
-              onClick={() => router.push('/product/create')}
+              onClick={() => router.push("/product/create")}
               //onClick={createCategory}
             >
               Create

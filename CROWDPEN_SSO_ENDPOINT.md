@@ -48,40 +48,60 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid callback URL' });
     }
     
-    // Check if user is already logged in
+    // Get the current user session
     const session = await getServerSession(req, res, authOptions);
     
-    if (session?.user) {
-      // User is logged in, redirect to marketplace with user data
-      console.log('User is logged in, redirecting to marketplace with user data');
-      
-      const userData = {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-        image: session.user.image,
-      };
-      
-      // Create callback URL with user data
-      const redirectUrl = new URL(callback);
-      redirectUrl.searchParams.set('user', encodeURIComponent(JSON.stringify(userData)));
-      redirectUrl.searchParams.set('callbackUrl', origin || '/');
-      
-      return res.redirect(redirectUrl.toString());
-    } else {
-      // User is not logged in, redirect to Crowdpen login with return URL
-      console.log('User not logged in, redirecting to Crowdpen login');
-      
-      // Create the full current URL for callback after login
-      const protocol = req.headers['x-forwarded-proto'] || 'http';
-      const host = req.headers.host;
-      const currentUrl = `${protocol}://${host}${req.url}`;
-      
-      // Redirect to login with callback to this same SSO endpoint
-      const loginUrl = `/auth/signin?callbackUrl=${encodeURIComponent(currentUrl)}`;
-      
-      return res.redirect(loginUrl);
+    if (!session || !session.user) {
+      // User is not logged in, redirect to login with callback
+      const loginUrl = `/login?callbackUrl=${encodeURIComponent(req.url)}`;
+      console.log('User not logged in, redirecting to:', loginUrl);
+      return res.redirect(302, loginUrl);
     }
+    
+    console.log('User is logged in:', session.user.email);
+    
+    // Determine which provider the user used to sign in
+    // This requires storing the provider info in the session or user record
+    // For now, we'll need to check the account table or add provider info to session
+    
+    // Get user's account information to determine the provider used
+    let userProvider = 'email'; // default fallback
+    
+    try {
+      // You'll need to import your Sequelize models at the top of the file
+      // import sequelize from '../../../models/database'; // Adjust path as needed
+      
+      // Query your database to get the user's account provider using Sequelize
+      const userAccount = await sequelize.models.Account.findOne({
+        where: { userId: session.user.id },
+        order: [['createdAt', 'DESC']] // Get most recent account
+      });
+      
+      if (userAccount) {
+        userProvider = userAccount.provider;
+      }
+    } catch (error) {
+      console.error('Error fetching user provider:', error);
+      // Fall back to email if we can't determine provider
+    }
+    
+    console.log('User provider determined as:', userProvider);
+    
+    // User is logged in, redirect to marketplace with user data and provider info
+    const userData = {
+      email: session.user.email,
+      name: session.user.name || '',
+      image: session.user.image || '',
+      id: session.user.id
+    };
+    
+    // Create the callback URL with user data and provider info
+    const callbackWithData = new URL(callback);
+    callbackWithData.searchParams.set('user', encodeURIComponent(JSON.stringify(userData)));
+    callbackWithData.searchParams.set('provider', userProvider);
+    
+    console.log('Redirecting to marketplace with user data and provider:', userProvider);
+    return res.redirect(302, callbackWithData.toString());
     
   } catch (error) {
     console.error('SSO endpoint error:', error);
@@ -117,3 +137,15 @@ Once you create this `/pages/api/auth/sso.js` file in your Crowdpen app, the SSO
 3. **If user is not logged in** → redirected to Crowdpen login → after login, back to SSO endpoint → then to marketplace
 
 The marketplace will then receive the user data and create a local session automatically.
+
+Option 1: Custom OAuth Provider Create a custom OAuth provider for Crowdpen that returns user data and the original provider used
+
+Option 2: Provider Pass-through
+
+Crowdpen returns which provider the user used (email/github/google)
+Marketplace automatically signs them in with that same provider
+Use shared database to validate user exists
+Option 3: Shared Session Token
+
+Both apps use the same NextAuth secret and session configuration
+Crowdpen creates a session token that marketplace can validate

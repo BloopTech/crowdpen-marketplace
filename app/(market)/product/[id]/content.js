@@ -29,7 +29,7 @@ import { mockResources } from "../../../lib/data";
 import MarketplaceHeader from "../../../components/marketplace-header";
 import Link from "next/link";
 import { useProductItemContext } from "./context";
-import { addProductWishlist } from "./authenticate";
+import { addProductWishlist } from "./action";
 
 const initialStateValues = {
   message: "",

@@ -7,20 +7,23 @@ import { redirect } from "next/navigation";
 
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session
-  // const session = await getServerSession(authOptions);
-  // if (!session || !session.user) {
-  //   return {
-  //     success: false,
-  //     message: "You must be logged in to create a product",
-  //   };
-  // }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return {
+      success: false,
+      message: "You must be logged in to create a product",
+      errors: {
+        credentials: !!session,
+      },
+    };
+  }
 
-  //const userId = session.user.id;
+  const userId = session.user.id;
 
   const productId = queryData.get("productId");
 
   const body = {
-    user_id: "2012239a-0286-4026-8ed5-24cb41997b92",
+    user_id: userId,
   };
 
   // For server actions, we need to use an absolute URL

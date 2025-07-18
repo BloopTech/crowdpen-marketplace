@@ -27,7 +27,7 @@ export default function SSOSignInPage() {
         // Use NextAuth signIn with credentials provider
         console.log('Using NextAuth signIn with credentials provider');
         
-        const result = await signIn('credentials', {
+        const result = await signIn('crowdpen-sso', {
           user, // Pass user data directly
           redirect: false,
         });

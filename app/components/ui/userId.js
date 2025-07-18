@@ -68,25 +68,23 @@ export function UserId() {
           <DropdownMenuItem>
             <Link href="/account" className="w-full">
               <div
-                className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                className={`flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
               >
-                <User className="mr-2 h-5 w-5" aria-hidden="true" />
+                <User className="mr-2 size-4" aria-hidden="true" />
                 Account
               </div>
             </Link>
           </DropdownMenuItem>
 
-          <DropdownMenuItem>
-            <ThemeToggle />
-          </DropdownMenuItem>
+          <ThemeToggle />
 
           <DropdownMenuSeparator />
 
           <DropdownMenuItem onClick={() => signOut()}>
             <div
-              className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+              className={`flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
             >
-              <LogOut className="mr-2 h-5 w-5" aria-hidden="true" />
+              <LogOut className="mr-2 size-4" aria-hidden="true" />
               Logout
             </div>
           </DropdownMenuItem>

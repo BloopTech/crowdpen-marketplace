@@ -50,15 +50,18 @@ const productSchema = z.object({
 
 export async function createProduct(prevState, queryData) {
   // Get current user from session
-  // const session = await getServerSession(authOptions);
-  // if (!session || !session.user) {
-  //   return {
-  //     success: false,
-  //     message: "You must be logged in to create a product",
-  //   };
-  // }
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return {
+      success: false,
+      message: "You must be logged in to create a product",
+      errors: {
+        credentials: !!session,
+      },
+    };
+  }
 
-  //const userId = session.user.id;
+  const userId = session.user.id;
 
   const getTitle = queryData.get("title");
   const getDescription = queryData.get("description");
@@ -140,8 +143,7 @@ export async function createProduct(prevState, queryData) {
   formData.append("license", license);
   formData.append("deliveryTime", deliveryTime);
   formData.append("featured", featured);
-  //formData.append("user_id", userId);
-  formData.append("user_id", "2012239a-0286-4026-8ed5-24cb41997b92");
+  formData.append("user_id", userId);
   
   // Append image files to form data - server side version
   console.log("Images type in server:", { 

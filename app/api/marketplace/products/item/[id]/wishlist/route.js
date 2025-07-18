@@ -15,37 +15,43 @@ export async function GET(request, { params }) {
   try {
     // Get current user from session
     const session = await getServerSession(authOptions);
-    
+
     if (!session || !session.user) {
-      return NextResponse.json({ 
-        status: "error", 
-        message: "Authentication required",
-        inWishlist: false
-      }, { status: 401 });
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Authentication required",
+          inWishlist: false,
+        },
+        { status: 401 }
+      );
     }
-    
+
     const userId = session.user.id;
     const productId = params.id;
-    
+
     if (!productId) {
-      return NextResponse.json({ 
-        status: "error", 
-        message: "Product ID is required",
-        inWishlist: false
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product ID is required",
+          inWishlist: false,
+        },
+        { status: 400 }
+      );
     }
-    
+
     // Check if product is in wishlist
-    const wishlistItem = await db.MarketplaceWishlists.findOne({
+    const wishlistItem = await MarketplaceWishlists.findOne({
       where: {
         user_id: userId,
-        marketplace_product_id: productId
-      }
+        marketplace_product_id: productId,
+      },
     });
-    
+
     return NextResponse.json({
       status: "success",
-      inWishlist: !!wishlistItem
+      inWishlist: !!wishlistItem,
     });
   } catch (error) {
     console.error("Error checking wishlist status:", error);
@@ -53,7 +59,7 @@ export async function GET(request, { params }) {
       {
         status: "error",
         message: error.message || "Failed to check wishlist status",
-        inWishlist: false
+        inWishlist: false,
       },
       { status: 500 }
     );
@@ -67,63 +73,81 @@ export async function GET(request, { params }) {
  * @returns {NextResponse} - JSON response indicating success or error
  */
 export async function POST(request, { params }) {
+  const body = await request.json();
+
+  const { user_id } = body;
+
   try {
     // Get current user from session
-    // const session = await getServerSession(authOptions);
-    
-    // if (!session || !session.user) {
-    //   return NextResponse.json({ 
-    //     status: "error", 
-    //     message: "You must be logged in to manage your wishlist" 
-    //   }, { status: 401 });
-    // }
-    
-    const userId = "2012239a-0286-4026-8ed5-24cb41997b92";
-    const productId = params.id;
-    
-    if (!productId) {
-      return NextResponse.json({ 
-        status: "error", 
-        message: "Product ID is required" 
-      }, { status: 400 });
+    //const session = await getServerSession(authOptions);
+
+    if (user_id) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "You must be logged in to manage your wishlist",
+        },
+        { status: 401 }
+      );
     }
-    
+
+    const productId = params.id;
+
+    if (!productId) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product ID is required",
+        },
+        { status: 400 }
+      );
+    }
+
     // Check if product exists
     const product = await MarketplaceProduct.findByPk(productId);
     if (!product) {
-      return NextResponse.json({ 
-        status: "error", 
-        message: "Product not found" 
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product not found",
+        },
+        { status: 404 }
+      );
     }
-    
+
     // Check if product is already in wishlist
     const existingWishlistItem = await MarketplaceWishlists.findOne({
       where: {
-        user_id: userId,
-        marketplace_product_id: productId
-      }
+        user_id,
+        marketplace_product_id: productId,
+      },
     });
-    
+
     if (existingWishlistItem) {
       // Remove from wishlist
       await existingWishlistItem.destroy();
-      return NextResponse.json({
-        status: "success",
-        message: "Product removed from wishlist",
-        inWishlist: false
-      }, { status: 200 });
+      return NextResponse.json(
+        {
+          status: "success",
+          message: "Product removed from wishlist",
+          inWishlist: false,
+        },
+        { status: 200 }
+      );
     } else {
       // Add to wishlist
       await MarketplaceWishlists.create({
-        user_id: userId,
-        marketplace_product_id: productId
+        user_id,
+        marketplace_product_id: productId,
       });
-      return NextResponse.json({
-        status: "success",
-        message: "Product added to wishlist",
-        inWishlist: true
-      }, { status: 200 });
+      return NextResponse.json(
+        {
+          status: "success",
+          message: "Product added to wishlist",
+          inWishlist: true,
+        },
+        { status: 200 }
+      );
     }
   } catch (error) {
     console.error("Error managing wishlist:", error);
