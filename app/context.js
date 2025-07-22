@@ -75,7 +75,9 @@ const HomeProvider = ({ children }) => {
   const [minPrice, setMinPrice] = useQueryState('minPrice', { defaultValue: 0, parse: Number });
   const [maxPrice, setMaxPrice] = useQueryState('maxPrice', { defaultValue: 1000, parse: Number });
   const [rating, setRating] = useQueryState('rating', { defaultValue: 0, parse: Number });
-  const [sort, setSort] = useQueryState('sort', { defaultValue: 'featured' });
+  const [sort, setSort] = useQueryState('sort', { defaultValue: 'all' });
+  const [fileType, setFileType] = useQueryState('fileType', { defaultValue: '' });
+  const [deliveryTime, setDeliveryTime] = useQueryState('deliveryTime', { defaultValue: '' });
   const [page, setPage] = useQueryState('page', { defaultValue: 1, parse: Number });
   const [limit, setLimit] = useQueryState('limit', { defaultValue: 12, parse: Number });
   
@@ -89,6 +91,8 @@ const HomeProvider = ({ children }) => {
     rating,
     sort,
     search,
+    fileType,
+    deliveryTime,
     page,
     limit
   };
@@ -110,7 +114,7 @@ const HomeProvider = ({ children }) => {
     },
     keepPreviousData: true,
   });
-
+console.log("prod data", productsData)
   // Categories query hook with the requested format
   const {
     isLoading: isCategoriesLoading,
@@ -137,6 +141,43 @@ const HomeProvider = ({ children }) => {
     },
   });
 
+  const {
+    isLoading: isWishlistCountLoading,
+    error: wishlistCountError,
+    data: wishlistCountData,
+    refetch: refetchWishlistCount,
+  } = useQuery({
+    queryKey: ['wishlistCount'],
+    queryFn: async () => {
+      const response = await fetch(`/api/marketplace/products/wishlist`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      return response.json();
+    },
+  });
+
+  const {
+    isLoading: isCartCountLoading,
+    error: cartCountError,
+    data: cartCountData,
+    refetch: refetchCartCount,
+  } = useQuery({
+    queryKey: ['cartCount'],
+    queryFn: async () => {
+      const response = await fetch(`/api/marketplace/products/carts`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      return response.json();
+    },
+  });
+
+
   // Auth related functions
   const openLoginDialog = () => {
     setLoginDialog(true);
@@ -156,6 +197,8 @@ const HomeProvider = ({ children }) => {
     if (newFilters.maxPrice !== undefined) setMaxPrice(newFilters.maxPrice);
     if (newFilters.rating !== undefined) setRating(newFilters.rating);
     if (newFilters.sort !== undefined) setSort(newFilters.sort);
+    if (newFilters.fileType !== undefined) setFileType(newFilters.fileType);
+    if (newFilters.deliveryTime !== undefined) setDeliveryTime(newFilters.deliveryTime);
     if (newFilters.limit !== undefined) setLimit(newFilters.limit);
     
     // Reset page to 1 when changing other filters unless page is explicitly set
@@ -174,7 +217,9 @@ const HomeProvider = ({ children }) => {
     setMinPrice(0);
     setMaxPrice(1000);
     setRating(0);
-    setSort('featured');
+    setSort('all');
+    setFileType('');
+    setDeliveryTime('');
     setPage(1);
     // We keep limit as is
   };
@@ -227,7 +272,19 @@ const HomeProvider = ({ children }) => {
         currentPage: page,
         totalPages: productsData?.totalPages || 1,
         nextPage,
-        prevPage
+        prevPage,
+
+        // Wishlist Count
+        wishlistCountData,
+        isWishlistCountLoading,
+        wishlistCountError,
+        refetchWishlistCount,
+
+        // Cart Count
+        cartCountData,
+        isCartCountLoading,
+        cartCountError,
+        refetchCartCount,
       }}
     >
       {children}

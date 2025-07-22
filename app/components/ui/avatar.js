@@ -24,7 +24,7 @@ const Avatar = forwardRef(({ className, color, imageUrl, children, initials, ...
     style={{ backgroundColor: color }}
     {...props}
   >
-    {imageUrl && <AvatarImage src={imageUrl} alt="Avatar" />}
+    {imageUrl && <AvatarImage src={imageUrl} alt="Avatar" className="object-cover" />}
     {!imageUrl && children}
     {!imageUrl && !children && initials && (
       <AvatarFallback>{initials}</AvatarFallback>

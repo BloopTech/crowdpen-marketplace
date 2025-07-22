@@ -34,10 +34,6 @@ MarketplaceWishlists.init(
         key: 'id'
       }
     },
-    addedAt: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW
-    }
   },
   {
     sequelize,

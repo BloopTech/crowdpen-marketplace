@@ -1,9 +1,6 @@
 "use server";
-import z from "zod";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../../api/auth/[...nextauth]/route";
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { authOptions } from "./api/auth/[...nextauth]/route";
 
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session
@@ -150,100 +147,4 @@ export async function addProductToCart(prevState, queryData) {
     cartItem: result?.cartItem,
     action: result?.action,
   };
-}
-
-// Schema for review validation
-const reviewSchema = z.object({
-  rating: z.number().min(1).max(5),
-  title: z.string().optional(),
-  content: z.string().min(1, "Review content is required"),
-});
-
-export async function createProductReview(prevState, formData) {
-  // Get current user from session
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user) {
-    return {
-      success: false,
-      message: "You must be logged in to write a review",
-      errors: {
-        auth: ["Authentication required"],
-      },
-    };
-  }
-
-  const userId = session.user.id;
-  const productId = formData.get("productId");
-  const rating = parseInt(formData.get("rating"));
-  const title = formData.get("title");
-  const content = formData.get("content");
-
-  // Validate the input
-  const validatedFields = reviewSchema.safeParse({
-    rating,
-    title: title || undefined,
-    content,
-  });
-
-  if (!validatedFields.success) {
-    return {
-      success: false,
-      message: "Please check your input and try again",
-      errors: validatedFields.error.flatten().fieldErrors,
-    };
-  }
-
-  const body = {
-    rating: validatedFields.data.rating,
-    title: validatedFields.data.title,
-    content: validatedFields.data.content,
-  };
-
-  try {
-    // For server actions, we need to use an absolute URL
-    const origin = process.env.NEXTAUTH_URL;
-    const url = new URL(
-      `/api/marketplace/products/item/${productId}/reviews/create`,
-      origin
-    ).toString();
-
-    const response = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const errorResult = await response.json();
-      return {
-        success: false,
-        message: errorResult.message || "Failed to create review",
-        errors: {
-          general: [errorResult.message || "Failed to create review"],
-        },
-      };
-    }
-
-    const result = await response.json();
-    
-    // Revalidate the product page to show the new review
-    revalidatePath(`/product/${productId}`);
-    
-    return {
-      success: true,
-      message: "Review created successfully!",
-      data: result.data,
-    };
-  } catch (error) {
-    console.error("Error creating review:", error);
-    return {
-      success: false,
-      message: "An unexpected error occurred",
-      errors: {
-        general: ["Failed to create review. Please try again."],
-      },
-    };
-  }
 }

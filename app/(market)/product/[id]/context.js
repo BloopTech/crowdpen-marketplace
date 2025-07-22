@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const ProductItemContext = createContext();
@@ -26,6 +26,41 @@ function ProductItemContextProvider({ children, id }) {
     },
     enabled: !!id,
   });
+
+  // Fetch reviews for the product with infinite scroll
+  const {
+    data: reviewsData,
+    error: reviewsError,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    status: reviewsStatus,
+    refetch: refetchReviews,
+  } = useInfiniteQuery({
+    queryKey: [`productReviews-${id}`],
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await fetch(
+        `/api/marketplace/products/item/${id}/reviews?page=${pageParam}&limit=10`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      return response.json();
+    },
+    getNextPageParam: (lastPage) => {
+      if (lastPage?.data?.pagination?.hasNextPage) {
+        return lastPage.data.pagination.currentPage + 1;
+      }
+      return undefined;
+    },
+    enabled: !!id,
+  });
+
+  const reviewsLoading = reviewsStatus === 'loading';
   
   // Function to share product by copying URL to clipboard
   const shareProduct = () => {
@@ -46,6 +81,8 @@ function ProductItemContextProvider({ children, id }) {
   };
   
   console.log("productItemData", productItemData);
+  console.log("reviewsData", reviewsData);
+  
   return (
     <ProductItemContext.Provider
       value={{
@@ -53,6 +90,14 @@ function ProductItemContextProvider({ children, id }) {
         productItemError,
         productItemData,
         refetchProductItem,
+        reviewsLoading,
+        reviewsError,
+        reviewsData,
+        refetchReviews,
+        fetchNextPage,
+        hasNextPage,
+        isFetching,
+        isFetchingNextPage,
         shareProduct,
         isCopied,
       }}

@@ -25,11 +25,15 @@ import {
   Award,
   LoaderCircle,
 } from "lucide-react";
-import { mockResources } from "../../../lib/data";
 import MarketplaceHeader from "../../../components/marketplace-header";
+import ImageGalleryModal from "../../../components/ui/image-gallery-modal";
 import Link from "next/link";
 import { useProductItemContext } from "./context";
-import { addProductWishlist } from "./action";
+import { addProductWishlist, addProductToCart } from "./action";
+import ProductDetails from "./details";
+import { useHome } from "../../../context";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 const initialStateValues = {
   message: "",
@@ -41,22 +45,89 @@ const initialStateValues = {
 export default function ProductDetailContent(props) {
   const { productItemData, productItemLoading, shareProduct, isCopied } =
     useProductItemContext();
+  const { openLoginDialog, refetchWishlistCount, refetchCartCount } = useHome();
   const { id } = props;
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariation, setSelectedVariation] = useState(0);
   const [cartItems, setCartItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [isInWishlist, setIsInWishlist] = useState(false);
-  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const { data: session } = useSession();
   const [state, formAction, isPending] = useActionState(
     addProductWishlist,
     initialStateValues
   );
+  const [cartState, cartFormAction, isCartPending] = useActionState(
+    addProductToCart,
+    initialStateValues
+  );
+  const [localWishlistState, setLocalWishlistState] = useState(null);
+  const [localCartState, setLocalCartState] = useState(null);
+  const [hasLocalCartOverride, setHasLocalCartOverride] = useState(false);
 
-  const handleAddToCart = () => {
-    if (!productItemData) return;
-    setCartItems((prev) => [...prev, productItemData.id]);
-  };
+  const wishes = productItemData?.wishlist?.find(
+    (wish) =>
+      wish?.user_id === session?.user?.id &&
+      wish.marketplace_product_id === productItemData.id
+  );
+
+  // Use local state if available, otherwise fall back to server state
+  const isWished =
+    localWishlistState !== null
+      ? localWishlistState
+      : typeof wishes === "object";
+
+  const carts = productItemData?.Cart?.find(
+    (cart) =>
+      cart?.user_id === session?.user?.id &&
+      cart.cartItems?.find(
+        (item) => item.marketplace_product_id === productItemData.id
+      )
+  );
+
+  const isCarted = hasLocalCartOverride
+    ? Boolean(localCartState) // If we have a local override, use its boolean value
+    : typeof carts === "object"; // Otherwise fall back to server state
+
+  // Update local state when server action completes
+  useEffect(() => {
+    if (state.success && state.inWishlist !== undefined) {
+      setLocalWishlistState(state.inWishlist);
+      refetchWishlistCount();
+    }
+  }, [state, refetchWishlistCount]);
+
+  // Handle cart state responses
+  useEffect(() => {
+    if (cartState.success && cartState.action) {
+      console.log("state cart", cartState);
+      // Update local state based on action (added/removed)
+      if (cartState.action === "added") {
+        setLocalCartState(cartState.cartItem);
+        setHasLocalCartOverride(true);
+        toast.success(cartState.message || "Item added to cart successfully");
+      } else if (cartState.action === "removed") {
+        setLocalCartState(null);
+        setHasLocalCartOverride(true);
+        toast.success(
+          cartState.message || "Item removed from cart successfully"
+        );
+      }
+
+      refetchCartCount();
+      console.log(
+        "Cart action completed:",
+        cartState.action,
+        cartState.message
+      );
+    } else if (cartState.message && !cartState.success) {
+      // Show error message
+      console.error("Failed to update cart:", cartState.message);
+      toast.error(cartState.message);
+      // Reset override on error to fall back to server state
+      setHasLocalCartOverride(false);
+    }
+  }, [cartState, refetchCartCount]);
 
   // Early returns for loading/error states
   if (!id) {
@@ -74,36 +145,6 @@ export default function ProductDetailContent(props) {
   if (!productItemData && !productItemLoading) {
     return notFound();
   }
-
-  const reviews = [
-    {
-      id: "1",
-      userName: "Sarah M.",
-      rating: 5,
-      comment:
-        "Absolutely fantastic resource! This guide helped me launch my first book successfully. The templates are professional and easy to use.",
-      date: "2024-01-10",
-      verified: true,
-    },
-    {
-      id: "2",
-      userName: "Mike R.",
-      rating: 4,
-      comment:
-        "Great content and very detailed. Would have liked more examples, but overall excellent value for money.",
-      date: "2024-01-08",
-      verified: true,
-    },
-    {
-      id: "3",
-      userName: "Emma L.",
-      rating: 5,
-      comment:
-        "This is exactly what I needed to organize my content creation. The planner is beautifully designed and very practical.",
-      date: "2024-01-05",
-      verified: false,
-    },
-  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -128,13 +169,16 @@ export default function ProductDetailContent(props) {
                 className="object-cover"
               />
             </div>
-            {productItemData.images.length > 1 && (
-              <div className="flex gap-2">
+            {productItemData.images.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto pb-2">
                 {productItemData?.images.map((image, index) => (
                   <button
                     key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`relative w-20 h-24 rounded-md overflow-hidden border-2 ${
+                    onClick={() => {
+                      setSelectedImage(index);
+                      setIsGalleryOpen(true);
+                    }}
+                    className={`relative w-20 h-24 rounded-md overflow-hidden border-2 flex-shrink-0 hover:opacity-80 transition-opacity ${
                       selectedImage === index
                         ? "border-purple-500"
                         : "border-gray-200"
@@ -156,16 +200,14 @@ export default function ProductDetailContent(props) {
           <div className="space-y-6">
             <div>
               <div className="text-sm text-muted-foreground mb-2">
-                {productItemData?.category} › {productItemData?.subcategory}
+                {productItemData?.MarketplaceCategory?.name} › {productItemData?.MarketplaceSubCategory?.name}
               </div>
               <h1 className="text-3xl font-bold mb-4">
                 {productItemData?.title}
               </h1>
 
               {/* Author Info */}
-              <Link
-                href={`/author/${productItemData?.User?.name.toLowerCase().replace(/\s+/g, "-")}`}
-              >
+              <Link href={`/author/${productItemData?.User?.pen_name}`}>
                 <div className="flex items-center gap-3 mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded-lg -m-2">
                   <Avatar
                     color={productItemData?.User?.color}
@@ -269,29 +311,79 @@ export default function ProductDetailContent(props) {
 
             {/* Actions */}
             <div className="space-y-3">
-              <Button onClick={handleAddToCart} size="lg" className="w-full">
-                <ShoppingCart className="h-5 w-5 mr-2" />
-                Add to Cart
-              </Button>
+              <form
+                action={session?.user?.id ? cartFormAction : openLoginDialog}
+                onSubmit={() => {
+                  // Optimistic update for immediate visual feedback
+                  if (isCarted) {
+                    setLocalCartState(null);
+                    setHasLocalCartOverride(true);
+                  } else {
+                    setLocalCartState({
+                      id: "temp",
+                      product_id: productItemData.id,
+                    });
+                    setHasLocalCartOverride(true);
+                  }
+                }}
+                className="w-full"
+              >
+                <Button
+                  type="submit"
+                  className="w-full disabled:cursor-not-allowed text-white"
+                  size="lg"
+                  disabled={
+                    isCartPending ||
+                    !session ||
+                    productItemData.user_id === session.user.id
+                  }
+                >
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  {isCartPending ? (
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                  ) : isCarted ? (
+                    "Remove from Cart"
+                  ) : (
+                    "Add to Cart"
+                  )}
+                </Button>
+                <input
+                  type="hidden"
+                  name="productId"
+                  value={productItemData.id}
+                />
+                <input type="hidden" name="quantity" value="1" />
+              </form>
+
               <div className="flex gap-2">
-                <form action={formAction}>
+
+                <form action={session?.user?.id ? formAction : openLoginDialog}>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className={`flex-1 transition-all duration-200 ${
+                      isWished
+                        ? "bg-red-500 hover:bg-red-600 text-white"
+                        : "bg-white/80 hover:bg-white text-gray-600 hover:text-red-500"
+                    } ${isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                    type="submit"
+                    disabled={
+                      isPending ||
+                      !session?.user ||
+                      productItemData?.user_id === session?.user?.id
+                    }
+                  >
+                    <Heart
+                      className={`h-4 w-4 transition-all duration-200 ${
+                        isWished ? "fill-current" : ""
+                      } ${isPending ? "animate-pulse" : ""}`}
+                    />
+                  </Button>
                   <input
                     type="hidden"
                     name="productId"
-                    value={productItemData?.id}
+                    value={productItemData.id}
                   />
-                  <Button
-                    //onClick={toggleWishlist}
-                    variant="outline"
-                    size="lg"
-                    className="flex-1"
-                    //disabled={wishlistLoading}
-                    type="submit"
-                  >
-                    <Heart
-                      className={`h-4 w-4 mr-2 ${state?.inWishlist ? "fill-current text-red-500" : ""}`}
-                    />
-                  </Button>
                 </form>
                 <Button
                   onClick={shareProduct}
@@ -330,175 +422,17 @@ export default function ProductDetailContent(props) {
         </div>
 
         {/* Product Details Tabs */}
-        <Tabs defaultValue="description" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="description">Description</TabsTrigger>
-            <TabsTrigger value="contents">What&apos;s Included</TabsTrigger>
-            <TabsTrigger value="reviews">
-              Reviews ({productItemData?.reviewCount})
-            </TabsTrigger>
-            <TabsTrigger value="author">About Author</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="description" className="mt-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="prose max-w-none">
-                  <p className="text-lg mb-4">{productItemData?.description}</p>
-                  <h3 className="text-xl font-semibold mb-3">
-                    What You&apos;ll Learn
-                  </h3>
-                  <ul className="space-y-2">
-                    <li>
-                      • Complete step-by-step process from start to finish
-                    </li>
-                    <li>• Professional templates and tools used by experts</li>
-                    <li>• Real-world examples and case studies</li>
-                    <li>
-                      • Actionable strategies you can implement immediately
-                    </li>
-                    <li>• Bonus resources and exclusive content</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="contents" className="mt-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-blue-600" />
-                    <div>
-                      <div className="font-medium">Main Guide (PDF)</div>
-                      <div className="text-sm text-muted-foreground">
-                        200 pages of comprehensive content
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-green-600" />
-                    <div>
-                      <div className="font-medium">Bonus Templates</div>
-                      <div className="text-sm text-muted-foreground">
-                        15 ready-to-use templates
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <CheckCircle className="h-5 w-5 text-purple-600" />
-                    <div>
-                      <div className="font-medium">Checklists & Worksheets</div>
-                      <div className="text-sm text-muted-foreground">
-                        Step-by-step action items
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Award className="h-5 w-5 text-orange-600" />
-                    <div>
-                      <div className="font-medium">Bonus Resources</div>
-                      <div className="text-sm text-muted-foreground">
-                        Exclusive tools and resources
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="reviews" className="mt-6">
-            <div className="space-y-6">
-              {reviews?.map((review) => (
-                <Card key={review.id}>
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <Avatar color="bg-red-500">
-                        <AvatarFallback>
-                          {review.userName.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="font-medium">{review.userName}</span>
-                          {review.verified && (
-                            <Badge variant="secondary" className="text-xs">
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                              Verified Purchase
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="flex">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                className={`h-3 w-3 ${
-                                  i < review.rating
-                                    ? "fill-yellow-400 text-yellow-400"
-                                    : "text-gray-300"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                          <span className="text-sm text-muted-foreground">
-                            {review.date}
-                          </span>
-                        </div>
-                        <p className="text-sm">{review.comment}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="author" className="mt-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <Avatar
-                    className="h-16 w-16"
-                    color={productItemData?.User?.color}
-                    imageUrl={productItemData?.User?.image}
-                    initials={productItemData?.User?.name.charAt(0)}
-                  >
-                    <AvatarFallback className="text-lg">
-                      {productItemData?.User?.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <h3 className="text-xl font-semibold mb-2">
-                      {productItemData?.User?.name}
-                    </h3>
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span>{productItemData?.authorRating} rating</span>
-                      </div>
-                      <div>{productItemData?.authorSales} sales</div>
-                    </div>
-                    <p className="text-muted-foreground mb-4">
-                      Experienced content creator and bestselling author with
-                      over 10 years in the publishing industry. Specializes in
-                      helping new authors navigate the complex world of
-                      self-publishing and book marketing.
-                    </p>
-                    <Link
-                      href={`/author/${productItemData?.User?.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    >
-                      <Button variant="outline">View Profile</Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <ProductDetails />
       </div>
+
+      {/* Image Gallery Modal */}
+      <ImageGalleryModal
+        images={productItemData?.images || []}
+        isOpen={isGalleryOpen}
+        onClose={() => setIsGalleryOpen(false)}
+        initialIndex={selectedImage}
+        productTitle={productItemData?.title || ""}
+      />
     </div>
   );
 }

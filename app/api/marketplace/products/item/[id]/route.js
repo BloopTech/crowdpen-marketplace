@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../models";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../../../api/auth/[...nextauth]/route";
 
 const {
   MarketplaceProduct,
@@ -7,9 +9,14 @@ const {
   MarketplaceSubCategory,
   User,
   MarketplaceProductTags,
+  MarketplaceWishlists,
+  MarketplaceCart,
+  MarketplaceCartItems,
 } = db;
 
 export async function GET(request, { params }) {
+  const session = await getServerSession(authOptions);
+
   const { id } = await params;
 
   if (!id) {
@@ -19,15 +26,13 @@ export async function GET(request, { params }) {
     );
   }
 
+  const userId = session?.user?.id || null;
+
   try {
     const product = await MarketplaceProduct.findByPk(id, {
       include: [
-        {
-          model: MarketplaceCategory,
-        },
-        {
-          model: MarketplaceSubCategory,
-        },
+        { model: MarketplaceCategory },
+        { model: MarketplaceSubCategory },
         {
           model: User,
           attributes: [
@@ -36,9 +41,10 @@ export async function GET(request, { params }) {
             "email",
             "image",
             "role",
-            "createdAt",
-            "updatedAt",
-            "color"
+            "description_other",
+            "description",
+            "color",
+            "pen_name",
           ],
         },
         {
@@ -52,7 +58,35 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
-    return NextResponse.json(product);
+    const carts = await MarketplaceCart.findAll({
+      where: {
+        user_id: userId,
+      },
+      include: [
+        {
+          model: MarketplaceCartItems,
+          where: {
+            marketplace_product_id: product?.id,
+          },
+          as: "cartItems",
+        },
+      ],
+    });
+
+    const wishlists = await MarketplaceWishlists.findAll({
+      where: {
+        user_id: userId,
+        marketplace_product_id: product?.id,
+      },
+    });
+
+    const getProduct = {
+      ...product?.toJSON(),
+      Cart: carts,
+      wishlist: wishlists,
+    };
+
+    return NextResponse.json(getProduct);
   } catch (error) {
     console.error("Error fetching product:", error);
     return NextResponse.json(

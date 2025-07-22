@@ -30,14 +30,7 @@ export default function Login() {
     }
   }, [attemptSSOLogin, closeLoginDialog]);
   
-  // Auto-attempt SSO login when dialog opens if SSO is available
-  useEffect(() => {
-    if (loginDialog && ssoAvailable && !isCheckingSSO) {
-      // Show a brief message and auto-login
-      toast.info('Signing you in with your Crowdpen account...');
-      handleCrowdpenLogin();
-    }
-  }, [loginDialog, ssoAvailable, isCheckingSSO, handleCrowdpenLogin]);
+  // Removed auto-login behavior - users should manually click the sign-in button
   
   // Don't render anything if login dialog is not open
   if (!loginDialog) return null;

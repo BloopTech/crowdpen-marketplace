@@ -27,36 +27,19 @@ import { UserId } from "./ui/userId";
 import { useHome } from "../context";
 import { useRouter } from "next/navigation";
 import { useCrowdpenSSO } from "../hooks/useCrowdpenSSO";
+import millify from "millify";
 
 export default function MarketplaceHeader(props) {
-  const { searchQuery, onSearchChange, onSearch, cartItemCount } = props;
-  const { openLoginDialog } = useHome();
+  const { searchQuery, onSearchChange, onSearch } = props;
+  const { openLoginDialog, wishlistCountData, cartCountData } = useHome();
   const { data: session } = useSession();
   const router = useRouter();
   const { isCheckingSSO, ssoAvailable, attemptSSOLogin } = useCrowdpenSSO();
 
   const [loading, setLoading] = useState(false);
-
-  const createCategory = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      await fetch("/api/marketplace/categories/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    } catch (error) {
-      console.log(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  console.log("cartCountData", cartCountData);
   return (
-    <header className="border-b bg-white sticky top-0 z-5">
+    <header className="border-b bg-white sticky top-0 z-10">
       {/* Top Bar */}
       <div className="bg-gray-900 text-white text-xs py-1">
         <div className="container mx-auto px-4 flex justify-between items-center">
@@ -132,52 +115,23 @@ export default function MarketplaceHeader(props) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={ssoAvailable ? attemptSSOLogin : openLoginDialog}
-                disabled={isCheckingSSO}
+                onClick={openLoginDialog}
+                disabled={false}
               >
-                {isCheckingSSO ? (
-                  <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <User className="h-4 w-4 mr-2" />
-                )}
-                <span className="hidden sm:inline">
-                  {isCheckingSSO ? "Checking..." : "Account"}
-                </span>
+                <User className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Account</span>
               </Button>
             )}
             {session ? (
               <Link href="/wishlist">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="relative">
                   <Heart className="h-4 w-4 mr-2" />
                   <span className="hidden sm:inline">Wishlist</span>
-                </Button>
-              </Link>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={ssoAvailable ? attemptSSOLogin : openLoginDialog}
-                disabled={isCheckingSSO}
-              >
-                {isCheckingSSO ? (
-                  <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Heart className="h-4 w-4 mr-2" />
-                )}
-                <span className="hidden sm:inline">
-                  {isCheckingSSO ? "Checking..." : "Wishlist"}
-                </span>
-              </Button>
-            )}
-
-            {session ? (
-              <Link href="/cart">
-                <Button variant="ghost" size="sm" className="relative">
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Cart</span>
-                  {cartItemCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                      {cartItemCount}
+                  {wishlistCountData?.count > 0 && (
+                    <Badge variant="error" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      {wishlistCountData?.count > 99
+                        ? "99+"
+                        : millify(wishlistCountData?.count)}
                     </Badge>
                   )}
                 </Button>
@@ -186,17 +140,35 @@ export default function MarketplaceHeader(props) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={ssoAvailable ? attemptSSOLogin : openLoginDialog}
-                disabled={isCheckingSSO}
+                onClick={openLoginDialog}
+                disabled={false}
               >
-                {isCheckingSSO ? (
-                  <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
+                <Heart className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Wishlist</span>
+              </Button>
+            )}
+
+            {session ? (
+              <Link href="/cart">
+                <Button variant="ghost" size="sm" className="relative">
                   <ShoppingCart className="h-4 w-4 mr-2" />
-                )}
-                <span className="hidden sm:inline">
-                  {isCheckingSSO ? "Checking..." : "Cart"}
-                </span>
+                  <span className="hidden sm:inline">Cart</span>
+                  {cartCountData?.count > 0 && (
+                    <Badge variant="error" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      {cartCountData?.count > 99 ? "99+" : millify(cartCountData?.count)}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={openLoginDialog}
+                disabled={false}
+              >
+                <ShoppingCart className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Cart</span>
               </Button>
             )}
             <Button

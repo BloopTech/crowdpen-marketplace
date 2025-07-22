@@ -7,7 +7,7 @@ class MarketplaceCartItems extends Model {
     // Define associations
     MarketplaceCartItems.belongsTo(models.MarketplaceCart, { foreignKey: 'marketplace_cart_id' });
     MarketplaceCartItems.belongsTo(models.MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
-    MarketplaceCartItems.belongsTo(models.MarketplaceProductVariation, { foreignKey: 'marketplace_product_variation_id' });
+    //MarketplaceCartItems.belongsTo(models.MarketplaceProductVariation, { foreignKey: 'marketplace_product_variation_id' });
   }
 }
 
@@ -35,13 +35,13 @@ MarketplaceCartItems.init(
         key: 'id'
       }
     },
-    marketplace_product_variation_id: {
-      type: DataTypes.UUID,
-      references: {
-        model: 'marketplace_product_variations',
-        key: 'id'
-      }
-    },
+    // marketplace_product_variation_id: {
+    //   type: DataTypes.UUID,
+    //   references: {
+    //     model: 'marketplace_product_variations',
+    //     key: 'id'
+    //   }
+    // },
     quantity: {
       type: DataTypes.INTEGER,
       allowNull: false,

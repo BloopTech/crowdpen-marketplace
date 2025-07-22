@@ -7,13 +7,12 @@ import { Label } from "../components/ui/label"
 import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group"
 import { Slider } from "../components/ui/slider"
 import { Star } from "lucide-react"
-import { categories } from "../lib/data"
-
+import { useHome } from "../context"
 import Link from "next/link"
 
-
-
 export default function FilterSidebar({ filters, onFiltersChange, onClearFilters }) {
+  const { categories, tags } = useHome();
+  // Categories and tags are already the arrays from the API
   return (
     <div className="space-y-6">
       {/* Clear Filters */}
@@ -30,8 +29,20 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
           <CardTitle className="text-sm">Category</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {categories.map((category) => (
-            <div key={category.name}>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="all-categories"
+              checked={filters.category === "All"}
+              onCheckedChange={(checked) =>
+                onFiltersChange({ category: "All" })
+              }
+            />
+            <Label htmlFor="all-categories" className="text-sm font-normal">
+              All Categories
+            </Label>
+          </div>
+          {categories && categories.map((category) => (
+            <div key={category.id}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Checkbox
@@ -39,8 +50,8 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
                     checked={filters.category === category.name}
                     onCheckedChange={(checked) =>
                       onFiltersChange({
-                        ...filters,
                         category: checked ? category.name : "All",
+                        subcategory: "" // Clear subcategory when category changes
                       })
                     }
                   />
@@ -54,13 +65,21 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
                   </Button>
                 </Link>
               </div>
-              {filters.category === category.name && (
+              {filters.category === category.name && category.MarketplaceSubCategories && (
                 <div className="ml-6 mt-2 space-y-1">
-                  {category.subcategories.map((sub) => (
-                    <div key={sub} className="flex items-center space-x-2">
-                      <Checkbox id={sub} />
-                      <Label htmlFor={sub} className="text-xs text-muted-foreground">
-                        {sub}
+                  {category.MarketplaceSubCategories.map((sub) => (
+                    <div key={sub.id} className="flex items-center space-x-2">
+                      <Checkbox 
+                        id={sub.name}
+                        checked={filters.subcategory === sub.name}
+                        onCheckedChange={(checked) =>
+                          onFiltersChange({
+                            subcategory: checked ? sub.name : ""
+                          })
+                        }
+                      />
+                      <Label htmlFor={sub.name} className="text-xs text-muted-foreground">
+                        {sub.name}
                       </Label>
                     </div>
                   ))}
@@ -78,17 +97,19 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
         </CardHeader>
         <CardContent>
           <Slider
-            value={filters?.priceRange}
-            onValueChange={(value) => onFiltersChange({ ...filters, priceRange: value })}
-            max={200}
+            value={[filters.minPrice || 0, filters.maxPrice || 1000]}
+            onValueChange={(value) => onFiltersChange({ 
+              minPrice: value[0], 
+              maxPrice: value[1] 
+            })}
+            max={1000}
             min={0}
             step={5}
             className="w-full"
-            defaultValue={[filters?.priceRange?.length ? filters?.priceRange[0] : 0, filters?.priceRange?.length ? filters?.priceRange[1] : 200]}
           />
           <div className="flex justify-between text-xs mt-2">
-            <span>${filters?.priceRange?.length ? filters?.priceRange[0] : 0}</span>
-            <span>${filters?.priceRange?.length ? filters?.priceRange[1] : 200}</span>
+            <span>${filters.minPrice || 0}</span>
+            <span>${filters.maxPrice || 1000}</span>
           </div>
         </CardContent>
       </Card>
@@ -100,8 +121,8 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
         </CardHeader>
         <CardContent>
           <RadioGroup
-            value={filters.rating.toString()}
-            onValueChange={(value) => onFiltersChange({ ...filters, rating: Number.parseFloat(value) })}
+            value={filters.rating?.toString() || "0"}
+            onValueChange={(value) => onFiltersChange({ rating: Number.parseFloat(value) })}
           >
             {[4, 3, 2, 1].map((rating) => (
               <div key={rating} className="flex items-center space-x-2">
@@ -129,15 +150,14 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
           <CardTitle className="text-sm">File Format</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {["PDF", "DOCX", "EPUB", "Notion Template", "Google Sheets"].map((format) => (
+          {["PDF", "DOCX", "EPUB", "Notion Template", "Google Sheets", "Video", "Audio", "ZIP"].map((format) => (
             <div key={format} className="flex items-center space-x-2">
               <Checkbox
                 id={format}
-                checked={filters.license === format}
+                checked={filters.fileType === format}
                 onCheckedChange={(checked) =>
                   onFiltersChange({
-                    ...filters,
-                    license: checked ? format : "",
+                    fileType: checked ? format : "",
                   })
                 }
               />
@@ -148,6 +168,33 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
           ))}
         </CardContent>
       </Card>
+
+      {/* Tags */}
+      {tags && tags.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Tags</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-48 overflow-y-auto">
+            {tags.slice(0, 10).map((tag) => (
+              <div key={tag.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={tag.name}
+                  checked={filters.tag === tag.name}
+                  onCheckedChange={(checked) =>
+                    onFiltersChange({
+                      tag: checked ? tag.name : "",
+                    })
+                  }
+                />
+                <Label htmlFor={tag.name} className="text-sm font-normal">
+                  {tag.name}
+                </Label>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Content Length */}
       <Card>
@@ -163,7 +210,6 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
                   checked={filters.deliveryTime === length}
                   onCheckedChange={(checked) =>
                     onFiltersChange({
-                      ...filters,
                       deliveryTime: checked ? length : "",
                     })
                   }

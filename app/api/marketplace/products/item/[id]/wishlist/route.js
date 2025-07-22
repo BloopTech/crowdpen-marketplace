@@ -11,47 +11,33 @@ const { MarketplaceWishlists, MarketplaceProduct } = db;
  * @param {Object} context - The context containing params with product ID
  * @returns {NextResponse} - JSON response with wishlist status
  */
-export async function GET(request, { params }) {
+export async function GET(request) {
   try {
     // Get current user from session
     const session = await getServerSession(authOptions);
+
+    const userId = session.user.id;
 
     if (!session || !session.user) {
       return NextResponse.json(
         {
           status: "error",
           message: "Authentication required",
-          inWishlist: false,
+          count: 0,
         },
         { status: 401 }
       );
     }
 
-    const userId = session.user.id;
-    const productId = params.id;
-
-    if (!productId) {
-      return NextResponse.json(
-        {
-          status: "error",
-          message: "Product ID is required",
-          inWishlist: false,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if product is in wishlist
-    const wishlistItem = await MarketplaceWishlists.findOne({
+    const wishlistCount = await MarketplaceWishlists.count({
       where: {
         user_id: userId,
-        marketplace_product_id: productId,
       },
     });
 
     return NextResponse.json({
       status: "success",
-      inWishlist: !!wishlistItem,
+      count: wishlistCount,
     });
   } catch (error) {
     console.error("Error checking wishlist status:", error);
@@ -59,7 +45,7 @@ export async function GET(request, { params }) {
       {
         status: "error",
         message: error.message || "Failed to check wishlist status",
-        inWishlist: false,
+        count: 0,
       },
       { status: 500 }
     );
@@ -73,25 +59,37 @@ export async function GET(request, { params }) {
  * @returns {NextResponse} - JSON response indicating success or error
  */
 export async function POST(request, { params }) {
-  const body = await request.json();
-
-  const { user_id } = body;
+  const getParams = await params;
 
   try {
-    // Get current user from session
-    //const session = await getServerSession(authOptions);
+    const body = await request.json();
+    const { user_id } = body;
 
-    if (user_id) {
+    // Get current user from session for additional verification
+    // const session = await getServerSession(authOptions);
+
+    // if (!session || !session.user) {
+    //   return NextResponse.json(
+    //     {
+    //       status: "error",
+    //       message: "You must be logged in to manage your wishlist",
+    //     },
+    //     { status: 401 }
+    //   );
+    // }
+
+    // Verify the user_id matches the session user
+    if (!user_id) {
       return NextResponse.json(
         {
           status: "error",
-          message: "You must be logged in to manage your wishlist",
+          message: "Invalid user authentication",
         },
-        { status: 401 }
+        { status: 403 }
       );
     }
 
-    const productId = params.id;
+    const productId = getParams.id;
 
     if (!productId) {
       return NextResponse.json(

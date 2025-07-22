@@ -23,7 +23,7 @@ export default function AmazonStyleMarketplace() {
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState("grid");
   const [cartItems, setCartItems] = useState([]);
-  const [wishlist, setWishlist] = useState([]);
+  const [wishlistID, setWishlistID] = useState("");
   
   // Use the context instead of local state for filters and data
   const { 
@@ -58,14 +58,6 @@ export default function AmazonStyleMarketplace() {
   const handleAddToCart = (resourceId) => {
     setCartItems((prev) => [...prev, resourceId]);
   };
-
-  const handleToggleWishlist = (resourceId) => {
-    setWishlist((prev) =>
-      prev.includes(resourceId)
-        ? prev.filter((id) => id !== resourceId)
-        : [...prev, resourceId]
-    );
-  };
   
   // Use clearFilters from context instead
 
@@ -76,7 +68,6 @@ export default function AmazonStyleMarketplace() {
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onSearch={handleSearch}
-          cartItemCount={cartItems.length}
         />
 
         <div className="container mx-auto px-4 py-6">
@@ -130,6 +121,7 @@ export default function AmazonStyleMarketplace() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
                       <SelectItem value="featured">Featured</SelectItem>
                       <SelectItem value="price-low">
                         Price: Low to High
@@ -219,7 +211,8 @@ export default function AmazonStyleMarketplace() {
                             key={product.id}
                             resource={product}
                             onAddToCart={handleAddToCart}
-                            onToggleWishlist={handleToggleWishlist}
+                            setWishlistID={setWishlistID}
+                            wishlistID={wishlistID}
                           />
                         ))}
                       </div>
