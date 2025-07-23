@@ -122,7 +122,7 @@ export default function ProductReviews() {
       )}
 
       {/* Write Review Section */}
-      <ReviewBox onReviewSubmitted={refetchReviews} />
+      <ReviewBox />
 
       {/* Reviews List */}
       <div className="space-y-4">

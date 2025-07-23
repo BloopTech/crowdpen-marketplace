@@ -159,7 +159,7 @@ const reviewSchema = z.object({
   content: z.string().min(1, "Review content is required"),
 });
 
-export async function createProductReview(prevState, formData) {
+export async function createProductReview(prevState, queryData) {
   // Get current user from session
   const session = await getServerSession(authOptions);
   if (!session || !session.user) {
@@ -173,10 +173,10 @@ export async function createProductReview(prevState, formData) {
   }
 
   const userId = session.user.id;
-  const productId = formData.get("productId");
-  const rating = parseInt(formData.get("rating"));
-  const title = formData.get("title");
-  const content = formData.get("content");
+  const productId = queryData.get("productId");
+  const rating = parseInt(queryData.get("rating"));
+  const title = queryData.get("title");
+  const content = queryData.get("content");
 
   // Validate the input
   const validatedFields = reviewSchema.safeParse({
@@ -197,53 +197,43 @@ export async function createProductReview(prevState, formData) {
     rating: validatedFields.data.rating,
     title: validatedFields.data.title,
     content: validatedFields.data.content,
+    userId
   };
 
-  try {
-    // For server actions, we need to use an absolute URL
-    const origin = process.env.NEXTAUTH_URL;
-    const url = new URL(
-      `/api/marketplace/products/item/${productId}/reviews/create`,
-      origin
-    ).toString();
+  // For server actions, we need to use an absolute URL
+  const origin = process.env.NEXTAUTH_URL;
+  const url = new URL(
+    `/api/marketplace/products/item/${productId}/reviews/create`,
+    origin
+  ).toString();
 
-    const response = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify(body),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  const response = await fetch(url, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 
-    if (!response.ok) {
-      const errorResult = await response.json();
-      return {
-        success: false,
-        message: errorResult.message || "Failed to create review",
-        errors: {
-          general: [errorResult.message || "Failed to create review"],
-        },
-      };
-    }
-
-    const result = await response.json();
-    
-    // Revalidate the product page to show the new review
-    revalidatePath(`/product/${productId}`);
-    
-    return {
-      success: true,
-      message: "Review created successfully!",
-      data: result.data,
-    };
-  } catch (error) {
-    console.error("Error creating review:", error);
+  if (!response.ok) {
+    const errorResult = await response.json();
     return {
       success: false,
-      message: "An unexpected error occurred",
+      message: errorResult.message || "Failed to create review",
       errors: {
-        general: ["Failed to create review. Please try again."],
+        general: [errorResult.message || "Failed to create review"],
       },
     };
   }
+
+  const result = await response.json();
+
+  // Revalidate the product page to show the new review
+  revalidatePath(`/product/${productId}`);
+
+  return {
+    success: true,
+    message: "Review created successfully!",
+    data: result.data,
+  };
 }

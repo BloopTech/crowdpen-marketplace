@@ -11,7 +11,16 @@ import {
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
-import { Star, Send, AlertCircle, List, ListOrdered, Bold as BoldIcon, Italic as ItalicIcon } from "lucide-react";
+import {
+  Star,
+  Send,
+  AlertCircle,
+  List,
+  ListOrdered,
+  Bold as BoldIcon,
+  Italic as ItalicIcon,
+  LoaderCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -21,14 +30,20 @@ import BulletList from "@tiptap/extension-bullet-list";
 import OrderedList from "@tiptap/extension-ordered-list";
 import ListItem from "@tiptap/extension-list-item";
 import { createProductReview } from "./action";
+import { useProductItemContext } from "./context";
+import { useHome } from "../../../context";
 
-export default function ReviewBox({ onReviewSubmitted }) {
+export default function ReviewBox() {
+  const { refetchReviews } = useProductItemContext();
+  const { openLoginDialog } = useHome();
   const { data: session } = useSession();
   const params = useParams();
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [title, setTitle] = useState("");
   const [showEditor, setShowEditor] = useState(false);
+  const [content, setContent] = useState("");
+  const [disabled, setDisabled] = useState(false);
   const [state, formAction, isPending] = useActionState(createProductReview, {
     success: false,
     message: "",
@@ -52,43 +67,37 @@ export default function ReviewBox({ onReviewSubmitted }) {
       }),
       ListItem,
     ],
-    content: "",
+    content,
+    onUpdate: async ({ editor }) => {
+      const json = editor.getHTML();
+      setContent(json);
+    },
+    parseOptions: {
+      preserveWhitespace: "full",
+    },
     editorProps: {
       attributes: {
+        spellcheck: true,
         class:
           "prose prose-sm max-w-none focus:outline-none min-h-[120px] p-3 border rounded-md",
       },
     },
-    immediatelyRender:false
+    immediatelyRender: false,
   });
 
-  // Handle form submission with server action
-  const handleSubmit = async (formData) => {
-    if (!session) {
-      toast.error("Please sign in to write a review");
-      return;
+  useEffect(() => {
+    const htmlParser =
+      content && typeof content === "string" && parser(content);
+    const isContent = Array.isArray(htmlParser)
+      ? htmlParser.some((item) => item.props?.children)
+      : htmlParser?.props?.children;
+
+    if (content && isContent) {
+      setDisabled(false);
+    } else {
+      setDisabled(true);
     }
-
-    if (rating === 0) {
-      toast.error("Please select a rating");
-      return;
-    }
-
-    const content = editor?.getHTML();
-    if (!content || content.trim() === "<p></p>" || content.trim() === "") {
-      toast.error("Please write your review");
-      return;
-    }
-
-    // Add additional form data
-    formData.append("productId", params.id);
-    formData.append("rating", rating.toString());
-    formData.append("title", title.trim());
-    formData.append("content", content);
-
-    // Call the server action
-    await formAction(formData);
-  };
+  }, [content]);
 
   // Handle successful submission
   useEffect(() => {
@@ -100,13 +109,11 @@ export default function ReviewBox({ onReviewSubmitted }) {
       editor?.commands.clearContent();
       setShowEditor(false);
       // Refresh reviews
-      if (onReviewSubmitted) {
-        onReviewSubmitted();
-      }
+      refetchReviews();
     } else if (state.message && !state.success) {
       toast.error(state.message);
     }
-  }, [state, editor, onReviewSubmitted]);
+  }, [state, editor, refetchReviews]);
 
   if (!session) {
     return (
@@ -265,15 +272,22 @@ export default function ReviewBox({ onReviewSubmitted }) {
 
         {/* Submit Button */}
         {showEditor && (
-          <form action={formAction} className="space-y-4">
+          <form
+            action={session?.user?.id ? formAction : openLoginDialog}
+            className="space-y-4"
+          >
             <div className="flex items-center gap-3">
               <Button
                 type="submit"
-                disabled={rating === 0}
+                disabled={rating === 0 || isPending || disabled}
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <Send className="h-4 w-4" />
-                Submit Review
+                {isPending ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Submit Review"
+                )}
               </Button>
               <Button
                 type="button"
@@ -291,7 +305,7 @@ export default function ReviewBox({ onReviewSubmitted }) {
             <input type="hidden" name="productId" value={params?.id} />
             <input type="hidden" name="rating" value={rating} />
             <input type="hidden" name="title" value={title} />
-            <input type="hidden" name="content" value={editor?.getHTML()} />
+            <input type="hidden" name="content" value={content} />
           </form>
         )}
       </CardContent>

@@ -1,0 +1,264 @@
+"use server";
+
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../api/auth/[...nextauth]/route";
+import { z } from "zod";
+import { revalidatePath } from "next/cache";
+
+// Validation schemas
+const updateCartItemSchema = z.object({
+  itemId: z.string().uuid(),
+  quantity: z.number().min(1).max(100),
+});
+
+const removeCartItemSchema = z.object({
+  itemId: z.string().uuid(),
+});
+
+const clearCartSchema = z.object({
+  penName: z.string().min(1),
+});
+
+// Update cart item quantity
+export async function updateCartItemQuantity(prevState, formData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return {
+      success: false,
+      message: "Authentication required",
+      errors: { auth: ["Please log in to update your cart"] }
+    };
+  }
+
+  // Parse and validate form data
+  const rawData = {
+    itemId: formData.get('itemId'),
+    quantity: parseInt(formData.get('quantity'))
+  };
+
+  const validationResult = updateCartItemSchema.safeParse(rawData);
+  if (!validationResult.success) {
+    return {
+      success: false,
+      message: "Invalid data provided",
+      errors: validationResult.error.flatten().fieldErrors
+    };
+  }
+
+  const { itemId, quantity } = validationResult.data;
+
+  try {
+    // Call the API endpoint to update cart item
+    const origin = process.env.NEXTAUTH_URL;
+    const url = new URL(`/api/marketplace/products/item/${itemId}/carts/update`, origin).toString();
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `next-auth.session-token=${session.sessionToken}` // Pass session for auth
+      },
+      body: JSON.stringify({
+        action: 'update_quantity',
+        quantity
+      })
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      return {
+        success: false,
+        message: errorResult.error || "Failed to update cart item",
+        errors: { server: [errorResult.error || "Failed to update cart item"] }
+      };
+    }
+
+    const result = await response.json();
+
+    // Revalidate the cart page
+    revalidatePath('/cart');
+
+    return {
+      success: true,
+      message: result.message || "Cart updated successfully",
+      errors: {},
+      data: result.data
+    };
+
+  } catch (error) {
+    console.error("Update cart item error:", error);
+    return {
+      success: false,
+      message: "Failed to update cart item",
+      errors: { server: ["An unexpected error occurred"] }
+    };
+  }
+}
+
+// Remove cart item
+export async function removeCartItem(prevState, formData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return {
+      success: false,
+      message: "Authentication required",
+      errors: { auth: ["Please log in to update your cart"] }
+    };
+  }
+
+  // Parse and validate form data
+  const rawData = {
+    itemId: formData.get('itemId')
+  };
+
+  const validationResult = removeCartItemSchema.safeParse(rawData);
+  if (!validationResult.success) {
+    return {
+      success: false,
+      message: "Invalid data provided",
+      errors: validationResult.error.flatten().fieldErrors
+    };
+  }
+
+  const { itemId } = validationResult.data;
+
+  try {
+    // Call the API endpoint to remove cart item
+    const origin = process.env.NEXTAUTH_URL;
+    const url = new URL(`/api/marketplace/products/item/${itemId}/carts/update`, origin).toString();
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `next-auth.session-token=${session.sessionToken}` // Pass session for auth
+      },
+      body: JSON.stringify({
+        action: 'remove_item'
+      })
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      return {
+        success: false,
+        message: errorResult.error || "Failed to remove cart item",
+        errors: { server: [errorResult.error || "Failed to remove cart item"] }
+      };
+    }
+
+    const result = await response.json();
+
+    // Revalidate the cart page
+    revalidatePath('/cart');
+
+    return {
+      success: true,
+      message: result.message || "Item removed from cart",
+      errors: {},
+      data: result.data
+    };
+
+  } catch (error) {
+    console.error("Remove cart item error:", error);
+    return {
+      success: false,
+      message: "Failed to remove cart item",
+      errors: { server: ["An unexpected error occurred"] }
+    };
+  }
+}
+
+// Clear entire cart
+export async function clearCart(prevState, formData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return {
+      success: false,
+      message: "Authentication required",
+      errors: { auth: ["Please log in to clear your cart"] }
+    };
+  }
+
+  // Parse and validate form data
+  const rawData = {
+    penName: formData.get('penName')
+  };
+
+  const validationResult = clearCartSchema.safeParse(rawData);
+  if (!validationResult.success) {
+    return {
+      success: false,
+      message: "Invalid data provided",
+      errors: validationResult.error.flatten().fieldErrors
+    };
+  }
+
+  const { penName } = validationResult.data;
+
+  // Verify the user is clearing their own cart
+  if (session.user.pen_name !== penName) {
+    return {
+      success: false,
+      message: "Access denied",
+      errors: { auth: ["You can only clear your own cart"] }
+    };
+  }
+
+  try {
+    // Call the API endpoint to clear cart
+    const origin = process.env.NEXTAUTH_URL;
+    const url = new URL('/api/marketplace/products/carts/clear', origin).toString();
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `next-auth.session-token=${session.sessionToken}` // Pass session for auth
+      },
+      body: JSON.stringify({
+        penName
+      })
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      return {
+        success: false,
+        message: errorResult.error || "Failed to clear cart",
+        errors: { server: [errorResult.error || "Failed to clear cart"] }
+      };
+    }
+
+    const result = await response.json();
+
+    // Revalidate the cart page
+    revalidatePath('/cart');
+
+    return {
+      success: true,
+      message: result.message || "Cart cleared successfully",
+      errors: {},
+      data: result.data
+    };
+
+  } catch (error) {
+    console.error("Clear cart error:", error);
+    return {
+      success: false,
+      message: "Failed to clear cart",
+      errors: { server: ["An unexpected error occurred"] }
+    };
+  }
+}
+
+// Legacy function for backward compatibility
+export function updateUserCart(prevState, queryData) {
+  // This function is kept for backward compatibility
+  // New implementations should use the specific action functions above
+  return {
+    success: false,
+    message: "Please use specific cart action functions",
+    errors: { deprecated: ["This function is deprecated"] }
+  };
+}

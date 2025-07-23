@@ -41,6 +41,10 @@ const productSchema = z.object({
     .refine(val => val !== undefined && val !== null, { 
       message: "At least one image is required" 
     }),
+  productFile: z.any()
+    .refine(val => val !== undefined && val !== null, { 
+      message: "Product file is required" 
+    }),
   fileType: z.string().min(1, { message: "File type is required" }),
   fileSize: z.string().optional(),
   license: z.string().optional(),
@@ -72,6 +76,7 @@ export async function createProduct(prevState, queryData) {
     "marketplace_subcategory_id"
   );
   const getImages = queryData.get("images");
+  const getProductFile = queryData.get("productFile");
   const getFileType = queryData.get("fileType");
   const getFileSize = queryData.get("fileSize");
   const getLicense = queryData.get("license");
@@ -88,6 +93,7 @@ export async function createProduct(prevState, queryData) {
     marketplace_category_id: getMarketplaceCategoryId,
     marketplace_subcategory_id: getMarketplaceSubcategoryId,
     images: getImages,
+    productFile: getProductFile,
     fileType: getFileType,
     fileSize: getFileSize,
     license: getLicense,
@@ -125,6 +131,7 @@ export async function createProduct(prevState, queryData) {
     marketplace_category_id,
     marketplace_subcategory_id,
     images,
+    productFile,
     fileType,
     fileSize,
     license,
@@ -183,6 +190,18 @@ export async function createProduct(prevState, queryData) {
       }
     } catch (error) {
       console.error("Error processing images in server action:", error);
+    }
+  }
+
+  // Handle product file
+  if (productFile) {
+    try {
+      if (productFile.name && productFile.size) {
+        // If it's a File-like object, append it directly
+        formData.append("productFile", productFile);
+      }
+    } catch (error) {
+      console.error("Error processing product file in server action:", error);
     }
   }
 

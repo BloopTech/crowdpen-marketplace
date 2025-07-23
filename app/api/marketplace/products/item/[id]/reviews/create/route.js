@@ -14,20 +14,7 @@ const { MarketplaceReview, User } = db;
 export async function POST(request, { params }) {
     const getParams = await params;
   try {
-    // Get current user from session
-    const session = await getServerSession(authOptions);
 
-    if (!session || !session.user) {
-      return NextResponse.json(
-        {
-          status: "error",
-          message: "Authentication required",
-        },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
     const productId = getParams.id;
 
     if (!productId) {
@@ -42,7 +29,7 @@ export async function POST(request, { params }) {
 
     // Parse request body
     const body = await request.json();
-    const { rating, title, content } = body;
+    const { rating, title, content, userId } = body;
 
     // Validate required fields
     if (!rating || rating < 1 || rating > 5) {
@@ -89,7 +76,7 @@ export async function POST(request, { params }) {
       user_id: userId,
       rating: parseInt(rating),
       title: title?.trim() || null,
-      content: content.trim(),
+      content: content,
       verifiedPurchase: false, // TODO: Check if user actually purchased the product
       visible: true,
     });

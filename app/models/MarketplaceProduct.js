@@ -133,7 +133,8 @@ MarketplaceProduct.init(
       defaultValue: false
     },
     images: DataTypes.ARRAY(DataTypes.STRING),
-    searchVector: DataTypes.TSVECTOR
+    searchVector: DataTypes.TSVECTOR,
+    file: DataTypes.TEXT,//file to be downloaded
   },
   {
     sequelize,

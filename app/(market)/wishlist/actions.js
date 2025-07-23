@@ -1,0 +1,145 @@
+"use server";
+import z from "zod";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../api/auth/[...nextauth]/route";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+// Schema for validating add all to cart action
+const addAllToCartSchema = z.object({
+  productIds: z.array(z.string()).min(1, "At least one product is required")
+});
+
+// Schema for validating clear wishlist action
+const clearWishlistSchema = z.object({
+  confirm: z.boolean().optional()
+});
+
+export async function addAllProductsCarts(prevState, queryData) {
+
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return {
+        message: "Authentication required",
+        errors: { auth: ["Please log in to add items to cart"] },
+        success: false
+      };
+    }
+
+    // Get product IDs from form data (JSON string)
+    const productIdsString = queryData.get('productIds');
+ 
+    // Validate the product IDs
+    const validatedFields = addAllToCartSchema.safeParse({
+      productIds: JSON.parse(productIdsString)
+    });
+
+    if (!validatedFields.success) {
+      return {
+        message: "Validation failed",
+        errors: validatedFields.error.flatten().fieldErrors,
+        success: false
+      };
+    }
+
+    const { productIds } = validatedFields.data;
+
+    // Call the API endpoint to add products to cart
+    const origin = process.env.NEXTAUTH_URL;
+    const url = new URL('/api/marketplace/products/carts/addProducts', origin).toString();
+
+    const body = {
+      userId: session.user.id,
+      productIds
+    };
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      return {
+        message: errorResult.error || "Failed to add items to cart",
+        errors: { server: [errorResult.error || "Failed to add items to cart"] },
+        success: false
+      };
+    }
+
+    const result = await response.json();
+
+    // Revalidate paths to refresh the UI
+    revalidatePath('/wishlist');
+    revalidatePath('/cart');
+
+    return {
+      message: result.message || `Successfully added ${result.data.addedCount} items to cart`,
+      errors: {},
+      success: true,
+      data: result.data
+    };
+
+}
+
+export async function clearAllWishlist(prevState, queryData) {
+
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return {
+        message: "Authentication required",
+        errors: { auth: ["Please log in to clear wishlist"] },
+        success: false
+      };
+    }
+
+    // Validate form data (optional confirmation)
+    const validatedFields = clearWishlistSchema.safeParse({
+      confirm: queryData.get('confirm') === 'true'
+    });
+
+    if (!validatedFields.success) {
+      return {
+        message: "Validation failed",
+        errors: validatedFields.error.flatten().fieldErrors,
+        success: false
+      };
+    }
+
+    // Call the API endpoint to clear wishlist
+    const origin = process.env.NEXTAUTH_URL;
+    const url = new URL('/api/marketplace/products/wishlist/clear', origin).toString();
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ userId: session.user.id })
+    });
+
+    if (!response.ok) {
+      const errorResult = await response.json();
+      return {
+        message: errorResult.error || "Failed to clear wishlist",
+        errors: { server: [errorResult.error || "Failed to clear wishlist"] },
+        success: false
+      };
+    }
+
+    const result = await response.json();
+
+    // Revalidate path to refresh the UI
+    revalidatePath('/wishlist');
+
+    return {
+      message: result.message || "Successfully cleared wishlist",
+      errors: {},
+      success: true,
+      data: result.data
+    };
+
+}

@@ -28,6 +28,20 @@ const sanitizeFilename = (filename) => {
   );
 };
 
+const sanitizeProductFilename = (filename) => {
+  return filename
+    .replace(/\s+/g, "_")
+    .replace(/[^a-zA-Z0-9._-]/g, "");
+};
+
+const formatFileSize = (bytes) => {
+  if (bytes === 0) return "0 Bytes";
+  const k = 1024;
+  const sizes = ["Bytes", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+};
+
 export async function POST(request) {
   try {
     // Process form data
@@ -80,6 +94,9 @@ export async function POST(request) {
 
     // Get image files from form data
     let imageFiles = formData.getAll("images");
+    
+    // Get product file from form data
+    const productFile = formData.get("productFile");
     console.log("Image files received:", imageFiles);
     console.log("Images from form details:", {
       count: imageFiles.length,
@@ -123,6 +140,84 @@ export async function POST(request) {
           console.error("Error processing image URLs:", error);
         }
       }
+    }
+
+    // Upload product file to Cloudflare R2 if provided
+    let productFileUrl = null;
+    let calculatedFileSize = "";
+    
+    if (productFile && productFile.size > 0) {
+      const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+      const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+      
+      try {
+        // Validate file size (max 100MB)
+        const maxSize = 100 * 1024 * 1024; // 100MB
+        if (productFile.size > maxSize) {
+          return NextResponse.json(
+            {
+              status: "error",
+              message: "Product file size must be less than 100MB",
+            },
+            { status: 400 }
+          );
+        }
+        
+        // Calculate file size
+        calculatedFileSize = formatFileSize(productFile.size);
+        
+        // Generate unique filename
+        const fileCode = randomImageName();
+        const sanitizedName = sanitizeProductFilename(productFile.name);
+        const fileName = `marketplace/files/${fileCode}_${sanitizedName}`;
+        
+        // Convert file to buffer
+        let buffer;
+        if (typeof productFile.arrayBuffer === 'function') {
+          const arrayBuffer = await productFile.arrayBuffer();
+          buffer = Buffer.from(arrayBuffer);
+        } else {
+          throw new Error('Unable to read product file data');
+        }
+        
+        // Upload to Cloudflare R2
+        const s3Params = {
+          Bucket: bucketName,
+          Key: fileName,
+          Body: buffer,
+          ContentType: productFile.type || 'application/octet-stream',
+        };
+        
+        const command = new PutObjectCommand(s3Params);
+        await s3Client.send(command);
+        
+        // Create public URL for the uploaded file
+        productFileUrl = `${publicUrlBase}/${fileName}`;
+        
+        console.log("Product file uploaded successfully:", {
+          originalName: productFile.name,
+          size: calculatedFileSize,
+          url: productFileUrl
+        });
+        
+      } catch (error) {
+        console.error("Error uploading product file:", error);
+        return NextResponse.json(
+          {
+            status: "error",
+            message: "Failed to upload product file",
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product file is required",
+        },
+        { status: 400 }
+      );
     }
 
     // Upload images to Cloudflare R2 if there are files
@@ -222,8 +317,9 @@ export async function POST(request) {
       user_id: userId,
       images: imageUrls,
       image: imageUrls[0] || null,
+      file: productFileUrl, // Store the uploaded file URL
       fileType: productData.fileType,
-      fileSize: productData.fileSize || "",
+      fileSize: calculatedFileSize || productData.fileSize || "", // Use calculated size
       license: productData.license || "Standard",
       deliveryTime: productData.deliveryTime || "Instant",
       featured: productData.featured || false,

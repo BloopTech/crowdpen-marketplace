@@ -233,50 +233,29 @@ export const authOptions = {
     },
     async session({ session, token, user }) {
       console.log("=== SESSION CALLBACK START ===");
-      // console.log('Session callback inputs:', {
-      //   hasSession: !!session,
-      //   hasToken: !!token,
-      //   hasUser: !!user,
-      //   userEmail: user?.email || token?.email || 'N/A',
-      //   sessionStrategy: 'database'
-      // });
-      // console.log('Session user..............', user, session, token);
-      // For database sessions, user object is available directly
-      if (session && user) {
-        session.user.id = user.id;
-        session.user.name = user.name;
-        session.user.email = user.email;
-        session.user.image = user.image;
+      const useremail = session?.user?.email;
 
-        console.log("=== DATABASE SESSION CREATED SUCCESSFULLY ===");
-        //console.log('Session user:', user.email);
-        return session;
-      }
-
-      // Handle JWT fallback case (credentials provider)
-      if (session && token && !user) {
-        console.log("=== JWT SESSION DETECTED - CONVERTING TO DATABASE ===");
-
-        // Get user from database using token data
+      if (session && user?.email === useremail) {
         try {
-          const dbUser = await getUserId(token.sub || token.id);
-          if (dbUser) {
-            session.user.id = dbUser.id;
-            session.user.name = dbUser.name;
-            session.user.email = dbUser.email;
-            session.user.image = dbUser.image;
-
-            console.log("=== JWT TO DATABASE SESSION CONVERSION SUCCESS ===");
-            //console.log('Converted session user:', dbUser.email);
-            return session;
-          }
+          // const response = await axios.get(
+          //   `${process.env.NEXTAUTH_URL}/api/auth/user_session?email=${useremail}`, {
+          //headers: {
+          //  "x-api-key": process.env.API_ACCESS_KEY,
+          // },
+          //}
+          // );
+          // session.user = response.data;
+          const response = await getUserId(user?.id);
+          session.user.id = response?.id;
+          session.user.name = response?.name;
+          session.user.email = response?.email;
+          session.user.image = response?.image;
+          session.user.pen_name = response?.pen_name;
+          session.user.cover_image = response?.cover_image;
         } catch (error) {
-          console.error("Failed to convert JWT to database session:", error);
+          console.log("session oauth error..............", error);
         }
       }
-
-      console.log("=== SESSION CALLBACK - NO USER DATA AVAILABLE ===");
-      console.log("This indicates session creation failed");
       return session;
     },
 

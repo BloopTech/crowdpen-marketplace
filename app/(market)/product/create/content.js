@@ -65,6 +65,9 @@ export default function CreateProductContent() {
   const [subCategories, setSubCategories] = useState([]);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [images, setImages] = useState([]);
+  const [productFile, setProductFile] = useState(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [fileSize, setFileSize] = useState("");
   const [categoryID, setCategoryID] = useState("");
   const [state, formAction, isPending] = useActionState(
     createProduct,
@@ -125,6 +128,53 @@ export default function CreateProductContent() {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Handle product file upload
+  const handleFileUpload = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingFile(true);
+    const file = files[0];
+
+    try {
+      // Validate file size (max 100MB)
+      const maxSize = 100 * 1024 * 1024; // 100MB
+      if (file.size > maxSize) {
+        toast.error("File size must be less than 100MB");
+        return;
+      }
+
+      // Calculate and format file size
+      const formatFileSize = (bytes) => {
+        if (bytes === 0) return "0 Bytes";
+        const k = 1024;
+        const sizes = ["Bytes", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+      };
+
+      const formattedSize = formatFileSize(file.size);
+      setFileSize(formattedSize);
+      setProductFile(file);
+      
+      toast.success(`File "${file.name}" selected (${formattedSize})`);
+    } catch (error) {
+      console.error("Error handling file:", error);
+      toast.error("Failed to process file");
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  // Remove product file
+  const removeFile = () => {
+    setProductFile(null);
+    setFileSize("");
+    // Reset file input
+    const fileInput = document.getElementById("productFile");
+    if (fileInput) fileInput.value = "";
+  };
+
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">
       <Card>
@@ -137,7 +187,20 @@ export default function CreateProductContent() {
           </CardDescription>
         </CardHeader>
 
-        <form ref={formRef} action={formAction}>
+        <form ref={formRef} action={(formData) => {
+          // Add product file to form data if it exists
+          if (productFile) {
+            formData.append('productFile', productFile);
+          }
+          // Add images to form data
+          images.forEach((imageObj) => {
+            if (imageObj.file) {
+              formData.append('images', imageObj.file);
+            }
+          });
+          // Call the original form action
+          formAction(formData);
+        }}>
           <CardContent className="space-y-6">
             {/* Basic Information */}
             <div className="space-y-4">
@@ -441,9 +504,96 @@ export default function CreateProductContent() {
                   <Input
                     id="fileSize"
                     name="fileSize"
-                    placeholder="e.g. 15MB"
+                    value={fileSize}
+                    placeholder="Auto-calculated from uploaded file"
+                    readOnly
+                    className="bg-gray-50"
                   />
+                  <p className="text-xs text-gray-500">
+                    File size is automatically calculated when you upload a file
+                  </p>
                 </div>
+              </div>
+
+              {/* Product File Upload */}
+              <div className="space-y-2">
+                <Label htmlFor="productFile">
+                  Product File <span className="text-red-500">*</span>
+                </Label>
+                <div className="space-y-3">
+                  {/* File Upload Area */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                    {productFile ? (
+                      <div className="flex items-center justify-between bg-blue-50 p-4 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-blue-100 p-2 rounded">
+                            <Upload className="h-5 w-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {productFile.name}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {fileSize} • {productFile.type || 'Unknown type'}
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeFile}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          disabled={uploadingFile || isPending}
+                        >
+                          <X className="h-5 w-5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label
+                        htmlFor="productFile"
+                        className="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded-lg p-4"
+                      >
+                        {uploadingFile ? (
+                          <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
+                        ) : (
+                          <Upload className="h-8 w-8 text-gray-400 mb-2" />
+                        )}
+                        <p className="text-sm font-medium text-gray-900 mb-1">
+                          {uploadingFile ? "Processing file..." : "Upload your product file"}
+                        </p>
+                        <p className="text-xs text-gray-500 text-center">
+                          PDF, PSD, AI, Figma, ZIP, DOC, XLS, PPT files up to 100MB
+                        </p>
+                        <input
+                          id="productFile"
+                          name="productFile"
+                          type="file"
+                          accept=".pdf,.psd,.ai,.fig,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                          className="hidden"
+                          onChange={handleFileUpload}
+                          disabled={uploadingFile || isPending}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  
+                  {/* File Requirements */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                    <h4 className="text-sm font-medium text-yellow-800 mb-1">
+                      File Requirements:
+                    </h4>
+                    <ul className="text-xs text-yellow-700 space-y-1">
+                      <li>• Maximum file size: 100MB</li>
+                      <li>• Supported formats: PDF, PSD, AI, Figma, ZIP, DOC, XLS, PPT</li>
+                      <li>• File will be available for download after purchase</li>
+                    </ul>
+                  </div>
+                </div>
+                <span className="text-xs text-red-500">
+                  {Object.keys(state?.errors).length !== 0 &&
+                  state?.errors?.productFile?.length
+                    ? state?.errors?.productFile[0]
+                    : null}
+                </span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
