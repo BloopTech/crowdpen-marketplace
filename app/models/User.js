@@ -20,6 +20,9 @@ class User extends Model {
       foreignKey: 'user_id', 
       as: 'wishlistedProducts' 
     });
+    User.hasOne(models.Session, {
+      foreignKey: "user_id",
+    });
   }
 }
 

@@ -1,6 +1,7 @@
 "use server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]/route";
+import { revalidatePath } from "next/cache";
 
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session
@@ -16,7 +17,7 @@ export async function addProductWishlist(prevState, queryData) {
   }
 
   const userId = session.user.id;
-
+console.log("query...................", queryData, prevState)
   const productId = queryData.get("productId");
 
   const body = {
@@ -60,6 +61,8 @@ export async function addProductWishlist(prevState, queryData) {
       },
     };
   }
+
+  revalidatePath("/");
 
   return {
     success: true,
@@ -139,6 +142,8 @@ export async function addProductToCart(prevState, queryData) {
       },
     };
   }
+
+  revalidatePath("/");
 
   return {
     success: true,

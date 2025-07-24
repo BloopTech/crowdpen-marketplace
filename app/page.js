@@ -18,13 +18,7 @@ import { useRouter } from "next/navigation";
 import Login from "./(auth)/login";
 import { useHome } from "./context";
 
-export default function AmazonStyleMarketplace() {
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [viewMode, setViewMode] = useState("grid");
-  const [cartItems, setCartItems] = useState([]);
-  const [wishlistID, setWishlistID] = useState("");
-  
+export default function AmazonStyleMarketplace() {  
   // Use the context instead of local state for filters and data
   const { 
     filters, 
@@ -45,6 +39,12 @@ export default function AmazonStyleMarketplace() {
     prevPage
   } = useHome();
 
+   const router = useRouter();
+   const [searchQuery, setSearchQuery] = useState("");
+   const [viewMode, setViewMode] = useState("grid");
+   const [cartItems, setCartItems] = useState([]);
+   const [wishlistID, setWishlistID] = useState("");
+   
   // We don't need the filteredResources useMemo anymore as data is filtered by the API
   // and exposed through the context
 

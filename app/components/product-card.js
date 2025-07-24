@@ -1,5 +1,10 @@
 "use client";
-import React, { useActionState, useEffect, useState } from "react";
+import React, {
+  useActionState,
+  useEffect,
+  useState,
+  startTransition,
+} from "react";
 import Image from "next/image";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -27,7 +32,15 @@ const initialStateValues = {
 
 export default function ProductCard(props) {
   const { resource } = props;
-  const { openLoginDialog, refetchWishlistCount, refetchCartCount } = useHome();
+  const {
+    openLoginDialog,
+    refetchWishlistCount,
+    refetchCartCount,
+    addOptimisticWishlist,
+    removeOptimisticWishlist,
+    addOptimisticCart,
+    removeOptimisticCart,
+  } = useHome();
   const { data: session } = useSession();
   const [state, formAction, isPending] = useActionState(
     addProductWishlist,
@@ -48,6 +61,14 @@ export default function ProductCard(props) {
       )
     : 0;
 
+  // const wishes = resource?.wishlist?.find(
+  //   (wish) =>
+  //     (wish?.user_id === session?.user?.id) &&
+  //     wish.marketplace_product_id === resource.id
+  // );
+
+  // const isWished = typeof wishes === "object";
+
   const wishes = resource?.wishlist?.find(
     (wish) =>
       wish?.user_id === session?.user?.id &&
@@ -60,6 +81,16 @@ export default function ProductCard(props) {
       ? localWishlistState
       : typeof wishes === "object";
 
+  // const carts = resource?.Cart?.find(
+  //   (cart) =>
+  //     (cart?.user_id === session?.user?.id) &&
+  //     cart.cartItems?.find(
+  //       (item) => item.marketplace_product_id === resource.id
+  //     )
+  // );
+
+  // const isCarted = typeof carts === "object";
+
   const carts = resource?.Cart?.find(
     (cart) =>
       cart?.user_id === session?.user?.id &&
@@ -71,6 +102,8 @@ export default function ProductCard(props) {
   const isCarted = hasLocalCartOverride
     ? Boolean(localCartState) // If we have a local override, use its boolean value
     : typeof carts === "object"; // Otherwise fall back to server state
+
+  //
 
   // Update local state when server action completes
   useEffect(() => {
@@ -112,6 +145,49 @@ export default function ProductCard(props) {
     }
   }, [cartState, refetchCartCount]);
 
+  // Combined action functions that wrap optimistic updates in transitions
+  const handleWishlistAction = async (formData) => {
+    console.log("form data", formData);
+    const productId = formData.get("productId");
+    if (!session?.user?.id) {
+      openLoginDialog();
+      return;
+    }
+
+    // Apply optimistic update in transition
+    //startTransition(() => {
+    if (isWished) {
+      removeOptimisticWishlist(resource.id);
+      console.log("id again..............");
+    } else {
+      addOptimisticWishlist(resource.id);
+      console.log("id again..............");
+    }
+    //});
+    console.log("stage org", state);
+    // Call server action (result handled by useEffect)
+    return formAction(formData);
+  };
+
+  const handleCartAction = async (formData) => {
+    if (!session?.user?.id) {
+      openLoginDialog();
+      return;
+    }
+
+    // Apply optimistic update in transition
+    startTransition(() => {
+      if (isCarted) {
+        removeOptimisticCart(resource.id);
+      } else {
+        addOptimisticCart(resource.id);
+      }
+    });
+
+    // Call server action (result handled by useEffect)
+    return cartFormAction(formData);
+  };
+
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 border-0 shadow-sm">
       <CardContent className="p-0">
@@ -139,6 +215,38 @@ export default function ProductCard(props) {
           </div>
 
           {/* Wishlist Button */}
+          {/* <form action={handleWishlistAction}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={`absolute top-2 right-2 h-8 w-8 p-0 transition-all duration-200 z-5 ${
+                isWished
+                  ? "bg-red-500 hover:bg-red-600 text-white"
+                  : "bg-white/80 hover:bg-white text-gray-600 hover:text-red-500"
+              }`}
+              type="submit"
+              disabled={
+                
+                !session?.user ||
+                resource?.user_id === session?.user?.id
+              }
+              title={
+                !session?.user
+                  ? "Please login to add to wishlist"
+                  : isWished
+                    ? "Remove from wishlist"
+                    : "Add to wishlist"
+              }
+            >
+              <Heart
+                className={`h-4 w-4 transition-all duration-200 ${
+                  isWished ? "fill-current" : ""
+                }`}
+              />
+            </Button>
+            <input type="hidden" name="productId" value={resource.id} />
+          </form> */}
+
           <form action={session?.user?.id ? formAction : openLoginDialog}>
             <Button
               variant="ghost"
@@ -254,6 +362,31 @@ export default function ProductCard(props) {
           </div>
 
           {/* Add to Cart Button */}
+          {/* <form action={handleCartAction}
+          >
+            <Button
+              type="submit"
+              className="w-full disabled:cursor-not-allowed"
+              size="sm"
+              disabled={
+                isCartPending ||
+                !session ||
+                resource.user_id === session.user.id
+              }
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              {isCartPending ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : isCarted ? (
+                "Remove from Cart"
+              ) : (
+                "Add to Cart"
+              )}
+            </Button>
+            <input type="hidden" name="productId" value={resource.id} />
+            <input type="hidden" name="quantity" value="1" />
+          </form> */}
+
           <form
             action={session?.user?.id ? cartFormAction : openLoginDialog}
             onSubmit={() => {

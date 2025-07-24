@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useCallback, useActionState, useState } from "react";
+import React, { useEffect, useCallback, useActionState, useState, useOptimistic } from "react";
 import Image from "next/image";
 import useInfiniteScroll from "react-infinite-scroll-hook";
 import { useAuthorProfile } from "./context";
@@ -98,6 +98,8 @@ export default function AuthorProfileContent({ author }) {
     loadMoreReviews,
     reviewsQuery, // For error handling and manual refetching
   } = useAuthorProfile();
+  const [optimisticCart, addOptimisticCart] = useOptimistic(products, (state, newCart) => [...state, { cartItem: newCart }]);
+  const [optimisticWishlist, addOptimisticWishlist] = useOptimistic(products, (state, newWishlist) => [...state, { wishlistItem: newWishlist }]);
   
   // Initialize data on mount - using useCallback to fix lint warnings
   const initializeData = useCallback(() => {
@@ -105,7 +107,7 @@ export default function AuthorProfileContent({ author }) {
       loadMoreProducts(author.pen_name, true);
       loadMoreReviews(author.pen_name, true);
     }
-  }, [author?.pen_name, loadMoreProducts, loadMoreReviews]);
+  }, [author?.pen_name, loadMoreProducts, loadMoreReviews]);  
 
   useEffect(() => {
     initializeData();

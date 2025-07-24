@@ -18,6 +18,7 @@ import MarketplaceSubCategory from "./MarketplaceSubCategory";
 import MarketplaceTags from "./MarketplaceTags";
 import SubscriptionPayment from "./subscriptionpayment";
 import MarketplaceWishlists from "./wishlists";
+import Session from "./Session";
 
 // Create models object
 const db = {
@@ -35,7 +36,8 @@ const db = {
   MarketplaceSubCategory,
   MarketplaceTags,
   MarketplaceWishlists,
-  SubscriptionPayment
+  SubscriptionPayment,
+  Session
 };
 
 // Initialize all associations after all models are loaded
