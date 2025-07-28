@@ -37,19 +37,18 @@ const productSchema = z.object({
   marketplace_subcategory_id: z.uuid({
     message: "Valid subcategory is required",
   }),
-  images: z.any()
-    .refine(val => val !== undefined && val !== null, { 
-      message: "At least one image is required" 
-    }),
-  productFile: z.any()
-    .refine(val => val !== undefined && val !== null, { 
-      message: "Product file is required" 
-    }),
+  images: z.any().refine((val) => val !== undefined && val !== null, {
+    message: "At least one image is required",
+  }),
+  productFile: z.any().refine((val) => val !== undefined && val !== null, {
+    message: "Product file is required",
+  }),
   fileType: z.string().min(1, { message: "File type is required" }),
   fileSize: z.string().optional(),
   license: z.string().optional(),
   deliveryTime: z.string().optional(),
   featured: z.boolean().optional().default(false),
+  what_included: z.string().optional(),
 });
 
 export async function createProduct(prevState, queryData) {
@@ -82,6 +81,7 @@ export async function createProduct(prevState, queryData) {
   const getLicense = queryData.get("license");
   const getDeliveryTime = queryData.get("deliveryTime");
   const getFeatured = queryData.get("featured");
+  const getWhatIncluded = queryData.get("what_included");
 
   const featured = getFeatured === "on" || getFeatured === "true";
 
@@ -99,6 +99,7 @@ export async function createProduct(prevState, queryData) {
     license: getLicense,
     deliveryTime: getDeliveryTime,
     featured: featured,
+    what_included: getWhatIncluded,
   });
   //console.log("validatedFields", validatedFields?.error);
   if (!validatedFields.success) {
@@ -118,6 +119,7 @@ export async function createProduct(prevState, queryData) {
         license: getLicense,
         deliveryTime: getDeliveryTime,
         featured: featured,
+        what_included: getWhatIncluded,
       },
       data: {},
     };
@@ -136,6 +138,7 @@ export async function createProduct(prevState, queryData) {
     fileSize,
     license,
     deliveryTime,
+    what_included,
   } = validatedFields.data;
 
   const formData = new FormData();
@@ -150,15 +153,16 @@ export async function createProduct(prevState, queryData) {
   formData.append("license", license);
   formData.append("deliveryTime", deliveryTime);
   formData.append("featured", featured);
+  formData.append("what_included", what_included);
   formData.append("user_id", userId);
-  
+
   // Append image files to form data - server side version
-  console.log("Images type in server:", { 
-    type: typeof images, 
+  console.log("Images type in server:", {
+    type: typeof images,
     isArray: Array.isArray(images),
-    value: images
+    value: images,
   });
-  
+
   if (images) {
     try {
       // Handle different types of image values
@@ -177,7 +181,7 @@ export async function createProduct(prevState, queryData) {
         // Check if it's an object that might contain files (could be from FormData)
         // Try to iterate if it has entries or forEach methods
         if (typeof images.forEach === "function") {
-          images.forEach(image => {
+          images.forEach((image) => {
             formData.append("images", image);
           });
         } else if (images.name && images.size) {
@@ -209,11 +213,11 @@ export async function createProduct(prevState, queryData) {
   // Include the user ID from the session directly in the form data
   // This allows the API route to know who the user is without session checks
   //formData.append("user_id", session.user.id);
-  
+
   // For server actions, we need to use an absolute URL
   const origin = process.env.NEXTAUTH_URL;
   const url = new URL("/api/marketplace/products/create", origin).toString();
-  
+
   const response = await fetch(url, {
     method: "POST",
     // Do not set Content-Type header for multipart/form-data
@@ -243,6 +247,7 @@ export async function createProduct(prevState, queryData) {
         license: getLicense,
         deliveryTime: getDeliveryTime,
         featured: featured,
+        what_included: getWhatIncluded,
       },
       data: {},
     };
@@ -251,7 +256,7 @@ export async function createProduct(prevState, queryData) {
   // Revalidate the products page
   revalidatePath("/marketplace");
   revalidatePath("/product");
-console.log("result......................", result);
+  console.log("result......................", result);
   return {
     message: result?.message,
     errors: {},

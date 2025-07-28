@@ -7,11 +7,32 @@ export function useCrowdpenSSO() {
   const [ssoAvailable, setSsoAvailable] = useState(false);
   const { data: session, status } = useSession();
 
-  // SSO is always available - let Crowdpen handle the session check
+  // Check if there's an active Crowdpen session
   const checkCrowdpenSession = async () => {
-    // Skip session checking - always return null to trigger redirect
-    setSsoAvailable(true);
-    return null;
+    try {
+      setIsCheckingSSO(true);
+      
+      // Try to check for active Crowdpen session
+      const response = await fetch('/api/auth/check-crowdpen-session', {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSsoAvailable(data.hasSession || false);
+        return data.hasSession ? data : null;
+      } else {
+        setSsoAvailable(false);
+        return null;
+      }
+    } catch (error) {
+      console.error('Error checking Crowdpen session:', error);
+      setSsoAvailable(false);
+      return null;
+    } finally {
+      setIsCheckingSSO(false);
+    }
   };
 
   // Attempt SSO login with Crowdpen
@@ -20,7 +41,7 @@ export function useCrowdpenSSO() {
       setIsCheckingSSO(true);
       
       // Skip session check and go directly to Crowdpen SSO endpoint
-      const crowdpenUrl = 'https://www.crowdpen.co'; // Always use production Crowdpen
+      const crowdpenUrl = 'https://crowdpen.co'; // Always use production Crowdpen
       const marketplaceUrl = window.location.origin;
       const callbackUrl = `${marketplaceUrl}/api/auth/sso/callback`;
       

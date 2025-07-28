@@ -110,75 +110,63 @@ export default function MarketplaceHeader(props) {
           {/* User Actions */}
           <div className="flex items-center gap-2">
             {session ? (
-              <UserId />
+              <>
+                <UserId />
+
+                <Link href="/wishlist">
+                  <Button variant="ghost" size="sm" className="relative">
+                    <Heart className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Wishlist</span>
+                    {wishlistCountData?.count > 0 && (
+                      <Badge
+                        variant="error"
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                      >
+                        {wishlistCountData?.count > 99
+                          ? "99+"
+                          : millify(wishlistCountData?.count)}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+
+                <Link href="/cart">
+                  <Button variant="ghost" size="sm" className="relative">
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Cart</span>
+                    {cartCountData?.count > 0 && (
+                      <Badge
+                        variant="error"
+                        className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                      >
+                        {cartCountData?.count > 99
+                          ? "99+"
+                          : millify(cartCountData?.count)}
+                      </Badge>
+                    )}
+                  </Button>
+                </Link>
+
+                <Button
+                  size="sm"
+                  className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
+                  onClick={() => router.push("/product/create")}
+                  //onClick={createCategory}
+                >
+                  Create
+                </Button>
+              </>
             ) : (
               <Button
-                variant="ghost"
+                //variant="ghost"
                 size="sm"
                 onClick={openLoginDialog}
-                disabled={false}
+                className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
               >
                 <User className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Account</span>
+                <span className="hidden sm:inline">Login</span>
               </Button>
             )}
-            {session ? (
-              <Link href="/wishlist">
-                <Button variant="ghost" size="sm" className="relative">
-                  <Heart className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Wishlist</span>
-                  {wishlistCountData?.count > 0 && (
-                    <Badge variant="error" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                      {wishlistCountData?.count > 99
-                        ? "99+"
-                        : millify(wishlistCountData?.count)}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={openLoginDialog}
-                disabled={false}
-              >
-                <Heart className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Wishlist</span>
-              </Button>
-            )}
-
-            {session ? (
-              <Link href="/cart">
-                <Button variant="ghost" size="sm" className="relative">
-                  <ShoppingCart className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Cart</span>
-                  {cartCountData?.count > 0 && (
-                    <Badge variant="error" className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                      {cartCountData?.count > 99 ? "99+" : millify(cartCountData?.count)}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={openLoginDialog}
-                disabled={false}
-              >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Cart</span>
-              </Button>
-            )}
-            <Button
-              size="sm"
-              className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
-              onClick={() => router.push("/product/create")}
-              //onClick={createCategory}
-            >
-              Create
-            </Button>
           </div>
         </div>
 

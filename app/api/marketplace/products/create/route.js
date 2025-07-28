@@ -73,6 +73,7 @@ export async function POST(request) {
       featured:
         formData.get("featured") === "true" ||
         formData.get("featured") === "on",
+      what_included: formData.get("what_included") || "",
     };
 
     // Validate required fields
@@ -151,13 +152,13 @@ export async function POST(request) {
       const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
       
       try {
-        // Validate file size (max 5MB)
-        const maxSize = 5 * 1024 * 1024; // 5MB
+        // Validate file size (max 10MB)
+        const maxSize = 10 * 1024 * 1024; // 10MB
         if (productFile.size > maxSize) {
           return NextResponse.json(
             {
               status: "error",
-              message: "Product file size must be less than 5MB",
+              message: "Product file size must be less than 10MB",
             },
             { status: 400 }
           );
@@ -323,6 +324,7 @@ export async function POST(request) {
       license: productData.license || "Standard",
       deliveryTime: productData.deliveryTime || "Instant",
       featured: productData.featured || false,
+      what_included: productData.what_included || "",
     });
 
     return NextResponse.json(

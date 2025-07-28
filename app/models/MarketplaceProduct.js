@@ -135,6 +135,7 @@ MarketplaceProduct.init(
     images: DataTypes.ARRAY(DataTypes.STRING),
     searchVector: DataTypes.TSVECTOR,
     file: DataTypes.TEXT,//file to be downloaded
+    what_included: DataTypes.TEXT,
   },
   {
     sequelize,

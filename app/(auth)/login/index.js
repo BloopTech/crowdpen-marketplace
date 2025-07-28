@@ -18,10 +18,10 @@ import { useCrowdpenSSO } from "../../hooks/useCrowdpenSSO";
 export default function Login() {
   // Get context safely with useContext
   const { loginDialog, closeLoginDialog } = useHome();
-  
+
   // Use the Crowdpen SSO hook
   const { isCheckingSSO, ssoAvailable, attemptSSOLogin } = useCrowdpenSSO();
-  
+
   // Handle SSO login with Crowdpen credentials
   const handleCrowdpenLogin = useCallback(async () => {
     const success = await attemptSSOLogin();
@@ -29,12 +29,12 @@ export default function Login() {
       closeLoginDialog();
     }
   }, [attemptSSOLogin, closeLoginDialog]);
-  
+
   // Removed auto-login behavior - users should manually click the sign-in button
-  
+
   // Don't render anything if login dialog is not open
   if (!loginDialog) return null;
-  
+
   return (
     <Dialog open={loginDialog} onOpenChange={closeLoginDialog}>
       <DialogContent>
@@ -44,7 +44,7 @@ export default function Login() {
             Use your existing Crowdpen account to sign in.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="flex flex-col space-y-4 py-4">
           {isCheckingSSO ? (
             <div className="flex items-center justify-center py-4">
@@ -53,33 +53,32 @@ export default function Login() {
             </div>
           ) : (
             <>
-              {ssoAvailable && (
+              {/* {ssoAvailable && (
                 <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md mb-2">
                   ✓ Active Crowdpen session detected. You can sign in automatically.
                 </div>
-              )}
-              
+              )} */}
+
               <Button
                 onClick={handleCrowdpenLogin}
                 disabled={isCheckingSSO}
-                className="w-full">
+                className="w-full"
+              >
                 {isCheckingSSO ? (
                   <>
                     <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
                     Signing in...
                   </>
-                ) : ssoAvailable ? (
-                  "Sign in with Crowdpen Account"
                 ) : (
                   "Sign in with Crowdpen (will redirect)"
                 )}
               </Button>
-              
-              {!ssoAvailable && (
+
+              {/* {!ssoAvailable && (
                 <div className="text-xs text-gray-500 text-center">
                   No active Crowdpen session found. You&apos;ll be redirected to sign in.
                 </div>
-              )}
+              )} */}
             </>
           )}
         </div>

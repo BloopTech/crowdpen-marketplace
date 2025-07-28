@@ -36,6 +36,7 @@ import {
 } from "../../../components/ui/card";
 import { Checkbox } from "../../../components/ui/checkbox";
 import { useProductContext } from "./context";
+import WhatIncludedEditor from "./what-included-editor";
 
 const initialStateValues = {
   message: "",
@@ -52,6 +53,7 @@ const initialStateValues = {
     license: [],
     deliveryTime: [],
     featured: [],
+    what_included: [],
     credentials: {},
     unknown: "",
   },
@@ -72,6 +74,7 @@ export default function CreateProductContent() {
   const [categoryID, setCategoryID] = useState("");
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
+  const [whatIncluded, setWhatIncluded] = useState("");
   const [priceError, setPriceError] = useState("");
   const [state, formAction, isPending] = useActionState(
     createProduct,
@@ -173,10 +176,10 @@ export default function CreateProductContent() {
     const file = files[0];
 
     try {
-      // Validate file size (max 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
+      // Validate file size (max 10MB)
+      const maxSize = 10 * 1024 * 1024; // 10MB
       if (file.size > maxSize) {
-        toast.error("File size must be less than 5MB");
+        toast.error("File size must be less than 10MB");
         return;
       }
 
@@ -295,8 +298,8 @@ export default function CreateProductContent() {
                 </span>
               </div>
 
-              {/* Description */}
-              <div className="space-y-2">
+{/* Description */}
+<div className="space-y-2">
                 <Label htmlFor="description">
                   Description <span className="text-red-500">*</span>
                 </Label>
@@ -320,6 +323,25 @@ export default function CreateProductContent() {
                     ? state?.errors?.description[0]
                     : null}
                 </span>
+              </div>
+
+              {/* What's Included */}
+              <div className="space-y-2">
+                <Label htmlFor="whatIncluded">
+                  What&apos;s Included
+                </Label>
+                <WhatIncludedEditor
+                  value={whatIncluded}
+                  onChange={setWhatIncluded}
+                  error={Object.keys(state?.errors).length !== 0 && state?.errors?.whatIncluded?.length}
+                  disabled={isPending}
+                />
+                {/* Hidden input for form submission */}
+                <input
+                  type="hidden"
+                  name="what_included"
+                  value={whatIncluded}
+                />
               </div>
 
               {/* Category and Subcategory */}
@@ -586,7 +608,7 @@ export default function CreateProductContent() {
                           : "Upload your product file"}
                       </p>
                       <p className="text-xs text-gray-500 text-center">
-                        PDF, PSD, AI, Figma, ZIP, DOC, XLS, PPT files up to 5MB
+                        PDF, PSD, AI, Figma, ZIP, DOC, XLS, PPT files up to 10MB
                       </p>
                       <input
                         id="productFile"
@@ -607,7 +629,7 @@ export default function CreateProductContent() {
                     File Requirements:
                   </h4>
                   <ul className="text-xs text-yellow-700 space-y-1">
-                    <li>• Maximum file size: 5MB</li>
+                    <li>• Maximum file size: 10MB</li>
                     <li>
                       • Supported formats: PDF, PSD, AI, Figma, ZIP, DOC, XLS,
                       PPT

@@ -16,7 +16,7 @@ export async function GET(request) {
     // Get current user from session
     const session = await getServerSession(authOptions);
 
-    const userId = session.user.id;
+    const userId = session?.user?.id || null;
 
     if (!session || !session.user) {
       return NextResponse.json(
