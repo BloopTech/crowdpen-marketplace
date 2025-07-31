@@ -77,15 +77,19 @@ export async function POST(request) {
 
     console.log("Database session created with token:", session);
 
-    // Set session cookie
-
-    cookieStore.set("next-auth.session-token", sessionToken, {
+    // Set session cookie (handle both development and production)
+    const isProduction = process.env.NODE_ENV === "production";
+    const cookieName = isProduction ? "__Secure-next-auth.session-token" : "next-auth.session-token";
+    
+    cookieStore.set(cookieName, sessionToken, {
       expires: expires,
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isProduction,
       sameSite: "lax",
       path: "/",
     });
+    
+    console.log(`Session cookie set: ${cookieName}`);
 
     console.log("Session cookie set successfully");
     console.log("=== SSO DIRECT SIGNIN SUCCESS ===");
