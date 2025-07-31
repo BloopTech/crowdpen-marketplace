@@ -73,36 +73,7 @@ export async function handleUserData(userData) {
   }
 }
 
-// Helper function for email-based authentication
-async function handleEmailAuth(email) {
-  if (!email) {
-    return null;
-  }
-
-  try {
-    const user = await sequelize.models.User.findOne({
-      where: { email: email.toLowerCase() },
-    });
-
-    if (!user) {
-      return null;
-    }
-
-    const returnUser = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      image: user.image,
-    };
-
-    console.log("=== HANDLEUSERDATA RETURNING USER ===");
-    //console.log('Returning user:', returnUser);
-    return returnUser;
-  } catch (error) {
-    console.error("Email auth error:", error);
-    return null;
-  }
-}
+// handleEmailAuth function removed - now using built-in NextAuth Email provider
 
 export const authOptions = {
   providers: [
@@ -125,24 +96,23 @@ export const authOptions = {
       },
     }),
 
-    // Regular email credentials provider
+    // SSO credentials provider for Crowdpen authentication
     CredentialsProvider({
-      id: "email-credentials",
-      name: "Email Credentials",
+      id: "crowdpen-sso",
+      name: "Crowdpen SSO",
       credentials: {
-        email: { label: "Email", type: "email" },
+        userData: { label: "User Data", type: "text" },
       },
       async authorize(credentials) {
-        console.log("=== EMAIL CREDENTIALS AUTHORIZE START ===");
+        console.log("=== CROWDPEN SSO AUTHORIZE START ===");
 
-        if (credentials?.email) {
-          console.log("Processing email authentication");
-          const result = await handleEmailAuth(credentials.email);
-          //console.log('Email auth result:', result);
+        if (credentials?.userData) {
+          console.log("Processing SSO user data authentication");
+          const result = await handleUserData(credentials.userData);
           return result;
         }
 
-        console.log("=== EMAIL CREDENTIALS AUTHORIZE - NO EMAIL ===");
+        console.log("=== CROWDPEN SSO AUTHORIZE - NO USER DATA ===");
         return null;
       },
     }),
@@ -252,6 +222,7 @@ export const authOptions = {
           session.user.image = response?.image;
           session.user.pen_name = response?.pen_name;
           session.user.cover_image = response?.cover_image;
+          session.user.color = response?.color;
         } catch (error) {
           console.log("session oauth error..............", error);
         }

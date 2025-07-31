@@ -169,6 +169,7 @@ export async function GET(request, { params }) {
           featured: productJson.featured,
           image: productJson.image,
           category: productJson.MarketplaceCategory?.name,
+          categorySlug: productJson.MarketplaceCategory?.slug,
           rating: reviewStats?.averageRating
             ? parseFloat(reviewStats.averageRating).toFixed(1)
             : 0,

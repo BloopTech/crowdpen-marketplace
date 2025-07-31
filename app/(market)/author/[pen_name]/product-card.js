@@ -171,7 +171,12 @@ export default function MyProductCard(props) {
 
       <CardContent className="p-4">
         <div className="text-xs text-muted-foreground mb-1">
-          {product.category}
+          <Link
+            href={`/category/${product?.categorySlug}`}
+            className="hover:underline"
+          >
+            {product.category}
+          </Link>
         </div>
         <h3 className="font-semibold text-slate-900 mb-2 line-clamp-2">
           {product.title}

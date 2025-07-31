@@ -24,6 +24,7 @@ import {
   Users,
   Award,
   LoaderCircle,
+  Ellipsis,
 } from "lucide-react";
 import MarketplaceHeader from "../../../components/marketplace-header";
 import ImageGalleryModal from "../../../components/ui/image-gallery-modal";
@@ -34,6 +35,13 @@ import ProductDetails from "./details";
 import { useHome } from "../../../context";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../../../components/ui/dropdown-menu";
+import RelatedProducts from "./related";
 
 const initialStateValues = {
   message: "",
@@ -147,7 +155,7 @@ export default function ProductDetailContent(props) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full">
       <MarketplaceHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -155,7 +163,7 @@ export default function ProductDetailContent(props) {
         cartItemCount={cartItems.length}
       />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="mx-auto px-4 py-8 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Product Images */}
           <div className="space-y-4">
@@ -169,7 +177,7 @@ export default function ProductDetailContent(props) {
                 className="object-cover"
               />
             </div>
-            {productItemData.images.length > 0 && (
+            {productItemData.images.length > 1 && (
               <div className="flex gap-2 overflow-x-auto pb-2">
                 {productItemData?.images.map((image, index) => (
                   <button
@@ -197,41 +205,82 @@ export default function ProductDetailContent(props) {
           </div>
 
           {/* Product Info */}
-          <div className="space-y-6">
-            <div>
+          <div className="space-y-6 w-full">
+            <div className="w-full">
               <div className="text-sm text-muted-foreground mb-2">
-                {productItemData?.MarketplaceCategory?.name} › {productItemData?.MarketplaceSubCategory?.name}
+                <Link
+                  href={`/category/${productItemData?.MarketplaceCategory?.slug}`}
+                  className="hover:underline"
+                >
+                  {productItemData?.MarketplaceCategory?.name} ›{" "}
+                  {productItemData?.MarketplaceSubCategory?.name}
+                </Link>
               </div>
-              <h1 className="text-3xl font-bold mb-4">
-                {productItemData?.title}
-              </h1>
+              <div className="flex items-center space-x-4 w-full">
+                <h1 className="text-3xl font-bold mb-4 w-[85%]">
+                  {productItemData?.title}
+                </h1>
+
+                {session?.user?.id === productItemData?.user_id ? (
+                  <div className="flex justify-end items-center w-[10%]">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="outline-none cursor-pointer">
+                        <Ellipsis className="h-4 w-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="z-20 overflow-y-auto bg-white w-36">
+                        <DropdownMenuItem>
+                          <Link
+                            href={`/product/edit/${productItemData?.id}`}
+                            className="w-full"
+                          >
+                            <div
+                              className={`flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                            >
+                              Edit
+                            </div>
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <div
+                            className={`flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                          >
+                            Delete
+                          </div>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ) : null}
+              </div>
 
               {/* Author Info */}
-              <Link href={`/author/${productItemData?.User?.pen_name}`}>
-                <div className="flex items-center gap-3 mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded-lg -m-2">
-                  <Avatar
-                    color={productItemData?.User?.color}
-                    imageUrl={productItemData?.User?.image}
-                    initials={productItemData?.User?.name.charAt(0)}
-                  >
-                    <AvatarFallback>
-                      {productItemData?.User?.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <div className="font-semibold text-purple-600">
-                      {productItemData?.User?.name}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span>
-                        {productItemData?.authorRating} (
-                        {productItemData?.authorSales} sales)
-                      </span>
+              <div>
+                <Link href={`/author/${productItemData?.User?.pen_name}`}>
+                  <div className="flex items-center gap-3 mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded-lg -m-2">
+                    <Avatar
+                      color={productItemData?.User?.color}
+                      imageUrl={productItemData?.User?.image}
+                      initials={productItemData?.User?.name.charAt(0)}
+                    >
+                      <AvatarFallback>
+                        {productItemData?.User?.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-semibold text-purple-600">
+                        {productItemData?.User?.name}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        <span>
+                          {productItemData?.authorRating} (
+                          {productItemData?.authorSales} sales)
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </div>
 
               {/* Rating */}
               <div className="flex items-center gap-4 mb-6">
@@ -356,7 +405,6 @@ export default function ProductDetailContent(props) {
               </form>
 
               <div className="flex gap-2">
-
                 <form action={session?.user?.id ? formAction : openLoginDialog}>
                   <Button
                     variant="outline"
@@ -423,6 +471,9 @@ export default function ProductDetailContent(props) {
 
         {/* Product Details Tabs */}
         <ProductDetails />
+
+        {/* Related Products */}
+        <RelatedProducts />
       </div>
 
       {/* Image Gallery Modal */}

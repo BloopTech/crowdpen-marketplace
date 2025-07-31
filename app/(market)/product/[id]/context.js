@@ -62,6 +62,26 @@ function ProductItemContextProvider({ children, id }) {
 
   const reviewsLoading = reviewsStatus === 'loading';
   
+  // Fetch related products based on category
+  const {
+    isLoading: relatedProductsLoading,
+    error: relatedProductsError,
+    data: relatedProductsData,
+    refetch: refetchRelatedProducts,
+  } = useQuery({
+    queryKey: [`relatedProducts-${id}`],
+    queryFn: async () => {
+      const response = await fetch(`/api/marketplace/products/${id}/related?limit=5`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      return response.json();
+    },
+    enabled: !!id && !!productItemData?.MarketplaceCategory?.name && !productItemLoading, // Only fetch when we have the product data
+  });
+  
   // Function to share product by copying URL to clipboard
   const shareProduct = () => {
     if (typeof window !== "undefined") {
@@ -82,6 +102,9 @@ function ProductItemContextProvider({ children, id }) {
   
   console.log("productItemData", productItemData);
   console.log("reviewsData", reviewsData);
+  console.log("relatedProductsData", relatedProductsData);
+  console.log("relatedProductsLoading", relatedProductsLoading);
+  console.log("relatedProductsError", relatedProductsError);
   
   return (
     <ProductItemContext.Provider
@@ -98,6 +121,10 @@ function ProductItemContextProvider({ children, id }) {
         hasNextPage,
         isFetching,
         isFetchingNextPage,
+        relatedProductsLoading,
+        relatedProductsError,
+        relatedProductsData,
+        refetchRelatedProducts,
         shareProduct,
         isCopied,
       }}

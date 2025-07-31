@@ -13,34 +13,41 @@ export default function SSOSignInPage() {
   useEffect(() => {
     const processSSO = async () => {
       try {
-        const user = searchParams.get('user');
+        const userData = searchParams.get('userData');
         const callbackUrl = searchParams.get('callbackUrl') || '/';
         
-        if (!user) {
+        if (!userData) {
           setError('No user data provided');
           setStatus('error');
           return;
         }
         
-        console.log('Processing SSO sign-in with user data:', user.substring(0, 100) + '...');
+        console.log('Processing SSO sign-in with user data:', userData.substring(0, 100) + '...');
         
-        // Use NextAuth signIn with credentials provider
-        console.log('Using NextAuth signIn with credentials provider');
+        // Use direct database session creation for email authentication
+        console.log('Creating direct database session for email authentication');
         
-        const result = await signIn('crowdpen-sso', {
-          user, // Pass user data directly
-          redirect: false,
+        const response = await fetch('/api/auth/sso/signin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userData,
+            callbackUrl
+          })
         });
         
-        console.log('Credentials SignIn result:', JSON.stringify(result, null, 2));
+        const result = await response.json();
+        console.log('Direct session creation result:', JSON.stringify(result, null, 2));
         
-        if (result?.ok) {
+        if (result.success) {
           setStatus('success');
-          console.log('SSO sign-in successful, redirecting to:', callbackUrl);
+          console.log('SSO sign-in successful, redirecting to:', result.redirectUrl);
           // Use window.location.href to ensure session is established
-          window.location.href = callbackUrl || '/';
+          window.location.href = result.redirectUrl;
         } else {
-          throw new Error(result?.error || 'Credentials sign in failed');
+          throw new Error(result.error || 'Failed to create database session');
         }
       } catch (error) {
         console.error('SSO processing error:', error);

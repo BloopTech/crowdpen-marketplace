@@ -189,7 +189,7 @@ export default function ProductCard(props) {
   };
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border-0 shadow-sm">
+    <Card className="group hover:shadow-lg transition-all duration-300 border !border-slate-300 shadow-sm">
       <CardContent className="p-0">
         {/* Image Container */}
         <div className="relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gradient-to-br from-purple-50 to-pink-50">
@@ -293,8 +293,13 @@ export default function ProductCard(props) {
         <div className="p-4">
           {/* Category */}
           <div className="text-xs text-muted-foreground mb-1">
-            {resource.MarketplaceCategory?.name} ›{" "}
-            {resource.MarketplaceSubCategory?.name}
+            <Link
+              href={`/category/${resource.MarketplaceCategory?.slug}`}
+              className="hover:underline"
+            >
+              {resource.MarketplaceCategory?.name} ›{" "}
+              {resource.MarketplaceSubCategory?.name}
+            </Link>
           </div>
 
           {/* Title */}

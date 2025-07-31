@@ -44,16 +44,17 @@ export default function ProviderSignInPage() {
         
         console.log(`Using NextAuth provider: ${nextAuthProvider} for email: ${email}`);
         
-        // For email provider, we need to handle it differently
+        // For email provider, use the built-in NextAuth Email provider
         if (nextAuthProvider === 'email') {
-          console.log('Handling email provider sign-in');
-          // For email provider, we can use the email credentials provider
-          const result = await signIn('email-credentials', {
+          console.log('Handling email provider sign-in via built-in NextAuth Email provider');
+          // For email provider, we use NextAuth's built-in Email provider which creates database sessions
+          const result = await signIn('email', {
             email,
+            callbackUrl: callbackUrl,
             redirect: false,
           });
           
-          console.log('Email credentials SignIn result:', JSON.stringify(result, null, 2));
+          console.log('NextAuth Email provider SignIn result:', JSON.stringify(result, null, 2));
           
           if (result?.ok) {
             setStatus('success');

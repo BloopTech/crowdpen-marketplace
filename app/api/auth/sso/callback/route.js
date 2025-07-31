@@ -40,14 +40,23 @@ export async function GET(request) {
         console.log('=== DATABASE USER VALIDATED ===');
         console.log('User ID:', dbUser.id, 'Email:', dbUser.email);
         
-        // Redirect to provider-specific sign-in page
-        console.log('=== REDIRECTING TO PROVIDER SIGNIN PAGE ===');
-        const signInUrl = new URL('/auth/provider-signin', request.url);
-        signInUrl.searchParams.set('email', userData.email);
-        signInUrl.searchParams.set('provider', provider);
-        signInUrl.searchParams.set('callbackUrl', callbackUrl);
-        
-        return NextResponse.redirect(signInUrl);
+        // Handle different providers differently
+        if (provider === 'email') {
+          // For email provider, use crowdpen-sso credentials since user is already authenticated
+          console.log('=== REDIRECTING TO SSO SIGNIN FOR EMAIL PROVIDER ===');
+          const signInUrl = new URL('/auth/sso-signin', request.url);
+          signInUrl.searchParams.set('userData', JSON.stringify(userData));
+          signInUrl.searchParams.set('callbackUrl', callbackUrl);
+          return NextResponse.redirect(signInUrl);
+        } else {
+          // For OAuth providers (GitHub, Google), redirect to provider-specific sign-in page
+          console.log('=== REDIRECTING TO PROVIDER SIGNIN PAGE ===');
+          const signInUrl = new URL('/auth/provider-signin', request.url);
+          signInUrl.searchParams.set('email', userData.email);
+          signInUrl.searchParams.set('provider', provider);
+          signInUrl.searchParams.set('callbackUrl', callbackUrl);
+          return NextResponse.redirect(signInUrl);
+        }
         
       } catch (parseError) {
         console.error('Failed to parse user data:', parseError);

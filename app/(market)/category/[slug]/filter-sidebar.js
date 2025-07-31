@@ -1,18 +1,19 @@
-"use client"
+"use client";
 
-import { Button } from "../components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import { Checkbox } from "../components/ui/checkbox"
-import { Label } from "../components/ui/label"
-import { RadioGroup, RadioGroupItem } from "../components/ui/radio-group"
-import { Slider } from "../components/ui/slider"
-import { Star } from "lucide-react"
-import { useHome } from "../context"
-import Link from "next/link"
+import { Button } from "../../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Checkbox } from "../../../components/ui/checkbox";
+import { Label } from "../../../components/ui/label";
+import { RadioGroup, RadioGroupItem } from "../../../components/ui/radio-group";
+import { Slider } from "../../../components/ui/slider";
+import { Star } from "lucide-react";
+import Link from "next/link";
+import { useCategoryContext } from "./context";
 
-export default function FilterSidebar({ filters, onFiltersChange, onClearFilters }) {
-  const { categories, tags } = useHome();
-  // Categories and tags are already the arrays from the API
+export default function FilterCategorySidebar(props) {
+  const { filters, onFiltersChange, onClearFilters } = props;
+  const { category, tags } = useCategoryContext();
+  // Category and tags are already the arrays from the API
   return (
     <div className="space-y-6">
       {/* Clear Filters */}
@@ -23,25 +24,13 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
         </Button>
       </div>
 
-      {/* Categories */}
+      {/* Category */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-sm">Category</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="all-categories"
-              checked={filters.category === "All"}
-              onCheckedChange={(checked) =>
-                onFiltersChange({ category: "All" })
-              }
-            />
-            <Label htmlFor="all-categories" className="text-sm font-normal">
-              All Categories
-            </Label>
-          </div>
-          {categories && categories.map((category) => (
+          {category ? (
             <div key={category.id}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -59,11 +48,7 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
                     {category.name}
                   </Label>
                 </div>
-                <Link href={`/category/${category.slug}`}>
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-xs">
-                    →
-                  </Button>
-                </Link>
+                
               </div>
               {filters.category === category.name && category.MarketplaceSubCategories && (
                 <div className="ml-6 mt-2 space-y-1">
@@ -86,7 +71,7 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
                 </div>
               )}
             </div>
-          ))}
+          ): null}
         </CardContent>
       </Card>
 
