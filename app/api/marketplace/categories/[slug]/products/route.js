@@ -18,18 +18,22 @@ const {
   MarketplaceProductVariation,
 } = db;
 
-export async function GET(request, {params}) {
-    const {slug} = await params;
+export async function GET(request, { params }) {
+  const { slug } = await params;
+  const normalizedSlug = String(slug).replace(/&/g, "and");
 
   const session = await getServerSession(authOptions);
 
   const userId = session?.user?.id || null;
 
   try {
-    if (!slug) {
-      return NextResponse.json({
-        error: "Category slug is required"
-      }, { status: 400 });
+    if (!normalizedSlug) {
+      return NextResponse.json(
+        {
+          error: "Category slug is required",
+        },
+        { status: 400 }
+      );
     }
 
     const { searchParams } = new URL(request.url);
@@ -51,19 +55,22 @@ export async function GET(request, {params}) {
 
     // First, filter by the category slug from the URL path
     const categoryRecord = await MarketplaceCategory.findOne({
-      where: { slug: slug },
+      where: { slug: normalizedSlug },
     });
-    
+
     if (!categoryRecord) {
-      return NextResponse.json({
-        error: "Category not found",
-        products: [],
-        totalProducts: 0,
-        totalPages: 0,
-        currentPage: page
-      }, { status: 404 });
+      return NextResponse.json(
+        {
+          error: "Category not found",
+          products: [],
+          totalProducts: 0,
+          totalPages: 0,
+          currentPage: page,
+        },
+        { status: 404 }
+      );
     }
-    
+
     // Always filter by the category from the URL slug
     where.marketplace_category_id = categoryRecord.id;
 
@@ -270,7 +277,7 @@ export async function GET(request, {params}) {
       totalProducts: count,
       currentPage: page,
       totalPages: Math.ceil(count / limit),
-      category: categoryRecord
+      category: categoryRecord,
     });
     //});
   } catch (error) {

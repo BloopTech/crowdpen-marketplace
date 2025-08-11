@@ -1,6 +1,13 @@
 
 
 export class SearchEngine {
+  constructor(resources = []) {
+    this.resources = Array.isArray(resources) ? resources : []
+  }
+
+  setResources(resources = []) {
+    this.resources = Array.isArray(resources) ? resources : []
+  }
 
 
   // Google-style search with operators and relevance scoring
@@ -71,27 +78,29 @@ export class SearchEngine {
       author: null,
       price: null,
       rating: null,
+      category: null,
+      subcategory: null,
     }
 
     // Parse type: operator
-    const typeMatch = query.match(/type:(\w+)/i)
+    const typeMatch = query.match(/type:([\w-]+)/i)
     if (typeMatch) {
       operators.type = typeMatch[1]
-      operators.text = operators.text.replace(/type:\w+/i, "").trim()
+      operators.text = operators.text.replace(/type:[\w-]+/i, "").trim()
     }
 
     // Parse author: operator
-    const authorMatch = query.match(/author:(\w+)/i)
+    const authorMatch = query.match(/author:([\w-]+)/i)
     if (authorMatch) {
       operators.author = authorMatch[1]
-      operators.text = operators.text.replace(/author:\w+/i, "").trim()
+      operators.text = operators.text.replace(/author:[\w-]+/i, "").trim()
     }
 
     // Parse price operators
-    const priceMatch = query.match(/price:([<>=])(\d+)/i)
+    const priceMatch = query.match(/price:([<>=])(\d+(?:\.\d+)?)/i)
     if (priceMatch) {
-      operators.price = [priceMatch[1], Number.parseInt(priceMatch[2])]
-      operators.text = operators.text.replace(/price:[<>=]\d+/i, "").trim()
+      operators.price = [priceMatch[1], Number.parseFloat(priceMatch[2])]
+      operators.text = operators.text.replace(/price:[<>=]\d+(?:\.\d+)?/i, "").trim()
     }
 
     // Parse rating: operator
@@ -99,6 +108,20 @@ export class SearchEngine {
     if (ratingMatch) {
       operators.rating = Number.parseFloat(ratingMatch[1])
       operators.text = operators.text.replace(/rating:\d+(?:\.\d+)?/i, "").trim()
+    }
+
+    // Parse category: operator
+    const categoryMatch = query.match(/category:([\w-]+)/i)
+    if (categoryMatch) {
+      operators.category = categoryMatch[1]
+      operators.text = operators.text.replace(/category:[\w-]+/i, "").trim()
+    }
+
+    // Parse subcategory: operator
+    const subcategoryMatch = query.match(/subcategory:([\w-]+)/i)
+    if (subcategoryMatch) {
+      operators.subcategory = subcategoryMatch[1]
+      operators.text = operators.text.replace(/subcategory:[\w-]+/i, "").trim()
     }
 
     return operators
@@ -160,20 +183,32 @@ export class SearchEngine {
       }
 
       // Tag suggestions
-      resource.tags.forEach((tag) => {
+      ;(resource.tags || []).forEach((tag) => {
         if (tag.toLowerCase().includes(lowerQuery)) {
           suggestions.add(tag)
         }
       })
 
       // Category suggestions
-      if (resource.category.toLowerCase().includes(lowerQuery)) {
+      if ((resource.category || "").toLowerCase().includes(lowerQuery)) {
         suggestions.add(resource.category)
+        suggestions.add(`category:${resource.category}`)
+      }
+
+      // Subcategory suggestions
+      if ((resource.subcategory || "").toLowerCase().includes(lowerQuery)) {
+        suggestions.add(resource.subcategory)
+        suggestions.add(`subcategory:${resource.subcategory}`)
       }
 
       // Author suggestions
-      if (resource.author.toLowerCase().includes(lowerQuery)) {
+      if ((resource.author || "").toLowerCase().includes(lowerQuery)) {
         suggestions.add(`author:${resource.author}`)
+      }
+
+      // Type suggestions from fileType
+      if ((resource.fileType || "").toLowerCase().includes(lowerQuery)) {
+        suggestions.add(`type:${resource.fileType}`)
       }
     })
 

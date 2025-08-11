@@ -6,9 +6,10 @@ const { MarketplaceCategory, MarketplaceSubCategory } = db;
 
 export async function GET(request, { params }) {
   const { slug } = await params;
+  const normalizedSlug = String(slug).replace(/&/g, "and");
 
   try {
-    if (!slug) {
+    if (!normalizedSlug) {
       return NextResponse.json(
         {
           error: "Slug is required",
@@ -26,7 +27,7 @@ export async function GET(request, { params }) {
         },
       ],
       where: {
-        slug: slug,
+        slug: normalizedSlug,
       },
     });
 
