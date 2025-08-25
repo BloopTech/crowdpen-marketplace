@@ -2,10 +2,11 @@
 
 import React, { useState, useRef }  from "react";
 
-import { Search, TrendingUp, Zap } from "lucide-react"
-import { Input } from "../components/ui/input"
-import { Button } from "../components/ui/button"
-import { trendingSearches, searchOperators } from "@/lib/data"
+import { Search, TrendingUp, Zap } from "lucide-react";
+import { Input } from "../components/ui/input";
+import { Button } from "../components/ui/button";
+import { trendingSearches, searchOperators } from "../lib/data";
+
 
 export default function GoogleSearchBar({
   value,

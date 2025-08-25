@@ -200,10 +200,13 @@ export default function ProductDetails() {
                 <p className="text-muted-foreground mb-4">
                   {productItemData?.User?.description}
                 </p>
-                <Link
-                  href={`/author/${productItemData?.User?.pen_name}`}
-                >
-                  <Button variant="outline">View Profile</Button>
+                <Link href={`/author/${productItemData?.User?.pen_name}`}>
+                  <Button
+                    variant="outline"
+                    className="hover:bg-primary hover:text-white"
+                  >
+                    View Profile
+                  </Button>
                 </Link>
               </div>
             </div>
@@ -211,5 +214,4 @@ export default function ProductDetails() {
         </Card>
       </TabsContent>
     </Tabs>
-  );
-}
+  );}

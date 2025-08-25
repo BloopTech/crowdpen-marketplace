@@ -100,7 +100,7 @@ export async function GET(request, { params }) {
           model: MarketplaceCategory,
           where: categoryWhere,
           required: category ? true : false,
-          attributes: ["name"],
+          attributes: ["name", "slug"],
         },
       ],
       order: orderClause,

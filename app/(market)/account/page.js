@@ -97,7 +97,7 @@ export default function AccountPage() {
               <CardContent>
                 <div className="space-y-4">
                   {purchases.map((purchase) => (
-                    <div key={purchase.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div key={purchase.id} className="flex items-center justify-between p-4 border border-slate-300 rounded-lg">
                       <div className="flex-1">
                         <h3 className="font-semibold">{purchase.title}</h3>
                         <p className="text-sm text-muted-foreground">by {purchase.author}</p>

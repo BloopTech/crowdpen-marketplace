@@ -39,7 +39,7 @@ export default function MarketplaceHeader(props) {
   const [loading, setLoading] = useState(false);
   console.log("cartCountData", cartCountData);
   return (
-    <header className="border-b bg-white sticky top-0 z-10">
+    <header className="border-b bg-white sticky top-0 z-10 border-slate-300">
       {/* Top Bar */}
       <div className="bg-gray-900 text-white text-xs py-1">
         <div className="container mx-auto px-4 flex justify-between items-center">
@@ -115,7 +115,7 @@ export default function MarketplaceHeader(props) {
 
                 <Link href="/wishlist">
                   <Button variant="ghost" size="sm" className="relative">
-                    <Heart className="h-4 w-4 mr-2" />
+                    <Heart className="h-4 w-4" />
                     <span className="hidden sm:inline">Wishlist</span>
                     {wishlistCountData?.count > 0 && (
                       <Badge
@@ -132,7 +132,7 @@ export default function MarketplaceHeader(props) {
 
                 <Link href="/cart">
                   <Button variant="ghost" size="sm" className="relative">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    <ShoppingCart className="h-4 w-4" />
                     <span className="hidden sm:inline">Cart</span>
                     {cartCountData?.count > 0 && (
                       <Badge

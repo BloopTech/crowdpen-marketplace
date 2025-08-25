@@ -195,7 +195,7 @@ export default function MyProductCard(props) {
               ({product.reviewCount || 0})
             </span>
           </div>
-          <div className="text-lg font-bold text-blue-600">
+          <div className="text-lg font-bold text-primary">
             ${product.price}
           </div>
         </div>
