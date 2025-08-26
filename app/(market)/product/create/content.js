@@ -115,7 +115,7 @@ export default function CreateProductContent() {
     if (currentOriginalPrice && currentPrice) {
       const priceNum = parseFloat(currentPrice);
       const originalPriceNum = parseFloat(currentOriginalPrice);
-      
+
       if (originalPriceNum <= priceNum) {
         setPriceError("Original price must be higher than the current price");
         return false;
@@ -194,7 +194,7 @@ export default function CreateProductContent() {
 
       const formattedSize = formatFileSize(file.size);
       setFileSize(formattedSize);
-      
+
       // Detect and set file type based on extension
       const getFileType = (fileName) => {
         const extension = fileName.split('.').pop().toLowerCase();
@@ -214,7 +214,7 @@ export default function CreateProductContent() {
         };
         return fileTypeMap[extension] || 'PDF'; // Default to PDF if unknown
       };
-      
+
       const detectedFileType = getFileType(file.name);
       setFileType(detectedFileType);
       setProductFile(file);
@@ -282,24 +282,23 @@ export default function CreateProductContent() {
                   name="title"
                   placeholder="Enter product title"
                   required
-                  className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
-                    Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.title?.length
+                  className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${Object.keys(state?.errors).length !== 0 &&
+                      state?.errors?.title?.length
                       ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-blue-500"
-                  }`}
+                      : "focus:ring-tertiary"
+                    }`}
                   disabled={isPending}
                 />
                 <span className="text-xs text-red-500">
                   {Object.keys(state?.errors).length !== 0 &&
-                  state?.errors?.title?.length
+                    state?.errors?.title?.length
                     ? state?.errors?.title[0]
                     : null}
                 </span>
               </div>
 
-{/* Description */}
-<div className="space-y-2">
+              {/* Description */}
+              <div className="space-y-2">
                 <Label htmlFor="description">
                   Description <span className="text-red-500">*</span>
                 </Label>
@@ -309,17 +308,16 @@ export default function CreateProductContent() {
                   placeholder="Enter detailed product description"
                   required
                   rows={5}
-                  className={`resize-none w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
-                    Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.description?.length
+                  className={`resize-none w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${Object.keys(state?.errors).length !== 0 &&
+                      state?.errors?.description?.length
                       ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-blue-500"
-                  }`}
+                      : "focus:ring-tertiary"
+                    }`}
                   disabled={isPending}
                 />
                 <span className="text-xs text-red-500">
                   {Object.keys(state?.errors).length !== 0 &&
-                  state?.errors?.description?.length
+                    state?.errors?.description?.length
                     ? state?.errors?.description[0]
                     : null}
                 </span>
@@ -368,16 +366,16 @@ export default function CreateProductContent() {
                     <SelectContent>
                       {categoriesData?.length
                         ? categoriesData?.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))
                         : null}
                     </SelectContent>
                   </Select>
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.marketplace_category_id?.length
+                      state?.errors?.marketplace_category_id?.length
                       ? state?.errors?.marketplace_category_id[0]
                       : null}
                   </span>
@@ -402,19 +400,19 @@ export default function CreateProductContent() {
                     <SelectContent>
                       {subCategories?.length
                         ? subCategories?.map((subcategory) => (
-                            <SelectItem
-                              key={subcategory.id}
-                              value={subcategory.id}
-                            >
-                              {subcategory.name}
-                            </SelectItem>
-                          ))
+                          <SelectItem
+                            key={subcategory.id}
+                            value={subcategory.id}
+                          >
+                            {subcategory.name}
+                          </SelectItem>
+                        ))
                         : null}
                     </SelectContent>
                   </Select>
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.marketplace_subcategory_id?.length
+                      state?.errors?.marketplace_subcategory_id?.length
                       ? state?.errors?.marketplace_subcategory_id[0]
                       : null}
                   </span>
@@ -438,17 +436,16 @@ export default function CreateProductContent() {
                     value={price}
                     onChange={handlePriceChange}
                     required
-                    className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
-                      (Object.keys(state?.errors).length !== 0 &&
-                      state?.errors?.price?.length) || priceError
+                    className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${(Object.keys(state?.errors).length !== 0 &&
+                        state?.errors?.price?.length) || priceError
                         ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-blue-500"
-                    }`}
+                        : "focus:ring-tertiary"
+                      }`}
                     disabled={isPending}
                   />
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.price?.length
+                      state?.errors?.price?.length
                       ? state?.errors?.price[0]
                       : priceError || null}
                   </span>
@@ -468,17 +465,16 @@ export default function CreateProductContent() {
                     placeholder="29.99"
                     value={originalPrice}
                     onChange={handleOriginalPriceChange}
-                    className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
-                      (Object.keys(state?.errors).length !== 0 &&
-                      state?.errors?.originalPrice?.length) || priceError
+                    className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${(Object.keys(state?.errors).length !== 0 &&
+                        state?.errors?.originalPrice?.length) || priceError
                         ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-blue-500"
-                    }`}
+                        : "focus:ring-tertiary"
+                      }`}
                     disabled={isPending}
                   />
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.originalPrice?.length
+                      state?.errors?.originalPrice?.length
                       ? state?.errors?.originalPrice[0]
                       : priceError || null}
                   </span>
@@ -553,7 +549,7 @@ export default function CreateProductContent() {
                 </div>
                 <span className="text-xs text-red-500">
                   {Object.keys(state?.errors).length !== 0 &&
-                  state?.errors?.images?.length
+                    state?.errors?.images?.length
                     ? state?.errors?.images[0]
                     : null}
                 </span>
@@ -642,7 +638,7 @@ export default function CreateProductContent() {
               </div>
               <span className="text-xs text-red-500">
                 {Object.keys(state?.errors).length !== 0 &&
-                state?.errors?.productFile?.length
+                  state?.errors?.productFile?.length
                   ? state?.errors?.productFile[0]
                   : null}
               </span>
@@ -664,14 +660,14 @@ export default function CreateProductContent() {
                     value={fileType}
                     placeholder="Auto-detected from uploaded file"
                     readOnly
-                    className="bg-gray-50"
+                    className="border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
                   />
                   <p className="text-xs text-gray-500">
                     File type is automatically detected from the uploaded file
                   </p>
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.fileType?.length
+                      state?.errors?.fileType?.length
                       ? state?.errors?.fileType[0]
                       : null}
                   </span>
@@ -686,14 +682,14 @@ export default function CreateProductContent() {
                     value={fileSize}
                     placeholder="Auto-calculated from uploaded file"
                     readOnly
-                    className="bg-gray-50"
+                    className="border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
                   />
                   <p className="text-xs text-gray-500">
                     File size is automatically calculated when you upload a file
                   </p>
                 </div>
               </div>
-              
+
               <p className="text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded-lg p-2">
                 💡 <strong>Auto-Detection:</strong> File type and size are automatically detected when you upload a file and cannot be changed to ensure data integrity.
               </p>

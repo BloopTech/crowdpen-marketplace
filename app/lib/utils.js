@@ -9,16 +9,16 @@ export const focusInput = [
   // base
   "focus:ring-2",
   // ring color
-  "focus:ring-primary focus:dark:ring-primary",
+  "focus:ring-tertiary focus:dark:ring-tertiary",
   // border color
-  "focus:border-primary focus:dark:border-primary",
+  "focus:border-tertiary focus:dark:border-tertiary",
 ];
 
 export const focusRing = [
   // base
   "outline outline-offset-2 outline-0 focus-visible:outline-2",
   // outline color
-  "outline-primary dark:outline-primary",
+  "outline-tertiary dark:outline-tertiary",
 ];
 
 

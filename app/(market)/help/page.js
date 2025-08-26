@@ -169,11 +169,11 @@ export default function HelpPage() {
                       <Checkbox id="terms" required />
                       <Label htmlFor="terms" className="text-sm">
                         I agree to the{" "}
-                        <Link href="/terms" className="text-purple-600 hover:underline">
+                        <Link href="/terms" className="text-tertiary hover:underline">
                           Terms of Service
                         </Link>{" "}
                         and{" "}
-                        <Link href="/privacy" className="text-purple-600 hover:underline">
+                        <Link href="/privacy" className="text-tertiary hover:underline">
                           Privacy Policy
                         </Link>
                       </Label>

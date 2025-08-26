@@ -421,7 +421,7 @@ export default function EditProductContent(props) {
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.title?.length
                       ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-blue-500"
+                      : "focus:ring-tertiary"
                   }`}
                   disabled={isPending}
                   value={title}
@@ -451,7 +451,7 @@ export default function EditProductContent(props) {
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.description?.length
                       ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-blue-500"
+                      : "focus:ring-tertiary"
                   }`}
                   disabled={isPending}
                   value={description}
@@ -588,7 +588,7 @@ export default function EditProductContent(props) {
                         state?.errors?.price?.length) ||
                       priceError
                         ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-blue-500"
+                        : "focus:ring-tertiary"
                     }`}
                     disabled={isPending}
                   />
@@ -619,7 +619,7 @@ export default function EditProductContent(props) {
                         state?.errors?.originalPrice?.length) ||
                       priceError
                         ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-blue-500"
+                        : "focus:ring-tertiary"
                     }`}
                     disabled={isPending}
                   />

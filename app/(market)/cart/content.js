@@ -81,7 +81,7 @@ export default function CartContent() {
         <MarketplaceHeader
           searchQuery={search}
           onSearchChange={setSearch}
-          onSearch={() => {}}
+          onSearch={() => { }}
           cartItemCount={0}
         />
         <div className="container mx-auto px-4 py-16">
@@ -107,7 +107,7 @@ export default function CartContent() {
       <MarketplaceHeader
         searchQuery={search}
         onSearchChange={setSearch}
-        onSearch={() => {}}
+        onSearch={() => { }}
         cartItemCount={Array.isArray(cartItems) ? cartItems.length : 0}
       />
 
@@ -191,7 +191,7 @@ export default function CartContent() {
                 {isLoading ? (
                   <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="flex gap-4 p-4 border rounded-lg">
+                      <div key={i} className="flex gap-4 p-4 border border-slate-300 rounded-lg">
                         <Skeleton className="w-20 h-24 rounded-md" />
                         <div className="flex-1 space-y-2">
                           <Skeleton className="h-4 w-3/4" />
@@ -235,7 +235,7 @@ export default function CartContent() {
                         .map((item) => (
                           <div
                             key={item.id}
-                            className="flex gap-4 p-4 border rounded-lg hover:shadow-sm transition-shadow"
+                            className="flex gap-4 p-4 border border-slate-300 rounded-lg hover:shadow-sm transition-shadow"
                           >
                             <div className="relative w-20 h-24 shrink-0 rounded-md overflow-hidden bg-gray-100">
                               <Image
@@ -285,7 +285,6 @@ export default function CartContent() {
                               <div className="flex items-center gap-4 mb-3">
                                 {item.product?.category && (
                                   <Badge
-                                    variant="secondary"
                                     className="text-xs"
                                   >
                                     {item.product.category.name}
@@ -297,18 +296,18 @@ export default function CartContent() {
                                   </span>
                                   {item.product?.rating
                                     ? item.product.rating > 0 && (
-                                        <>
-                                          <span>•</span>
-                                          <div className="flex items-center gap-1">
-                                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                            <span>
-                                              {Number(
-                                                item.product.rating
-                                              ).toFixed(1)}
-                                            </span>
-                                          </div>
-                                        </>
-                                      )
+                                      <>
+                                        <span>•</span>
+                                        <div className="flex items-center gap-1">
+                                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                          <span>
+                                            {Number(
+                                              item.product.rating
+                                            ).toFixed(1)}
+                                          </span>
+                                        </div>
+                                      </>
+                                    )
                                     : null}
                                 </div>
                               </div>

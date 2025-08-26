@@ -117,14 +117,14 @@ export default function CheckoutPage() {
                   <div className="space-y-4">
                     <h3 className="font-semibold">Payment Method</h3>
                     <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <div className="flex items-center space-x-2 p-3 border border-slate-300 rounded-lg">
                         <RadioGroupItem value="card" id="card" />
                         <Label htmlFor="card" className="flex items-center gap-2 cursor-pointer">
                           <CreditCard className="h-4 w-4" />
                           Credit/Debit Card
                         </Label>
                       </div>
-                      <div className="flex items-center space-x-2 p-3 border rounded-lg">
+                      <div className="flex items-center space-x-2 p-3 border border-slate-300 rounded-lg">
                         <RadioGroupItem value="paypal" id="paypal" />
                         <Label htmlFor="paypal" className="flex items-center gap-2 cursor-pointer">
                           <Paypal className="h-4 w-4" />
@@ -212,11 +212,11 @@ export default function CheckoutPage() {
                     <Checkbox id="terms" required />
                     <Label htmlFor="terms" className="text-sm">
                       I agree to the{" "}
-                      <Link href="/terms" className="text-purple-600 hover:underline">
+                      <Link href="/terms" className="text-tertiary hover:underline">
                         Terms of Service
                       </Link>{" "}
                       and{" "}
-                      <Link href="/privacy" className="text-purple-600 hover:underline">
+                      <Link href="/privacy" className="text-tertiary hover:underline">
                         Privacy Policy
                       </Link>
                     </Label>

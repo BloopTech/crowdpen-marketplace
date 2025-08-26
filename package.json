@@ -73,6 +73,7 @@
     "dotenv": "^16.5.0",
     "embla-carousel-react": "^8.6.0",
     "generic-pool": "^3.9.0",
+    "html-react-parser": "^5.2.6",
     "input-otp": "^1.4.2",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.525.0",

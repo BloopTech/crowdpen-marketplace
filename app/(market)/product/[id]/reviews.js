@@ -122,7 +122,9 @@ export default function ProductReviews() {
       )}
 
       {/* Write Review Section */}
-      <ReviewBox />
+      <div className="flex justify-center">
+        <ReviewBox />
+      </div>
 
       {/* Reviews List */}
       <div className="space-y-4">
