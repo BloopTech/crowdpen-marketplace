@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../../models/index";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../../../auth/[...nextauth]/route";
 
-const { MarketplaceReview, User } = db;
+const { MarketplaceReview, User, Sequelize } = db;
+const { Op } = Sequelize;
 
 /**
  * GET handler to fetch reviews for a product
@@ -28,11 +31,12 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Fetch reviews for the product with user information and pagination
+    // Fetch written reviews (with non-empty content) for the product with user information and pagination
     const { count, rows: reviews } = await MarketplaceReview.findAndCountAll({
       where: {
         marketplace_product_id: productId,
         visible: true,
+        content: { [Op.and]: [{ [Op.ne]: '' }, { [Op.not]: null }] },
       },
       include: [
         {
@@ -62,30 +66,65 @@ export async function GET(request, { params }) {
       },
     }));
 
-    // Calculate review statistics (for all reviews, not just current page)
-    const allReviews = await MarketplaceReview.findAll({
+    // Calculate rating statistics (include all ratings, even rating-only without written content)
+    const allRatings = await MarketplaceReview.findAll({
       where: {
         marketplace_product_id: productId,
         visible: true,
       },
       attributes: ['rating'],
     });
-    
-    const totalReviews = count;
-    const averageRating = allReviews.length > 0 
-      ? allReviews.reduce((sum, review) => sum + review.rating, 0) / allReviews.length 
+
+    const totalReviews = allRatings.length; // total number of ratings
+    const averageRating = allRatings.length > 0
+      ? allRatings.reduce((sum, review) => sum + review.rating, 0) / allRatings.length
       : 0;
-    
+
     const ratingDistribution = {
-      5: allReviews.filter(r => r.rating === 5).length,
-      4: allReviews.filter(r => r.rating === 4).length,
-      3: allReviews.filter(r => r.rating === 3).length,
-      2: allReviews.filter(r => r.rating === 2).length,
-      1: allReviews.filter(r => r.rating === 1).length,
+      5: allRatings.filter(r => r.rating === 5).length,
+      4: allRatings.filter(r => r.rating === 4).length,
+      3: allRatings.filter(r => r.rating === 3).length,
+      2: allRatings.filter(r => r.rating === 2).length,
+      1: allRatings.filter(r => r.rating === 1).length,
     };
 
-    // Calculate pagination metadata
-    const totalPages = Math.ceil(totalReviews / limit);
+    // Get current user's review if logged in
+    const session = await getServerSession(authOptions);
+    let currentUserReview = null;
+    if (session?.user?.id) {
+      const myReview = await MarketplaceReview.findOne({
+        where: {
+          marketplace_product_id: productId,
+          user_id: session.user.id,
+        },
+        include: [
+          {
+            model: User,
+            attributes: ['id', 'name', 'email'],
+          },
+        ],
+      });
+      if (myReview) {
+        currentUserReview = {
+          id: myReview.id,
+          rating: myReview.rating,
+          title: myReview.title,
+          content: myReview.content,
+          verifiedPurchase: myReview.verifiedPurchase,
+          helpful: myReview.helpful,
+          createdAt: myReview.createdAt,
+          updatedAt: myReview.updatedAt,
+          user: {
+            id: myReview.User.id,
+            name: myReview.User.name,
+            email: myReview.User.email,
+          },
+        };
+      }
+    }
+
+    // Calculate pagination metadata (for written reviews only)
+    const totalPages = Math.ceil(count / limit);
     const hasNextPage = page < totalPages;
     const hasPreviousPage = page > 1;
 
@@ -101,11 +140,12 @@ export async function GET(request, { params }) {
         pagination: {
           currentPage: page,
           totalPages,
-          totalItems: totalReviews,
+          totalItems: count,
           itemsPerPage: limit,
           hasNextPage,
           hasPreviousPage,
         },
+        currentUserReview,
       },
     });
   } catch (error) {
@@ -115,6 +155,114 @@ export async function GET(request, { params }) {
         status: "error",
         message: error.message || "Failed to fetch reviews",
       },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT handler to upsert (create or update) the current user's review for a product
+ */
+export async function PUT(request, { params }) {
+  const getParams = await params;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        { status: "error", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const userId = session.user.id;
+    const productId = getParams.id;
+
+    if (!productId) {
+      return NextResponse.json(
+        { status: "error", message: "Product ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+    const rating = parseInt(body.rating, 10);
+    const title = body.title ?? null;
+    const content = body.content ?? undefined; // undefined means do not change on update
+
+    if (!rating || rating < 1 || rating > 5) {
+      return NextResponse.json(
+        { status: "error", message: "Rating must be between 1 and 5" },
+        { status: 400 }
+      );
+    }
+
+    // Find existing review
+    let review = await MarketplaceReview.findOne({
+      where: {
+        user_id: userId,
+        marketplace_product_id: productId,
+      },
+    });
+
+    if (review) {
+      // Update existing review
+      review.rating = rating;
+      if (title !== undefined) {
+        review.title = title && String(title).trim().length > 0 ? title : null;
+      }
+      if (content !== undefined) {
+        // Allow empty string to represent rating-only
+        review.content = content ?? '';
+      }
+      await review.save();
+    } else {
+      // Create new review (content optional for rating-only)
+      review = await MarketplaceReview.create({
+        marketplace_product_id: productId,
+        user_id: userId,
+        rating,
+        title: title && String(title).trim().length > 0 ? title : null,
+        content: content ?? '',
+        verifiedPurchase: false,
+        visible: true,
+      });
+    }
+
+    // Fetch with user
+    const reviewWithUser = await MarketplaceReview.findByPk(review.id, {
+      include: [
+        {
+          model: User,
+          attributes: ['id', 'name', 'email'],
+        },
+      ],
+    });
+
+    const formatted = {
+      id: reviewWithUser.id,
+      rating: reviewWithUser.rating,
+      title: reviewWithUser.title,
+      content: reviewWithUser.content,
+      verifiedPurchase: reviewWithUser.verifiedPurchase,
+      helpful: reviewWithUser.helpful,
+      createdAt: reviewWithUser.createdAt,
+      updatedAt: reviewWithUser.updatedAt,
+      user: {
+        id: reviewWithUser.User.id,
+        name: reviewWithUser.User.name,
+        email: reviewWithUser.User.email,
+      },
+    };
+
+    return NextResponse.json({
+      status: "success",
+      message: "Review saved",
+      data: { review: formatted },
+    });
+  } catch (error) {
+    console.error("Error upserting review:", error);
+    return NextResponse.json(
+      { status: "error", message: error.message || "Failed to save review" },
       { status: 500 }
     );
   }

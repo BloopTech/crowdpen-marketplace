@@ -69,6 +69,8 @@ export default function ProductReviews() {
   const allReviews = reviewsData?.pages?.flatMap(page => page?.data?.reviews || []) || [];
   // Get statistics from the first page (they're the same across all pages)
   const statistics = reviewsData?.pages?.[0]?.data?.statistics || {};
+  // Total written reviews (pagination totalItems counts only written content reviews)
+  const writtenReviewsTotal = reviewsData?.pages?.[0]?.data?.pagination?.totalItems || 0;
 
   return (
     <div className="space-y-6">
@@ -76,7 +78,7 @@ export default function ProductReviews() {
       {statistics.totalReviews > 0 && (
         <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">Customer Reviews</h3>
+            <h3 className="text-xl font-semibold">Ratings & Reviews</h3>
             <div className="flex items-center gap-2">
               <div className="flex">
                 {[...Array(5)].map((_, i) => (
@@ -92,7 +94,7 @@ export default function ProductReviews() {
               </div>
               <span className="text-lg font-medium">{statistics.averageRating}</span>
               <span className="text-sm text-muted-foreground">
-                ({statistics.totalReviews} review{statistics.totalReviews !== 1 ? 's' : ''})
+                ({statistics.totalReviews} rating{statistics.totalReviews !== 1 ? 's' : ''})
               </span>
             </div>
           </div>
@@ -131,11 +133,11 @@ export default function ProductReviews() {
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Reviews ({statistics.totalReviews || 0})
+            Reviews ({writtenReviewsTotal || 0})
           </h3>
         </div>
 
-        {allReviews.length === 0 ? (
+        {writtenReviewsTotal === 0 ? (
           <div className="text-center py-12">
             <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h4 className="text-lg font-medium text-gray-900 mb-2">No reviews yet</h4>

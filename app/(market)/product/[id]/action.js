@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session
@@ -19,7 +20,6 @@ export async function addProductWishlist(prevState, queryData) {
   }
 
   const userId = session.user.id;
-
   const productId = queryData.get("productId");
 
   const body = {
@@ -27,7 +27,11 @@ export async function addProductWishlist(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL;
+  const hdrs = typeof headers === 'function' ? headers() : null;
+  const proto = hdrs?.get("x-forwarded-proto") || "http";
+  const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
+  const dynamicOrigin = host ? `${proto}://${host}` : null;
+  const origin = dynamicOrigin || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const url = new URL(
     `/api/marketplace/products/item/${productId}/wishlist`,
     origin
@@ -38,7 +42,9 @@ export async function addProductWishlist(prevState, queryData) {
     body: JSON.stringify(body),
     headers: {
       "Content-Type": "application/json",
+      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
     },
+    credentials: "include",
   });
   console.log("response..........................", response);
   if (!response.ok) {
@@ -69,6 +75,90 @@ export async function addProductWishlist(prevState, queryData) {
     message: result?.message || "Wishlist updated successfully",
     errors: {},
     inWishlist: result?.inWishlist,
+  };
+}
+
+// New action: create or update a user's review (supports rating-only or full review)
+export async function upsertProductReview(prevState, queryData) {
+  // Get current user from session
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user) {
+    return {
+      success: false,
+      message: "You must be logged in to rate or review",
+      errors: {
+        auth: ["Authentication required"],
+      },
+    };
+  }
+
+  const userId = session.user.id;
+  const productId = queryData.get("productId");
+  const rating = parseInt(queryData.get("rating"));
+  const title = queryData.get("title");
+  const content = queryData.get("content");
+
+  // Validate rating only (content is optional for rating-only flow)
+  if (!rating || isNaN(rating) || rating < 1 || rating > 5) {
+    return {
+      success: false,
+      message: "Please provide a valid rating between 1 and 5",
+      errors: {
+        rating: ["Rating must be between 1 and 5"],
+      },
+    };
+  }
+
+  const body = {
+    rating,
+    // Trim title if present
+    title: title && String(title).trim().length > 0 ? String(title).trim() : null,
+    // Content can be empty string for rating-only
+    content: typeof content === "string" ? content : undefined,
+    userId,
+  };
+
+  // For server actions, we need to use an absolute URL
+  const hdrs = typeof headers === 'function' ? headers() : null;
+  const proto = hdrs?.get("x-forwarded-proto") || "http";
+  const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
+  const dynamicOrigin = host ? `${proto}://${host}` : null;
+  const origin = dynamicOrigin || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const url = new URL(
+    `/api/marketplace/products/item/${productId}/reviews`,
+    origin
+  ).toString();
+
+  const response = await fetch(url, {
+    method: "PUT",
+    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
+    },
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const errorResult = await response.json().catch(() => ({}));
+    return {
+      success: false,
+      message: errorResult.message || "Failed to save review",
+      errors: {
+        general: [errorResult.message || "Failed to save review"],
+      },
+    };
+  }
+
+  const result = await response.json();
+
+  // Revalidate the product page to update statistics and review state
+  revalidatePath(`/product/${productId}`);
+
+  return {
+    success: true,
+    message: result?.message || "Review saved",
+    data: result?.data,
   };
 }
 
@@ -106,7 +196,11 @@ export async function addProductToCart(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL;
+  const hdrs = typeof headers === 'function' ? headers() : null;
+  const proto = hdrs?.get("x-forwarded-proto") || "http";
+  const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
+  const dynamicOrigin = host ? `${proto}://${host}` : null;
+  const origin = dynamicOrigin || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const url = new URL(
     `/api/marketplace/products/item/${productId}/carts`,
     origin
@@ -117,7 +211,9 @@ export async function addProductToCart(prevState, queryData) {
     body: JSON.stringify(body),
     headers: {
       "Content-Type": "application/json",
+      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
     },
+    credentials: "include",
   });
 
   if (!response.ok) {
@@ -201,7 +297,11 @@ export async function createProductReview(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL;
+  const hdrs = typeof headers === 'function' ? headers() : null;
+  const proto = hdrs?.get("x-forwarded-proto") || "http";
+  const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
+  const dynamicOrigin = host ? `${proto}://${host}` : null;
+  const origin = dynamicOrigin || process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const url = new URL(
     `/api/marketplace/products/item/${productId}/reviews/create`,
     origin
@@ -212,7 +312,9 @@ export async function createProductReview(prevState, queryData) {
     body: JSON.stringify(body),
     headers: {
       "Content-Type": "application/json",
+      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
     },
+    credentials: "include",
   });
 
   if (!response.ok) {
