@@ -39,11 +39,10 @@ function UnauthenticatedNavBar(props) {
               <Image
                 src={logo}
                 alt="logo"
-                width={85}
-                height={85}
-                style={{ height: "auto" }}
+                width={30}
+                height={30}
                 priority
-                className="dark:invert"
+                className="dark:invert w-auto h-auto"
               />
             </Link>
           </div>

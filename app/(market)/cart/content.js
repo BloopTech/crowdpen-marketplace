@@ -244,6 +244,7 @@ export default function CartContent() {
                                 fill
                                 className="object-cover"
                                 priority
+                                sizes="(max-width: 768px) 100vw, 200px"
                               />
                             </div>
 

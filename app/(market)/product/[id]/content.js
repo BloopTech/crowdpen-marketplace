@@ -163,7 +163,7 @@ export default function ProductDetailContent(props) {
         cartItemCount={cartItems.length}
       />
 
-      <div className="mx-auto px-4 py-8 w-full">
+      <div className="mx-auto md:px-10 px-5 py-8 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           {/* Product Images */}
           <div className="space-y-4">
@@ -175,6 +175,8 @@ export default function ProductDetailContent(props) {
                 alt={productItemData?.title}
                 fill
                 className="object-cover"
+                sizes="(max-width: 768px) 100vw, 50vw"
+                priority
               />
             </div>
             {productItemData.images.length > 1 && (
@@ -197,6 +199,8 @@ export default function ProductDetailContent(props) {
                       alt={`${productItemData.title} ${index + 1}`}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      priority
                     />
                   </button>
                 ))}

@@ -72,6 +72,8 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                       alt={resource.title}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      priority
                     />
                     {resource.featured && (
                       <Badge className="absolute top-1 left-1 text-xs bg-orange-500">Featured</Badge>

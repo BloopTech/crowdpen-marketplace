@@ -111,6 +111,7 @@ export default function MyProductCard(props) {
           width={300}
           height={200}
           className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+          priority
         />
 
         <div className="absolute top-2 left-2 flex flex-col gap-1">

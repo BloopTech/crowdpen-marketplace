@@ -39,9 +39,9 @@ export default function MarketplaceHeader(props) {
   const [loading, setLoading] = useState(false);
   console.log("cartCountData", cartCountData);
   return (
-    <header className="border-b bg-white sticky top-0 z-10 border-slate-300">
+    <header className="border-b bg-white sticky top-0 z-10 border-slate-300 w-full">
       {/* Top Bar */}
-      <div className="bg-gray-900 text-white text-xs py-1">
+      <div className="bg-gray-900 text-white text-xs py-1 px-5 md:px-10 w-full">
         <div className="container mx-auto px-4 flex justify-between items-center">
           <Link
             href="https://crowdpen.co"
@@ -64,21 +64,20 @@ export default function MarketplaceHeader(props) {
       </div>
       {/* Main Header */}
       <div className="md:px-10 px-5 py-4 w-full">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center justify-between w-full">
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center hover:opacity-80 transition-opacity"
+            className="flex items-center hover:opacity-80 transition-opacity space-x-1"
           >
-            <div className="-ml-7">
+            <div>
               <Image
                 src={logo}
                 alt="logo"
-                width={85}
-                height={85}
-                style={{ height: "auto" }}
+                width={30}
+                height={30}
                 priority
-                className="dark:invert"
+                className="dark:invert w-fit h-fit"
               />
             </div>
             <h1 className="text-xl font-bold hidden sm:block">

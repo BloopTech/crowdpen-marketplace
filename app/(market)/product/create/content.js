@@ -507,6 +507,8 @@ export default function CreateProductContent() {
                         alt={`Product image ${index + 1}`}
                         fill
                         className="object-cover"
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        priority
                       />
                       <button
                         type="button"

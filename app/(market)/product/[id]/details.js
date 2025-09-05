@@ -14,6 +14,7 @@ import { Award, CheckCircle, FileText, Star } from "lucide-react";
 import Link from "next/link";
 import { useProductItemContext } from "./context";
 import ProductReviews from "./reviews";
+import parser from "html-react-parser";
 
 export default function ProductDetails() {
   const { productItemData } = useProductItemContext();
@@ -72,42 +73,11 @@ export default function ProductDetails() {
       <TabsContent value="contents" className="mt-6">
         <Card>
           <CardContent className="p-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-blue-600" />
-                <div>
-                  <div className="font-medium">{productItemData?.fileType}</div>
-                  <div className="text-sm text-muted-foreground">
-                    200 pages of comprehensive content
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-green-600" />
-                <div>
-                  <div className="font-medium">Bonus Templates</div>
-                  <div className="text-sm text-muted-foreground">
-                    15 ready-to-use templates
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle className="h-5 w-5 text-purple-600" />
-                <div>
-                  <div className="font-medium">Checklists & Worksheets</div>
-                  <div className="text-sm text-muted-foreground">
-                    Step-by-step action items
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Award className="h-5 w-5 text-orange-600" />
-                <div>
-                  <div className="font-medium">Bonus Resources</div>
-                  <div className="text-sm text-muted-foreground">
-                    Exclusive tools and resources
-                  </div>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className="font-medium">
+                {productItemData?.what_included
+                  ? parser(productItemData?.what_included)
+                  : null}
               </div>
             </div>
           </CardContent>
@@ -116,47 +86,6 @@ export default function ProductDetails() {
 
       <TabsContent value="reviews" className="mt-6">
         <div className="space-y-6">
-          {/* {reviews?.map((review) => (
-            <Card key={review.id}>
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <Avatar color="bg-red-500">
-                    <AvatarFallback>{review.userName.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium">{review.userName}</span>
-                      {review.verified && (
-                        <Badge variant="secondary" className="text-xs">
-                          <CheckCircle className="h-3 w-3 mr-1" />
-                          Verified Purchase
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-3 w-3 ${
-                              i < review.rating
-                                ? "fill-yellow-400 text-yellow-400"
-                                : "text-gray-300"
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-sm text-muted-foreground">
-                        {review.date}
-                      </span>
-                    </div>
-                    <p className="text-sm">{review.comment}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))} */}
-
           <ProductReviews />
         </div>
       </TabsContent>
@@ -214,4 +143,5 @@ export default function ProductDetails() {
         </Card>
       </TabsContent>
     </Tabs>
-  );}
+  );
+}

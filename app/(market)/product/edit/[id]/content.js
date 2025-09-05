@@ -663,6 +663,8 @@ export default function EditProductContent(props) {
                           alt={`Existing product image ${index + 1}`}
                           fill
                           className="object-cover"
+                          sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
+                          priority
                         />
                         <button
                           type="button"
@@ -702,6 +704,8 @@ export default function EditProductContent(props) {
                         alt={`New product image ${index + 1}`}
                         fill
                         className="object-cover"
+                        sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
+                        priority
                       />
                       <button
                         type="button"

@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useCallback, useActionState, useState, useOptimistic } from "react";
+import React, {
+  useEffect,
+  useCallback,
+  useActionState,
+  useState,
+  useOptimistic,
+} from "react";
 import Image from "next/image";
 import useInfiniteScroll from "react-infinite-scroll-hook";
 import { useAuthorProfile } from "./context";
@@ -68,7 +74,6 @@ import { useHome } from "../../../context";
 import millify from "millify";
 import MyProductCard from "./product-card";
 
-
 export default function AuthorProfileContent({ author }) {
   const {
     // Search and filter state
@@ -98,16 +103,22 @@ export default function AuthorProfileContent({ author }) {
     loadMoreReviews,
     reviewsQuery, // For error handling and manual refetching
   } = useAuthorProfile();
-  const [optimisticCart, addOptimisticCart] = useOptimistic(products, (state, newCart) => [...state, { cartItem: newCart }]);
-  const [optimisticWishlist, addOptimisticWishlist] = useOptimistic(products, (state, newWishlist) => [...state, { wishlistItem: newWishlist }]);
-  
+  const [optimisticCart, addOptimisticCart] = useOptimistic(
+    products,
+    (state, newCart) => [...state, { cartItem: newCart }]
+  );
+  const [optimisticWishlist, addOptimisticWishlist] = useOptimistic(
+    products,
+    (state, newWishlist) => [...state, { wishlistItem: newWishlist }]
+  );
+
   // Initialize data on mount - using useCallback to fix lint warnings
   const initializeData = useCallback(() => {
     if (author?.pen_name) {
       loadMoreProducts(author.pen_name, true);
       loadMoreReviews(author.pen_name, true);
     }
-  }, [author?.pen_name, loadMoreProducts, loadMoreReviews]);  
+  }, [author?.pen_name, loadMoreProducts, loadMoreReviews]);
 
   useEffect(() => {
     initializeData();
@@ -178,6 +189,7 @@ export default function AuthorProfileContent({ author }) {
               fill
               className="object-cover"
               priority
+              sizes="(max-width: 768px) 100vw, 50vw"
             />
           ) : null}
         </div>
@@ -427,14 +439,12 @@ export default function AuthorProfileContent({ author }) {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 {products?.length
                   ? products?.map((product) => {
-
                       return (
                         <MyProductCard key={product.id} product={product} />
                       );
                     })
                   : null}
               </div>
-
 
               {/* Products Loading/End Indicator */}
               <div ref={productsScrollRef} className="flex justify-center py-8">

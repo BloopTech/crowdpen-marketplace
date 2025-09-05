@@ -141,6 +141,7 @@ export default function ImageGalleryModal({
                   fill
                   className="object-cover"
                   sizes="64px"
+                  priority
                 />
               </button>
             ))}
