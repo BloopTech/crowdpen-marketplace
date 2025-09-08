@@ -7,6 +7,7 @@ import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Star, CheckCircle, ThumbsUp, MessageSquare, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import SafeHTML from "../../../components/SafeHTML";
 import useInfiniteScroll from "react-infinite-scroll-hook";
 import ReviewBox from "./reviewBox";
 
@@ -184,9 +185,9 @@ export default function ProductReviews() {
                       {review.title && (
                         <h4 className="font-medium text-gray-900 mb-2">{review.title}</h4>
                       )}
-                      <div 
+                      <SafeHTML
                         className="text-gray-700 leading-relaxed prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: review.content }}
+                        html={review.content}
                       />
                       <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
                         <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700">

@@ -11,6 +11,7 @@ import Login from "./(auth)/login";
 import QueryProvider from "./components/QueryProvider";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "sonner";
+import IdleLogout from "./components/IdleLogout";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -70,6 +71,7 @@ export default async function RootLayout({ children }) {
                     // }}
                   />
 
+                  <IdleLogout />
                   <main className="flex flex-col w-full">{children}</main>
                   <Login />
                 </HomeProvider>

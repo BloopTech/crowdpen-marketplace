@@ -14,7 +14,7 @@ import { Award, CheckCircle, FileText, Star } from "lucide-react";
 import Link from "next/link";
 import { useProductItemContext } from "./context";
 import ProductReviews from "./reviews";
-import parser from "html-react-parser";
+import SafeHTML from "../../../components/SafeHTML";
 
 export default function ProductDetails() {
   const { productItemData } = useProductItemContext();
@@ -75,9 +75,9 @@ export default function ProductDetails() {
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="font-medium">
-                {productItemData?.what_included
-                  ? parser(productItemData?.what_included)
-                  : null}
+                {productItemData?.what_included ? (
+                  <SafeHTML html={productItemData.what_included} />
+                ) : null}
               </div>
             </div>
           </CardContent>

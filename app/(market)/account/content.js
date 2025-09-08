@@ -132,8 +132,6 @@ export default function AccountContentPage() {
         <Tabs defaultValue="purchases" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="purchases">My Purchases</TabsTrigger>
-            <TabsTrigger value="wishlist">Wishlist</TabsTrigger>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
@@ -183,119 +181,6 @@ export default function AccountContentPage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="wishlist" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Heart className="h-5 w-5" />
-                  My Wishlist ({wishlist.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {wishlist.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-4 border rounded-lg"
-                    >
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{item.title}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          by {item.author}
-                        </p>
-                        <div className="flex items-center gap-2 mt-2">
-                          <span className="font-bold">${item.price}</span>
-                          {item.originalPrice && (
-                            <span className="text-sm text-muted-foreground line-through">
-                              ${item.originalPrice}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm">
-                          Remove
-                        </Button>
-                        <Button size="sm">Add to Cart</Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="profile" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Profile Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={draftProfile?.firstName || ""}
-                      onChange={(e) =>
-                        setDraftProfile((prev) => ({
-                          ...(prev || {}),
-                          firstName: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={draftProfile?.lastName || ""}
-                      onChange={(e) =>
-                        setDraftProfile((prev) => ({
-                          ...(prev || {}),
-                          lastName: e.target.value,
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={draftProfile?.email || ""}
-                    onChange={(e) =>
-                      setDraftProfile((prev) => ({
-                        ...(prev || {}),
-                        email: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="bio">Bio</Label>
-                  <textarea
-                    id="bio"
-                    className="w-full p-2 border rounded-md"
-                    rows={3}
-                    value={draftProfile?.bio || ""}
-                    onChange={(e) =>
-                      setDraftProfile((prev) => ({
-                        ...(prev || {}),
-                        bio: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <Button>Save Changes</Button>
               </CardContent>
             </Card>
           </TabsContent>

@@ -38,6 +38,7 @@ import { upsertProductReview } from "./action";
 import { useProductItemContext } from "./context";
 import { useHome } from "../../../context";
 import parser from "html-react-parser";
+import { sanitizeHtml } from "../../../lib/sanitizeHtml";
 
 export default function ReviewBox() {
   const { reviewsData, refetchReviews } = useProductItemContext();
@@ -62,6 +63,9 @@ export default function ReviewBox() {
     message: "",
     errors: {},
   });
+
+  // Memoized sanitized content for safe submission
+  const safeContent = React.useMemo(() => sanitizeHtml(content || ""), [content]);
 
   const editor = useEditor({
     extensions: [
@@ -510,7 +514,7 @@ export default function ReviewBox() {
                 <input type="hidden" name="productId" value={params?.id} />
                 <input type="hidden" name="rating" value={rating} />
                 <input type="hidden" name="title" value={title} />
-                <input type="hidden" name="content" value={content} />
+                <input type="hidden" name="content" value={safeContent} />
               </form>
             )}
           </div>

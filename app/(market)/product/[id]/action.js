@@ -5,6 +5,7 @@ import { authOptions } from "../../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { sanitizeHtmlServer } from "../../../lib/sanitizeHtmlServer";
 
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session
@@ -114,7 +115,7 @@ export async function upsertProductReview(prevState, queryData) {
     // Trim title if present
     title: title && String(title).trim().length > 0 ? String(title).trim() : null,
     // Content can be empty string for rating-only
-    content: typeof content === "string" ? content : undefined,
+    content: typeof content === "string" ? sanitizeHtmlServer(content) : undefined,
     userId,
   };
 
@@ -292,7 +293,7 @@ export async function createProductReview(prevState, queryData) {
   const body = {
     rating: validatedFields.data.rating,
     title: validatedFields.data.title,
-    content: validatedFields.data.content,
+    content: sanitizeHtmlServer(validatedFields.data.content),
     userId
   };
 

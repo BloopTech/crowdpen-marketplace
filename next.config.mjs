@@ -1,4 +1,21 @@
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === "development";
+
+const csp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "font-src 'self' https: data:",
+  "img-src 'self' data: blob: https:",
+  "object-src 'none'",
+  // Allow GA/Tag Manager and inline scripts (Next.js inline snippets). 'unsafe-eval' for dev HMR only.
+  `script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com ${isDev ? "'unsafe-inline' 'unsafe-eval'" : "'unsafe-inline'"}`,
+  "style-src 'self' 'unsafe-inline'",
+  "connect-src 'self' https: wss: ws:",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig = {
   webpack: (config, { isServer }) => {
     // Ignore sequelize dynamic import warnings
@@ -13,6 +30,19 @@ const nextConfig = {
     },
   },
   reactStrictMode: true,
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
+        ],
+      },
+    ];
+  },
   env: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL,
     NEXT_PUBLIC_NEXTAUTH_URL: process.env.NEXT_PUBLIC_NEXTAUTH_URL,
