@@ -24,7 +24,7 @@ export function AccountContextProvider({ children }) {
     () => ({
       profile: accountQuery.data?.profile,
       purchases: accountQuery.data?.purchases || [],
-      wishlist: accountQuery.data?.wishlist || [],
+      kyc: accountQuery.data?.kyc || null,
       accountQuery,
     }),
     [accountQuery]
@@ -38,9 +38,7 @@ export function AccountContextProvider({ children }) {
 export function useAccount() {
   const context = React.useContext(AccountContext);
   if (context === undefined) {
-    throw new Error(
-      "useAccount must be used within an AccountContextProvider"
-    );
+    throw new Error("useAccount must be used within an AccountContextProvider");
   }
   return context;
 }

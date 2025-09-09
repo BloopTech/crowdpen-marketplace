@@ -4,7 +4,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 
 // GET /api/marketplace/account
-// Returns current user's profile, purchases, and wishlist
+// Returns current user's profile and purchases
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -92,41 +92,56 @@ export async function GET() {
       }
     }
 
-    // Fetch wishlist
-    const wishEntries = await db.MarketplaceWishlists.findAll({
-      where: { user_id: userId },
-      include: [
-        {
-          model: db.MarketplaceProduct,
-          include: [
-            {
-              model: db.User,
-              attributes: ["id", "name", "pen_name"],
-            },
-          ],
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-
-    const wishlist = wishEntries.map((w) => {
-      const product = w.MarketplaceProduct;
-      const authorUser = product?.User;
-      return {
-        id: product?.id || w.id,
-        title: product?.title || "Untitled",
-        author: authorUser?.pen_name || authorUser?.name || "Unknown Author",
-        price: product?.price ? Number(product.price) : null,
-        originalPrice: product?.originalPrice ? Number(product.originalPrice) : null,
-        image: product?.image || null,
-      };
-    });
+    // Ensure KYC table exists; avoid hard failures if migrations haven't run
+    try {
+      if (db?.KycVerification?.sync) {
+        await db.KycVerification.sync();
+      }
+    } catch (e) {
+      console.error("KYC sync error (non-fatal):", e?.message || e);
+    }
+    // Fetch KYC status for user (if any)
+    const kycRecord = db?.KycVerification
+      ? await db.KycVerification.findOne({ where: { user_id: userId } })
+      : null;
+    const kyc = kycRecord
+      ? {
+          id: kycRecord.id,
+          status: kycRecord.status,
+          level: kycRecord.level,
+          first_name: kycRecord.first_name,
+          last_name: kycRecord.last_name,
+          middle_name: kycRecord.middle_name,
+          phone_number: kycRecord.phone_number,
+          dob: kycRecord.dob,
+          nationality: kycRecord.nationality,
+          address_line1: kycRecord.address_line1,
+          address_line2: kycRecord.address_line2,
+          city: kycRecord.city,
+          state: kycRecord.state,
+          postal_code: kycRecord.postal_code,
+          country: kycRecord.country,
+          id_type: kycRecord.id_type,
+          id_number: kycRecord.id_number,
+          id_country: kycRecord.id_country,
+          id_expiry: kycRecord.id_expiry,
+          id_front_url: kycRecord.id_front_url,
+          id_back_url: kycRecord.id_back_url,
+          selfie_url: kycRecord.selfie_url,
+          rejection_reason: kycRecord.rejection_reason,
+          reviewed_by: kycRecord.reviewed_by,
+          reviewed_at: kycRecord.reviewed_at,
+          submitted_at: kycRecord.submitted_at,
+          provider: kycRecord.provider,
+          metadata: kycRecord.metadata,
+        }
+      : null;
 
     return NextResponse.json({
       status: "success",
       profile,
       purchases,
-      wishlist,
+      kyc,
     });
   } catch (error) {
     console.error("Error fetching account data:", error);

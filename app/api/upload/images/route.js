@@ -28,6 +28,8 @@ export async function POST(request) {
 
     // Get form data with files
     const formData = await request.formData();
+    // Allow callers to specify a target folder (e.g., 'products' or 'kyc')
+    const folder = (formData.get('folder') || 'products').toString();
     const files = [];
     
     // Collect all files from the form data
@@ -62,8 +64,9 @@ export async function POST(request) {
           .toBuffer();
           
         // Generate unique filename
-        const fileName = `product-${session.user.id}-${uuidv4()}.webp`;
-        const key = `products/${fileName}`;
+        const prefix = folder === 'kyc' ? 'kyc' : 'product';
+        const fileName = `${prefix}-${session.user.id}-${uuidv4()}.webp`;
+        const key = `${folder}/${fileName}`;
         
         // Upload to Cloudflare R2
         const s3Params = {

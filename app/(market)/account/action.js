@@ -1,0 +1,130 @@
+"use server";
+import z from "zod";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../api/auth/[...nextauth]/route";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+
+export async function addAccountUpdate(prevState, queryData) {}
+
+export async function upsertKyc(prevState, formData) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return {
+        success: false,
+        message: "You must be logged in to submit KYC",
+        errors: { credentials: ["Not authenticated"] },
+      };
+    }
+
+    const MAX_BYTES = 2 * 1024 * 1024; // 2MB
+
+    const stringify = (v) => (v == null ? undefined : String(v));
+    const num = (v) => {
+      if (v == null) return undefined;
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    };
+
+    // Extract file sizes sent via hidden inputs from the form
+    const id_front_size = num(formData.get("id_front_size"));
+    const id_back_size = num(formData.get("id_back_size"));
+    const selfie_size = num(formData.get("selfie_size"));
+
+    // Zod schema for max-size validation
+    const sizeSchema = z.object({
+      id_front_size: z
+        .number({ invalid_type_error: "Invalid size" })
+        .max(MAX_BYTES, { message: "ID front image must be 2MB or less" })
+        .optional(),
+      id_back_size: z
+        .number({ invalid_type_error: "Invalid size" })
+        .max(MAX_BYTES, { message: "ID back image must be 2MB or less" })
+        .optional(),
+      selfie_size: z
+        .number({ invalid_type_error: "Invalid size" })
+        .max(MAX_BYTES, { message: "Selfie must be 2MB or less" })
+        .optional(),
+    });
+
+    const sizeParse = sizeSchema.safeParse({
+      id_front_size,
+      id_back_size,
+      selfie_size,
+    });
+
+    if (!sizeParse.success) {
+      const zodErrors = sizeParse.error.flatten().fieldErrors;
+      return {
+        success: false,
+        message:
+          Object.values(zodErrors).flat().join("\n") || "Validation failed",
+        errors: zodErrors,
+      };
+    }
+
+    // Extract fields from FormData
+    const payload = {
+      status: stringify(formData.get("status")) || "pending",
+      level: stringify(formData.get("level")) || "standard",
+      first_name: stringify(formData.get("first_name")),
+      last_name: stringify(formData.get("last_name")),
+      middle_name: stringify(formData.get("middle_name")),
+      phone_number: stringify(formData.get("phone_number")),
+      dob: stringify(formData.get("dob")) || undefined,
+      nationality: stringify(formData.get("nationality")),
+      address_line1: stringify(formData.get("address_line1")),
+      address_line2: stringify(formData.get("address_line2")),
+      city: stringify(formData.get("city")),
+      state: stringify(formData.get("state")),
+      postal_code: stringify(formData.get("postal_code")),
+      country: stringify(formData.get("country")),
+      id_type: stringify(formData.get("id_type")),
+      id_number: stringify(formData.get("id_number")),
+      id_country: stringify(formData.get("id_country")),
+      id_expiry: stringify(formData.get("id_expiry")) || undefined,
+      id_front_url: stringify(formData.get("id_front_url")) || undefined,
+      id_back_url: stringify(formData.get("id_back_url")) || undefined,
+      selfie_url: stringify(formData.get("selfie_url")) || undefined,
+      provider: stringify(formData.get("provider")) || undefined,
+    };
+
+    const origin =
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
+    const url = new URL(`/api/marketplace/account/kyc`, origin).toString();
+
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result?.status !== "success") {
+      return {
+        success: false,
+        message: result?.message || "Failed to submit KYC",
+        errors: result?.errors || {},
+      };
+    }
+
+    // Revalidate account page cache
+    revalidatePath("/account");
+
+    return {
+      success: true,
+      message: result?.message || "KYC submitted",
+      data: { kycId: result?.kycId },
+      errors: {},
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error?.message || "Unexpected error",
+      errors: {},
+    };
+  }
+}
