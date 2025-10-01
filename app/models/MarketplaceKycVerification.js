@@ -2,13 +2,13 @@
 import { Model, DataTypes } from "sequelize";
 import sequelize from "./database";
 
-class KycVerification extends Model {
+class MarketplaceKycVerification extends Model {
   static associate(models) {
-    KycVerification.belongsTo(models.User, { foreignKey: "user_id" });
+    MarketplaceKycVerification.belongsTo(models.User, { foreignKey: "user_id" });
   }
 }
 
-KycVerification.init(
+MarketplaceKycVerification.init(
   {
     id: {
       type: DataTypes.UUID,
@@ -67,9 +67,9 @@ KycVerification.init(
   },
   {
     sequelize,
-    modelName: "KycVerification",
-    tableName: "kyc_verifications",
+    modelName: "MarketplaceKycVerification",
+    tableName: "marketplace_kyc_verifications",
   }
 );
 
-export default KycVerification;
+export default MarketplaceKycVerification;

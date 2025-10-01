@@ -7,8 +7,68 @@ import { redirect } from "next/navigation";
 
 export async function addAccountUpdate(prevState, queryData) {}
 
+export async function upsertBank(prevState, formData) {
+
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return {
+        success: false,
+        message: "You must be logged in to save bank details",
+        errors: { credentials: ["Not authenticated"] },
+      };
+    }
+
+    const stringify = (v) => (v == null ? undefined : String(v));
+    const boolify = (v) => (v === "true" || v === true ? true : false);
+
+    const payload = {
+      payout_type: stringify(formData.get("payout_type")) || "bank",
+      currency: stringify(formData.get("currency")),
+      country_code: stringify(formData.get("country_code")) || undefined,
+      bank_code: stringify(formData.get("bank_code")) || undefined,
+      bank_name: stringify(formData.get("bank_name")) || undefined,
+      bank_id: stringify(formData.get("bank_id")) || undefined,
+      account_name: stringify(formData.get("account_name")) || undefined,
+      account_number: stringify(formData.get("account_number")) || undefined,
+      msisdn: stringify(formData.get("msisdn")) || undefined,
+      verified: boolify(formData.get("verified")),
+    };
+
+    const origin =
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
+    const url = new URL(`/api/marketplace/account/bank`, origin).toString();
+
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || result?.status !== "success") {
+      return {
+        success: false,
+        message: result?.message || "Failed to save bank details",
+        errors: result?.errors || {},
+      };
+    }
+
+    // Revalidate account page cache
+    revalidatePath("/account");
+
+    return {
+      success: true,
+      message: "Bank details saved",
+      data: { id: result?.id },
+      errors: {},
+    };
+  
+}
+
 export async function upsertKyc(prevState, formData) {
-  try {
+  
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return {
@@ -120,11 +180,4 @@ export async function upsertKyc(prevState, formData) {
       data: { kycId: result?.kycId },
       errors: {},
     };
-  } catch (error) {
-    return {
-      success: false,
-      message: error?.message || "Unexpected error",
-      errors: {},
-    };
-  }
 }

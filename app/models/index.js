@@ -19,7 +19,10 @@ import MarketplaceTags from "./MarketplaceTags";
 import SubscriptionPayment from "./subscriptionpayment";
 import MarketplaceWishlists from "./wishlists";
 import Session from "./Session";
-import KycVerification from "./KycVerification";
+import MarketplaceKycVerification from "./MarketplaceKycVerification";
+import MarketplaceMerchantBank from "./MarketplaceMerchantBank";
+import MarketplaceCollections from "./MarketplaceCollections";
+import MarketplaceAdminTransactions from "./MarketplaceAdminTransactions";
 
 // Create models object
 const db = {
@@ -39,7 +42,10 @@ const db = {
   MarketplaceWishlists,
   SubscriptionPayment,
   Session,
-  KycVerification
+  MarketplaceKycVerification,
+  MarketplaceMerchantBank,
+  MarketplaceAdminTransactions,
+  MarketplaceCollections
 };
 
 // Initialize all associations after all models are loaded

@@ -3,15 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 
-async function ensureKycSynced() {
-  try {
-    if (db?.KycVerification?.sync) {
-      await db.KycVerification.sync();
-    }
-  } catch (e) {
-    console.error("KYC sync error (non-fatal):", e?.message || e);
-  }
-}
 
 export async function GET() {
   try {
@@ -24,9 +15,8 @@ export async function GET() {
     }
 
     const userId = session.user.id;
-    await ensureKycSynced();
 
-    const kyc = await db.KycVerification.findOne({ where: { user_id: userId } });
+    const kyc = await db.MarketplaceKycVerification.findOne({ where: { user_id: userId } });
 
     return NextResponse.json({
       status: "success",
@@ -83,7 +73,6 @@ export async function PATCH(request) {
     }
 
     const userId = session.user.id;
-    await ensureKycSynced();
     const body = await request.json();
 
     const payload = {
@@ -113,13 +102,13 @@ export async function PATCH(request) {
       metadata: body.metadata || null,
     };
 
-    const existing = await db.KycVerification.findOne({ where: { user_id: userId } });
+    const existing = await db.MarketplaceKycVerification.findOne({ where: { user_id: userId } });
     let record;
     if (existing) {
       await existing.update(payload);
       record = existing;
     } else {
-      record = await db.KycVerification.create({ ...payload, submitted_at: new Date() });
+      record = await db.MarketplaceKycVerification.create({ ...payload, submitted_at: new Date() });
     }
 
     return NextResponse.json({

@@ -23,6 +23,10 @@ class User extends Model {
     User.hasOne(models.Session, {
       foreignKey: "user_id",
     });
+    User.hasMany(models.MarketplaceAdminTransactions, { foreignKey: 'recipient_id' });
+    User.hasMany(models.MarketplaceCollections, { foreignKey: 'merchant_id' });
+    User.hasOne(models.MarketplaceKycVerification, { foreignKey: 'user_id' });
+    User.hasOne(models.MarketplaceMerchantBank, { foreignKey: 'user_id' });
   }
 }
 

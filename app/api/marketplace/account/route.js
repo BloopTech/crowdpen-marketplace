@@ -41,7 +41,8 @@ export async function GET() {
       id: user?.id,
       name: fullName || undefined,
       firstName: firstName || session.user.name?.split(" ")?.[0] || "",
-      lastName: lastName || session.user.name?.split(" ")?.slice(1).join(" ") || "",
+      lastName:
+        lastName || session.user.name?.split(" ")?.slice(1).join(" ") || "",
       email: user?.email || session.user.email || "",
       bio: user?.description || "",
       image: user?.image || null,
@@ -75,7 +76,9 @@ export async function GET() {
     const purchases = [];
     for (const order of orders) {
       const createdAt = order?.createdAt ? new Date(order.createdAt) : null;
-      const purchaseDate = createdAt ? createdAt.toISOString().slice(0, 10) : null;
+      const purchaseDate = createdAt
+        ? createdAt.toISOString().slice(0, 10)
+        : null;
 
       for (const item of order.MarketplaceOrderItems || []) {
         const product = item.MarketplaceProduct;
@@ -92,17 +95,11 @@ export async function GET() {
       }
     }
 
-    // Ensure KYC table exists; avoid hard failures if migrations haven't run
-    try {
-      if (db?.KycVerification?.sync) {
-        await db.KycVerification.sync();
-      }
-    } catch (e) {
-      console.error("KYC sync error (non-fatal):", e?.message || e);
-    }
     // Fetch KYC status for user (if any)
-    const kycRecord = db?.KycVerification
-      ? await db.KycVerification.findOne({ where: { user_id: userId } })
+    const kycRecord = db?.MarketplaceKycVerification
+      ? await db.MarketplaceKycVerification.findOne({
+          where: { user_id: userId },
+        })
       : null;
     const kyc = kycRecord
       ? {
@@ -137,11 +134,31 @@ export async function GET() {
         }
       : null;
 
+    // Fetch merchant bank details (masked)
+    const bankRecord = db?.MarketplaceMerchantBank
+      ? await db.MarketplaceMerchantBank.findOne({ where: { user_id: userId } })
+      : null;
+    const bank = bankRecord
+      ? {
+          id: bankRecord.id,
+          payout_type: bankRecord.payout_type,
+          currency: bankRecord.currency,
+          country_code: bankRecord.country_code,
+          bank_code: bankRecord.bank_code,
+          bank_name: bankRecord.bank_name,
+          bank_id: bankRecord.bank_id,
+          account_name: bankRecord.account_name,
+          account_number_last4: bankRecord.account_number_last4,
+          verified: !!bankRecord.verified,
+        }
+      : null;
+
     return NextResponse.json({
       status: "success",
       profile,
       purchases,
       kyc,
+      bank,
     });
   } catch (error) {
     console.error("Error fetching account data:", error);

@@ -50,6 +50,7 @@ import MarketplaceHeader from "../../components/marketplace-header";
 import { useAccount } from "./context";
 import { toast } from "sonner";
 import { upsertKyc } from "./action";
+import BankDetailsCard from "./bank-card";
 
 const initialStateValues = {
   message: "",
@@ -955,6 +956,9 @@ export default function AccountContentPage() {
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
+            <div className="space-y-6">
+              <BankDetailsCard />
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
