@@ -32,6 +32,7 @@ export async function upsertBank(prevState, formData) {
       account_number: stringify(formData.get("account_number")) || undefined,
       msisdn: stringify(formData.get("msisdn")) || undefined,
       verified: boolify(formData.get("verified")),
+      userId: session.user.id
     };
 
     const origin =
@@ -68,7 +69,7 @@ export async function upsertBank(prevState, formData) {
 }
 
 export async function upsertKyc(prevState, formData) {
-  
+
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return {
@@ -148,6 +149,7 @@ export async function upsertKyc(prevState, formData) {
       id_back_url: stringify(formData.get("id_back_url")) || undefined,
       selfie_url: stringify(formData.get("selfie_url")) || undefined,
       provider: stringify(formData.get("provider")) || undefined,
+      userId: session.user.id
     };
 
     const origin =

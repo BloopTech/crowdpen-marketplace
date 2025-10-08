@@ -7,6 +7,7 @@ import GoogleAnalytics from "./components/googleAnalytics";
 import { ThemeProvider } from "next-themes";
 import { SWRConfig } from "swr";
 import { HomeProvider } from "./context";
+import { TooltipProvider } from "./components/ui/tooltip";
 import Login from "./(auth)/login";
 import QueryProvider from "./components/QueryProvider";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -58,7 +59,8 @@ export default async function RootLayout({ children }) {
               )}
 
               <NuqsAdapter>
-                <HomeProvider>
+                <TooltipProvider>
+                  <HomeProvider>
                   <Toaster
                     position="top-right"
                     expand={true}
@@ -74,7 +76,8 @@ export default async function RootLayout({ children }) {
                   <IdleLogout />
                   <main className="flex flex-col w-full">{children}</main>
                   <Login />
-                </HomeProvider>
+                  </HomeProvider>
+                </TooltipProvider>
               </NuqsAdapter>
             </QueryProvider>
           </SessionProvider>

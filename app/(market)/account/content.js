@@ -66,7 +66,14 @@ const initialStateValues = {
 
 export default function AccountContentPage() {
   const [searchQuery, setSearchQuery] = useState("");
-  const { profile, purchases = [], kyc, accountQuery } = useAccount();
+  const {
+    profile,
+    purchases = [],
+    kyc,
+    refetchAccountQuery,
+    accountQueryLoading,
+    accountQueryError,
+  } = useAccount();
 
   // Server Action wiring
   const [kycState, kycFormAction, kycIsPending] = useActionState(
@@ -78,11 +85,11 @@ export default function AccountContentPage() {
     if (kycState.success && kycState.message) {
       toast.success(kycState.message);
       setKycStep(0);
-      accountQuery.refetch();
+      refetchAccountQuery();
     } else if (!kycState.success && kycState.message) {
       toast.error(kycState.message);
     }
-  }, [kycState, accountQuery]);
+  }, [kycState, refetchAccountQuery]);
 
   // Local editable draft for the Profile tab
   const [draftProfile, setDraftProfile] = useState(null);
@@ -127,21 +134,21 @@ export default function AccountContentPage() {
     preview: null,
     uploadedUrl: null,
     uploading: false,
-    size: undefined,
+    size: 0,
   });
   const [idBack, setIdBack] = useState({
     file: null,
     preview: null,
     uploadedUrl: null,
     uploading: false,
-    size: undefined,
+    size: 0,
   });
   const [selfie, setSelfie] = useState({
     file: null,
     preview: null,
     uploadedUrl: null,
     uploading: false,
-    size: undefined,
+    size: 0,
   });
 
   useEffect(() => {
@@ -253,7 +260,7 @@ export default function AccountContentPage() {
     return profile?.name || combined;
   }, [displayFirstName, displayLastName, profile?.name]);
 
-  if (accountQuery.isLoading) {
+  if (accountQueryLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center gap-3 text-slate-600">
@@ -264,17 +271,17 @@ export default function AccountContentPage() {
     );
   }
 
-  if (accountQuery.isError) {
+  if (accountQueryError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center space-y-3">
           <p className="text-slate-700">Failed to load your account.</p>
-          <Button onClick={() => accountQuery.refetch()}>Retry</Button>
+          <Button onClick={() => refetchAccountQuery()}>Retry</Button>
         </div>
       </div>
     );
   }
-
+console.log("KYC FORM", kycForm)
   return (
     <div className="min-h-screen bg-gray-50">
       <MarketplaceHeader
@@ -427,7 +434,82 @@ export default function AccountContentPage() {
                     name="level"
                     value={kyc?.level || "standard"}
                   />
+                  <input
+                    type="hidden"
+                    name="first_name"
+                    value={kycForm.first_name || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="last_name"
+                    value={kycForm.last_name || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="middle_name"
+                    value={kycForm.middle_name || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="phone_number"
+                    value={kycForm.phone_number || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="dob"
+                    value={kycForm.dob || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="nationality"
+                    value={kycForm.nationality || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="address_line1"
+                    value={kycForm.address_line1 || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="address_line2"
+                    value={kycForm.address_line2 || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="city"
+                    value={kycForm.city || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="state"
+                    value={kycForm.state || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="postal_code"
+                    value={kycForm.postal_code || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="country"
+                    value={kycForm.country || ""}
+                  />
                   <input type="hidden" name="id_type" value={kycForm.id_type} />
+                  <input
+                    type="hidden"
+                    name="id_number"
+                    value={kycForm.id_number || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="id_country"
+                    value={kycForm.id_country || ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="id_expiry"
+                    value={kycForm.id_expiry || ""}
+                  />
                   <input
                     type="hidden"
                     name="id_front_url"
@@ -575,6 +657,7 @@ export default function AccountContentPage() {
                               name="dob"
                               type="date"
                               value={kycForm.dob}
+                              max={new Date().toISOString().split("T")[0]}
                               onChange={(e) => setField("dob", e.target.value)}
                             />
                           </div>
@@ -705,6 +788,7 @@ export default function AccountContentPage() {
                               name="id_expiry"
                               type="date"
                               value={kycForm.id_expiry}
+                              min={new Date().toISOString().split("T")[0]}
                               onChange={(e) =>
                                 setField("id_expiry", e.target.value)
                               }

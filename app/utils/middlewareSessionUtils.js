@@ -12,7 +12,7 @@ export async function isAuthenticatedInMiddleware(request) {
       request.cookies.get("__Secure-next-auth.session-token")?.value;
     console.log("token........................", sessionToken);
     if (!sessionToken) {
-      return false;
+      return { isAuthenticated: false, user: null };
     }
 
     // For Edge Runtime compatibility, we'll make an internal API call
@@ -30,16 +30,19 @@ export async function isAuthenticatedInMiddleware(request) {
     });
     //console.log("response agao............................", response)
     if (!response.ok) {
-      return false;
+      return { isAuthenticated: false, user: null };
     }
 
     const result = await response.json();
     //console.log("result again............................", result)
-    const isValid = result.isValid;
-    return !!isValid;
+    const isValid = !!result.isValid;
+    return {
+      isAuthenticated: isValid,
+      user: isValid ? result.user ?? null : null,
+    };
   } catch (error) {
     console.error("Error checking authentication in middleware:", error);
     // On error, fall back to false for security
-    return false;
+    return { isAuthenticated: false, user: null };
   }
 }

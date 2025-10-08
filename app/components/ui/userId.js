@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "./dropdown-menu";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, ShieldUser } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../Tooltip/tooltipper";
 import { useTheme } from "next-themes";
 import UserProfilePicture from "../userpfp";
@@ -75,6 +75,21 @@ export function UserId() {
               </div>
             </Link>
           </DropdownMenuItem>
+
+          {session?.user?.crowdpen_staff ||
+          session?.user?.role === "admin" ||
+          session?.user?.role === "senior_admin" ? (
+            <DropdownMenuItem>
+              <Link href="/admin" className="w-full">
+                <div
+                  className={`flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                >
+                  <ShieldUser className="mr-2 size-5" aria-hidden="true" />
+                  Admin
+                </div>
+              </Link>
+            </DropdownMenuItem>
+          ) : null}
 
           <ThemeToggle />
 

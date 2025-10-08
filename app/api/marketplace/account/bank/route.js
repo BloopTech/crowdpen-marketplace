@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 
-
 export async function GET() {
   try {
     const session = await getServerSession(authOptions);
@@ -15,7 +14,9 @@ export async function GET() {
     }
 
     const userId = session.user.id;
-    const record = await db.MarketplaceMerchantBank.findOne({ where: { user_id: userId } });
+    const record = await db.MarketplaceMerchantBank.findOne({
+      where: { user_id: userId },
+    });
 
     if (!record) {
       return NextResponse.json({ status: "success", bank: null });
@@ -78,7 +79,9 @@ export async function PATCH(request) {
       payload.account_number = String(body.account_number);
     }
 
-    let record = await db.MarketplaceMerchantBank.findOne({ where: { user_id: userId } });
+    let record = await db.MarketplaceMerchantBank.findOne({
+      where: { user_id: body.userId },
+    });
     if (record) {
       await record.update(payload);
     } else {

@@ -60,20 +60,35 @@ export async function middleware(request) {
   reqHeaders.set('x-nonce', nonce);
   
   const isDashboardRoute = isProtectedRoute(pathname);
+  const isAdminRoute = pathname.startsWith('/admin');
   const isAuthRoute = authRoutes.includes(pathname);
   
   try {
     // Check authentication using session cookies
-    const isAuthenticated = await isAuthenticatedInMiddleware(request);
+    const { isAuthenticated, user } = await isAuthenticatedInMiddleware(request);
     
     // Redirect unauthenticated users from protected routes
-    if (!isAuthenticated && isDashboardRoute) {
+    if (!isAuthenticated && (isDashboardRoute || isAdminRoute)) {
       const loginUrl = new URL('/', request.url);
       // Add redirect parameter to return user to original page after login
       loginUrl.searchParams.set('redirect', pathname);
       const redirectRes = NextResponse.redirect(loginUrl);
       redirectRes.headers.set('Content-Security-Policy', buildCSP(nonce));
       return redirectRes;
+    }
+
+    // Restrict admin routes to authorized roles
+    if (
+      isAdminRoute &&
+      !(
+        user?.crowdpen_staff === true ||
+        user?.role === 'admin' ||
+        user?.role === 'senior_admin'
+      )
+    ) {
+      const unauthorizedRes = NextResponse.redirect(new URL('/', request.url));
+      unauthorizedRes.headers.set('Content-Security-Policy', buildCSP(nonce));
+      return unauthorizedRes;
     }
     
     // Redirect authenticated users from auth-only routes (like login pages)

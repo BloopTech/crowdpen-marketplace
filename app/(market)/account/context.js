@@ -14,7 +14,12 @@ export const AccountContext = createContext();
 export function AccountContextProvider({ children }) {
   const [payoutType, setPayoutType] = useState("bank");
 
-  const accountQuery = useQuery({
+  const {
+    isLoading: accountQueryLoading,
+    error: accountQueryError,
+    data: accountQuery,
+    refetch: refetchAccountQuery,
+  } = useQuery({
     queryKey: ["account", "me"],
     queryFn: async () => {
       const res = await fetch(`/api/marketplace/account`, {
@@ -27,7 +32,7 @@ export function AccountContextProvider({ children }) {
       return data;
     },
   });
-
+  console.log("accountQuery", accountQuery);
   const bankListQuery = useQuery({
     queryKey: ["bank-list", payoutType],
     enabled: payoutType === "bank" || payoutType === "mobile_money",
@@ -48,10 +53,10 @@ export function AccountContextProvider({ children }) {
 
   const value = useMemo(
     () => ({
-      profile: accountQuery.data?.profile,
-      purchases: accountQuery.data?.purchases || [],
-      kyc: accountQuery.data?.kyc || null,
-      bank: accountQuery.data?.bank || null,
+      profile: accountQuery?.profile,
+      purchases: accountQuery?.purchases || [],
+      kyc: accountQuery?.kyc || null,
+      bank: accountQuery?.bank || null,
       accountQuery,
     }),
     [accountQuery]
@@ -80,6 +85,9 @@ export function AccountContextProvider({ children }) {
         loadingBanks,
         payoutType,
         setPayoutType,
+        refetchAccountQuery,
+        accountQueryLoading,
+        accountQueryError,
       }}
     >
       {children}

@@ -5,7 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { toast } from "sonner";
 
 // Inactivity thresholds
-const INACTIVITY_LIMIT_MS = 3 * 60 * 1000; // 5 minutes
+const INACTIVITY_LIMIT_MS = 5 * 60 * 1000; // 5 minutes
 const WARNING_BEFORE_MS = 60 * 1000; // warn 1 minute before logout
 const WARNING_AT_MS = INACTIVITY_LIMIT_MS - WARNING_BEFORE_MS; // 4 minutes
 const LAST_ACTIVITY_KEY = "cp_last_activity_v1";

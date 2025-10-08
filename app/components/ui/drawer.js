@@ -19,6 +19,12 @@ const DrawerPortal = DrawerPrimitive.Portal;
 
 const DrawerClose = DrawerPrimitive.Close;
 
+const DrawerBody = forwardRef(({ className, ...props }, ref) => {
+  return <div ref={ref} className={cx("flex-1 py-4", className)} {...props} />;
+});
+
+DrawerBody.displayName = "Drawer.Body";
+
 const DrawerOverlay = forwardRef(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
@@ -94,4 +100,5 @@ export {
   DrawerFooter,
   DrawerTitle,
   DrawerDescription,
+  DrawerBody,
 };

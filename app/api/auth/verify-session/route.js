@@ -15,7 +15,12 @@ export async function POST(request) {
 
     // Verify the session token with the database
     const [results] = await sequelize.query(
-      `SELECT s."session_token", s."expires", s."user_id", u."id" as "userExists"
+      `SELECT s."session_token",
+              s."expires",
+              s."user_id",
+              u."id" as "userExists",
+              u."role" as "userRole",
+              u."crowdpen_staff" as "crowdpenStaff"
        FROM "sessions" s
        LEFT JOIN "users" u ON s."user_id" = u."id"
        WHERE s."session_token" = :sessionToken
@@ -28,11 +33,18 @@ export async function POST(request) {
     //console.log("results server............................", results)
 
     // Check if we found a valid, non-expired session with an existing user
-    const isValid = results && results.userExists;
+    const isValid = !!(results && results.userExists);
 
     return NextResponse.json({
       isValid,
       userId: isValid ? results.user_id : null,
+      user: isValid
+        ? {
+            id: results.user_id,
+            role: results.userRole,
+            crowdpen_staff: results.crowdpenStaff,
+          }
+        : null,
     });
   } catch (error) {
     console.error("Error verifying session:", error);
