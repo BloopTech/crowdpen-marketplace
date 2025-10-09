@@ -250,3 +250,4 @@ export default function AmazonStyleMarketplace() {
     </>
   );
 }
+//https://checkout.startbutton.tech/version.latest/sb-web-sdk.min.js
