@@ -23,7 +23,11 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limit = Math.min(Number(searchParams.get("limit") || 200), 500);
+    const limitParam = Number(searchParams.get("pageSize") || 20);
+    const pageParam = Number(searchParams.get("page") || 1);
+    const pageSize = Math.min(Math.max(limitParam, 1), 100);
+    const page = Math.max(pageParam, 1);
+    const offset = (page - 1) * pageSize;
     const q = searchParams.get("q") || "";
 
     // Merchants (users with creator=true)
@@ -34,22 +38,46 @@ export async function GET(request) {
         { email: { [Op.iLike]: `%${q}%` } },
       ];
     }
-    const merchants = await db.User.findAll({
+    const merchantsRes = await db.User.findAndCountAll({
       where: whereMerchants,
-      attributes: ["id", "name", "email", "role", "creator", "crowdpen_staff", "createdAt"],
+      attributes: ["id", "name", "email", "image", "color", "role", "creator", "crowdpen_staff", "createdAt"],
       order: [["createdAt", "DESC"]],
-      limit,
+      limit: pageSize,
+      offset,
     });
 
-    // Applicants (users with KYC submitted; status != 'unverified')
-    const applicants = await db.MarketplaceKycVerification.findAll({
+    // applicants (users with KYC submitted; status != 'unverified')
+    const applicantUserInclude = {
+      model: db.User,
+      attributes: ["id", "name", "email", "image", "color", "role"],
+    };
+    if (q) {
+      applicantUserInclude.where = {
+        [Op.or]: [
+          { name: { [Op.iLike]: `%${q}%` } },
+          { email: { [Op.iLike]: `%${q}%` } },
+        ],
+      };
+      applicantUserInclude.required = true;
+    }
+
+    const applicantsRes = await db.MarketplaceKycVerification.findAndCountAll({
       where: { status: { [Op.ne]: "unverified" } },
-      include: [{ model: db.User, attributes: ["id", "name", "email", "role"] }],
+      include: [applicantUserInclude],
       order: [["submitted_at", "DESC"]],
-      limit,
+      limit: pageSize,
+      offset,
     });
 
-    return NextResponse.json({ status: "success", merchants, applicants });
+    return NextResponse.json({
+      status: "success",
+      page,
+      pageSize,
+      merchants: merchantsRes.rows,
+      merchantsTotal: merchantsRes.count,
+      applicants: applicantsRes.rows,
+      applicantsTotal: applicantsRes.count,
+    });
   } catch (error) {
     console.error("/api/admin/merchants error", error);
     return NextResponse.json({ status: "error", message: error?.message || "Failed" }, { status: 500 });

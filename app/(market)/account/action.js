@@ -15,6 +15,7 @@ export async function upsertBank(prevState, formData) {
         success: false,
         message: "You must be logged in to save bank details",
         errors: { credentials: ["Not authenticated"] },
+        data: {}
       };
     }
 
@@ -53,6 +54,7 @@ export async function upsertBank(prevState, formData) {
         success: false,
         message: result?.message || "Failed to save bank details",
         errors: result?.errors || {},
+        data: {}
       };
     }
 
@@ -76,6 +78,7 @@ export async function upsertKyc(prevState, formData) {
         success: false,
         message: "You must be logged in to submit KYC",
         errors: { credentials: ["Not authenticated"] },
+        data: {}
       };
     }
 
@@ -170,6 +173,7 @@ export async function upsertKyc(prevState, formData) {
         success: false,
         message: result?.message || "Failed to submit KYC",
         errors: result?.errors || {},
+        data: {}
       };
     }
 

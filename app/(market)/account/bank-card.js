@@ -21,7 +21,7 @@ import { Badge } from "../../components/ui/badge";
 import { Separator } from "../../components/ui/separator";
 import { AlertCircle, Banknote, Check, Loader2, Shield } from "lucide-react";
 import { toast } from "sonner";
-import { useAccount} from "./context";
+import { useAccount } from "./context";
 import { upsertBank } from "./action";
 
 // No manual currency/country selection; currency and country are derived server-side
@@ -45,12 +45,17 @@ export default function BankDetailsCard() {
     initialState
   );
   useEffect(() => {
-    if (!actionState) return;
-    if (actionState.success) {
+    if (
+      Object.keys(actionState?.data || {}).length > 0 &&
+      actionState.message
+    ) {
       toast.success(actionState.message || "Bank details saved");
       accountQuery.refetch();
       setEditing(false);
-    } else if (actionState.message) {
+    } else if (
+      Object.keys(actionState?.errors || {}).length > 0 &&
+      actionState.message
+    ) {
       toast.error(actionState.message);
     }
   }, [actionState, accountQuery]);
@@ -102,9 +107,14 @@ export default function BankDetailsCard() {
   const filteredBanks = useMemo(() => {
     const f = bankFilter.toLowerCase().trim();
     if (!f) return banks;
-    return banks.filter((b) =>
-      String(b.name || "").toLowerCase().includes(f) ||
-      String(b.code || "").toLowerCase().includes(f)
+    return banks.filter(
+      (b) =>
+        String(b.name || "")
+          .toLowerCase()
+          .includes(f) ||
+        String(b.code || "")
+          .toLowerCase()
+          .includes(f)
     );
   }, [bankFilter, banks]);
 

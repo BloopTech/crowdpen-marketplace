@@ -27,6 +27,10 @@ class User extends Model {
     User.hasMany(models.MarketplaceCollections, { foreignKey: 'merchant_id' });
     User.hasOne(models.MarketplaceKycVerification, { foreignKey: 'user_id' });
     User.hasOne(models.MarketplaceMerchantBank, { foreignKey: 'user_id' });
+    // Tickets
+    User.hasMany(models.MarketplaceTicket, { foreignKey: 'user_id' }); // requester tickets
+    User.hasMany(models.MarketplaceTicket, { foreignKey: 'assigned_to', as: 'AssignedTickets' });
+    User.hasMany(models.MarketplaceTicket, { foreignKey: 'last_message_by', as: 'LastMessageAuthoredTickets' });
   }
 }
 

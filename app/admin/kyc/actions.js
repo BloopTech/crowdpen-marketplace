@@ -12,13 +12,32 @@ function isAdminOrSenior(user) {
 export async function approveKyc(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
-    return { success: false, message: "Unauthorized" };
+    return {
+      success: false,
+      message: "Unauthorized",
+      error: { session },
+      data: {},
+    };
   }
   const kycId = String(formData.get("kycId") || "").trim();
-  if (!kycId) return { success: false, message: "Missing kycId" };
+  if (!kycId)
+    return {
+      success: false,
+      message: "Missing kycId",
+      error: { kycId },
+      data: {},
+    };
 
-  const record = await db.MarketplaceKycVerification.findOne({ where: { id: kycId } });
-  if (!record) return { success: false, message: "KYC record not found" };
+  const record = await db.MarketplaceKycVerification.findOne({
+    where: { id: kycId },
+  });
+  if (!record)
+    return {
+      success: false,
+      message: "KYC record not found",
+      data: {},
+      error: { kycId },
+    };
 
   await record.update({
     status: "approved",
@@ -28,20 +47,39 @@ export async function approveKyc(prevState, formData) {
   });
 
   revalidatePath("/admin/kyc");
-  return { success: true, message: "KYC approved" };
+  return { success: true, message: "KYC approved", data: record, error: {} };
 }
 
 export async function rejectKyc(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
-    return { success: false, message: "Unauthorized" };
+    return {
+      success: false,
+      message: "Unauthorized",
+      error: { session },
+      data: {},
+    };
   }
   const kycId = String(formData.get("kycId") || "").trim();
   const reason = String(formData.get("reason") || "").trim();
-  if (!kycId) return { success: false, message: "Missing kycId" };
+  if (!kycId)
+    return {
+      success: false,
+      message: "Missing kycId",
+      error: { kycId },
+      data: {},
+    };
 
-  const record = await db.MarketplaceKycVerification.findOne({ where: { id: kycId } });
-  if (!record) return { success: false, message: "KYC record not found" };
+  const record = await db.MarketplaceKycVerification.findOne({
+    where: { id: kycId },
+  });
+  if (!record)
+    return {
+      success: false,
+      message: "KYC record not found",
+      data: {},
+      error: { kycId },
+    };
 
   await record.update({
     status: "rejected",
@@ -51,5 +89,5 @@ export async function rejectKyc(prevState, formData) {
   });
 
   revalidatePath("/admin/kyc");
-  return { success: true, message: "KYC rejected" };
+  return { success: true, message: "KYC rejected", error: {}, data: record };
 }

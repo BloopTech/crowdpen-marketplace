@@ -81,12 +81,14 @@ export default function AccountContentPage() {
     initialStateValues
   );
   useEffect(() => {
-    if (!kycState) return;
-    if (kycState.success && kycState.message) {
+    if (Object.keys(kycState?.data || {}).length > 0 && kycState.message) {
       toast.success(kycState.message);
       setKycStep(0);
       refetchAccountQuery();
-    } else if (!kycState.success && kycState.message) {
+    } else if (
+      Object.keys(kycState?.errors || {}).length > 0 &&
+      kycState.message
+    ) {
       toast.error(kycState.message);
     }
   }, [kycState, refetchAccountQuery]);
@@ -281,7 +283,7 @@ export default function AccountContentPage() {
       </div>
     );
   }
-console.log("KYC FORM", kycForm)
+  console.log("KYC FORM", kycForm);
   return (
     <div className="min-h-screen bg-gray-50">
       <MarketplaceHeader
@@ -454,11 +456,7 @@ console.log("KYC FORM", kycForm)
                     name="phone_number"
                     value={kycForm.phone_number || ""}
                   />
-                  <input
-                    type="hidden"
-                    name="dob"
-                    value={kycForm.dob || ""}
-                  />
+                  <input type="hidden" name="dob" value={kycForm.dob || ""} />
                   <input
                     type="hidden"
                     name="nationality"
@@ -474,11 +472,7 @@ console.log("KYC FORM", kycForm)
                     name="address_line2"
                     value={kycForm.address_line2 || ""}
                   />
-                  <input
-                    type="hidden"
-                    name="city"
-                    value={kycForm.city || ""}
-                  />
+                  <input type="hidden" name="city" value={kycForm.city || ""} />
                   <input
                     type="hidden"
                     name="state"

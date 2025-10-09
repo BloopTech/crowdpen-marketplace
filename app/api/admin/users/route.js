@@ -25,6 +25,7 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const q = searchParams.get("q") || "";
     const role = searchParams.get("role") || "";
+    const scope = searchParams.get("scope") || "privileged"; // privileged | all
     const limit = Math.min(Number(searchParams.get("limit") || 200), 500);
 
     const where = {};
@@ -36,12 +37,24 @@ export async function GET(request) {
     }
     if (role) where.role = role;
 
+    // Default: only privileged users
+    if (scope !== "all") {
+      where[Op.or] = [
+        ...(where[Op.or] || []),
+        { role: "admin" },
+        { role: "senior_admin" },
+        { crowdpen_staff: true },
+      ];
+    }
+
     const users = await db.User.findAll({
       where,
       attributes: [
         "id",
         "name",
         "email",
+        "image",
+        "color",
         "role",
         "crowdpen_staff",
         "creator",

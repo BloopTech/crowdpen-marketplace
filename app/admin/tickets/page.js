@@ -5,17 +5,33 @@ import { useAdmin } from "../context";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../../components/ui/pagination";
+import { Avatar, AvatarFallback } from "../../components/ui/avatar";
+import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 
 export default function TicketsPage() {
-  const { ticketsQuery } = useAdmin();
+  const { ticketsQuery, ticketsParams, setTicketsParams } = useAdmin();
+  const [qs, setQs] = useQueryStates(
+    {
+      page: parseAsInteger.withDefault(1),
+      pageSize: parseAsInteger.withDefault(20),
+      q: parseAsString.withDefault(""),
+    },
+    { clearOnDefault: true }
+  );
 
   useEffect(() => {
+    setTicketsParams((p) => ({ ...p, page: qs.page, pageSize: qs.pageSize, q: qs.q }));
     ticketsQuery.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const list = ticketsQuery?.data?.data || [];
   const loading = ticketsQuery?.isFetching || ticketsQuery?.isLoading;
+  const page = ticketsQuery?.data?.page || ticketsParams.page || 1;
+  const pageSize = ticketsQuery?.data?.pageSize || ticketsParams.pageSize || 20;
+  const total = ticketsQuery?.data?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="px-4 space-y-6">
@@ -29,6 +45,32 @@ export default function TicketsPage() {
           </div>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-wrap items-end gap-3 mb-4">
+            <div>
+              <label className="block text-xs mb-1">Search</label>
+              <input
+                type="text"
+                placeholder="Subject, user..."
+                value={ticketsParams.q || ""}
+                onChange={(e) => { const v = e.target.value; setTicketsParams((p) => ({ ...p, page: 1, q: v })); setQs({ q: v, page: 1 }); }}
+                className="border border-slate-300 rounded px-2 py-2 text-sm min-w-56"
+              />
+            </div>
+            <div>
+              <label className="block text-xs mb-1">Page size</label>
+              <select
+                value={pageSize}
+                onChange={(e) => { const v = Number(e.target.value); setTicketsParams((p) => ({ ...p, page: 1, pageSize: v })); setQs({ pageSize: v, page: 1 }); }}
+                className="border border-slate-300 rounded px-2 py-2 text-sm"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+            <Button variant="outline" onClick={() => ticketsQuery.refetch()}>Apply</Button>
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
@@ -44,7 +86,17 @@ export default function TicketsPage() {
                 <TableRow key={t.id}>
                   <TableCell>{t.id}</TableCell>
                   <TableCell>{t.subject || "-"}</TableCell>
-                  <TableCell>{t.user?.email || t.user?.name || t.user?.id || "-"}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar imageUrl={t?.user?.image} color={t?.user?.color} className="h-8 w-8">
+                        <AvatarFallback>{(t?.user?.name || t?.user?.email || "").slice(0,2).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <div className="font-medium">{t.user?.name || t.user?.email || t.user?.id || "-"}</div>
+                        <div className="text-xs text-muted-foreground">{t.user?.email}</div>
+                      </div>
+                    </div>
+                  </TableCell>
                   <TableCell className="capitalize">{t.status || "open"}</TableCell>
                   <TableCell>{t.createdAt ? new Date(t.createdAt).toLocaleString() : "-"}</TableCell>
                 </TableRow>
@@ -56,6 +108,20 @@ export default function TicketsPage() {
               )}
             </TableBody>
           </Table>
+
+          <div className="mt-4">
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious href="#" disabled={page <= 1} onClick={(e) => { e.preventDefault(); const np = Math.max(1, page - 1); setTicketsParams((p)=>({ ...p, page: np })); setQs({ page: np }); ticketsQuery.refetch(); }} />
+                </PaginationItem>
+                <span className="px-3 text-sm">Page {page} of {totalPages}</span>
+                <PaginationItem>
+                  <PaginationNext href="#" disabled={page >= totalPages} onClick={(e) => { e.preventDefault(); const np = Math.min(totalPages, page + 1); setTicketsParams((p)=>({ ...p, page: np })); setQs({ page: np }); ticketsQuery.refetch(); }} />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </CardContent>
       </Card>
     </div>

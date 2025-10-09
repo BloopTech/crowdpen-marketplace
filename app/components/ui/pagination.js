@@ -25,24 +25,36 @@ const PaginationContent = forwardRef(({ className, ...props }, ref) => (
 ));
 PaginationContent.displayName = "PaginationContent";
 
-const PaginationItem = forwardRe(({ className, ...props }, ref) => (
+const PaginationItem = forwardRef(({ className, ...props }, ref) => (
   <li ref={ref} className={cn("", className)} {...props} />
 ));
 PaginationItem.displayName = "PaginationItem";
 
-const PaginationLink = ({ className, isActive, size = "icon", ...props }) => (
-  <Link
-    aria-current={isActive ? "page" : undefined}
-    className={cn(
-      buttonVariants({
-        variant: isActive ? "outline" : "ghost",
-        size,
-      }),
-      className
-    )}
-    {...props}
-  />
-);
+const PaginationLink = ({ className, isActive, size = "icon", disabled = false, children, ...props }) => {
+  const classes = cn(
+    buttonVariants({ variant: isActive ? "outline" : "ghost", size }),
+    disabled ? "pointer-events-none opacity-50 cursor-not-allowed" : "",
+    className,
+  );
+
+  if (disabled) {
+    return (
+      <span aria-disabled="true" className={classes} tabIndex={-1}>
+        {children}
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      aria-current={isActive ? "page" : undefined}
+      className={classes}
+      {...props}
+    >
+      {children}
+    </Link>
+  );
+};
 PaginationLink.displayName = "PaginationLink";
 
 const PaginationPrevious = ({ className, ...props }) => (

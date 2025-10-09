@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import logo from "../../../public/crowdpen_icon.png";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { cn, focusRing } from "../../lib/utils";
 import { useNavigationData } from "./utils";
 import MobileSidebar from "./mobileSidebar";
@@ -12,7 +12,7 @@ import { ChevronDown } from "lucide-react";
 
 export default function AdminSidebar() {
   const router = useRouter();
-  const { pathname } = router;
+  const pathname = usePathname();
   const [openDropdowns, setOpenDropdowns] = useState({});
   const navigation = useNavigationData();
 
