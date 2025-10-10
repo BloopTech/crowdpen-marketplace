@@ -29,6 +29,10 @@ export async function GET(request) {
     const page = Math.max(pageParam, 1);
     const offset = (page - 1) * pageSize;
     const q = searchParams.get("q") || "";
+    const requestedApplicantStatus = searchParams.get("applicantStatus") || "pending";
+    const applicantStatus = ["pending", "rejected"].includes(requestedApplicantStatus)
+      ? requestedApplicantStatus
+      : "pending";
 
     // Merchants (users with creator=true)
     const whereMerchants = { creator: true };
@@ -62,7 +66,7 @@ export async function GET(request) {
     }
 
     const applicantsRes = await db.MarketplaceKycVerification.findAndCountAll({
-      where: { status: { [Op.ne]: "unverified" } },
+      where: { status: applicantStatus },
       include: [applicantUserInclude],
       order: [["submitted_at", "DESC"]],
       limit: pageSize,
@@ -77,6 +81,7 @@ export async function GET(request) {
       merchantsTotal: merchantsRes.count,
       applicants: applicantsRes.rows,
       applicantsTotal: applicantsRes.count,
+      applicantsStatus: applicantStatus,
     });
   } catch (error) {
     console.error("/api/admin/merchants error", error);

@@ -13,6 +13,39 @@ const {
   MarketplaceCartItems,
 } = db;
 
+function readCountryHeader(headers) {
+  try {
+    const vercel = headers.get("x-vercel-ip-country");
+    const cf = headers.get("cf-ipcountry");
+    const generic = headers.get("x-country-code");
+    const code = (vercel || cf || generic || "").toUpperCase();
+    return code || null;
+  } catch {
+    return null;
+  }
+}
+
+function deriveCurrencyByCountry(code) {
+  const c = (code || "").toUpperCase();
+  const map = {
+    NG: "NGN",
+    GH: "GHS",
+    ZA: "ZAR",
+    KE: "KES",
+    UG: "UGX",
+    RW: "RWF",
+    TZ: "TZS",
+    ZM: "ZMW",
+    CI: "XOF",
+    BJ: "XOF",
+    TG: "XOF",
+    SN: "XOF",
+    ML: "XOF",
+    BF: "XOF",
+  };
+  return map[c] || null;
+}
+
 export async function GET(request, { params }) {
   const getParams = await params;
 
@@ -125,6 +158,10 @@ export async function GET(request, { params }) {
     const tax = subtotal * 0.1; // 10% tax
     const total = subtotal + tax - parseFloat(cart.discount || 0);
 
+    // Determine currency by region (default to GHS)
+    const headerCountry = readCountryHeader(request.headers);
+    const currency = deriveCurrencyByCountry(headerCountry) || "GHS";
+
     // Update cart totals
     await cart.update({
       subtotal: subtotal.toFixed(2),
@@ -165,11 +202,12 @@ export async function GET(request, { params }) {
         items: formattedItems,
         cart: {
           id: cart.id,
-          subtotal: parseFloat(cart.subtotal),
-          discount: parseFloat(cart.discount || 0),
-          tax: parseFloat(cart.tax),
-          total: parseFloat(cart.total),
-          item_count: count
+          subtotal: Number(subtotal.toFixed(2)),
+          discount: Number(parseFloat(cart.discount || 0).toFixed(2)),
+          tax: Number(tax.toFixed(2)),
+          total: Number(total.toFixed(2)),
+          item_count: count,
+          currency
         },
         pagination: {
           page,

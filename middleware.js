@@ -39,20 +39,56 @@ export async function middleware(request) {
     : Math.random().toString(36).slice(2);
 
   const isDev = process.env.NODE_ENV === 'development';
-  const buildCSP = (n) => [
-    "default-src 'self'",
-    "base-uri 'self'",
-    "font-src 'self' https: data:",
-    "img-src 'self' data: blob: https:",
-    "object-src 'none'",
-    // In dev, allow inline/eval to support HMR; in prod, only nonce and trusted hosts
-    `script-src 'self' 'nonce-${n}' https://www.googletagmanager.com https://www.google-analytics.com ${isDev ? "'unsafe-inline' 'unsafe-eval'" : ''}`,
-    "style-src 'self' 'unsafe-inline'",
-    "connect-src 'self' https: wss: ws:",
-    "frame-ancestors 'none'",
-    "form-action 'self'",
-    "upgrade-insecure-requests",
-  ].join('; ');
+  const buildCSP = (n) => {
+    const commonScriptHosts = "https://www.googletagmanager.com https://www.google-analytics.com https://checkout.startbutton.tech";
+    const scriptSrc = isDev
+      ? `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`
+      : `script-src 'self' 'nonce-${n}' ${commonScriptHosts}`;
+    const scriptSrcElem = isDev
+      ? `script-src-elem 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`
+      : `script-src-elem 'self' 'nonce-${n}' ${commonScriptHosts}`;
+
+    return [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "font-src 'self' https: data:",
+      "img-src 'self' data: blob: https:",
+      "object-src 'none'",
+      // In dev, allow inline/eval to support HMR; in prod, only nonce and trusted hosts
+      scriptSrc,
+      // Some browsers check script-src-elem separately
+      scriptSrcElem,
+      "style-src 'self' 'unsafe-inline'",
+      "connect-src 'self' https: wss: ws:",
+      // Allow embedding StartButton checkout if it uses iframes
+      "frame-src 'self' https://checkout.startbutton.tech",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "upgrade-insecure-requests",
+    ].join('; ');
+  };
+
+  // Relaxed CSP for StartButton-heavy pages (no nonce, allow inline)
+  const buildCheckoutCSP = () => {
+    const commonScriptHosts = "https://www.googletagmanager.com https://www.google-analytics.com https://checkout.startbutton.tech";
+    return [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "font-src 'self' https: data:",
+      "img-src 'self' data: blob: https:",
+      "object-src 'none'",
+      `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`,
+      `script-src-elem 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`,
+      "style-src 'self' 'unsafe-inline'",
+      // Allow StartButton network calls
+      "connect-src 'self' https: wss: ws: https://api.startbutton.tech https://api-dev.startbutton.tech https://checkout.startbutton.tech",
+      // Allow embedding StartButton checkout if it uses iframes
+      "frame-src 'self' https://checkout.startbutton.tech",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "upgrade-insecure-requests",
+    ].join('; ');
+  };
 
   // Forward nonce to the app via request headers so server components can access it
   const reqHeaders = new Headers(request.headers);
@@ -67,13 +103,15 @@ export async function middleware(request) {
     // Check authentication using session cookies
     const { isAuthenticated, user } = await isAuthenticatedInMiddleware(request);
     
+    const isCheckoutPath = pathname === '/checkout' || pathname.startsWith('/checkout') || pathname.includes('/checkout');
+
     // Redirect unauthenticated users from protected routes
     if (!isAuthenticated && (isDashboardRoute || isAdminRoute)) {
       const loginUrl = new URL('/', request.url);
       // Add redirect parameter to return user to original page after login
       loginUrl.searchParams.set('redirect', pathname);
       const redirectRes = NextResponse.redirect(loginUrl);
-      redirectRes.headers.set('Content-Security-Policy', buildCSP(nonce));
+      redirectRes.headers.set('Content-Security-Policy', isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce));
       return redirectRes;
     }
 
@@ -87,7 +125,7 @@ export async function middleware(request) {
       )
     ) {
       const unauthorizedRes = NextResponse.redirect(new URL('/', request.url));
-      unauthorizedRes.headers.set('Content-Security-Policy', buildCSP(nonce));
+      unauthorizedRes.headers.set('Content-Security-Policy', isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce));
       return unauthorizedRes;
     }
     
@@ -110,18 +148,18 @@ export async function middleware(request) {
       }
       
       const authRedirectRes = NextResponse.redirect(new URL(redirectUrl, request.url));
-      authRedirectRes.headers.set('Content-Security-Policy', buildCSP(nonce));
+      authRedirectRes.headers.set('Content-Security-Policy', isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce));
       return authRedirectRes;
     }
     
     const res = NextResponse.next({ request: { headers: reqHeaders } });
-    res.headers.set('Content-Security-Policy', buildCSP(nonce));
+    res.headers.set('Content-Security-Policy', isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce));
     return res;
   } catch (error) {
     console.error('Middleware error:', error);
     // On error, allow the request to proceed to avoid breaking the app
     const res = NextResponse.next({ request: { headers: reqHeaders } });
-    res.headers.set('Content-Security-Policy', buildCSP(nonce));
+    res.headers.set('Content-Security-Policy', isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce));
     return res;
   }
 }

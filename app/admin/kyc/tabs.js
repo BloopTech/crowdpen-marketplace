@@ -371,7 +371,7 @@ export default function KYCTabs(props) {
                       const np = Math.min(pendingTotalPages, pendingPage + 1);
                       setKycPendingParams((p) => ({ ...p, page: np }));
                       setQs({ pendingPage: np });
-                      kycPendingQueryrefetch();
+                      kycPendingQueryRefetch();
                     }}
                     disabled={pendingPage >= pendingTotalPages}
                   />

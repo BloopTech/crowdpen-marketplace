@@ -63,6 +63,17 @@ export default function CartContent() {
 
   const { data: session } = useSession();
 
+  // Currency formatter based on API-provided currency (default to GHS)
+  const currency = cartSummary?.currency || "GHS";
+  const fmt = (v) =>
+    new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+
   // Handle quantity updates with debouncing
   const handleQuantityChange = (itemId, newQuantity) => {
     if (newQuantity < 1) return;
@@ -271,13 +282,10 @@ export default function CartContent() {
                                 </div>
                                 <div className="text-right">
                                   <div className="text-lg font-bold">
-                                    ${(Number(item?.price) || 0).toFixed(2)}
+                                    {fmt(item?.price)}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    $
-                                    {(
-                                      Number(item?.product?.price) || 0
-                                    ).toFixed(2)}{" "}
+                                    {fmt(item?.product?.price)}{" "}
                                     each
                                   </div>
                                 </div>
@@ -421,40 +429,40 @@ export default function CartContent() {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
-                      <span>${Number(cartSummary?.subtotal).toFixed(2)}</span>
+                      <span>{fmt(cartSummary?.subtotal)}</span>
                     </div>
                     {cartSummary?.discount > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Discount</span>
                         <span>
-                          -${Number(cartSummary?.discount).toFixed(2)}
+                          - {fmt(cartSummary?.discount)}
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between">
                       <span>Tax (10%)</span>
-                      <span>${Number(cartSummary?.tax).toFixed(2)}</span>
+                      <span>{fmt(cartSummary?.tax)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total</span>
-                      <span>${Number(cartSummary?.total).toFixed(2)}</span>
+                      <span>{fmt(cartSummary?.total)}</span>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span>Subtotal</span>
-                      <span>$0.00</span>
+                      <span>{fmt(0)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Tax</span>
-                      <span>$0.00</span>
+                      <span>Tax (10%)</span>
+                      <span>{fmt(0)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total</span>
-                      <span>$0.00</span>
+                      <span>{fmt(0)}</span>
                     </div>
                   </div>
                 )}

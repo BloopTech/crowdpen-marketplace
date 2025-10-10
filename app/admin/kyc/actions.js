@@ -46,6 +46,14 @@ export async function approveKyc(prevState, formData) {
     reviewed_at: new Date(),
   });
 
+  // Auto-promote user to merchant upon KYC approval
+  if (record?.user_id) {
+    await db.User.update({ creator: true }, { where: { id: record.user_id } });
+  }
+
+  // Revalidate merchants page so the newly promoted user appears there
+  revalidatePath("/admin/merchants");
+
   revalidatePath("/admin/kyc");
   return { success: true, message: "KYC approved", data: record, error: {} };
 }
