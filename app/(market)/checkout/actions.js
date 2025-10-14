@@ -31,21 +31,39 @@ function generateOrderNumber() {
   return `CP-${y}${m}${d}-${hh}${mm}${ss}-${Math.floor(Math.random() * 1000)}`;
 }
 
-function getHeaderCountry() {
+async function getHeaderCountry() {
   try {
-    const h = headers();
-    const vercel = h.get("x-vercel-ip-country");
-    const cf = h.get("cf-ipcountry");
-    const generic = h.get("x-country-code");
-    const code = (vercel || cf || generic || "").toUpperCase();
-    return code || null;
+    const h = await headers();
+    let ip = h.get("x-forwarded-for") || h.get("x-real-ip");
+
+    if (ip === "::1" || ip === "127.0.0.1" || ip === "::ffff:127.0.0.1") {
+      // Use a known external IP address for testing purposes
+      ip = "154.160.14.46"; // Example IP (Google Public DNS)
+    } else {
+      // Handle IPv6 addresses
+      ip = ip.includes(":") ? ip.split(":").pop() : ip;
+    }
+
+    const getIp = ip.split(",")[0].trim();
+
+    const res = await fetch(`https://ipapi.co/${getIp}/json/`, {
+      headers: { Accept: "application/json" },
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const data = await res.json();
+
+    return data?.country_code || null;
   } catch {
     return null;
   }
 }
 
 function deriveCurrencyByCountry(countryCode) {
-  const c = (countryCode || "").toUpperCase();
+
+  const c = countryCode?.toUpperCase();
   const map = {
     NG: "NGN",
     GH: "GHS",
@@ -62,33 +80,58 @@ function deriveCurrencyByCountry(countryCode) {
     ML: "XOF",
     BF: "XOF",
   };
-  return map[c] || null;
+  return map[c] || "GHS";
 }
 
 export async function beginCheckout(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return { success: false, message: "Authentication required", errors: { auth: ["Please log in"] } };
+    return {
+      success: false,
+      message: "Authentication required",
+      errors: { auth: ["Please log in"] },
+    };
   }
 
   const userId = session.user.id;
   const email = (formData.get("email") || "").toString().trim();
   const firstName = (formData.get("firstName") || "").toString().trim();
   const lastName = (formData.get("lastName") || "").toString().trim();
-  const billingAddress = (formData.get("billingAddress") || "").toString().trim();
+  const billingAddress = (formData.get("billingAddress") || "")
+    .toString()
+    .trim();
   const city = (formData.get("city") || "").toString().trim();
   const zipCode = (formData.get("zipCode") || "").toString().trim();
   const country = (formData.get("country") || "").toString().trim() || "NG";
-  const paymentMethod = (formData.get("paymentMethod") || "startbutton").toString();
+  const paymentMethod = (
+    formData.get("paymentMethod") || "startbutton"
+  ).toString();
 
-  if (!email || !firstName || !lastName || !billingAddress || !city || !zipCode) {
-    return { success: false, message: "Please complete all required fields.", errors: { form: ["Missing required fields"] } };
+  if (
+    !email ||
+    !firstName ||
+    !lastName ||
+    !billingAddress ||
+    !city ||
+    !zipCode
+  ) {
+    return {
+      success: false,
+      message: "Please complete all required fields.",
+      errors: { form: ["Missing required fields"] },
+    };
   }
 
   // Find active cart
-  const cart = await MarketplaceCart.findOne({ where: { user_id: userId, active: true } });
+  const cart = await MarketplaceCart.findOne({
+    where: { user_id: userId, active: true },
+  });
   if (!cart) {
-    return { success: false, message: "Your cart is empty.", errors: { cart: ["No active cart"] } };
+    return {
+      success: false,
+      message: "Your cart is empty.",
+      errors: { cart: ["No active cart"] },
+    };
   }
 
   // Fetch cart items with product title for order item naming
@@ -102,17 +145,24 @@ export async function beginCheckout(prevState, formData) {
     ],
   });
   if (!cartItems.length) {
-    return { success: false, message: "Your cart is empty.", errors: { cart: ["No items in cart"] } };
+    return {
+      success: false,
+      message: "Your cart is empty.",
+      errors: { cart: ["No items in cart"] },
+    };
   }
 
   // Compute totals from cart
-  const subtotal = cartItems.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + Number(item.price) * Number(item.quantity),
+    0
+  );
   const tax = Number(cart.tax ?? 0);
   const discount = Number(cart.discount ?? 0);
   const total = subtotal + tax - discount;
 
   // Derive currency by region with default GHS (Ghana Cedis)
-  const ipCountry = getHeaderCountry();
+  const ipCountry = await getHeaderCountry();
   const derived = deriveCurrencyByCountry(ipCountry);
   const orderCurrency = cart.currency || derived || "GHS";
 
@@ -161,11 +211,13 @@ export async function beginCheckout(prevState, formData) {
         {
           marketplace_order_id: order.id,
           marketplace_product_id: ci.marketplace_product_id,
-          marketplace_product_variation_id: ci.marketplace_product_variation_id || null,
+          marketplace_product_variation_id:
+            ci.marketplace_product_variation_id || null,
           name: ci.name || ci?.MarketplaceProduct?.title || "Product",
           quantity: ci.quantity,
           price: ci.price,
-          subtotal: ci.subtotal || (Number(ci.price) * Number(ci.quantity)).toFixed(2),
+          subtotal:
+            ci.subtotal || (Number(ci.price) * Number(ci.quantity)).toFixed(2),
           downloadUrl: null,
         },
         { transaction: t }
@@ -185,8 +237,11 @@ export async function beginCheckout(prevState, formData) {
     };
   } catch (e) {
     await t.rollback();
-    console.error("beginCheckout error", e);
-    return { success: false, message: e?.message || "Failed to start checkout" };
+
+    return {
+      success: false,
+      message: e?.message || "Failed to start checkout",
+    };
   }
 }
 
@@ -205,12 +260,18 @@ export async function finalizeOrder(prevState, formData) {
 
   if (!orderId) return { success: false, message: "Order ID missing" };
 
-  const order = await MarketplaceOrder.findOne({ where: { id: orderId, user_id: userId } });
+  const order = await MarketplaceOrder.findOne({
+    where: { id: orderId, user_id: userId },
+  });
   if (!order) return { success: false, message: "Order not found" };
 
   const t = await sequelize.transaction();
   try {
-    const notes = payloadRaw ? (order.notes ? `${order.notes}\n${payloadRaw}` : payloadRaw) : order.notes;
+    const notes = payloadRaw
+      ? order.notes
+        ? `${order.notes}\n${payloadRaw}`
+        : payloadRaw
+      : order.notes;
 
     if (status === "success") {
       await order.update(
@@ -224,10 +285,20 @@ export async function finalizeOrder(prevState, formData) {
       );
 
       // Clear cart
-      const cart = await MarketplaceCart.findOne({ where: { user_id: userId, active: true }, transaction: t, lock: t.LOCK.UPDATE });
+      const cart = await MarketplaceCart.findOne({
+        where: { user_id: userId, active: true },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
       if (cart) {
-        await MarketplaceCartItems.destroy({ where: { marketplace_cart_id: cart.id }, transaction: t });
-        await cart.update({ subtotal: 0, tax: 0, discount: 0, total: 0 }, { transaction: t });
+        await MarketplaceCartItems.destroy({
+          where: { marketplace_cart_id: cart.id },
+          transaction: t,
+        });
+        await cart.update(
+          { subtotal: 0, tax: 0, discount: 0, total: 0 },
+          { transaction: t }
+        );
       }
 
       await t.commit();
@@ -235,8 +306,15 @@ export async function finalizeOrder(prevState, formData) {
       // Send confirmation email (best-effort)
       try {
         if (email) {
-          const items = await MarketplaceOrderItems.findAll({ where: { marketplace_order_id: order.id } });
-          const products = items.map((it) => ({ name: it.name, quantity: it.quantity, price: Number(it.price), subtotal: Number(it.subtotal) }));
+          const items = await MarketplaceOrderItems.findAll({
+            where: { marketplace_order_id: order.id },
+          });
+          const products = items.map((it) => ({
+            name: it.name,
+            quantity: it.quantity,
+            price: Number(it.price),
+            subtotal: Number(it.subtotal),
+          }));
           const html = render(
             OrderConfirmationEmail({
               customerName: email,
@@ -263,7 +341,11 @@ export async function finalizeOrder(prevState, formData) {
       revalidatePath("/cart");
       revalidatePath("/account");
 
-      return { success: true, message: "Order completed", orderNumber: order.order_number };
+      return {
+        success: true,
+        message: "Order completed",
+        orderNumber: order.order_number,
+      };
     }
 
     // failure path
@@ -276,10 +358,17 @@ export async function finalizeOrder(prevState, formData) {
       { transaction: t }
     );
     await t.commit();
-    return { success: false, message: "Payment failed", orderNumber: order.order_number };
+    return {
+      success: false,
+      message: "Payment failed",
+      orderNumber: order.order_number,
+    };
   } catch (e) {
     await t.rollback();
-    console.error("finalizeOrder error", e);
-    return { success: false, message: e?.message || "Failed to finalize order" };
+
+    return {
+      success: false,
+      message: e?.message || "Failed to finalize order",
+    };
   }
 }

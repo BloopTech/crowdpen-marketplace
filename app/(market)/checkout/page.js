@@ -1,39 +1,78 @@
-"use client"
+"use client";
 
-import React, { useEffect, useMemo, useRef, useState, useActionState, useCallback } from "react"
-import { Button } from "../../components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card"
-import { Input } from "../../components/ui/input"
-import { Label } from "../../components/ui/label"
-import { Separator } from "../../components/ui/separator"
-import { Checkbox } from "../../components/ui/checkbox"
-import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group"
-import { CreditCard, Lock, ArrowLeft, Loader2 } from "lucide-react"
-import Link from "next/link"
-import MarketplaceHeader from "../../components/marketplace-header"
-import Script from "next/script"
-import PaymentResultModal from "../../components/payment-result-modal"
-import { CartContextProvider, useCart } from "../cart/context"
-import { useSession } from "next-auth/react"
-import { useHome } from "../../context"
-import { beginCheckout, finalizeOrder } from "./actions"
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useActionState,
+  useCallback,
+  useTransition,
+} from "react";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Separator } from "../../components/ui/separator";
+import { Checkbox } from "../../components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
+import { CreditCard, Lock, ArrowLeft, Loader2, X } from "lucide-react";
+import Link from "next/link";
+import MarketplaceHeader from "../../components/marketplace-header";
+import Script from "next/script";
+import PaymentResultModal from "../../components/payment-result-modal";
+import { CartContextProvider, useCart } from "../cart/context";
+import { useSession } from "next-auth/react";
+import { useHome } from "../../context";
+import { beginCheckout, finalizeOrder } from "./actions";
+
+const beginInitializeState = {
+  success: false,
+  message: "",
+};
+
+const finalizeInitializeState = {
+  success: false,
+  message: "",
+};
 
 function CheckoutContent() {
-  const { data: session } = useSession()
-  const { openLoginDialog } = useHome()
-  const { cartItems, cartSummary, isLoading, isError, error } = useCart()
+  const { data: session } = useSession();
+  const { openLoginDialog } = useHome();
+  const { cartItems, cartSummary, isLoading, isError, error } = useCart();
 
-  const [searchQuery, setSearchQuery] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState("startbutton")
-  const [startButtonLoaded, setStartButtonLoaded] = useState(false)
-  const [processing, setProcessing] = useState(false)
-  const [resultModal, setResultModal] = useState({ open: false, type: "success", title: "", message: "", orderNumber: "", details: null })
-  const launchedRef = useRef(false)
-  const currentOrderRef = useRef(null)
-  const finalizeStartedRef = useRef(false)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("startbutton");
+  const [startButtonLoaded, setStartButtonLoaded] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [resultModal, setResultModal] = useState({
+    open: false,
+    type: "success",
+    title: "",
+    message: "",
+    orderNumber: "",
+    details: null,
+  });
+  const launchedRef = useRef(false);
+  const currentOrderRef = useRef(null);
+  const finalizeStartedRef = useRef(false);
 
-  const [beginState, beginAction, beginPending] = useActionState(beginCheckout, { success: false, message: "" })
-  const [finalState, finalizeAction, finalizePending] = useActionState(finalizeOrder, { success: false, message: "" })
+  const [beginState, beginAction, beginPending] = useActionState(
+    beginCheckout,
+    beginInitializeState
+  );
+  const [finalState, finalizeAction, finalizePending] = useActionState(
+    finalizeOrder,
+    finalizeInitializeState
+  );
+  const [, startFinalizeTransition] = useTransition();
+
+  const [closePos, setClosePos] = useState(null);
 
   const [formData, setFormData] = useState({
     email: session?.user?.email || "",
@@ -43,151 +82,332 @@ function CheckoutContent() {
     city: "",
     zipCode: "",
     country: "",
-  })
+  });
 
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
       email: session?.user?.email || prev.email,
       firstName: session?.user?.name?.split(" ")?.[0] || prev.firstName,
-      lastName: session?.user?.name?.split(" ")?.slice(1).join(" ") || prev.lastName,
-    }))
-  }, [session?.user?.email, session?.user?.name])
+      lastName:
+        session?.user?.name?.split(" ")?.slice(1).join(" ") || prev.lastName,
+    }));
+  }, [session?.user?.email, session?.user?.name]);
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+    setFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
-  const total = useMemo(() => Number(cartSummary?.total || 0) || 0, [cartSummary?.total])
-  const subtotal = useMemo(() => Number(cartSummary?.subtotal || 0) || 0, [cartSummary?.subtotal])
-  const tax = useMemo(() => Number(cartSummary?.tax || 0) || 0, [cartSummary?.tax])
+  const total = useMemo(
+    () => Number(cartSummary?.total || 0) || 0,
+    [cartSummary?.total]
+  );
+  const subtotal = useMemo(
+    () => Number(cartSummary?.subtotal || 0) || 0,
+    [cartSummary?.subtotal]
+  );
+  const tax = useMemo(
+    () => Number(cartSummary?.tax || 0) || 0,
+    [cartSummary?.tax]
+  );
 
   // Define finalize and StartButton helpers BEFORE effects that reference them
-  const finalize = useCallback(async (status, payload) => {
-    try {
-      const order = currentOrderRef.current
-      if (!order) throw new Error("Missing order context")
-      const fd = new FormData()
-      fd.set("orderId", order.orderId)
-      fd.set("status", status)
-      fd.set("reference", payload?.reference || payload?.data?.reference || payload?.txRef || payload?.ref || "")
-      fd.set("payload", JSON.stringify(payload || {}))
-      fd.set("email", formData.email)
-      finalizeStartedRef.current = true
-      finalizeAction(fd)
-    } finally {
-      setProcessing(false)
-    }
-  }, [finalizeAction, formData.email])
+  const finalize = useCallback(
+    async (status, payload) => {
+      try {
+        const order = currentOrderRef.current;
+        if (!order) throw new Error("Missing order context");
+        const fd = new FormData();
+        fd.set("orderId", order.orderId);
+        fd.set("status", status);
+        fd.set(
+          "reference",
+          payload?.reference ||
+            payload?.data?.reference ||
+            payload?.txRef ||
+            payload?.ref ||
+            ""
+        );
+        fd.set("payload", JSON.stringify(payload || {}));
+        fd.set("email", formData.email);
+        finalizeStartedRef.current = true;
+        startFinalizeTransition(() => finalizeAction(fd));
+      } finally {
+        setProcessing(false);
+      }
+    },
+    [finalizeAction, formData.email, startFinalizeTransition]
+  );
 
   function getStartButtonApi() {
-    if (typeof window === "undefined") return null
-    console.log("window START", window.StartButton || window.SBCheckout || window.sb || window.StartButtonCheckout)
-    return window.StartButton || window.SBCheckout || window.sb || window.StartButtonCheckout || null
+    if (typeof window === "undefined") return null;
+    
+    return window.SBInit || null;
   }
 
-  const openStartButton = useCallback((order) => {
-    try {
-      const api = getStartButtonApi()
-      console.log("start API", api)
-      if (!api) throw new Error("Payment gateway not available")
+  const cancelStartButton = useCallback(() => {
+    const el =
+      typeof document !== "undefined"
+        ? document.querySelector("sb-init")
+        : null;
+    if (el)
+      el.dispatchEvent(
+        new CustomEvent("cancelled", { bubbles: true, composed: true })
+      );
+  }, []);
 
-      const config = {
-        amount: order.amount,
-        currency: order.currency,
-        reference: order.orderNumber,
-        customer: {
+  const openStartButton = useCallback(
+    (order) => {
+      try {
+        const api = getStartButtonApi();
+       
+        if (!api) throw new Error("Payment gateway not available");
+
+        const setupSbCloseHooks = () => {
+          const prevOverflow = document.body.style.overflow;
+          document.body.style.overflow = "hidden";
+
+          const onKey = (ev) => {
+            if (ev.key === "Escape") cancelStartButton();
+          };
+          let cleaned = false;
+          window.addEventListener("keydown", onKey, true);
+          return () => {
+            if (cleaned) return;
+            cleaned = true;
+            document.body.style.overflow = prevOverflow;
+            window.removeEventListener("keydown", onKey, true);
+            launchedRef.current = false;
+          };
+        };
+
+        const cleanupHooks = setupSbCloseHooks();
+
+        const config = {
+          amount: Number(total) * 100,
+          phone: order?.customer?.phone || "",
+          channels: [
+            "bank",
+            "card",
+            "bank_transfer",
+            "ussd",
+            "payattitude",
+            "qr",
+            "eft",
+            "mobile_money",
+          ],
+          //env: "test",
           email: order.customer?.email || formData.email,
-          name: `${order.customer?.firstName || formData.firstName} ${order.customer?.lastName || formData.lastName}`.trim(),
-        },
-        metadata: { orderId: order.orderId },
-      }
+          currency: order.currency,
+          key: process.env.STARTBUTTON_PUBLIC_KEY,
+          reference: order.orderNumber,
+          metadata: {
+            orderId: order.orderId,
+            reference: order.orderNumber,
+            name: `${order.customer?.firstName || formData.firstName} ${order.customer?.lastName || formData.lastName}`.trim(),
+          },
+          success: (res) => {
+            cleanupHooks();
+            finalize("success", res);
+          },
+          error: (err) => {
+            cleanupHooks();
+            finalize("error", err);
+          },
+          close: () => {
+            cleanupHooks();
+            setProcessing(false);
+          },
+        };
 
-      const callbacks = {
-        onSuccess: (res) => finalize("success", res),
-        onError: (err) => finalize("error", err),
-        onClose: () => setProcessing(false),
-      }
+        const callbacks = {
+          onSuccess: (res) => {
+            cleanupHooks();
+            finalize("success", res);
+          },
+          onError: (err) => {
+            cleanupHooks();
+            finalize("error", err);
+          },
+          onClose: () => {
+            cleanupHooks();
+            setProcessing(false);
+          },
+        };
 
-      let ret
-      if (typeof api === "function") ret = api(config, callbacks)
-      else if (typeof api.open === "function") ret = api.open(config, callbacks)
-      else if (typeof api.checkout === "function") ret = api.checkout(config, callbacks)
-      else if (typeof api.start === "function") ret = api.start(config, callbacks)
-      else throw new Error("Unsupported payment SDK interface")
+        let ret;
 
-      if (ret && typeof ret.then === "function") {
-        ret.then((r) => finalize("success", r)).catch((e) => finalize("error", e))
+        if (typeof api === "function") ret = api(config, callbacks);
+        else if (typeof api.open === "function")
+          ret = api.open(config, callbacks);
+        else if (typeof api.checkout === "function")
+          ret = api.checkout(config, callbacks);
+        else if (typeof api.start === "function")
+          ret = api.start(config, callbacks);
+        else if (typeof api.init === "function")
+          ret = api.init(config, callbacks);
+        else throw new Error("Unsupported payment SDK interface");
+        
+        if (ret && typeof ret.then === "function") {
+          
+          ret
+            .then((r) => {
+              cleanupHooks();
+              finalize("success", r);
+            })
+            .catch((e) => {
+              cleanupHooks();
+              finalize("error", e);
+            });
+        }
+       
+        const handleMessage = (event) => {
+      
+          try {
+            const d = event?.data;
+            const isSB =
+              typeof d === "object" &&
+              (d?.source === "startbutton" || d?.provider === "startbutton");
+            if (!isSB) return;
+            if (d?.status === "success") finalize("success", d);
+            else if (d?.status === "error") finalize("error", d);
+          } catch {}
+        };
+        window.addEventListener("message", handleMessage, { once: true });
+      } catch (e) {
+        setProcessing(false);
+        setResultModal({
+          open: true,
+          type: "error",
+          title: "Payment unavailable",
+          message: e?.message || "Payment SDK not available",
+        });
       }
+    },
+    [
+      finalize,
+      formData.email,
+      formData.firstName,
+      formData.lastName,
+      total,
+      cancelStartButton,
+    ]
+  );
 
-      const handleMessage = (event) => {
-        try {
-          const d = event?.data
-          const isSB = typeof d === "object" && (d?.source === "startbutton" || d?.provider === "startbutton")
-          if (!isSB) return
-          if (d?.status === "success") finalize("success", d)
-          else if (d?.status === "error") finalize("error", d)
-        } catch {}
-      }
-      window.addEventListener("message", handleMessage, { once: true })
-    } catch (e) {
-      setProcessing(false)
-      setResultModal({ open: true, type: "error", title: "Payment unavailable", message: e?.message || "Payment SDK not available" })
+  // Position the close button near the SDK card
+  useEffect(() => {
+    if (!processing) {
+      setClosePos(null);
+      return;
     }
-  }, [finalize, formData.email, formData.firstName, formData.lastName])
+    let ro;
+    let resizeHandler;
+    let raf;
+    const buttonSize = 36; // px
+    const margin = 8; // px
+    const position = () => {
+      raf && cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        try {
+          const host = document.querySelector("sb-init");
+          let pane = null;
+          if (host) {
+            pane = host.closest(".cdk-overlay-pane");
+          }
+          if (!pane) {
+            const panes = Array.from(
+              document.querySelectorAll(".cdk-overlay-pane")
+            );
+            pane = panes.length ? panes[panes.length - 1] : null;
+          }
+          if (!pane) return;
+          const rect = pane.getBoundingClientRect();
+          const top = Math.max(margin, rect.top + margin);
+          const left = Math.min(
+            window.innerWidth - (buttonSize + margin),
+            rect.right - buttonSize / 2
+          );
+          setClosePos({ top, left });
+        } catch {}
+      });
+    };
+    position();
+    resizeHandler = () => position();
+    window.addEventListener("resize", resizeHandler);
+    if (window.ResizeObserver) {
+      const panes = document.querySelectorAll(".cdk-overlay-pane");
+      ro = new ResizeObserver(position);
+      panes.forEach((p) => ro.observe(p));
+    }
+    return () => {
+      raf && cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resizeHandler);
+      ro && ro.disconnect();
+    };
+  }, [processing]);
 
   // Detect StartButton SDK readiness without inline onLoad handler
   useEffect(() => {
-    let tries = 0
-    const maxTries = 40 // ~10s at 250ms interval
+    let tries = 0;
+    const maxTries = 40; // ~10s at 250ms interval
     const id = setInterval(() => {
-      const api = getStartButtonApi()
+      const api = getStartButtonApi();
       if (api) {
-        setStartButtonLoaded(true)
-        clearInterval(id)
+        setStartButtonLoaded(true);
+        clearInterval(id);
       } else if (++tries >= maxTries) {
-        clearInterval(id)
+        clearInterval(id);
       }
-    }, 250)
-    return () => clearInterval(id)
-  }, [])
+    }, 250);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     if (beginState?.success && !launchedRef.current) {
-      launchedRef.current = true
+      launchedRef.current = true;
       const order = {
         orderId: beginState.orderId,
         orderNumber: beginState.orderNumber,
         amount: beginState.amount,
         currency: beginState.currency || "GHS",
         customer: beginState.customer,
-      }
-      currentOrderRef.current = order
-      setProcessing(true)
-      openStartButton(order)
-    } else if (beginState?.message && beginState?.success === false && !beginPending) {
+      };
+      currentOrderRef.current = order;
+      setProcessing(true);
+      openStartButton(order);
+    } else if (
+      beginState?.message &&
+      beginState?.success === false &&
+      !beginPending
+    ) {
       setResultModal({
         open: true,
         type: "error",
         title: "Checkout Error",
         message: beginState.message || "Unable to start checkout",
         details: null,
-      })
+      });
     }
-  }, [beginState, beginPending, openStartButton])
+  }, [beginState, beginPending, openStartButton]);
 
   useEffect(() => {
-    if (!finalState || typeof finalState.success === "undefined" || !finalizeStartedRef.current) return
-    const order = currentOrderRef.current
+    if (
+      !finalState ||
+      typeof finalState.success === "undefined" ||
+      !finalizeStartedRef.current
+    )
+      return;
+    const order = currentOrderRef.current;
     if (finalState.success) {
       setResultModal({
         open: true,
         type: "success",
         title: "Payment successful",
-        message: finalState?.message || "Your order has been placed successfully.",
+        message:
+          finalState?.message || "Your order has been placed successfully.",
         orderNumber: finalState?.orderNumber || order?.orderNumber,
         details: null,
-      })
+      });
     } else {
       setResultModal({
         open: true,
@@ -196,17 +416,20 @@ function CheckoutContent() {
         message: finalState?.message || "We couldn't confirm your payment.",
         orderNumber: order?.orderNumber,
         details: null,
-      })
+      });
     }
     // reset gate so initial render doesn't trigger
-    finalizeStartedRef.current = false
-  }, [finalState])
-
+    finalizeStartedRef.current = false;
+  }, [finalState]);
 
   if (!session) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <MarketplaceHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={() => {}} />
+        <MarketplaceHeader
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onSearch={() => {}}
+        />
         <div className="container mx-auto px-4 py-8">
           <div className="flex items-center gap-2 mb-6">
             <Link href="/">
@@ -217,18 +440,44 @@ function CheckoutContent() {
             </Link>
           </div>
           <div className="flex justify-center">
-            <Button onClick={openLoginDialog} className="bg-tertiary text-white">Sign in to checkout</Button>
+            <Button
+              onClick={openLoginDialog}
+              className="bg-tertiary text-white"
+            >
+              Sign in to checkout
+            </Button>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Script src="https://checkout.startbutton.tech/version.latest/sb-web-sdk.min.js" strategy="afterInteractive" />
+      {processing && (
+        <button
+          type="button"
+          onClick={cancelStartButton}
+          className="cursor-pointer fixed z-[100005] px-2 py-2 rounded-full bg-white text-black text-sm shadow-lg hover:bg-black/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
+          style={{
+            top: closePos?.top ?? 24,
+            left: closePos?.left ?? undefined,
+            right: closePos ? "auto" : 24,
+          }}
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+      <Script
+        src="https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js"
+        strategy="afterInteractive"
+      />
 
-      <MarketplaceHeader searchQuery={searchQuery} onSearchChange={setSearchQuery} onSearch={() => {}} />
+      <MarketplaceHeader
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onSearch={() => {}}
+      />
 
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-2 mb-6">
@@ -257,16 +506,42 @@ function CheckoutContent() {
                     <h3 className="font-semibold">Contact Information</h3>
                     <div>
                       <Label htmlFor="email">Email Address</Label>
-                      <Input id="email" name="email" type="email" value={formData.email} onChange={(e) => handleInputChange("email", e.target.value)} placeholder="you@email.com" required />
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) =>
+                          handleInputChange("email", e.target.value)
+                        }
+                        placeholder="you@email.com"
+                        required
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="firstName">First Name</Label>
-                        <Input id="firstName" name="firstName" value={formData.firstName} onChange={(e) => handleInputChange("firstName", e.target.value)} required />
+                        <Input
+                          id="firstName"
+                          name="firstName"
+                          value={formData.firstName}
+                          onChange={(e) =>
+                            handleInputChange("firstName", e.target.value)
+                          }
+                          required
+                        />
                       </div>
                       <div>
                         <Label htmlFor="lastName">Last Name</Label>
-                        <Input id="lastName" name="lastName" value={formData.lastName} onChange={(e) => handleInputChange("lastName", e.target.value)} required />
+                        <Input
+                          id="lastName"
+                          name="lastName"
+                          value={formData.lastName}
+                          onChange={(e) =>
+                            handleInputChange("lastName", e.target.value)
+                          }
+                          required
+                        />
                       </div>
                     </div>
                   </div>
@@ -276,22 +551,41 @@ function CheckoutContent() {
                   {/* Payment Method (StartButton) */}
                   <div className="space-y-4">
                     <h3 className="font-semibold">Payment Method</h3>
-                    <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+                    <RadioGroup
+                      value={paymentMethod}
+                      onValueChange={setPaymentMethod}
+                    >
                       <div className="flex items-center space-x-2 p-3 border border-slate-300 rounded-lg w-full justify-between">
                         <div className="flex items-center gap-2">
-                          <RadioGroupItem value="startbutton" id="startbutton" />
-                          <Label htmlFor="startbutton" className="flex items-center gap-2 cursor-pointer">
+                          <RadioGroupItem
+                            value="startbutton"
+                            id="startbutton"
+                          />
+                          <Label
+                            htmlFor="startbutton"
+                            className="flex items-center gap-2 cursor-pointer"
+                          >
                             <CreditCard className="h-4 w-4" />
                             Pay with card / bank (StartButton)
                           </Label>
                         </div>
                         {!startButtonLoaded && (
-                          <span className="text-xs text-gray-500 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Loading gateway…</span>
+                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Loading
+                            gateway…
+                          </span>
                         )}
                       </div>
                     </RadioGroup>
-                    <div className="text-xs text-muted-foreground">You’ll complete your payment securely in a hosted StartButton checkout.</div>
-                    <input type="hidden" name="paymentMethod" value="startbutton" />
+                    <div className="text-xs text-muted-foreground">
+                      You&apos;ll complete your payment securely in a hosted
+                      StartButton checkout.
+                    </div>
+                    <input
+                      type="hidden"
+                      name="paymentMethod"
+                      value="startbutton"
+                    />
                   </div>
 
                   <Separator />
@@ -301,34 +595,86 @@ function CheckoutContent() {
                     <h3 className="font-semibold">Billing Address</h3>
                     <div>
                       <Label htmlFor="billingAddress">Address</Label>
-                      <Input id="billingAddress" name="billingAddress" value={formData.billingAddress} onChange={(e) => handleInputChange("billingAddress", e.target.value)} placeholder="123 Main Street" required />
+                      <Input
+                        id="billingAddress"
+                        name="billingAddress"
+                        value={formData.billingAddress}
+                        onChange={(e) =>
+                          handleInputChange("billingAddress", e.target.value)
+                        }
+                        placeholder="123 Main Street"
+                        required
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="city">City</Label>
-                        <Input id="city" name="city" value={formData.city} onChange={(e) => handleInputChange("city", e.target.value)} required />
+                        <Input
+                          id="city"
+                          name="city"
+                          value={formData.city}
+                          onChange={(e) =>
+                            handleInputChange("city", e.target.value)
+                          }
+                          required
+                        />
                       </div>
                       <div>
                         <Label htmlFor="zipCode">ZIP Code</Label>
-                        <Input id="zipCode" name="zipCode" value={formData.zipCode} onChange={(e) => handleInputChange("zipCode", e.target.value)} required />
+                        <Input
+                          id="zipCode"
+                          name="zipCode"
+                          value={formData.zipCode}
+                          onChange={(e) =>
+                            handleInputChange("zipCode", e.target.value)
+                          }
+                          required
+                        />
                       </div>
                     </div>
-                    <input type="hidden" name="country" value={formData.country || "NG"} />
+                    <input
+                      type="hidden"
+                      name="country"
+                      value={formData.country || "NG"}
+                    />
                   </div>
 
                   <div className="flex items-center space-x-2">
                     <Checkbox id="terms" required />
                     <Label htmlFor="terms" className="text-sm">
                       I agree to the{" "}
-                      <Link href="/terms" className="text-tertiary hover:underline">Terms of Service</Link>{" "}
+                      <Link
+                        href="/terms"
+                        className="text-tertiary hover:underline"
+                      >
+                        Terms of Service
+                      </Link>{" "}
                       and{" "}
-                      <Link href="/privacy" className="text-tertiary hover:underline">Privacy Policy</Link>
+                      <Link
+                        href="/privacy"
+                        className="text-tertiary hover:underline"
+                      >
+                        Privacy Policy
+                      </Link>
                     </Label>
                   </div>
 
-                  <Button type="submit" size="lg" className="w-full" disabled={beginPending || finalizePending || isLoading || !cartItems?.length || !startButtonLoaded}>
+                  <Button
+                    type="submit"
+                    size="lg"
+                    className="w-full"
+                    disabled={
+                      beginPending ||
+                      finalizePending ||
+                      isLoading ||
+                      !cartItems?.length ||
+                      !startButtonLoaded
+                    }
+                  >
                     {beginPending || finalizePending ? (
-                      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Processing…</span>
+                      <span className="inline-flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Processing…
+                      </span>
                     ) : (
                       <>Complete Purchase - ${total.toFixed(2)}</>
                     )}
@@ -347,17 +693,26 @@ function CheckoutContent() {
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   {isLoading && (
-                    <div className="text-sm text-muted-foreground flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Loading cart…</div>
+                    <div className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading cart…
+                    </div>
                   )}
                   {isError && (
-                    <div className="text-sm text-red-600">{error?.message || "Failed to load cart"}</div>
-                  )}
-                  {!isLoading && !isError && cartItems?.map((it) => (
-                    <div key={it.id} className="flex justify-between text-sm">
-                      <span className="truncate pr-2">{it?.product?.title || it?.name || "Item"} × {it.quantity}</span>
-                      <span>${Number(it.price).toFixed(2)}</span>
+                    <div className="text-sm text-red-600">
+                      {error?.message || "Failed to load cart"}
                     </div>
-                  ))}
+                  )}
+                  {!isLoading &&
+                    !isError &&
+                    cartItems?.map((it) => (
+                      <div key={it.id} className="flex justify-between text-sm">
+                        <span className="truncate pr-2">
+                          {it?.product?.title || it?.name || "Item"} ×{" "}
+                          {it.quantity}
+                        </span>
+                        <span>${Number(it.price).toFixed(2)}</span>
+                      </div>
+                    ))}
                   <Separator />
                   <div className="flex justify-between">
                     <span>Subtotal</span>
@@ -375,7 +730,9 @@ function CheckoutContent() {
                 </div>
 
                 <div className="bg-green-50 p-3 rounded-lg">
-                  <div className="text-sm font-medium text-green-800 mb-1">What happens next?</div>
+                  <div className="text-sm font-medium text-green-800 mb-1">
+                    What happens next?
+                  </div>
                   <div className="text-xs text-green-700 space-y-1">
                     <div>✓ Instant receipt sent to your email</div>
                     <div>✓ Access purchases in your account</div>
@@ -383,7 +740,9 @@ function CheckoutContent() {
                   </div>
                 </div>
 
-                <div className="text-xs text-muted-foreground text-center">🔒 Your payment information is secure and encrypted</div>
+                <div className="text-xs text-muted-foreground text-center">
+                  🔒 Your payment information is secure and encrypted
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -400,7 +759,7 @@ function CheckoutContent() {
         details={resultModal.details}
       />
     </div>
-  )
+  );
 }
 
 export default function CheckoutPage() {
@@ -408,5 +767,5 @@ export default function CheckoutPage() {
     <CartContextProvider>
       <CheckoutContent />
     </CartContextProvider>
-  )
+  );
 }
