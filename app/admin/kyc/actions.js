@@ -48,7 +48,7 @@ export async function approveKyc(prevState, formData) {
 
   // Auto-promote user to merchant upon KYC approval
   if (record?.user_id) {
-    await db.User.update({ creator: true }, { where: { id: record.user_id } });
+    await db.User.update({ merchant: true }, { where: { id: record.user_id } });
   }
 
   // Revalidate merchants page so the newly promoted user appears there

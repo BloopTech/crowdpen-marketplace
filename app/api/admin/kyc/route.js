@@ -37,22 +37,42 @@ export async function GET(request) {
     if (level) where.level = level;
     if (reviewer) where.reviewed_by = reviewer;
 
-    const { rows, count } = await db.MarketplaceKycVerification.findAndCountAll({
-      where,
-      include: [
-        {
-          model: db.User,
-          attributes: ["id", "name", "email", "image", "color", "role", "creator"],
-        },
-      ],
-      order: [["submitted_at", "DESC"]],
-      limit: pageSize,
-      offset,
-    });
+    const { rows, count } = await db.MarketplaceKycVerification.findAndCountAll(
+      {
+        where,
+        include: [
+          {
+            model: db.User,
+            attributes: [
+              "id",
+              "name",
+              "email",
+              "image",
+              "color",
+              "role",
+              "creator",
+              "merchant",
+            ],
+          },
+        ],
+        order: [["submitted_at", "DESC"]],
+        limit: pageSize,
+        offset,
+      }
+    );
 
-    return NextResponse.json({ status: "success", page, pageSize, total: count, data: rows });
+    return NextResponse.json({
+      status: "success",
+      page,
+      pageSize,
+      total: count,
+      data: rows,
+    });
   } catch (error) {
     console.error("/api/admin/kyc error", error);
-    return NextResponse.json({ status: "error", message: error?.message || "Failed" }, { status: 500 });
+    return NextResponse.json(
+      { status: "error", message: error?.message || "Failed" },
+      { status: 500 }
+    );
   }
 }

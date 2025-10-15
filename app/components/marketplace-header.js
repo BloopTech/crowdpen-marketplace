@@ -54,7 +54,7 @@ export default function MarketplaceHeader(props) {
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/creator/apply" className="hover:text-gray-300">
-              <span>Become a Creator</span>
+              <span>Become a Merchant</span>
             </Link>
             <Link href="/help" className="hover:text-gray-300">
               <span>Help & Support</span>

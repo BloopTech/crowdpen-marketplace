@@ -24,7 +24,7 @@ export async function GET() {
     // Basic counts
     const [totalUsers, totalMerchants, pendingKyc, transactions] = await Promise.all([
       db.User.count(),
-      db.User.count({ where: { creator: true } }),
+      db.User.count({ where: { merchant: true } }),
       db.MarketplaceKycVerification.count({ where: { status: "pending" } }),
       db.MarketplaceAdminTransactions.count(),
     ]);

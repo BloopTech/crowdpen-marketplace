@@ -29,13 +29,16 @@ export async function GET(request) {
     const page = Math.max(pageParam, 1);
     const offset = (page - 1) * pageSize;
     const q = searchParams.get("q") || "";
-    const requestedApplicantStatus = searchParams.get("applicantStatus") || "pending";
-    const applicantStatus = ["pending", "rejected"].includes(requestedApplicantStatus)
+    const requestedApplicantStatus =
+      searchParams.get("applicantStatus") || "pending";
+    const applicantStatus = ["pending", "rejected"].includes(
+      requestedApplicantStatus
+    )
       ? requestedApplicantStatus
       : "pending";
 
-    // Merchants (users with creator=true)
-    const whereMerchants = { creator: true };
+    // Merchants (users with merchant=true)
+    const whereMerchants = { merchant: true };
     if (q) {
       whereMerchants[Op.or] = [
         { name: { [Op.iLike]: `%${q}%` } },
@@ -44,7 +47,18 @@ export async function GET(request) {
     }
     const merchantsRes = await db.User.findAndCountAll({
       where: whereMerchants,
-      attributes: ["id", "name", "email", "image", "color", "role", "creator", "crowdpen_staff", "createdAt"],
+      attributes: [
+        "id",
+        "name",
+        "email",
+        "image",
+        "color",
+        "role",
+        "creator",
+        "crowdpen_staff",
+        "createdAt",
+        "merchant",
+      ],
       order: [["createdAt", "DESC"]],
       limit: pageSize,
       offset,
@@ -85,6 +99,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/merchants error", error);
-    return NextResponse.json({ status: "error", message: error?.message || "Failed" }, { status: 500 });
+    return NextResponse.json(
+      { status: "error", message: error?.message || "Failed" },
+      { status: 500 }
+    );
   }
 }

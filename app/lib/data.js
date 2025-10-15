@@ -18,7 +18,7 @@ export const searchOperators = [
   {
     operator: "author:",
     example: "author:writingpro",
-    description: "Filter by creator",
+    description: "Filter by merchant",
   },
   {
     operator: "price:",

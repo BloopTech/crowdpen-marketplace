@@ -59,6 +59,7 @@ export async function GET(request) {
         "crowdpen_staff",
         "creator",
         "createdAt",
+        "merchant",
       ],
       order: [["createdAt", "DESC"]],
       limit,

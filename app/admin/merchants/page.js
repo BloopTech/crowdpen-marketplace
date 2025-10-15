@@ -187,13 +187,13 @@ export default function MerchantsPage() {
                       <TableCell>{u.email}</TableCell>
                       <TableCell className="capitalize">{u.role}</TableCell>
                       <TableCell>
-                        <Badge variant={u.creator ? "success" : "neutral"}>
-                          {u.creator ? "Merchant" : "Not Merchant"}
+                        <Badge variant={u.merchant ? "success" : "neutral"}>
+                          {u.merchant ? "Merchant" : "Not Merchant"}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          {u.creator ? (
+                          {u.merchant ? (
                             <form action={toggleMerchant}>
                               <input type="hidden" name="userId" value={u.id} />
                               <input

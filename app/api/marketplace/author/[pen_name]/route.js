@@ -30,7 +30,8 @@ export async function GET(request, { params }) {
         "created_date",
         "residence",
         "color",
-        "lastLoginDate"
+        "lastLoginDate",
+        "merchant"
       ],
       // Products and reviews are fetched separately via paginated endpoints
     });
@@ -106,6 +107,7 @@ export async function GET(request, { params }) {
       },
       verification_badge: author.verification_badge,
       creator: author.creator,
+      merchant: author?.merchant,
       subscribed: author.subscribed,
       joinDate: author.created_date,
       lastLoginDate: author.lastLoginDate,

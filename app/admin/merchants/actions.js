@@ -26,7 +26,7 @@ export async function toggleMerchant(prevState, formData) {
   const user = await db.User.findOne({ where: { id: userId } });
   if (!user) return { success: false, message: "User not found" };
 
-  await user.update({ creator: !!makeMerchant });
+  await user.update({ merchant: !!makeMerchant });
   revalidatePath("/admin/merchants");
   return { success: true, message: makeMerchant ? "Merchant enabled" : "Merchant removed" };
 }

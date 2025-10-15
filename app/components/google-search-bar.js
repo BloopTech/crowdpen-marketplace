@@ -37,7 +37,7 @@ export default function GoogleSearchBar({
           <Input
             ref={inputRef}
             type="text"
-            placeholder="Search creator resources..."
+            placeholder="Search merchant resources..."
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
