@@ -306,6 +306,10 @@ function CheckoutContent() {
     let enforceInterval;
     let styleEl;
     let styleElShadow;
+    let linkElDoc;
+    let linkElShadow;
+    let mo;
+    let moShadow;
     const buttonSize = 36; // px
     const margin = 8; // px
     const stylePane = (pane) => {
@@ -428,6 +432,8 @@ function CheckoutContent() {
         'iframe[src*="startbutton.tech"]',
         'dialog[open]',
         '.cdk-overlay-pane',
+        'body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane',
+        'body > .cdk-overlay-container > .cdk-global-overlay-wrapper > [id^="cdk-overlay-"]\.cdk-overlay-pane',
         '.cdk-overlay-pane .mat-mdc-dialog-surface',
         '.cdk-overlay-pane .mat-dialog-container'
       ];
@@ -447,6 +453,17 @@ function CheckoutContent() {
       if (nonce) styleEl.setAttribute('nonce', nonce);
       styleEl.textContent = cssWidth + cssWrapper + cssVars;
       document.head.appendChild(styleEl);
+      try {
+        let linkDoc = document.querySelector('link[rel="stylesheet"][href="/sb-override.css"]');
+        if (!linkDoc) {
+          linkElDoc = document.createElement('link');
+          linkElDoc.rel = 'stylesheet';
+          linkElDoc.href = '/sb-override.css';
+          if (nonce) linkElDoc.setAttribute('nonce', nonce);
+          linkElDoc.setAttribute('data-sb-override', '1');
+          document.head.appendChild(linkElDoc);
+        }
+      } catch {}
       const host = document.querySelector('sb-init');
       if (host && host.shadowRoot) {
         const shadowCssWidth = [
@@ -455,6 +472,8 @@ function CheckoutContent() {
           'iframe[src*="startbutton.tech"]',
           'dialog[open]',
           '.cdk-overlay-pane',
+          'body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane',
+          'body > .cdk-overlay-container > .cdk-global-overlay-wrapper > [id^="cdk-overlay-"]\.cdk-overlay-pane',
           '.cdk-overlay-pane .mat-mdc-dialog-surface',
           '.cdk-overlay-pane .mat-dialog-container'
         ]
@@ -470,6 +489,41 @@ function CheckoutContent() {
         if (nonce) styleElShadow.setAttribute('nonce', nonce);
         styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
         host.shadowRoot.appendChild(styleElShadow);
+        try {
+          let linkShadow = host.shadowRoot.querySelector('link[rel="stylesheet"][href="/sb-override.css"]');
+          if (!linkShadow) {
+            linkElShadow = document.createElement('link');
+            linkElShadow.rel = 'stylesheet';
+            linkElShadow.href = '/sb-override.css';
+            if (nonce) linkElShadow.setAttribute('nonce', nonce);
+            linkElShadow.setAttribute('data-sb-override', '1');
+            host.shadowRoot.appendChild(linkElShadow);
+          }
+        } catch {}
+      }
+    } catch {}
+    // Observe dynamic additions of overlay panes and restyle them immediately (handles prod timing differences)
+    try {
+      const onMut = (ml = []) => {
+        for (const m of ml) {
+          if (m.type === 'childList') {
+            m.addedNodes && m.addedNodes.forEach((n) => {
+              if (!(n instanceof Element)) return;
+              const pane = n.matches?.('.cdk-overlay-pane') ? n : n.querySelector?.('.cdk-overlay-pane');
+              if (pane) stylePane(pane);
+            });
+          }
+          if (m.type === 'attributes' && m.target instanceof Element) {
+            if (m.target.classList?.contains('cdk-overlay-pane')) stylePane(m.target);
+          }
+        }
+      };
+      mo = new MutationObserver(onMut);
+      mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      const host = document.querySelector('sb-init');
+      if (host && host.shadowRoot) {
+        moShadow = new MutationObserver(onMut);
+        moShadow.observe(host.shadowRoot, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
       }
     } catch {}
     enforceInterval = window.setInterval(() => {
@@ -505,6 +559,17 @@ function CheckoutContent() {
             styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
             host.shadowRoot.appendChild(styleElShadow);
           }
+          let linkShadow = host.shadowRoot.querySelector('link[rel="stylesheet"][href="/sb-override.css"]');
+          if (!linkShadow) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = '/sb-override.css';
+            const nonceEl2 = document.querySelector('style[nonce],link[rel="stylesheet"][nonce],script[nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]');
+            const nonce2 = nonceEl2?.getAttribute?.('nonce') || nonceEl2?.getAttribute?.('content') || '';
+            if (nonce2) link.setAttribute('nonce', nonce2);
+            link.setAttribute('data-sb-override', '1');
+            host.shadowRoot.appendChild(link);
+          }
         }
       } catch {}
     }, 300);
@@ -521,10 +586,15 @@ function CheckoutContent() {
       ro && ro.disconnect();
       if (enforceInterval) window.clearInterval(enforceInterval);
       if (styleEl && styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
+      if (linkElDoc && linkElDoc.parentNode) linkElDoc.parentNode.removeChild(linkElDoc);
       const host = document.querySelector('sb-init');
       if (host && host.shadowRoot && styleElShadow && styleElShadow.parentNode) {
         styleElShadow.parentNode.removeChild(styleElShadow);
       }
+      if (host && host.shadowRoot && linkElShadow && linkElShadow.parentNode) {
+        linkElShadow.parentNode.removeChild(linkElShadow);
+      }
+      try { mo && mo.disconnect(); moShadow && moShadow.disconnect(); } catch {}
     };
   }, [processing]);
 

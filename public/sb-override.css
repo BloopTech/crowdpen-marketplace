@@ -1,0 +1,18 @@
+/* StartButton overlay sizing overrides (external to bypass CSP inline-style restrictions) */
+.cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}
+body > .cdk-overlay-container > .cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}
+
+.cdk-overlay-pane{width:520px!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;}
+body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane{width:520px!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;}
+
+.cdk-overlay-pane iframe,
+.cdk-overlay-pane .mat-mdc-dialog-surface,
+.cdk-overlay-pane .mat-dialog-container,
+.cdk-overlay-pane sb-init{width:100%!important;max-width:520px!important;display:block!important;margin:0 auto!important;}
+
+/* Dialog element fallback */
+dialog[open]{width:520px!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;display:block!important;}
+
+/* Angular Material width variables */
+:root{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}
+:host{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}
