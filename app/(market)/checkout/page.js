@@ -442,6 +442,9 @@ function CheckoutContent() {
       const cssVars = ':root{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}';
       styleEl = document.createElement('style');
       styleEl.type = 'text/css';
+      const nonceEl = document.querySelector('style[nonce],link[rel="stylesheet"][nonce],script[nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]');
+      const nonce = nonceEl?.getAttribute?.('nonce') || nonceEl?.getAttribute?.('content') || '';
+      if (nonce) styleEl.setAttribute('nonce', nonce);
       styleEl.textContent = cssWidth + cssWrapper + cssVars;
       document.head.appendChild(styleEl);
       const host = document.querySelector('sb-init');
@@ -464,6 +467,7 @@ function CheckoutContent() {
         const shadowVars = ':host{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}';
         styleElShadow = document.createElement('style');
         styleElShadow.type = 'text/css';
+        if (nonce) styleElShadow.setAttribute('nonce', nonce);
         styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
         host.shadowRoot.appendChild(styleElShadow);
       }
@@ -495,6 +499,9 @@ function CheckoutContent() {
             styleElShadow = document.createElement('style');
             styleElShadow.type = 'text/css';
             styleElShadow.className = '__sb_shadow_override__';
+            const nonceEl = document.querySelector('style[nonce],link[rel="stylesheet"][nonce],script[nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]');
+            const nonce = nonceEl?.getAttribute?.('nonce') || nonceEl?.getAttribute?.('content') || '';
+            if (nonce) styleElShadow.setAttribute('nonce', nonce);
             styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
             host.shadowRoot.appendChild(styleElShadow);
           }
