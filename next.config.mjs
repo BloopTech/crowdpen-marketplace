@@ -77,6 +77,8 @@ const nextConfig = {
     CLOUDFLARE_R2_TOKEN_VALUE: process.env.CLOUDFLARE_R2_TOKEN_VALUE,
     CROWDPEN_URL: process.env.CROWDPEN_URL,
     STARTBUTTON_PUBLIC_KEY: process.env.STARTBUTTON_PUBLIC_KEY,
+    STARTBUTTON_DEV_URL: process.env.STARTBUTTON_DEV_URL,
+    STARTBUTTON_PROD_URL: process.env.STARTBUTTON_PROD_URL
   },
   images: {
     remotePatterns: [

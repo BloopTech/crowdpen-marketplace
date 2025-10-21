@@ -196,7 +196,7 @@ function CheckoutContent() {
             "eft",
             "mobile_money",
           ],
-          //env: "test",
+          env: "test",
           email: order.customer?.email || formData.email,
           currency: order.currency,
           key: process.env.STARTBUTTON_PUBLIC_KEY,
@@ -303,24 +303,113 @@ function CheckoutContent() {
     let ro;
     let resizeHandler;
     let raf;
+    let enforceInterval;
+    let styleEl;
+    let styleElShadow;
     const buttonSize = 36; // px
     const margin = 8; // px
+    const stylePane = (pane) => {
+      try {
+        const widthValue = "520px";
+        const maxWidthValue = "94vw";
+        pane.style.setProperty("width", widthValue, "important");
+        pane.style.setProperty("maxWidth", maxWidthValue, "important");
+        pane.style.setProperty("left", "50%", "important");
+        pane.style.setProperty("right", "auto", "important");
+        pane.style.setProperty("transform", "translateX(-50%)", "important");
+        pane.style.setProperty("margin", "0 auto", "important");
+        pane.style.setProperty("display", "block", "important");
+        const wrapper =
+          pane.closest(".cdk-global-overlay-wrapper") || pane.parentElement;
+        if (wrapper) {
+          wrapper.style.setProperty("display", "flex", "important");
+          wrapper.style.setProperty("alignItems", "center", "important");
+          wrapper.style.setProperty("justifyContent", "center", "important");
+        }
+        const dialogEl = pane.querySelector("dialog");
+        if (dialogEl) {
+          dialogEl.style.setProperty("width", widthValue, "important");
+          dialogEl.style.setProperty("maxWidth", maxWidthValue, "important");
+          dialogEl.style.setProperty("margin", "0 auto", "important");
+          dialogEl.style.setProperty("left", "50%", "important");
+          dialogEl.style.setProperty(
+            "transform",
+            "translateX(-50%)",
+            "important"
+          );
+        }
+        const hostEl = pane.querySelector("sb-init");
+        if (hostEl) {
+          hostEl.style.setProperty("width", "100%", "important");
+          hostEl.style.setProperty("maxWidth", maxWidthValue, "important");
+          hostEl.style.setProperty("margin", "0 auto", "important");
+          hostEl.style.setProperty("display", "block", "important");
+        }
+        const iframeEl = pane.querySelector("iframe");
+        if (iframeEl) {
+          iframeEl.style.setProperty("width", "100%", "important");
+          iframeEl.style.setProperty("maxWidth", maxWidthValue, "important");
+          iframeEl.style.setProperty("margin", "0 auto", "important");
+          iframeEl.style.setProperty("display", "block", "important");
+        }
+        const matSurface = pane.querySelector(
+          ".mat-mdc-dialog-surface, .mat-dialog-container"
+        );
+        if (matSurface) {
+          matSurface.style.setProperty("width", "100%", "important");
+          matSurface.style.setProperty("maxWidth", maxWidthValue, "important");
+          matSurface.style.setProperty("margin", "0 auto", "important");
+          matSurface.style.setProperty("display", "block", "important");
+        }
+      } catch {}
+    };
+    const findPane = () => {
+      let pane = null;
+      try {
+        const iframeMatch = Array.from(document.querySelectorAll("iframe")).find((ifr) => {
+          const src = ifr.getAttribute("src") || "";
+          return (
+            src.includes("startbutton") ||
+            src.includes("sb-web-sdk") ||
+            src.includes("startbutton.tech")
+          );
+        });
+        if (iframeMatch) {
+          pane = iframeMatch.closest(".cdk-overlay-pane") || iframeMatch.parentElement;
+        }
+      } catch {}
+      if (!pane) {
+        const host = document.querySelector("sb-init");
+        if (host) {
+          pane = host.closest(".cdk-overlay-pane");
+          if (!pane && host.shadowRoot) {
+            const root = host.shadowRoot;
+            const panes = Array.from(root.querySelectorAll(".cdk-overlay-pane"));
+            if (panes.length) pane = panes[panes.length - 1];
+            if (!pane) {
+              const dialogs = Array.from(root.querySelectorAll("dialog[open]"));
+              if (dialogs.length) pane = dialogs[dialogs.length - 1];
+            }
+            if (!pane) {
+              const ifr = Array.from(root.querySelectorAll("iframe"))[0];
+              if (ifr) pane = ifr.parentElement;
+            }
+          }
+        }
+      }
+      if (!pane) {
+        const panes = Array.from(document.querySelectorAll(".cdk-overlay-pane"));
+        pane = panes.find((p) => p.querySelector("iframe")) || (panes.length ? panes[panes.length - 1] : null);
+      }
+      return pane;
+    };
     const position = () => {
       raf && cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         try {
-          const host = document.querySelector("sb-init");
-          let pane = null;
-          if (host) {
-            pane = host.closest(".cdk-overlay-pane");
-          }
-          if (!pane) {
-            const panes = Array.from(
-              document.querySelectorAll(".cdk-overlay-pane")
-            );
-            pane = panes.length ? panes[panes.length - 1] : null;
-          }
+          const pane = findPane();
           if (!pane) return;
+          stylePane(pane);
           const rect = pane.getBoundingClientRect();
           const top = Math.max(margin, rect.top + margin);
           const left = Math.min(
@@ -332,6 +421,86 @@ function CheckoutContent() {
       });
     };
     position();
+    try {
+      const baseTargets = [
+        'iframe[src*="startbutton"]',
+        'iframe[src*="sb-web-sdk"]',
+        'iframe[src*="startbutton.tech"]',
+        'dialog[open]',
+        '.cdk-overlay-pane',
+        '.cdk-overlay-pane .mat-mdc-dialog-surface',
+        '.cdk-overlay-pane .mat-dialog-container'
+      ];
+      const cssWidth = baseTargets
+        .map(
+          (sel) =>
+            `${sel}{width:min(94vw,520px)!important;max-width:520px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
+        )
+        .join('');
+      const cssWrapper =
+        '.cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}';
+      const cssVars = ':root{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}';
+      styleEl = document.createElement('style');
+      styleEl.type = 'text/css';
+      styleEl.textContent = cssWidth + cssWrapper + cssVars;
+      document.head.appendChild(styleEl);
+      const host = document.querySelector('sb-init');
+      if (host && host.shadowRoot) {
+        const shadowCssWidth = [
+          'iframe[src*="startbutton"]',
+          'iframe[src*="sb-web-sdk"]',
+          'iframe[src*="startbutton.tech"]',
+          'dialog[open]',
+          '.cdk-overlay-pane',
+          '.cdk-overlay-pane .mat-mdc-dialog-surface',
+          '.cdk-overlay-pane .mat-dialog-container'
+        ]
+          .map(
+            (sel) =>
+              `${sel}{width:min(94vw,520px)!important;max-width:520px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
+          )
+          .join('');
+        const shadowWrapper = '.cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}';
+        const shadowVars = ':host{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}';
+        styleElShadow = document.createElement('style');
+        styleElShadow.type = 'text/css';
+        styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
+        host.shadowRoot.appendChild(styleElShadow);
+      }
+    } catch {}
+    enforceInterval = window.setInterval(() => {
+      const pane = findPane();
+      if (pane) stylePane(pane);
+      try {
+        const host = document.querySelector('sb-init');
+        if (host && host.shadowRoot) {
+          const already = host.shadowRoot.querySelector('style.__sb_shadow_override__');
+          if (!already) {
+            const shadowCssWidth = [
+              'iframe[src*="startbutton"]',
+              'iframe[src*="sb-web-sdk"]',
+              'iframe[src*="startbutton.tech"]',
+              'dialog[open]',
+              '.cdk-overlay-pane',
+              '.cdk-overlay-pane .mat-mdc-dialog-surface',
+              '.cdk-overlay-pane .mat-dialog-container'
+            ]
+              .map(
+                (sel) =>
+                  `${sel}{width:min(94vw,520px)!important;max-width:520px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
+              )
+              .join('');
+            const shadowWrapper = '.cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}';
+            const shadowVars = ':host{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}';
+            styleElShadow = document.createElement('style');
+            styleElShadow.type = 'text/css';
+            styleElShadow.className = '__sb_shadow_override__';
+            styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
+            host.shadowRoot.appendChild(styleElShadow);
+          }
+        }
+      } catch {}
+    }, 300);
     resizeHandler = () => position();
     window.addEventListener("resize", resizeHandler);
     if (window.ResizeObserver) {
@@ -343,6 +512,12 @@ function CheckoutContent() {
       raf && cancelAnimationFrame(raf);
       window.removeEventListener("resize", resizeHandler);
       ro && ro.disconnect();
+      if (enforceInterval) window.clearInterval(enforceInterval);
+      if (styleEl && styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
+      const host = document.querySelector('sb-init');
+      if (host && host.shadowRoot && styleElShadow && styleElShadow.parentNode) {
+        styleElShadow.parentNode.removeChild(styleElShadow);
+      }
     };
   }, [processing]);
 
