@@ -104,6 +104,7 @@ User.init(
     lastLoginDate: DataTypes.DATE,
     loginStreak: DataTypes.INTEGER,
     totalPoints: DataTypes.FLOAT,
+    merchant: DataTypes.BOOLEAN,
   },
   {
     sequelize,

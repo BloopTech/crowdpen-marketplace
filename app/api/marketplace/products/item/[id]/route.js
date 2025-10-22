@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../models";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../api/auth/[...nextauth]/route";
+import { Op } from "sequelize";
 
 const {
   MarketplaceProduct,
@@ -29,7 +30,13 @@ export async function GET(request, { params }) {
   const userId = session?.user?.id || null;
 
   try {
-    const product = await MarketplaceProduct.findByPk(id, {
+    const product = await MarketplaceProduct.findOne({
+      where: {
+        [Op.or]: [
+          { id },
+          { product_id: id },
+        ],
+      },
       include: [
         { model: MarketplaceCategory },
         { model: MarketplaceSubCategory },

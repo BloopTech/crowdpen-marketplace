@@ -136,6 +136,14 @@ MarketplaceProduct.init(
     searchVector: DataTypes.TSVECTOR,
     file: DataTypes.TEXT,//file to be downloaded
     what_included: DataTypes.TEXT,
+    product_id: {
+      type: DataTypes.STRING(10),
+      allowNull: false,
+      unique: true,
+      validate: {
+        is: /^(?:[A-Za-z0-9]{8}|[A-Za-z0-9]{10})$/
+      }
+    }
   },
   {
     sequelize,

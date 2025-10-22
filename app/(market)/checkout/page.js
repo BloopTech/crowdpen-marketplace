@@ -24,7 +24,6 @@ import { RadioGroup, RadioGroupItem } from "../../components/ui/radio-group";
 import { CreditCard, Lock, ArrowLeft, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import MarketplaceHeader from "../../components/marketplace-header";
-import Script from "next/script";
 import PaymentResultModal from "../../components/payment-result-modal";
 import { CartContextProvider, useCart } from "../cart/context";
 import { useSession } from "next-auth/react";
@@ -73,6 +72,7 @@ function CheckoutContent() {
   const [, startFinalizeTransition] = useTransition();
 
   const [closePos, setClosePos] = useState(null);
+  const [cspNonce, setCspNonce] = useState("");
 
   const [formData, setFormData] = useState({
     email: session?.user?.email || "",
@@ -93,6 +93,16 @@ function CheckoutContent() {
         session?.user?.name?.split(" ")?.slice(1).join(" ") || prev.lastName,
     }));
   }, [session?.user?.email, session?.user?.name]);
+
+  useEffect(() => {
+    try {
+      const el = document.querySelector(
+        'script[nonce],style[nonce],link[rel="stylesheet"][nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]'
+      );
+      const n = el?.getAttribute?.("nonce") || el?.getAttribute?.("content") || "";
+      if (n) setCspNonce(n);
+    } catch {}
+  }, []);
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -720,11 +730,6 @@ function CheckoutContent() {
           <X className="h-4 w-4" />
         </button>
       )}
-      <Script
-        src="https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js"
-        strategy="afterInteractive"
-      />
-
       <MarketplaceHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}

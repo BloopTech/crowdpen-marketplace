@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth";
 import SessionProvider from "./components/SessionProvider";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import GoogleAnalytics from "./components/googleAnalytics";
+import Script from "next/script";
+import { headers } from "next/headers";
 import { ThemeProvider } from "next-themes";
 import { SWRConfig } from "swr";
 import { HomeProvider } from "./context";
@@ -44,6 +46,9 @@ export default async function RootLayout({ children }) {
     return response.json();
   };
 
+  const h = headers();
+  const nonce = h.get("x-csp-nonce") || h.get("x-nonce") || "";
+
   return (
     <html
       lang="en"
@@ -51,6 +56,11 @@ export default async function RootLayout({ children }) {
       suppressHydrationWarning
     >
       <body className="antialiased scroll-auto w-full">
+        <Script
+          src="https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js"
+          strategy="afterInteractive"
+          nonce={nonce || undefined}
+        />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <SessionProvider session={session}>
             <QueryProvider>

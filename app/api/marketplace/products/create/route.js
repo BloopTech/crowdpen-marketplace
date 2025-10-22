@@ -34,6 +34,30 @@ const sanitizeProductFilename = (filename) => {
     .replace(/[^a-zA-Z0-9._-]/g, "");
 };
 
+const PRODUCT_ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+function generateProductIdCandidate(length = 10) {
+  const bytes = crypto.randomBytes(length);
+  let id = "";
+  for (let i = 0; i < length; i++) {
+    id += PRODUCT_ID_CHARS[bytes[i] % PRODUCT_ID_CHARS.length];
+  }
+  return id;
+}
+
+async function generateUniqueProductId(preferredLength = 10, fallbackLength = 8, maxAttempts = 10) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const useLength = attempt < Math.floor(maxAttempts / 2) ? preferredLength : fallbackLength;
+    const candidate = generateProductIdCandidate(useLength);
+    const exists = await db.MarketplaceProduct.findOne({
+      where: { product_id: candidate },
+      attributes: ["product_id", "id"],
+    });
+    if (!exists) return candidate;
+  }
+  throw new Error("Unable to generate unique product_id");
+}
+
 const formatFileSize = (bytes) => {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;
@@ -312,20 +336,38 @@ export async function POST(request) {
       }
     }
 
-    // Create new product in database
-    const createdProduct = await db.MarketplaceProduct.create({
-      ...productData,
-      user_id: userId,
-      images: imageUrls,
-      image: imageUrls[0] || null,
-      file: productFileUrl, // Store the uploaded file URL
-      fileType: productData.fileType,
-      fileSize: calculatedFileSize || productData.fileSize || "", // Use calculated size
-      license: productData.license || "Standard",
-      deliveryTime: productData.deliveryTime || "Instant",
-      featured: productData.featured || false,
-      what_included: productData.what_included || "",
-    });
+    let createdProduct;
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const productId = await generateUniqueProductId();
+        createdProduct = await db.MarketplaceProduct.create({
+          ...productData,
+          user_id: userId,
+          images: imageUrls,
+          image: imageUrls[0] || null,
+          file: productFileUrl, // Store the uploaded file URL
+          fileType: productData.fileType,
+          fileSize: calculatedFileSize || productData.fileSize || "", // Use calculated size
+          license: productData.license || "Standard",
+          deliveryTime: productData.deliveryTime || "Instant",
+          featured: productData.featured || false,
+          what_included: productData.what_included || "",
+          product_id: productId,
+        });
+        lastError = undefined;
+        break;
+      } catch (e) {
+        if (e?.name === 'SequelizeUniqueConstraintError' || e?.parent?.code === '23505') {
+          lastError = e;
+          continue;
+        }
+        throw e;
+      }
+    }
+    if (!createdProduct) {
+      throw lastError || new Error("Failed to create product with unique product_id");
+    }
 
     return NextResponse.json(
       {
@@ -336,6 +378,7 @@ export async function POST(request) {
           title: createdProduct.title,
           image: createdProduct.image,
           images: createdProduct.images,
+          product_id: createdProduct.product_id,
         },
       },
       { status: 201 }
