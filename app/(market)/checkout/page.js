@@ -323,6 +323,29 @@ function CheckoutContent() {
     let moShadow;
     const buttonSize = 36; // px
     const margin = 8; // px
+    const styleSbLightDom = () => {
+      try {
+        const targets = document.querySelectorAll(
+          'sb-init section.bg-white, sb-init section[class*="!w-[98vw]"], sb-init [class*="!w-[98vw]"], sb-init [class*="max-w-[450px]"]'
+        );
+        targets.forEach((el) => {
+          el.style.setProperty("width", "520px", "important");
+          el.style.setProperty("maxWidth", "94vw", "important");
+          el.style.setProperty("margin", "0 auto", "important");
+          el.style.setProperty("display", "block", "important");
+          el.style.setProperty("left", "50%", "important");
+          el.style.setProperty("transform", "translateX(-50%)", "important");
+        });
+        const containers = document.querySelectorAll(
+          'sb-init article, sb-init [class*="items-center"][class*="justify-center"]'
+        );
+        containers.forEach((el) => {
+          el.style.setProperty("display", "flex", "important");
+          el.style.setProperty("alignItems", "center", "important");
+          el.style.setProperty("justifyContent", "center", "important");
+        });
+      } catch {}
+    };
     const stylePane = (pane, iframeMatch) => {
       try {
         const widthValue = "520px";
@@ -436,9 +459,16 @@ function CheckoutContent() {
           const found = findPane();
           const pane = found?.pane;
           const iframe = found?.iframe;
-          if (!pane && !iframe) return;
           stylePane(pane, iframe);
-          const rect = (pane || iframe).getBoundingClientRect();
+          styleSbLightDom();
+          let rectEl = pane || iframe || null;
+          if (!rectEl) {
+            rectEl = document.querySelector(
+              'sb-init section.bg-white, sb-init section[class*="!w-[98vw]"], sb-init [class*="!w-[98vw]"], sb-init [class*="max-w-[450px]"]'
+            );
+          }
+          if (!rectEl) return;
+          const rect = rectEl.getBoundingClientRect();
           const top = Math.max(margin, rect.top + margin);
           const left = Math.min(
             window.innerWidth - (buttonSize + margin),
@@ -539,10 +569,12 @@ function CheckoutContent() {
               if (!(n instanceof Element)) return;
               const pane = n.matches?.('.cdk-overlay-pane') ? n : n.querySelector?.('.cdk-overlay-pane');
               if (pane) stylePane(pane);
+              styleSbLightDom();
             });
           }
           if (m.type === 'attributes' && m.target instanceof Element) {
             if (m.target.classList?.contains('cdk-overlay-pane')) stylePane(m.target);
+            styleSbLightDom();
           }
         }
       };
@@ -555,8 +587,9 @@ function CheckoutContent() {
       }
     } catch {}
     enforceInterval = window.setInterval(() => {
-      const pane = findPane();
-      if (pane) stylePane(pane);
+      const found = findPane();
+      if (found?.pane || found?.iframe) stylePane(found.pane, found.iframe);
+      styleSbLightDom();
       try {
         const host = document.querySelector('sb-init');
         if (host) {

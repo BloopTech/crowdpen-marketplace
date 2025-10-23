@@ -16,3 +16,13 @@ dialog[open]{width:520px!important;max-width:94vw!important;left:50%!important;t
 /* Angular Material width variables */
 :root{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}
 :host{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}
+
+/* StartButton light-DOM fallback (Angular Emulated, no iframe/CDK pane) */
+sb-init section.bg-white,
+sb-init section[class*="!w-[98vw]"],
+sb-init [class*="!w-[98vw]"],
+sb-init [class*="max-w-[450px]"]{
+  width:520px!important;
+  max-width:94vw!important;
+  margin:0 auto!important;
+}
