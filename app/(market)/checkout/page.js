@@ -206,7 +206,7 @@ function CheckoutContent() {
             "eft",
             "mobile_money",
           ],
-          env: "test",
+          env: process.env.NODE_ENV === "production" ? "production" : "test",
           email: order.customer?.email || formData.email,
           currency: order.currency,
           key: process.env.STARTBUTTON_PUBLIC_KEY,
@@ -477,17 +477,21 @@ function CheckoutContent() {
       styleEl.textContent = cssWidth + cssWrapper + cssVars;
       document.head.appendChild(styleEl);
       try {
-        let linkDoc = document.querySelector('link[rel="stylesheet"][href="/sb-override.css"]');
+        let linkDoc = document.querySelector('link[rel="stylesheet"][href^="/sb-override.css"]');
         if (!linkDoc) {
           linkElDoc = document.createElement('link');
           linkElDoc.rel = 'stylesheet';
-          linkElDoc.href = '/sb-override.css';
+          linkElDoc.href = '/sb-override.css?v=1';
           if (nonce) linkElDoc.setAttribute('nonce', nonce);
           linkElDoc.setAttribute('data-sb-override', '1');
           document.head.appendChild(linkElDoc);
         }
       } catch {}
       const host = document.querySelector('sb-init');
+      if (host) {
+        host.style.setProperty('--mat-dialog-container-max-width', '520px');
+        host.style.setProperty('--mat-dialog-container-small-max-width', '520px');
+      }
       if (host && host.shadowRoot) {
         const shadowCssWidth = [
           'iframe[src*="startbutton"]',
@@ -513,11 +517,11 @@ function CheckoutContent() {
         styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
         host.shadowRoot.appendChild(styleElShadow);
         try {
-          let linkShadow = host.shadowRoot.querySelector('link[rel="stylesheet"][href="/sb-override.css"]');
+          let linkShadow = host.shadowRoot.querySelector('link[rel="stylesheet"][href^="/sb-override.css"]');
           if (!linkShadow) {
             linkElShadow = document.createElement('link');
             linkElShadow.rel = 'stylesheet';
-            linkElShadow.href = '/sb-override.css';
+            linkElShadow.href = '/sb-override.css?v=1';
             if (nonce) linkElShadow.setAttribute('nonce', nonce);
             linkElShadow.setAttribute('data-sb-override', '1');
             host.shadowRoot.appendChild(linkElShadow);
@@ -554,6 +558,10 @@ function CheckoutContent() {
       if (pane) stylePane(pane);
       try {
         const host = document.querySelector('sb-init');
+        if (host) {
+          host.style.setProperty('--mat-dialog-container-max-width', '520px');
+          host.style.setProperty('--mat-dialog-container-small-max-width', '520px');
+        }
         if (host && host.shadowRoot) {
           const already = host.shadowRoot.querySelector('style.__sb_shadow_override__');
           if (!already) {
@@ -582,11 +590,11 @@ function CheckoutContent() {
             styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
             host.shadowRoot.appendChild(styleElShadow);
           }
-          let linkShadow = host.shadowRoot.querySelector('link[rel="stylesheet"][href="/sb-override.css"]');
+          let linkShadow = host.shadowRoot.querySelector('link[rel="stylesheet"][href^="/sb-override.css"]');
           if (!linkShadow) {
             const link = document.createElement('link');
             link.rel = 'stylesheet';
-            link.href = '/sb-override.css';
+            link.href = '/sb-override.css?v=1';
             const nonceEl2 = document.querySelector('style[nonce],link[rel="stylesheet"][nonce],script[nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]');
             const nonce2 = nonceEl2?.getAttribute?.('nonce') || nonceEl2?.getAttribute?.('content') || '';
             if (nonce2) link.setAttribute('nonce', nonce2);
