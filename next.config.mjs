@@ -8,7 +8,7 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "object-src 'none'",
   // Allow GA/Tag Manager and inline scripts (Next.js inline snippets). 'unsafe-eval' for dev HMR only.
-  `script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com ${isDev ? "'unsafe-inline' 'unsafe-eval'" : "'unsafe-inline'"}`,
+  `script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app ${isDev ? "'unsafe-inline' 'unsafe-eval'" : "'unsafe-inline'"}`,
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self' https: wss: ws:",
   "frame-ancestors 'none'",
