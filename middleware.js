@@ -43,14 +43,12 @@ export async function middleware(request) {
   const buildCSP = (n) => {
     const commonScriptHosts =
       "https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://checkout.startbutton.tech https://pay-stage.startbutton.tech";
-    // Allow GA inline bootstrap snippet via hash as a fallback in case nonce isn't applied
-    const gaInlineHash = "'sha256-HzMfaUcSA6GHOde2Db8a+loF1ug9IUc8vzXqrY0nRAo='";
     const scriptSrc = isDev
       ? `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`
-      : `script-src 'self' 'nonce-${n}' 'strict-dynamic' ${commonScriptHosts} ${gaInlineHash}`;
+      : `script-src 'self' 'nonce-${n}' ${commonScriptHosts}`;
     const scriptSrcElem = isDev
       ? `script-src-elem 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`
-      : `script-src-elem 'self' 'nonce-${n}' 'strict-dynamic' ${commonScriptHosts} ${gaInlineHash}`;
+      : `script-src-elem 'self' 'nonce-${n}' ${commonScriptHosts}`;
 
     return [
       "default-src 'self'",
@@ -77,15 +75,15 @@ export async function middleware(request) {
   const buildCheckoutCSP = () => {
     const commonScriptHosts =
       "https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://checkout.startbutton.tech https://pay-stage.startbutton.tech";
-    const gaInlineHash = "'sha256-HzMfaUcSA6GHOde2Db8a+loF1ug9IUc8vzXqrY0nRAo='";
     return [
       "default-src 'self'",
       "base-uri 'self'",
       "font-src 'self' https: data:",
       "img-src 'self' data: blob: https:",
       "object-src 'none'",
-      `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' ${gaInlineHash}`,
-      `script-src-elem 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' ${gaInlineHash}`,
+      // Intentionally omit nonce/hash here so 'unsafe-inline' takes effect for this page
+      `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`,
+      `script-src-elem 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com https://cdnjs.cloudflare.com",
       "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com https://cdnjs.cloudflare.com",
       // Allow StartButton network calls
