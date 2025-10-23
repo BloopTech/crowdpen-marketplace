@@ -48,7 +48,7 @@ export default async function RootLayout({ children }) {
     return response.json();
   };
 
-  const h = headers();
+  const h = await headers();
   const nonce = h.get("x-csp-nonce") || h.get("x-nonce") || "";
 
   return (
