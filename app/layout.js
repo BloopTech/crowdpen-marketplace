@@ -55,6 +55,10 @@ export default async function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <meta name="csp-nonce" content={nonce} />
+        <meta property="csp-nonce" content={nonce} />
+      </head>
       <body className="antialiased scroll-auto w-full">
         <Script
           src="https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js"
