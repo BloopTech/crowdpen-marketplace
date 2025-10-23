@@ -43,12 +43,14 @@ export async function middleware(request) {
   const buildCSP = (n) => {
     const commonScriptHosts =
       "https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://checkout.startbutton.tech https://pay-stage.startbutton.tech";
+    // Allow GA inline bootstrap snippet via hash as a fallback in case nonce isn't applied
+    const gaInlineHash = "'sha256-HzMfaUcSA6GHOde2Db8a+loF1ug9IUc8vzXqrY0nRAo='";
     const scriptSrc = isDev
       ? `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`
-      : `script-src 'self' 'nonce-${n}' ${commonScriptHosts}`;
+      : `script-src 'self' 'nonce-${n}' 'strict-dynamic' ${commonScriptHosts} ${gaInlineHash}`;
     const scriptSrcElem = isDev
       ? `script-src-elem 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`
-      : `script-src-elem 'self' 'nonce-${n}' ${commonScriptHosts}`;
+      : `script-src-elem 'self' 'nonce-${n}' 'strict-dynamic' ${commonScriptHosts} ${gaInlineHash}`;
 
     return [
       "default-src 'self'",
@@ -75,14 +77,15 @@ export async function middleware(request) {
   const buildCheckoutCSP = () => {
     const commonScriptHosts =
       "https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://checkout.startbutton.tech https://pay-stage.startbutton.tech";
+    const gaInlineHash = "'sha256-HzMfaUcSA6GHOde2Db8a+loF1ug9IUc8vzXqrY0nRAo='";
     return [
       "default-src 'self'",
       "base-uri 'self'",
       "font-src 'self' https: data:",
       "img-src 'self' data: blob: https:",
       "object-src 'none'",
-      `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`,
-      `script-src-elem 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`,
+      `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' ${gaInlineHash}`,
+      `script-src-elem 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval' 'strict-dynamic' ${gaInlineHash}`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com https://cdnjs.cloudflare.com",
       "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com https://cdnjs.cloudflare.com",
       // Allow StartButton network calls
@@ -175,20 +178,19 @@ export async function middleware(request) {
       return authRedirectRes;
     }
 
+    const cspPolicy = isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce);
+    // Expose CSP policy on the request so Next can auto-apply the nonce during SSR
+    reqHeaders.set("Content-Security-Policy", cspPolicy);
     const res = NextResponse.next({ request: { headers: reqHeaders } });
-    res.headers.set(
-      "Content-Security-Policy",
-      isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce)
-    );
+    res.headers.set("Content-Security-Policy", cspPolicy);
     return res;
   } catch (error) {
     console.error("Middleware error:", error);
     // On error, allow the request to proceed to avoid breaking the app
+    const cspPolicy = isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce);
+    reqHeaders.set("Content-Security-Policy", cspPolicy);
     const res = NextResponse.next({ request: { headers: reqHeaders } });
-    res.headers.set(
-      "Content-Security-Policy",
-      isCheckoutPath ? buildCheckoutCSP() : buildCSP(nonce)
-    );
+    res.headers.set("Content-Security-Policy", cspPolicy);
     return res;
   }
 }
