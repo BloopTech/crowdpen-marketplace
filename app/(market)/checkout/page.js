@@ -322,25 +322,27 @@ function CheckoutContent() {
     let moShadow;
     const buttonSize = 36; // px
     const margin = 8; // px
-    const stylePane = (pane) => {
+    const stylePane = (pane, iframeMatch) => {
       try {
         const widthValue = "520px";
         const maxWidthValue = "94vw";
-        pane.style.setProperty("width", widthValue, "important");
-        pane.style.setProperty("maxWidth", maxWidthValue, "important");
-        pane.style.setProperty("left", "50%", "important");
-        pane.style.setProperty("right", "auto", "important");
-        pane.style.setProperty("transform", "translateX(-50%)", "important");
-        pane.style.setProperty("margin", "0 auto", "important");
-        pane.style.setProperty("display", "block", "important");
+        if (pane) {
+          pane.style.setProperty("width", widthValue, "important");
+          pane.style.setProperty("maxWidth", maxWidthValue, "important");
+          pane.style.setProperty("left", "50%", "important");
+          pane.style.setProperty("right", "auto", "important");
+          pane.style.setProperty("transform", "translateX(-50%)", "important");
+          pane.style.setProperty("margin", "0 auto", "important");
+          pane.style.setProperty("display", "block", "important");
+        }
         const wrapper =
-          pane.closest(".cdk-global-overlay-wrapper") || pane.parentElement;
+          pane?.closest?.(".cdk-global-overlay-wrapper") || pane?.parentElement;
         if (wrapper) {
           wrapper.style.setProperty("display", "flex", "important");
           wrapper.style.setProperty("alignItems", "center", "important");
           wrapper.style.setProperty("justifyContent", "center", "important");
         }
-        const dialogEl = pane.querySelector("dialog");
+        const dialogEl = pane?.querySelector?.("dialog");
         if (dialogEl) {
           dialogEl.style.setProperty("width", widthValue, "important");
           dialogEl.style.setProperty("maxWidth", maxWidthValue, "important");
@@ -352,21 +354,29 @@ function CheckoutContent() {
             "important"
           );
         }
-        const hostEl = pane.querySelector("sb-init");
+        const hostEl = pane?.querySelector?.("sb-init");
         if (hostEl) {
           hostEl.style.setProperty("width", "100%", "important");
           hostEl.style.setProperty("maxWidth", maxWidthValue, "important");
           hostEl.style.setProperty("margin", "0 auto", "important");
           hostEl.style.setProperty("display", "block", "important");
         }
-        const iframeEl = pane.querySelector("iframe");
+        const iframeEl = pane?.querySelector?.("iframe") || iframeMatch || null;
         if (iframeEl) {
-          iframeEl.style.setProperty("width", "100%", "important");
-          iframeEl.style.setProperty("maxWidth", maxWidthValue, "important");
+          const iframeWidth = pane ? "100%" : widthValue;
+          const iframeMaxWidth = pane ? maxWidthValue : maxWidthValue;
+          iframeEl.style.setProperty("width", iframeWidth, "important");
+          iframeEl.style.setProperty("maxWidth", iframeMaxWidth, "important");
           iframeEl.style.setProperty("margin", "0 auto", "important");
           iframeEl.style.setProperty("display", "block", "important");
+          // Center fixed/absolute iframe when no pane wrapper
+          if (!pane) {
+            iframeEl.style.setProperty("left", "50%", "important");
+            iframeEl.style.setProperty("right", "auto", "important");
+            iframeEl.style.setProperty("transform", "translateX(-50%)", "important");
+          }
         }
-        const matSurface = pane.querySelector(
+        const matSurface = pane?.querySelector?.(
           ".mat-mdc-dialog-surface, .mat-dialog-container"
         );
         if (matSurface) {
@@ -379,8 +389,9 @@ function CheckoutContent() {
     };
     const findPane = () => {
       let pane = null;
+      let iframeMatch = null;
       try {
-        const iframeMatch = Array.from(document.querySelectorAll("iframe")).find((ifr) => {
+        iframeMatch = Array.from(document.querySelectorAll("iframe")).find((ifr) => {
           const src = ifr.getAttribute("src") || "";
           return (
             src.includes("startbutton") ||
@@ -415,16 +426,18 @@ function CheckoutContent() {
         const panes = Array.from(document.querySelectorAll(".cdk-overlay-pane"));
         pane = panes.find((p) => p.querySelector("iframe")) || (panes.length ? panes[panes.length - 1] : null);
       }
-      return pane;
+      return { pane, iframe: iframeMatch };
     };
     const position = () => {
       raf && cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
         try {
-          const pane = findPane();
-          if (!pane) return;
-          stylePane(pane);
-          const rect = pane.getBoundingClientRect();
+          const found = findPane();
+          const pane = found?.pane;
+          const iframe = found?.iframe;
+          if (!pane && !iframe) return;
+          stylePane(pane, iframe);
+          const rect = (pane || iframe).getBoundingClientRect();
           const top = Math.max(margin, rect.top + margin);
           const left = Math.min(
             window.innerWidth - (buttonSize + margin),
