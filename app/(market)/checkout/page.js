@@ -212,7 +212,7 @@ function CheckoutContent() {
             "eft",
             "mobile_money",
           ],
-          env: process.env.NODE_ENV === "production" ? "prod" : "test",
+          env: process.env.NODE_ENV === "production" ? "test" : "test",
           email: order.customer?.email || formData.email,
           currency: order.currency,
           key: process.env.STARTBUTTON_PUBLIC_KEY,
