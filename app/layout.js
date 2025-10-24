@@ -62,10 +62,19 @@ export default async function RootLayout({ children }) {
         <meta property="csp-nonce" content={nonce} />
       </head>
       <body className="antialiased scroll-auto w-full">
+        {/* StartButton SDK: pin via env, fallback to latest if missing */}
         <Script
-          src="https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js"
+          src={process.env.NEXT_PUBLIC_SB_SDK_SRC || "https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js"}
           strategy="afterInteractive"
           nonce={nonce || undefined}
+        />
+        <Script
+          id="sb-fallback-loader"
+          strategy="afterInteractive"
+          nonce={nonce || undefined}
+          dangerouslySetInnerHTML={{
+            __html: `(() => {try {setTimeout(() => {try {if (!window.SBInit) { var s = document.createElement('script'); s.src = 'https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js'; s.async = true; document.head.appendChild(s); }} catch(_) {}}, 2000);} catch(_) {}})();`,
+          }}
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <SessionProvider session={session}>
