@@ -339,8 +339,10 @@ function CheckoutContent() {
           el.style.setProperty("maxWidth", "94vw", "important");
           el.style.setProperty("margin", "0 auto", "important");
           el.style.setProperty("display", "block", "important");
-          el.style.setProperty("left", "50%", "important");
-          el.style.setProperty("transform", "translateX(-50%)", "important");
+          el.style.setProperty("left", "auto", "important");
+          el.style.setProperty("right", "auto", "important");
+          el.style.setProperty("transform", "none", "important");
+          el.style.setProperty("alignSelf", "center", "important");
         });
         const containers = document.querySelectorAll(
           'sb-init article, sb-init [class*="items-center"][class*="justify-center"]'

@@ -27,6 +27,11 @@ sb-init [class*="max-w-[450px]"]{
   margin:0 auto!important;
   box-sizing:border-box!important;
   overflow-x:hidden!important;
+  justify-self:center!important;
+  align-self:center!important;
+  left:auto!important;
+  right:auto!important;
+  transform:none!important;
 }
 
 /* Prevent horizontal scroll when sb-init is present */
@@ -34,7 +39,7 @@ html:has(sb-init), body:has(sb-init){overflow-x:hidden!important;}
 sb-init, sb-init *{overflow-x:hidden!important;}
 
 /* Neutralize w-screen within StartButton DOM to avoid viewport-width overflow */
-sb-init .w-screen{width:100%!important;}
+sb-init .w-screen, sb-init [class*="w-screen"]{width:100%!important;}
 
 /* Constrain images inside the StartButton card (e.g., brand badges) */
 sb-init img{height:auto!important;max-height:18px!important;width:auto!important;max-width:100%!important;}
@@ -44,4 +49,18 @@ sb-init .mx-\[-25px\],
 sb-init [class*="mx-[-25px]"]{
   margin-left:0!important;
   margin-right:0!important;
+}
+
+/* Force parent to center children vertically and horizontally */
+sb-init article{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+
+/* Ensure main white card section is centered */
+sb-init article > section.bg-white{
+  margin-left:auto!important;
+  margin-right:auto!important;
 }
