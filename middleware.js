@@ -42,7 +42,7 @@ export async function middleware(request) {
   const isDev = process.env.NODE_ENV === "development";
   const buildCSP = (n) => {
     const commonScriptHosts =
-      "https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://checkout.startbutton.tech https://pay-stage.startbutton.tech";
+      "https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://checkout.startbutton.tech https://pay-stage.startbutton.tech https://js.paystack.co";
     const scriptSrc = isDev
       ? `script-src 'self' ${commonScriptHosts} 'unsafe-inline' 'unsafe-eval'`
       : `script-src 'self' 'nonce-${n}' ${commonScriptHosts}`;
@@ -64,7 +64,7 @@ export async function middleware(request) {
       "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com https://cdnjs.cloudflare.com",
       "connect-src 'self' https: wss: ws:",
       // Allow embedding StartButton checkout if it uses iframes
-      "frame-src 'self' https://checkout.startbutton.tech https://pay-stage.startbutton.tech",
+      "frame-src 'self' https://checkout.startbutton.tech https://pay-stage.startbutton.tech https://checkout.paystack.com",
       "frame-ancestors 'none'",
       "form-action 'self'",
       "upgrade-insecure-requests",
@@ -74,7 +74,7 @@ export async function middleware(request) {
   // Relaxed CSP for StartButton-heavy pages (no nonce, allow inline)
   const buildCheckoutCSP = () => {
     const commonScriptHosts =
-      "https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://checkout.startbutton.tech https://pay-stage.startbutton.tech";
+      "https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://checkout.startbutton.tech https://pay-stage.startbutton.tech https://js.paystack.co";
     return [
       "default-src 'self'",
       "base-uri 'self'",
@@ -87,9 +87,9 @@ export async function middleware(request) {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com https://cdnjs.cloudflare.com",
       "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.cdnfonts.com https://cdnjs.cloudflare.com",
       // Allow StartButton network calls
-      "connect-src 'self' https: wss: ws: https://api.startbutton.tech https://api-dev.startbutton.tech https://checkout.startbutton.tech https://pay-stage.startbutton.tech",
+      "connect-src 'self' https: wss: ws: https://api.startbutton.tech https://api-dev.startbutton.tech https://checkout.startbutton.tech https://pay-stage.startbutton.tech https://api.paystack.co",
       // Allow embedding StartButton checkout if it uses iframes
-      "frame-src 'self' https://checkout.startbutton.tech https://pay-stage.startbutton.tech",
+      "frame-src 'self' https://checkout.startbutton.tech https://pay-stage.startbutton.tech https://checkout.paystack.com",
       "frame-ancestors 'none'",
       "form-action 'self'",
       "upgrade-insecure-requests",
