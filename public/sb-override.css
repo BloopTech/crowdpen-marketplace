@@ -25,4 +25,23 @@ sb-init [class*="max-w-[450px]"]{
   width:520px!important;
   max-width:94vw!important;
   margin:0 auto!important;
+  box-sizing:border-box!important;
+  overflow-x:hidden!important;
+}
+
+/* Prevent horizontal scroll when sb-init is present */
+html:has(sb-init), body:has(sb-init){overflow-x:hidden!important;}
+sb-init, sb-init *{overflow-x:hidden!important;}
+
+/* Neutralize w-screen within StartButton DOM to avoid viewport-width overflow */
+sb-init .w-screen{width:100%!important;}
+
+/* Constrain images inside the StartButton card (e.g., brand badges) */
+sb-init img{height:auto!important;max-height:18px!important;width:auto!important;max-width:100%!important;}
+
+/* Neutralize problematic negative horizontal margins observed in header rows */
+sb-init .mx-\[-25px\],
+sb-init [class*="mx-[-25px]"]{
+  margin-left:0!important;
+  margin-right:0!important;
 }

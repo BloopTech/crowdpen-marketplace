@@ -175,7 +175,11 @@ function CheckoutContent() {
 
         const setupSbCloseHooks = () => {
           const prevOverflow = document.body.style.overflow;
+          const prevBodyOverflowX = document.body.style.overflowX;
+          const prevHtmlOverflowX = document.documentElement.style.overflowX;
           document.body.style.overflow = "hidden";
+          document.body.style.overflowX = "hidden";
+          document.documentElement.style.overflowX = "hidden";
 
           const onKey = (ev) => {
             if (ev.key === "Escape") cancelStartButton();
@@ -186,6 +190,8 @@ function CheckoutContent() {
             if (cleaned) return;
             cleaned = true;
             document.body.style.overflow = prevOverflow;
+            document.body.style.overflowX = prevBodyOverflowX;
+            document.documentElement.style.overflowX = prevHtmlOverflowX;
             window.removeEventListener("keydown", onKey, true);
             launchedRef.current = false;
           };
