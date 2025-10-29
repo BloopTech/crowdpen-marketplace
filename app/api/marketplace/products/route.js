@@ -16,6 +16,7 @@ const {
   MarketplaceCart,
   MarketplaceCartItems,
   MarketplaceProductVariation,
+  MarketplaceKycVerification,
 } = db;
 
 export async function GET(request) {
@@ -142,9 +143,18 @@ export async function GET(request) {
     // Pagination
     const offset = (page - 1) * limit;
 
+    // Apply KYC visibility: show only products where owner's KYC is approved, unless viewer is the owner
+    const visibilityOr = [
+      { '$User.MarketplaceKycVerification.status$': 'approved' },
+    ];
+    if (userId) {
+      visibilityOr.push({ user_id: userId });
+    }
+    const finalWhere = { [Op.and]: [ where, { [Op.or]: visibilityOr } ] };
+
     // Now try the full query
     const { count, rows: products } = await MarketplaceProduct.findAndCountAll({
-      where,
+      where: finalWhere,
       order,
       limit,
       offset,
@@ -154,6 +164,19 @@ export async function GET(request) {
         {
           model: MarketplaceProductTags,
           as: "productTags",
+        },
+        // Needed for KYC visibility filter via $User.MarketplaceKycVerification.status$
+        {
+          model: User,
+          attributes: [],
+          required: false,
+          include: [
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
+          ],
         },
       ],
       attributes: [

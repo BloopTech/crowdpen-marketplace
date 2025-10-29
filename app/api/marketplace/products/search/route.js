@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { Op } from "sequelize"
 import { db } from "../../../../models/index"
 import { literal } from "sequelize";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../auth/[...nextauth]/route";
 
 const {
   MarketplaceProduct,
@@ -9,6 +11,7 @@ const {
   MarketplaceSubCategory,
   User,
   MarketplaceTags,
+  MarketplaceKycVerification,
 } = db
 
 function parseOperators(q = "") {
@@ -86,7 +89,7 @@ function calculateRelevance(resource, searchTerms) {
   return score
 }
 
-async function queryDB({ q, limit = 50, filters = {} }) {
+async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
   const { text, type, author, price, rating, categoryTerm, subcategoryTerm } = parseOperators(q)
 
   const andConditions = []
@@ -180,6 +183,15 @@ async function queryDB({ q, limit = 50, filters = {} }) {
     andConditions.push({ rating: { [Op.gte]: rating } })
   }
 
+  // KYC visibility: owner's KYC must be approved unless the viewer is the owner
+  const kycOr = [
+    { '$User.MarketplaceKycVerification.status$': 'approved' },
+  ]
+  if (viewerId) {
+    kycOr.push({ '$User.id$': viewerId })
+  }
+  andConditions.push({ [Op.or]: kycOr })
+
   // Explicit filter params
   const {
     categoryIds = [],
@@ -238,7 +250,14 @@ async function queryDB({ q, limit = 50, filters = {} }) {
     include: [
       { model: MarketplaceCategory, attributes: ["name", "slug"], required: false },
       { model: MarketplaceSubCategory, attributes: ["name", "slug"], required: false },
-      { model: User, attributes: ["id", "name", "pen_name"], required: false },
+      { 
+        model: User, 
+        attributes: ["id", "name", "pen_name"], 
+        required: false,
+        include: [
+          { model: MarketplaceKycVerification, attributes: ["status"], required: false }
+        ]
+      },
       {
         model: MarketplaceTags,
         as: "tags",
@@ -304,6 +323,8 @@ export async function GET(request) {
   const subcategoryNames = parseCsv(searchParams.get("subcategory"))
 
   const started = Date.now()
+  const session = await getServerSession(authOptions)
+  const viewerId = session?.user?.id || null
   try {
     const dbResults = await queryDB({
       q,
@@ -316,6 +337,7 @@ export async function GET(request) {
         subcategorySlugs,
         subcategoryNames,
       },
+      viewerId,
     })
     // No fallback to mock; return DB results only
 

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Search,
   ShoppingCart,
@@ -38,6 +38,12 @@ export default function MarketplaceHeader(props) {
 
   const [loading, setLoading] = useState(false);
   console.log("cartCountData", cartCountData);
+
+  const handleCreateClick = () => {
+      router.push("/product/create");
+  };
+
+  
   return (
     <header className="border-b bg-white sticky top-0 z-10 border-slate-300 w-full">
       {/* Top Bar */}
@@ -149,7 +155,7 @@ export default function MarketplaceHeader(props) {
                 <Button
                   size="sm"
                   className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
-                  onClick={() => router.push("/product/create")}
+                  onClick={handleCreateClick}
                   //onClick={createCategory}
                 >
                   Create

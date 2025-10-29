@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../../models/index";
 
-const { MarketplaceProduct, MarketplaceCartItems, MarketplaceCart } = db;
+const { MarketplaceProduct, MarketplaceCartItems, MarketplaceCart, User, MarketplaceKycVerification } = db;
 
 export async function POST(request, { params }) {
   const getParams = await params;
@@ -29,8 +29,33 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Check if product exists
-    const product = await MarketplaceProduct.findByPk(productId);
+    // Require session and verify user_id matches
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { status: "error", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
+    if (session.user.id !== user_id) {
+      return NextResponse.json(
+        { status: "error", message: "Invalid user authentication" },
+        { status: 403 }
+      );
+    }
+
+    // Check if product exists and load owner's KYC status
+    const product = await MarketplaceProduct.findByPk(productId, {
+      include: [
+        {
+          model: User,
+          attributes: ["id"],
+          include: [
+            { model: MarketplaceKycVerification, attributes: ["status"], required: false },
+          ],
+        },
+      ],
+    });
     if (!product) {
       return NextResponse.json(
         { status: "error", message: "Product not found" },
@@ -45,6 +70,16 @@ export async function POST(request, { params }) {
     //     { status: 400 }
     //   );
     // }
+
+    // KYC gating: only allow if viewer is owner or owner's KYC is approved
+    const isOwner = product.user_id === session.user.id;
+    const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
+    if (!isOwner && !ownerApproved) {
+      return NextResponse.json(
+        { status: "error", message: "Product is not available" },
+        { status: 403 }
+      );
+    }
 
     // Find or create user's active cart
     let cart = await MarketplaceCart.findOne({

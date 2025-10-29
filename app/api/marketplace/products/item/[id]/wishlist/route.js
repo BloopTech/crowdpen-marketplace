@@ -3,7 +3,7 @@ import { db } from "../../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../auth/[...nextauth]/route";
 
-const { MarketplaceWishlists, MarketplaceProduct } = db;
+const { MarketplaceWishlists, MarketplaceProduct, User, MarketplaceKycVerification } = db;
 
 /**
  * GET handler to check if a product is in user's wishlist
@@ -65,18 +65,26 @@ export async function POST(request, { params }) {
     const body = await request.json();
     const { user_id } = body;
 
-    // Get current user from session for additional verification
-    // const session = await getServerSession(authOptions);
-
-    // if (!session || !session.user) {
-    //   return NextResponse.json(
-    //     {
-    //       status: "error",
-    //       message: "You must be logged in to manage your wishlist",
-    //     },
-    //     { status: 401 }
-    //   );
-    // }
+    // Require a valid session and ensure it matches the provided user_id
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Authentication required",
+        },
+        { status: 401 }
+      );
+    }
+    if (session.user.id !== user_id) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Invalid user authentication",
+        },
+        { status: 403 }
+      );
+    }
 
     // Verify the user_id matches the session user
     if (!user_id) {
@@ -101,8 +109,18 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Check if product exists
-    const product = await MarketplaceProduct.findByPk(productId);
+    // Check if product exists and load owner's KYC status
+    const product = await MarketplaceProduct.findByPk(productId, {
+      include: [
+        {
+          model: User,
+          attributes: ["id"],
+          include: [
+            { model: MarketplaceKycVerification, attributes: ["status"], required: false },
+          ],
+        },
+      ],
+    });
     if (!product) {
       return NextResponse.json(
         {
@@ -110,6 +128,19 @@ export async function POST(request, { params }) {
           message: "Product not found",
         },
         { status: 404 }
+      );
+    }
+
+    // KYC gating: if viewer is not the owner and owner's KYC not approved, block
+    const isOwner = product.user_id === session.user.id;
+    const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
+    if (!isOwner && !ownerApproved) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product is not available",
+        },
+        { status: 403 }
       );
     }
 

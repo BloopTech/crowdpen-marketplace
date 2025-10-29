@@ -12,6 +12,7 @@ const {
   MarketplaceSubCategory,
   MarketplaceCart,
   MarketplaceCartItems,
+  MarketplaceKycVerification,
 } = db;
 
 export async function GET(request, { params }) {
@@ -75,47 +76,64 @@ export async function GET(request, { params }) {
       ].filter((condition) => Object.keys(condition).length > 0),
     };
 
+    // Determine viewer for KYC gating
+    const session = await getServerSession(authOptions);
+    const viewerId = session?.user?.id || null;
+
+    // Build KYC gating condition: approved owners or viewer is the product owner
+    const kycOr = [
+      { '$MarketplaceProduct.User.MarketplaceKycVerification.status$': 'approved' },
+    ];
+    if (viewerId) {
+      kycOr.push({ '$MarketplaceProduct.user_id$': viewerId });
+    }
+
+    // Build final product where
+    const productWhere = {
+      [Op.and]: [
+        ...(productWhereConditions?.[Op.and] || []),
+        { [Op.or]: kycOr },
+      ],
+    };
+
     // Get wishlist items with pagination
-    const { count, rows: wishlistItems } =
-      await MarketplaceWishlists.findAndCountAll({
-        where: { user_id: user.id },
-        include: [
-          {
-            model: MarketplaceProduct,
-            where:
-              Object.keys(productWhereConditions[Op.and]).length > 0
-                ? productWhereConditions
-                : undefined,
-            include: [
-              {
-                model: User,
-                //as: "author",
-                attributes: ["id", "pen_name", "name", "image", "color"],
-              },
-              {
-                model: MarketplaceCategory,
-                //as: "categoryInfo",
-                attributes: ["id", "name", "description"],
-              },
-              { model: MarketplaceSubCategory },
-            ],
-          },
-        ],
-        order: [
-          [
-            "MarketplaceProduct",
-            sortBy === "price"
-              ? "price"
-              : sortBy === "title"
-                ? "title"
-                : "createdAt",
-            sortOrder.toUpperCase(),
+    const { count, rows: wishlistItems } = await MarketplaceWishlists.findAndCountAll({
+      where: { user_id: user.id },
+      include: [
+        {
+          model: MarketplaceProduct,
+          where: productWhere,
+          include: [
+            {
+              model: User,
+              attributes: ["id", "pen_name", "name", "image", "color"],
+              include: [
+                { model: MarketplaceKycVerification, attributes: ["status"], required: false },
+              ],
+            },
+            {
+              model: MarketplaceCategory,
+              attributes: ["id", "name", "description"],
+            },
+            { model: MarketplaceSubCategory },
           ],
+        },
+      ],
+      order: [
+        [
+          "MarketplaceProduct",
+          sortBy === "price"
+            ? "price"
+            : sortBy === "title"
+              ? "title"
+              : "createdAt",
+          sortOrder.toUpperCase(),
         ],
-        limit,
-        offset,
-        distinct: true,
-      });
+      ],
+      limit,
+      offset,
+      distinct: true,
+    });
 
     const productIDs = wishlistItems?.map(
       (item) => item?.marketplace_product_id

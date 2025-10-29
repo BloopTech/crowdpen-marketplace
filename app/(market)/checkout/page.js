@@ -29,6 +29,7 @@ import { CartContextProvider, useCart } from "../cart/context";
 import { useSession } from "next-auth/react";
 import { useHome } from "../../context";
 import { beginCheckout, finalizeOrder } from "./actions";
+import Image from "next/image";
 
 const beginInitializeState = {
   success: false,
@@ -213,7 +214,7 @@ function CheckoutContent() {
             "mobile_money",
           ],
           standard: false,
-          env: "test",
+          env: process.env.NODE_ENV === "production" ? "test" : "test",
           email: order.customer?.email || formData.email,
           currency: order.currency,
           key: process.env.STARTBUTTON_PUBLIC_KEY,
@@ -327,6 +328,8 @@ function CheckoutContent() {
     let linkElShadow;
     let mo;
     let moShadow;
+    let detachClickFixDoc;
+    let detachClickFixShadow;
     const buttonSize = 36; // px
     const margin = 8; // px
     const styleSbLightDom = () => {
@@ -335,7 +338,8 @@ function CheckoutContent() {
           'sb-init section.bg-white, sb-init section[class*="!w-[98vw]"], sb-init [class*="!w-[98vw]"], sb-init [class*="max-w-[450px]"]'
         );
         targets.forEach((el) => {
-          el.style.setProperty("width", "520px", "important");
+          el.style.setProperty("width", "min(560px, 100%)", "important");
+          el.style.setProperty("boxSizing", "border-box", "important");
           el.style.setProperty("maxWidth", "94vw", "important");
           el.style.setProperty("margin", "0 auto", "important");
           el.style.setProperty("display", "block", "important");
@@ -356,7 +360,7 @@ function CheckoutContent() {
     };
     const stylePane = (pane, iframeMatch) => {
       try {
-        const widthValue = "520px";
+        const widthValue = "min(560px, 94vw)";
         const maxWidthValue = "94vw";
         if (pane) {
           pane.style.setProperty("width", widthValue, "important");
@@ -366,13 +370,6 @@ function CheckoutContent() {
           pane.style.setProperty("transform", "translateX(-50%)", "important");
           pane.style.setProperty("margin", "0 auto", "important");
           pane.style.setProperty("display", "block", "important");
-        }
-        const wrapper =
-          pane?.closest?.(".cdk-global-overlay-wrapper") || pane?.parentElement;
-        if (wrapper) {
-          wrapper.style.setProperty("display", "flex", "important");
-          wrapper.style.setProperty("alignItems", "center", "important");
-          wrapper.style.setProperty("justifyContent", "center", "important");
         }
         const dialogEl = pane?.querySelector?.("dialog");
         if (dialogEl) {
@@ -493,27 +490,30 @@ function CheckoutContent() {
         'iframe[src*="sb-web-sdk"]',
         'iframe[src*="startbutton.tech"]',
         'dialog[open]',
-        '.cdk-overlay-pane',
-        'body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane',
-        'body > .cdk-overlay-container > .cdk-global-overlay-wrapper > [id^="cdk-overlay-"]\.cdk-overlay-pane',
-        '.cdk-overlay-pane .mat-mdc-dialog-surface',
-        '.cdk-overlay-pane .mat-dialog-container'
+        '.cdk-overlay-pane:has(.mat-mdc-dialog-surface)',
+        '.cdk-overlay-pane:has(.mat-dialog-container)'
       ];
       const cssWidth = baseTargets
         .map(
           (sel) =>
-            `${sel}{width:min(94vw,520px)!important;max-width:520px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
+            `${sel}{width:min(94vw,560px)!important;max-width:560px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
         )
         .join('');
-      const cssWrapper =
-        '.cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}';
-      const cssVars = ':root{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}';
+      const cssWrapper = '';
+      const cssPointer = [
+        '.cdk-overlay-container{pointer-events:auto!important;z-index:100001!important;}',
+        '.cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}',
+        '.cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}',
+        '.cdk-overlay-backdrop{pointer-events:none!important;}',
+        '.mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}'
+      ].join('');
+      const cssVars = ':root{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}';
       styleEl = document.createElement('style');
       styleEl.type = 'text/css';
       const nonceEl = document.querySelector('style[nonce],link[rel="stylesheet"][nonce],script[nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]');
       const nonce = nonceEl?.getAttribute?.('nonce') || nonceEl?.getAttribute?.('content') || '';
       if (nonce) styleEl.setAttribute('nonce', nonce);
-      styleEl.textContent = cssWidth + cssWrapper + cssVars;
+      styleEl.textContent = cssWidth + cssWrapper + cssVars + cssPointer;
       document.head.appendChild(styleEl);
       try {
         let linkDoc = document.querySelector('link[rel="stylesheet"][href^="/sb-override.css"]');
@@ -528,8 +528,8 @@ function CheckoutContent() {
       } catch {}
       const host = document.querySelector('sb-init');
       if (host) {
-        host.style.setProperty('--mat-dialog-container-max-width', '520px');
-        host.style.setProperty('--mat-dialog-container-small-max-width', '520px');
+        host.style.setProperty('--mat-dialog-container-max-width', '560px');
+        host.style.setProperty('--mat-dialog-container-small-max-width', '560px');
       }
       if (host && host.shadowRoot) {
         const shadowCssWidth = [
@@ -537,23 +537,27 @@ function CheckoutContent() {
           'iframe[src*="sb-web-sdk"]',
           'iframe[src*="startbutton.tech"]',
           'dialog[open]',
-          '.cdk-overlay-pane',
-          'body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane',
-          'body > .cdk-overlay-container > .cdk-global-overlay-wrapper > [id^="cdk-overlay-"]\.cdk-overlay-pane',
-          '.cdk-overlay-pane .mat-mdc-dialog-surface',
-          '.cdk-overlay-pane .mat-dialog-container'
+          '.cdk-overlay-pane:has(.mat-mdc-dialog-surface)',
+          '.cdk-overlay-pane:has(.mat-dialog-container)'
         ]
           .map(
             (sel) =>
-              `${sel}{width:min(94vw,520px)!important;max-width:520px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
+              `${sel}{width:min(94vw,560px)!important;max-width:560px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
           )
           .join('');
-        const shadowWrapper = '.cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}';
-        const shadowVars = ':host{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}';
+        const shadowWrapper = '';
+        const shadowPointer = [
+          '.cdk-overlay-container{pointer-events:auto!important;z-index:100001!important;}',
+          '.cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}',
+          '.cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}',
+          '.cdk-overlay-backdrop{pointer-events:none!important;}',
+          '.mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}'
+        ].join('');
+        const shadowVars = ':host{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}';
         styleElShadow = document.createElement('style');
         styleElShadow.type = 'text/css';
         if (nonce) styleElShadow.setAttribute('nonce', nonce);
-        styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
+        styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars + shadowPointer;
         host.shadowRoot.appendChild(styleElShadow);
         try {
           let linkShadow = host.shadowRoot.querySelector('link[rel="stylesheet"][href^="/sb-override.css"]');
@@ -576,22 +580,70 @@ function CheckoutContent() {
             m.addedNodes && m.addedNodes.forEach((n) => {
               if (!(n instanceof Element)) return;
               const pane = n.matches?.('.cdk-overlay-pane') ? n : n.querySelector?.('.cdk-overlay-pane');
-              if (pane) stylePane(pane);
+              if (pane) {
+                const isDialogPane = pane.querySelector?.('.mat-mdc-dialog-surface') || pane.querySelector?.('.mat-dialog-container') || pane.querySelector?.('iframe[src*="startbutton"]');
+                if (isDialogPane) stylePane(pane);
+              }
               styleSbLightDom();
             });
           }
           if (m.type === 'attributes' && m.target instanceof Element) {
-            if (m.target.classList?.contains('cdk-overlay-pane')) stylePane(m.target);
+            if (m.target.classList?.contains('cdk-overlay-pane')) {
+              const pane = m.target;
+              const isDialogPane = pane.querySelector?.('.mat-mdc-dialog-surface') || pane.querySelector?.('.mat-dialog-container') || pane.querySelector?.('iframe[src*="startbutton"]');
+              if (isDialogPane) stylePane(pane);
+            }
             styleSbLightDom();
           }
         }
       };
       mo = new MutationObserver(onMut);
       mo.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+      // Ensure click selection works in mat-select panels (document-level)
+      try {
+        const fix = (root) => {
+          const handler = (ev) => {
+            try {
+              const el = ev.target?.closest?.('.mat-mdc-option, [role="option"]');
+              if (el && !(el.getAttribute?.('aria-disabled') === 'true' || el.hasAttribute?.('disabled'))) {
+                // Trigger the host click to select the option without blocking propagation
+                el.click();
+              }
+            } catch {}
+          };
+          root.addEventListener('mousedown', handler, true);
+          root.addEventListener('click', handler, true);
+          return () => {
+            root.removeEventListener('mousedown', handler, true);
+            root.removeEventListener('click', handler, true);
+          };
+        };
+        detachClickFixDoc = fix(document);
+      } catch {}
       const host = document.querySelector('sb-init');
       if (host && host.shadowRoot) {
         moShadow = new MutationObserver(onMut);
         moShadow.observe(host.shadowRoot, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        try {
+          // Also apply the click fix inside StartButton's shadow DOM
+          const fix = (root) => {
+            const handler = (ev) => {
+              try {
+                const el = ev.target?.closest?.('.mat-mdc-option, [role="option"]');
+                if (el && !(el.getAttribute?.('aria-disabled') === 'true' || el.hasAttribute?.('disabled'))) {
+                  el.click();
+                }
+              } catch {}
+            };
+            root.addEventListener('mousedown', handler, true);
+            root.addEventListener('click', handler, true);
+            return () => {
+              root.removeEventListener('mousedown', handler, true);
+              root.removeEventListener('click', handler, true);
+            };
+          };
+          detachClickFixShadow = fix(host.shadowRoot);
+        } catch {}
       }
     } catch {}
     enforceInterval = window.setInterval(() => {
@@ -601,8 +653,8 @@ function CheckoutContent() {
       try {
         const host = document.querySelector('sb-init');
         if (host) {
-          host.style.setProperty('--mat-dialog-container-max-width', '520px');
-          host.style.setProperty('--mat-dialog-container-small-max-width', '520px');
+          host.style.setProperty('--mat-dialog-container-max-width', '560px');
+          host.style.setProperty('--mat-dialog-container-small-max-width', '560px');
         }
         if (host && host.shadowRoot) {
           const already = host.shadowRoot.querySelector('style.__sb_shadow_override__');
@@ -612,24 +664,30 @@ function CheckoutContent() {
               'iframe[src*="sb-web-sdk"]',
               'iframe[src*="startbutton.tech"]',
               'dialog[open]',
-              '.cdk-overlay-pane',
-              '.cdk-overlay-pane .mat-mdc-dialog-surface',
-              '.cdk-overlay-pane .mat-dialog-container'
+              '.cdk-overlay-pane:has(.mat-mdc-dialog-surface)',
+              '.cdk-overlay-pane:has(.mat-dialog-container)'
             ]
               .map(
                 (sel) =>
-                  `${sel}{width:min(94vw,520px)!important;max-width:520px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
+                  `${sel}{width:min(94vw,560px)!important;max-width:560px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
               )
               .join('');
             const shadowWrapper = '.cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}';
-            const shadowVars = ':host{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}';
+            const shadowPointer = [
+              '.cdk-overlay-container{pointer-events:auto!important;z-index:100001!important;}',
+              '.cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}',
+              '.cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}',
+              '.cdk-overlay-backdrop{pointer-events:none!important;}',
+              '.mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}'
+            ].join('');
+            const shadowVars = ':host{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}';
             styleElShadow = document.createElement('style');
             styleElShadow.type = 'text/css';
             styleElShadow.className = '__sb_shadow_override__';
             const nonceEl = document.querySelector('style[nonce],link[rel="stylesheet"][nonce],script[nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]');
             const nonce = nonceEl?.getAttribute?.('nonce') || nonceEl?.getAttribute?.('content') || '';
             if (nonce) styleElShadow.setAttribute('nonce', nonce);
-            styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars;
+            styleElShadow.textContent = shadowCssWidth + shadowWrapper + shadowVars + shadowPointer;
             host.shadowRoot.appendChild(styleElShadow);
           }
           let linkShadow = host.shadowRoot.querySelector('link[rel="stylesheet"][href^="/sb-override.css"]');
@@ -644,6 +702,22 @@ function CheckoutContent() {
             host.shadowRoot.appendChild(link);
           }
         }
+        // While a mat-select panel is open, temporarily disable pointer events on the card surfaces
+        try {
+          const panelDoc = document.querySelector('.mat-mdc-select-panel');
+          const panelShadow = host?.shadowRoot?.querySelector?.('.mat-mdc-select-panel');
+          const hasPanel = !!(panelDoc || panelShadow);
+          const docSurfaces = document.querySelectorAll('.cdk-overlay-pane .mat-mdc-dialog-surface, .cdk-overlay-pane .mat-dialog-container, sb-init section.bg-white');
+          docSurfaces.forEach((el) => {
+            el && el.style && (el.style.pointerEvents = hasPanel ? 'none' : '');
+          });
+          if (host && host.shadowRoot) {
+            const shadowSurfaces = host.shadowRoot.querySelectorAll('.cdk-overlay-pane .mat-mdc-dialog-surface, .cdk-overlay-pane .mat-dialog-container, section.bg-white');
+            shadowSurfaces.forEach((el) => {
+              el && el.style && (el.style.pointerEvents = hasPanel ? 'none' : '');
+            });
+          }
+        } catch {}
       } catch {}
     }, 300);
     resizeHandler = () => position();
@@ -668,6 +742,8 @@ function CheckoutContent() {
         linkElShadow.parentNode.removeChild(linkElShadow);
       }
       try { mo && mo.disconnect(); moShadow && moShadow.disconnect(); } catch {}
+      try { detachClickFixDoc && detachClickFixDoc(); } catch {}
+      try { detachClickFixShadow && detachClickFixShadow(); } catch {}
     };
   }, [processing]);
 
@@ -779,19 +855,32 @@ function CheckoutContent() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {processing && (
-        <button
-          type="button"
-          onClick={cancelStartButton}
-          className="cursor-pointer fixed z-[100005] px-2 py-2 rounded-full bg-white text-black text-sm shadow-lg hover:bg-black/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
-          style={{
-            top: closePos?.top ?? 24,
-            left: closePos?.left ?? undefined,
-            right: closePos ? "auto" : 24,
-          }}
-        >
-          <X className="h-4 w-4" />
-        </button>
+      {(beginPending || processing) && (
+        <>
+          <button
+            type="button"
+            onClick={cancelStartButton}
+            className="cursor-pointer fixed z-[100005] px-2 py-2 rounded-full bg-white text-black text-sm shadow-lg hover:bg-black/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
+            style={{
+              top: closePos?.top ?? 24,
+              left: closePos?.left ?? undefined,
+              right: closePos ? "auto" : 24,
+            }}
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <div className="fixed inset-0 z-[100005] flex items-center justify-center pointer-events-none">
+            <Image
+              src="https://res.cloudinary.com/dsuwnvwo1/image/upload/v1731081972/pf6c5fzwp29p8fmloiku.gif"
+              alt=""
+              width={48}
+              height={48}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+            />
+          </div>
+        </>
       )}
       <MarketplaceHeader
         searchQuery={searchQuery}

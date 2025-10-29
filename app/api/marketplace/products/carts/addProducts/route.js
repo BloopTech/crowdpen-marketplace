@@ -3,11 +3,10 @@ import { db } from "../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 
-const { MarketplaceCart, MarketplaceCartItems, MarketplaceProduct, User } = db;
+const { MarketplaceCart, MarketplaceCartItems, MarketplaceProduct, User, MarketplaceKycVerification } = db;
 
 export async function POST(request) {
   try {
-
     const { productIds, userId } = await request.json();
 
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
@@ -15,6 +14,15 @@ export async function POST(request) {
         { error: "Product IDs array is required" },
         { status: 400 }
       );
+    }
+
+    // Require session and ensure it matches userId
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (session.user.id !== userId) {
+      return NextResponse.json({ error: "Invalid user authentication" }, { status: 403 });
     }
 
     // Find user
@@ -41,10 +49,19 @@ export async function POST(request) {
       }
     });
 
-    // Get products to add
+    // Get products to add including owner KYC status for gating
     const products = await MarketplaceProduct.findAll({
       where: { id: productIds },
-      attributes: ['id', 'title', 'price']
+      attributes: ['id', 'title', 'price', 'user_id'],
+      include: [
+        {
+          model: User,
+          attributes: ['id'],
+          include: [
+            { model: MarketplaceKycVerification, attributes: ['status'], required: false },
+          ],
+        },
+      ],
     });
 
     if (products.length === 0) {
@@ -61,6 +78,18 @@ export async function POST(request) {
 
     // Add each product to cart
     for (const product of products) {
+      // Per-product KYC gating
+      const isOwner = product.user_id === session.user.id;
+      const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
+      if (!isOwner && !ownerApproved) {
+        skippedProducts.push({
+          id: product.id,
+          title: product.title,
+          reason: 'Product is not available',
+        });
+        continue;
+      }
+
       // Check if product is already in cart
       const existingCartItem = await MarketplaceCartItems.findOne({
         where: {

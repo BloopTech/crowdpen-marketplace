@@ -13,6 +13,7 @@ const {
   MarketplaceSubCategory,
   MarketplaceWishlists,
   MarketplaceCategory,
+  MarketplaceKycVerification,
 } = db;
 
 export async function GET(request, { params }) {
@@ -37,12 +38,20 @@ export async function GET(request, { params }) {
     }
 
     // Fetch related products from the same category, excluding the current product
+    const kycOr = [
+      { '$User.MarketplaceKycVerification.status$': 'approved' },
+    ];
+    if (userId) {
+      kycOr.push({ user_id: userId });
+    }
+
     const relatedProducts = await MarketplaceProduct.findAll({
       where: {
         id: {
           [Op.ne]: id, // Exclude current product
         },
         marketplace_category_id: currentProduct.marketplace_category_id,
+        [Op.or]: kycOr,
       },
       include: [
         { model: MarketplaceCategory },
@@ -50,6 +59,14 @@ export async function GET(request, { params }) {
         {
           model: MarketplaceProductTags,
           as: "productTags",
+        },
+        {
+          model: User,
+          attributes: [],
+          required: false,
+          include: [
+            { model: MarketplaceKycVerification, attributes: ["status"], required: false },
+          ],
         },
       ],
       attributes: [

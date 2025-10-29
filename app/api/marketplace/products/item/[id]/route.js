@@ -13,6 +13,7 @@ const {
   MarketplaceWishlists,
   MarketplaceCart,
   MarketplaceCartItems,
+  MarketplaceKycVerification,
 } = db;
 
 export async function GET(request, { params }) {
@@ -53,6 +54,13 @@ export async function GET(request, { params }) {
             "color",
             "pen_name",
           ],
+          include: [
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
+          ],
         },
         {
           model: MarketplaceProductTags,
@@ -62,6 +70,14 @@ export async function GET(request, { params }) {
     });
 
     if (!product) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    // Enforce KYC visibility: if not owner and owner's KYC not approved, hide
+    const viewerId = userId;
+    const isOwner = viewerId && product?.user_id === viewerId;
+    const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
+    if (!isOwner && !ownerApproved) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 

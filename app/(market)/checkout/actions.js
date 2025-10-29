@@ -140,7 +140,16 @@ export async function beginCheckout(prevState, formData) {
     include: [
       {
         model: db.MarketplaceProduct,
-        attributes: ["id", "title"],
+        attributes: ["id", "title", "user_id"],
+        include: [
+          {
+            model: db.User,
+            attributes: ["id"],
+            include: [
+              { model: db.MarketplaceKycVerification, attributes: ["status"], required: false },
+            ],
+          },
+        ],
       },
     ],
   });
@@ -149,6 +158,23 @@ export async function beginCheckout(prevState, formData) {
       success: false,
       message: "Your cart is empty.",
       errors: { cart: ["No items in cart"] },
+    };
+  }
+
+  // KYC gating: disallow checkout if any item is from an owner whose KYC is not approved (unless item owner is the viewer)
+  const kycBlocked = cartItems.filter((ci) => {
+    const p = ci?.MarketplaceProduct;
+    if (!p) return false;
+    const isOwner = p.user_id === userId;
+    const ownerApproved = p?.User?.MarketplaceKycVerification?.status === 'approved';
+    return !isOwner && !ownerApproved;
+  });
+  if (kycBlocked.length > 0) {
+    const titles = kycBlocked.map((ci) => ci?.MarketplaceProduct?.title).filter(Boolean);
+    return {
+      success: false,
+      message: `Some items are not available for purchase: ${titles.join(", ")}`,
+      errors: { cart: ["Contains items from unapproved sellers"] },
     };
   }
 

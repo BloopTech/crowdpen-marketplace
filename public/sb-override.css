@@ -1,28 +1,36 @@
 /* StartButton overlay sizing overrides (external to bypass CSP inline-style restrictions) */
-.cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}
-body > .cdk-overlay-container > .cdk-global-overlay-wrapper{display:flex!important;align-items:center!important;justify-content:center!important;}
+.cdk-global-overlay-wrapper:has(.cdk-overlay-pane:has(.mat-mdc-dialog-surface)),
+body > .cdk-overlay-container > .cdk-global-overlay-wrapper:has(.cdk-overlay-pane:has(.mat-mdc-dialog-surface)),
+.cdk-global-overlay-wrapper:has(.cdk-overlay-pane:has(.mat-dialog-container)),
+body > .cdk-overlay-container > .cdk-global-overlay-wrapper:has(.cdk-overlay-pane:has(.mat-dialog-container)),
+.cdk-global-overlay-wrapper:has(.cdk-overlay-pane:has(iframe[src*="startbutton"])) {
+  display:flex!important;align-items:center!important;justify-content:center!important;
+}
 
-.cdk-overlay-pane{width:520px!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;}
-body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane{width:520px!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;}
+.cdk-overlay-pane:has(.mat-mdc-dialog-surface),
+.cdk-overlay-pane:has(.mat-dialog-container),
+.cdk-overlay-pane:has(iframe[src*="startbutton"]) {width:min(560px,94vw)!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;}
+body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane:has(.mat-mdc-dialog-surface),
+body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane:has(.mat-dialog-container),
+body > .cdk-overlay-container > .cdk-global-overlay-wrapper > .cdk-overlay-pane:has(iframe[src*="startbutton"]) {width:min(560px,94vw)!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;}
 
-.cdk-overlay-pane iframe,
-.cdk-overlay-pane .mat-mdc-dialog-surface,
-.cdk-overlay-pane .mat-dialog-container,
-.cdk-overlay-pane sb-init{width:100%!important;max-width:520px!important;display:block!important;margin:0 auto!important;}
+.cdk-overlay-pane:has(iframe[src*="startbutton"]) iframe,
+.cdk-overlay-pane:has(.mat-mdc-dialog-surface) .mat-mdc-dialog-surface,
+.cdk-overlay-pane:has(.mat-dialog-container) .mat-dialog-container{width:100%!important;max-width:560px!important;display:block!important;margin:0 auto!important;}
 
 /* Dialog element fallback */
-dialog[open]{width:520px!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;display:block!important;}
+dialog[open]{width:min(560px,94vw)!important;max-width:94vw!important;left:50%!important;transform:translateX(-50%)!important;margin:0 auto!important;display:block!important;}
 
 /* Angular Material width variables */
-:root{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}
-:host{--mat-dialog-container-max-width:520px !important;--mat-dialog-container-small-max-width:520px !important;}
+:root{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}
+:host{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}
 
 /* StartButton light-DOM fallback (Angular Emulated, no iframe/CDK pane) */
 sb-init section.bg-white,
 sb-init section[class*="!w-[98vw]"],
 sb-init [class*="!w-[98vw]"],
 sb-init [class*="max-w-[450px]"]{
-  width:520px!important;
+  width:min(560px,100%)!important;
   max-width:94vw!important;
   margin:0 auto!important;
   box-sizing:border-box!important;
@@ -64,3 +72,29 @@ sb-init article > section.bg-white{
   margin-left:auto!important;
   margin-right:auto!important;
 }
+
+
+/* Allow mouse interaction on Angular Material overlays (provider select) */
+.cdk-overlay-container,.cdk-global-overlay-wrapper{pointer-events:auto!important;}
+.cdk-overlay-pane{pointer-events:auto!important;}
+/* Ensure the select dropdown panel receives pointer events and stacks above other overlays */
+.cdk-overlay-container .cdk-overlay-pane .mat-mdc-select-panel{pointer-events:auto!important;z-index:100010!important;}
+/* Ensure options within panel are clickable */
+.cdk-overlay-container .mat-mdc-option,.cdk-overlay-container [role="option"]{pointer-events:auto!important;}
+
+/* Center the header label and amount */
+sb-init h4{width:100%!important;text-align:center!important;}
+sb-init h4 + div{display:flex!important;justify-content:center!important;width:100%!important;}
+
+/* Widen phone input and provider select to full width */
+sb-init input[class*="!w-[80%]"]{width:100%!important;}
+sb-init .mat-mdc-select{width:100%!important;}
+
+/* Add spacing between the input box and action buttons */
+sb-init .grid.w-full.gap-6.mt-8.border{margin-bottom:2rem!important;}
+
+/* Neutralize extra bottom margin on the tab row to rely on the form's mt-8 only */
+sb-init .link.text-sm[class*="!mb-3"]{margin-bottom:0!important;}
+
+/* Neutralize extra top margin on the buttons row so spacing equals the form's bottom margin */
+sb-init .flex.gap-2.w-full.items-center[class*="!mt-14"]{margin-top:0!important;}

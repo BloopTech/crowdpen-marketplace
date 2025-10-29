@@ -271,13 +271,13 @@ sb-init {
   width: 100vw !important;
   height: 100dvh !important;
   z-index: 100001 !important;
-  pointer-events: none !important;
+  pointer-events: auto !important;
 }
 .cdk-global-overlay-wrapper {
   position: fixed !important;
   inset: 0 !important;
   z-index: 100002 !important;
-  pointer-events: none !important;
+  pointer-events: auto !important;
 }
 .cdk-overlay-pane {
   pointer-events: auto !important;
@@ -296,32 +296,44 @@ sb-init {
 }
 
 .cdk-global-overlay-wrapper {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: block !important;
+  align-items: unset !important;
+  justify-content: unset !important;
 }
 
 .cdk-overlay-pane {
-  width: 520px !important;
+  /* do not style all panes globally to avoid impacting mat-select */
+}
+
+.cdk-overlay-pane:has(iframe[src*="startbutton"]),
+.cdk-overlay-pane:has(.mat-mdc-dialog-surface),
+.cdk-overlay-pane:has(.mat-dialog-container) {
+  width: min(560px, 94vw) !important;
   max-width: 94vw !important;
   left: 50% !important;
   transform: translateX(-50%) !important;
   margin: 0 auto !important;
 }
 
-.cdk-overlay-pane iframe,
-.cdk-overlay-pane .mat-mdc-dialog-surface,
-.cdk-overlay-pane .mat-dialog-container,
-.cdk-overlay-pane sb-init {
+.cdk-overlay-pane:has(iframe[src*="startbutton"]) iframe,
+.cdk-overlay-pane:has(.mat-mdc-dialog-surface) .mat-mdc-dialog-surface,
+.cdk-overlay-pane:has(.mat-dialog-container) .mat-dialog-container,
+.cdk-overlay-pane:has(iframe[src*="startbutton"]) sb-init {
   width: 100% !important;
-  max-width: 520px !important;
+  max-width: 560px !important;
   display: block !important;
   margin: 0 auto !important;
 }
 
+/* Ensure mat-select panel is above backdrops and accepts mouse clicks */
+.mat-mdc-select-panel {
+  pointer-events: auto !important;
+  z-index: 100010 !important;
+}
+
 :root {
-  --mat-dialog-container-max-width: 520px !important;
-  --mat-dialog-container-small-max-width: 520px !important;
+  --mat-dialog-container-max-width: 560px !important;
+  --mat-dialog-container-small-max-width: 560px !important;
 }
 
 

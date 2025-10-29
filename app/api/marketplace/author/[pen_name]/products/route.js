@@ -12,6 +12,7 @@ const {
   MarketplaceCartItems,
   MarketplaceCart,
   MarketplaceWishlists,
+  MarketplaceKycVerification,
 } = db;
 
 export async function GET(request, { params }) {
@@ -90,6 +91,23 @@ export async function GET(request, { params }) {
         break;
       default: // newest
         orderClause = [["createdAt", "DESC"]];
+    }
+
+    // Enforce KYC visibility: if author not approved and viewer is not the author, return empty set
+    const authorKyc = await MarketplaceKycVerification.findOne({ where: { user_id: author.id }, attributes: ['status'], raw: true });
+    const isViewerAuthor = Boolean(userId && userId === author.id);
+    if (!isViewerAuthor && authorKyc?.status !== 'approved') {
+      return NextResponse.json({
+        status: "success",
+        products: [],
+        pagination: {
+          page,
+          limit,
+          total: 0,
+          totalPages: 0,
+          hasMore: false,
+        },
+      });
     }
 
     // Get products with pagination

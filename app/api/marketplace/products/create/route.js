@@ -70,7 +70,7 @@ export async function POST(request) {
   try {
     // Process form data
     const formData = await request.formData();
-    
+
     // Get user ID from form data
     const userId = formData.get("user_id");
     if (!userId) {
