@@ -113,6 +113,11 @@ export async function GET(request) {
     }
 
     // Build sort options with correct column names
+    const rankScoreLiteral = db.Sequelize.literal(`
+      (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
+      + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
+      + (1.0 * COALESCE("MarketplaceProduct"."authorRating", 0))
+    `);
     let order = [];
     switch (sort) {
       case "price-low":
@@ -135,7 +140,8 @@ export async function GET(request) {
         order.push(["rating", "DESC"]);
         break;
       case "all":
-      default: // No specific sorting, use default order (id or created_at)
+      default:
+        order.push([rankScoreLiteral, "DESC"]);
         order.push(["createdAt", "DESC"]);
         break;
     }
@@ -144,9 +150,16 @@ export async function GET(request) {
     const offset = (page - 1) * limit;
 
     // Apply KYC visibility: show only products where owner's KYC is approved, unless viewer is the owner
-    const visibilityOr = [
-      { '$User.MarketplaceKycVerification.status$': 'approved' },
-    ];
+    const approvedSellerLiteral = db.Sequelize.literal(`
+      EXISTS (
+        SELECT 1
+        FROM "marketplace_kyc_verifications" AS mkv
+        WHERE mkv.user_id = "MarketplaceProduct"."user_id"
+          AND mkv.status = 'approved'
+      )
+    `);
+
+    const visibilityOr = [approvedSellerLiteral];
     if (userId) {
       visibilityOr.push({ user_id: userId });
     }
@@ -165,7 +178,7 @@ export async function GET(request) {
           model: MarketplaceProductTags,
           as: "productTags",
         },
-        // Needed for KYC visibility filter via $User.MarketplaceKycVerification.status$
+        // User include retained for potential future use; KYC gating handled via literal EXISTS
         {
           model: User,
           attributes: [],
@@ -196,6 +209,7 @@ export async function GET(request) {
         "fileType",
         "image",
         "downloads",
+        [rankScoreLiteral, 'rankScore']
       ],
       //transaction: t,
     });

@@ -94,9 +94,6 @@ export async function POST(request) {
       fileSize: formData.get("fileSize") || "",
       license: formData.get("license") || "Standard",
       deliveryTime: formData.get("deliveryTime") || "Instant",
-      featured:
-        formData.get("featured") === "true" ||
-        formData.get("featured") === "on",
       what_included: formData.get("what_included") || "",
     };
 
@@ -351,7 +348,6 @@ export async function POST(request) {
           fileSize: calculatedFileSize || productData.fileSize || "", // Use calculated size
           license: productData.license || "Standard",
           deliveryTime: productData.deliveryTime || "Instant",
-          featured: productData.featured || false,
           what_included: productData.what_included || "",
           product_id: productId,
         });

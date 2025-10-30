@@ -52,7 +52,6 @@ const initialStateValues = {
     fileSize: [],
     license: [],
     deliveryTime: [],
-    featured: [],
     what_included: [],
     credentials: {},
     unknown: "",
@@ -744,14 +743,6 @@ export default function CreateProductContent() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-
-              {/* Featured */}
-              <div className="flex items-center space-x-2">
-                <Checkbox id="featured" name="featured" />
-                <Label htmlFor="featured">
-                  Mark as featured product (may require approval)
-                </Label>
               </div>
             </div>
           </CardContent>

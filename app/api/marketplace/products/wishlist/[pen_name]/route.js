@@ -81,11 +81,17 @@ export async function GET(request, { params }) {
     const viewerId = session?.user?.id || null;
 
     // Build KYC gating condition: approved owners or viewer is the product owner
-    const kycOr = [
-      { '$MarketplaceProduct.User.MarketplaceKycVerification.status$': 'approved' },
-    ];
+    const approvedSellerLiteral = db.Sequelize.literal(`
+      EXISTS (
+        SELECT 1
+        FROM "marketplace_kyc_verifications" AS mkv
+        WHERE mkv.user_id = "MarketplaceProduct"."user_id"
+          AND mkv.status = 'approved'
+      )
+    `);
+    const kycOr = [approvedSellerLiteral];
     if (viewerId) {
-      kycOr.push({ '$MarketplaceProduct.user_id$': viewerId });
+      kycOr.push({ user_id: viewerId });
     }
 
     // Build final product where
@@ -95,6 +101,13 @@ export async function GET(request, { params }) {
         { [Op.or]: kycOr },
       ],
     };
+
+    // Rank score for ordering
+    const rankScoreLiteral = db.Sequelize.literal(`
+      (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
+      + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
+      + (1.0 * COALESCE("MarketplaceProduct"."authorRating", 0))
+    `);
 
     // Get wishlist items with pagination
     const { count, rows: wishlistItems } = await MarketplaceWishlists.findAndCountAll({
@@ -119,16 +132,13 @@ export async function GET(request, { params }) {
           ],
         },
       ],
-      order: [
-        [
-          "MarketplaceProduct",
-          sortBy === "price"
-            ? "price"
-            : sortBy === "title"
-              ? "title"
-              : "createdAt",
-          sortOrder.toUpperCase(),
-        ],
+      order: (
+        sortBy === "price" || sortBy === "title"
+      ) ? [
+        ["MarketplaceProduct", sortBy === "price" ? "price" : "title", sortOrder.toUpperCase()],
+      ] : [
+        [rankScoreLiteral, "DESC"],
+        ["MarketplaceProduct", "createdAt", sortOrder.toUpperCase()],
       ],
       limit,
       offset,

@@ -68,6 +68,11 @@ export async function GET(request, { params }) {
     const categoryWhere = category ? { name: category } : {};
 
     // Build order clause
+    const rankScoreLiteral = db.sequelize.literal(`
+      (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
+      + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
+      + (1.0 * COALESCE("MarketplaceProduct"."authorRating", 0))
+    `);
     let orderClause;
     switch (sortBy) {
       case "price-low":
@@ -89,8 +94,8 @@ export async function GET(request, { params }) {
       case "sales":
         orderClause = [["sales_count", "DESC"]];
         break;
-      default: // newest
-        orderClause = [["createdAt", "DESC"]];
+      default: // default ranking
+        orderClause = [[rankScoreLiteral, "DESC"], ["createdAt", "DESC"]];
     }
 
     // Enforce KYC visibility: if author not approved and viewer is not the author, return empty set
@@ -125,6 +130,9 @@ export async function GET(request, { params }) {
       limit,
       offset,
       distinct: true,
+      attributes: {
+        include: [[rankScoreLiteral, 'rankScore']]
+      }
     });
 
     const productIDs = products?.map((product) => product?.id);

@@ -38,11 +38,22 @@ export async function GET(request, { params }) {
     }
 
     // Fetch related products from the same category, excluding the current product
-    const kycOr = [
-      { '$User.MarketplaceKycVerification.status$': 'approved' },
-    ];
+    const rankScoreLiteral = db.Sequelize.literal(`
+      (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
+      + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
+      + (1.0 * COALESCE("MarketplaceProduct"."authorRating", 0))
+    `);
+    const approvedSellerLiteral = db.Sequelize.literal(`
+      EXISTS (
+        SELECT 1
+        FROM "marketplace_kyc_verifications" AS mkv
+        WHERE mkv.user_id = "MarketplaceProduct"."user_id"
+          AND mkv.status = 'approved'
+      )
+    `);
+    const visibilityOr = [approvedSellerLiteral];
     if (userId) {
-      kycOr.push({ user_id: userId });
+      visibilityOr.push({ user_id: userId });
     }
 
     const relatedProducts = await MarketplaceProduct.findAll({
@@ -51,7 +62,7 @@ export async function GET(request, { params }) {
           [Op.ne]: id, // Exclude current product
         },
         marketplace_category_id: currentProduct.marketplace_category_id,
-        [Op.or]: kycOr,
+        [Op.or]: visibilityOr,
       },
       include: [
         { model: MarketplaceCategory },
@@ -86,9 +97,11 @@ export async function GET(request, { params }) {
         "fileType",
         "image",
         "downloads",
+        [rankScoreLiteral, 'rankScore']
       ],
       order: [
-        ["createdAt", "DESC"], // Most recent first
+        [rankScoreLiteral, "DESC"],
+        ["createdAt", "DESC"],
       ],
       limit: limit,
     });

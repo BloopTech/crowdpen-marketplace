@@ -184,13 +184,19 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
   }
 
   // KYC visibility: owner's KYC must be approved unless the viewer is the owner
-  const kycOr = [
-    { '$User.MarketplaceKycVerification.status$': 'approved' },
-  ]
+  const approvedSellerLiteral = literal(`
+    EXISTS (
+      SELECT 1
+      FROM "marketplace_kyc_verifications" AS mkv
+      WHERE mkv.user_id = "MarketplaceProduct"."user_id"
+        AND mkv.status = 'approved'
+    )
+  `)
+  const visibilityOr = [approvedSellerLiteral]
   if (viewerId) {
-    kycOr.push({ '$User.id$': viewerId })
+    visibilityOr.push({ user_id: viewerId })
   }
-  andConditions.push({ [Op.or]: kycOr })
+  andConditions.push({ [Op.or]: visibilityOr })
 
   // Explicit filter params
   const {
@@ -226,6 +232,12 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
   const hasText = Boolean(text && text.trim().length > 0)
   const qText = hasText ? text.toLowerCase() : null
 
+  const rankScoreLiteral = literal(`
+    (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
+    + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
+    + (1.0 * COALESCE("MarketplaceProduct"."authorRating", 0))
+  `)
+
   const rows = await MarketplaceProduct.findAll({
     where,
     attributes: hasText
@@ -244,9 +256,10 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
               `),
               "similarityScore",
             ],
+            [rankScoreLiteral, 'rankScore'],
           ],
         }
-      : undefined,
+      : { include: [[rankScoreLiteral, 'rankScore']] },
     include: [
       { model: MarketplaceCategory, attributes: ["name", "slug"], required: false },
       { model: MarketplaceSubCategory, attributes: ["name", "slug"], required: false },
@@ -268,10 +281,14 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
     ],
     order: hasText
       ? [
+          [rankScoreLiteral, "DESC"],
           [literal('"similarityScore" DESC NULLS LAST')],
           ["createdAt", "DESC"],
         ]
-      : [["createdAt", "DESC"]],
+      : [
+          [rankScoreLiteral, "DESC"],
+          ["createdAt", "DESC"],
+        ],
     limit,
   })
 

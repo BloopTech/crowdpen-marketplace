@@ -1,5 +1,5 @@
 "use client";
-import { ShieldUser, LayoutDashboard, Users, FileCheck, CreditCard, ListOrdered, BadgeCheck, Ticket } from "lucide-react";
+import { ShieldUser, LayoutDashboard, Users, FileCheck, CreditCard, ListOrdered, BadgeCheck, Ticket, Package } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 export const useNavigationData = () => {
@@ -25,6 +25,12 @@ export const useNavigationData = () => {
 
   if (isAdmin) {
     base[0].items.push(
+      {
+        name: "Products",
+        href: "/admin/products",
+        icon: Package,
+        other_items: [],
+      },
       {
         name: "Roles",
         href: "/admin/roles",

@@ -17,7 +17,6 @@ const defaultProductValues = {
   fileSize: [],
   license: [],
   deliveryTime: [],
-  featured: [],
 };
 
 const productSchema = z.object({
@@ -47,7 +46,6 @@ const productSchema = z.object({
   fileSize: z.string().optional(),
   license: z.string().optional(),
   deliveryTime: z.string().optional(),
-  featured: z.boolean().optional().default(false),
   what_included: z.string().optional(),
 });
 
@@ -80,10 +78,8 @@ export async function createProduct(prevState, queryData) {
   const getFileSize = queryData.get("fileSize");
   const getLicense = queryData.get("license");
   const getDeliveryTime = queryData.get("deliveryTime");
-  const getFeatured = queryData.get("featured");
   const getWhatIncluded = queryData.get("what_included");
 
-  const featured = getFeatured === "on" || getFeatured === "true";
 
   const validatedFields = productSchema.safeParse({
     title: getTitle,
@@ -98,7 +94,6 @@ export async function createProduct(prevState, queryData) {
     fileSize: getFileSize,
     license: getLicense,
     deliveryTime: getDeliveryTime,
-    featured: featured,
     what_included: getWhatIncluded,
   });
   //console.log("validatedFields", validatedFields?.error);
@@ -118,7 +113,6 @@ export async function createProduct(prevState, queryData) {
         fileSize: getFileSize,
         license: getLicense,
         deliveryTime: getDeliveryTime,
-        featured: featured,
         what_included: getWhatIncluded,
       },
       data: {},
@@ -152,7 +146,6 @@ export async function createProduct(prevState, queryData) {
   formData.append("fileSize", fileSize);
   formData.append("license", license);
   formData.append("deliveryTime", deliveryTime);
-  formData.append("featured", featured);
   formData.append("what_included", what_included);
   formData.append("user_id", userId);
 
@@ -246,7 +239,6 @@ export async function createProduct(prevState, queryData) {
         fileSize: getFileSize,
         license: getLicense,
         deliveryTime: getDeliveryTime,
-        featured: featured,
         what_included: getWhatIncluded,
       },
       data: {},
