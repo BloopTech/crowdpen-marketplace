@@ -3,9 +3,14 @@
 import React, { useState, useEffect, useActionState } from "react";
 import { notFound, useParams } from "next/navigation";
 import Image from "next/image";
-import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent } from "../../../components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "../../../components/ui/tooltip";
 import {
   Tabs,
   TabsContent,
@@ -25,6 +30,7 @@ import {
   Award,
   LoaderCircle,
   Ellipsis,
+  Info,
 } from "lucide-react";
 import MarketplaceHeader from "../../../components/marketplace-header";
 import ImageGalleryModal from "../../../components/ui/image-gallery-modal";
@@ -154,8 +160,31 @@ export default function ProductDetailContent(props) {
     return notFound();
   }
 
+  const priceNum = Number(productItemData?.price ?? 0);
+  const originalPriceNum = Number(productItemData?.originalPrice ?? 0);
+  const hasDiscount =
+    Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+  const currencyFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const formattedPrice = currencyFormatter.format(priceNum);
+  const formattedOriginal = hasDiscount
+    ? currencyFormatter.format(originalPriceNum)
+    : null;
+  const saveAmount = hasDiscount ? originalPriceNum - priceNum : 0;
+  const formattedSave = hasDiscount
+    ? currencyFormatter.format(saveAmount)
+    : null;
+  const savePercent = hasDiscount
+    ? Math.round((saveAmount / originalPriceNum) * 100)
+    : 0;
+
   return (
-    <div className="min-h-screen bg-gray-50 w-full">
+    <TooltipProvider delayDuration={150} skipDelayDuration={0}>
+      <div className="min-h-screen bg-gray-50 w-full">
       <MarketplaceHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -271,7 +300,7 @@ export default function ProductDetailContent(props) {
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-semibold text-purple-600">
+                      <div className="font-semibold text-black hover:text-[#d3a155]">
                         {productItemData?.User?.name}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -308,59 +337,76 @@ export default function ProductDetailContent(props) {
             </div>
 
             {/* Price */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="text-3xl font-bold">
-                  ${productItemData.price}
+            <div className="space-y-3">
+              <div className="flex items-baseline gap-3">
+                <span className="text-4xl font-extrabold tracking-tight">
+                  {formattedPrice}
                 </span>
-                {productItemData.originalPrice && (
-                  <span className="text-xl text-muted-foreground line-through">
-                    ${productItemData.originalPrice}
-                  </span>
-                )}
-                {productItemData.originalPrice && (
-                  <Badge className="bg-red-500">
-                    Save{" "}
-                    {Math.round(
-                      ((productItemData.originalPrice - productItemData.price) /
-                        productItemData.originalPrice) *
-                        100
-                    )}
-                    %
-                  </Badge>
-                )}
               </div>
-
-              {/* Variations */}
-              {productItemData?.variations && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    Choose your package:
-                  </label>
-                  {productItemData.variations.map((variation, index) => (
-                    <div
-                      key={variation.id}
-                      className={`p-3 border rounded-lg cursor-pointer ${
-                        selectedVariation === index
-                          ? "border-purple-500 bg-purple-50"
-                          : "border-gray-200"
-                      }`}
-                      onClick={() => setSelectedVariation(index)}
-                    >
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <div className="font-medium">{variation.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {variation.description}
-                          </div>
-                        </div>
-                        <div className="font-bold">${variation.price}</div>
-                      </div>
-                    </div>
-                  ))}
+              {hasDiscount && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <span>
+                      RRP{" "}
+                      <span className="line-through">{formattedOriginal}</span>
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Recommended Retail Price information"
+                          className="rounded-full p-1 text-gray-400 transition-colors hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-1"
+                        >
+                          <Info className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        align="center"
+                        sideOffset={6}
+                        className="z-[9999]"
+                      >
+                        Recommended Retail Price before discounts.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                  <div className="text-sm text-emerald-700 font-medium">
+                    Save {formattedSave} ({savePercent}% OFF)
+                  </div>
                 </div>
               )}
+              <div className="border-t border-gray-200" />
             </div>
+
+            {/* Variations */}
+            {productItemData?.variations && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">
+                  Choose your package:
+                </label>
+                {productItemData.variations.map((variation, index) => (
+                  <div
+                    key={variation.id}
+                    className={`p-3 border rounded-lg cursor-pointer ${
+                      selectedVariation === index
+                        ? "border-purple-500 bg-purple-50"
+                        : "border-gray-200"
+                    }`}
+                    onClick={() => setSelectedVariation(index)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-medium">{variation.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {variation.description}
+                        </div>
+                      </div>
+                      <div className="font-bold">${variation.price}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
 
             {/* Actions */}
             <div className="space-y-3">
@@ -488,6 +534,7 @@ export default function ProductDetailContent(props) {
         initialIndex={selectedImage}
         productTitle={productItemData?.title || ""}
       />
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
