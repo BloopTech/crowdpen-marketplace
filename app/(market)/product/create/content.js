@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef, useActionState } from "react";
+import React, { useState, useEffect, useRef, useActionState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { createProduct } from "./action";
@@ -134,6 +134,20 @@ export default function CreateProductContent() {
     validatePrices(newPrice, originalPrice);
   };
 
+  const netRevenue = useMemo(() => {
+    const priceNum = parseFloat(price);
+    if (Number.isFinite(priceNum) && priceNum > 0) {
+      const revenue = priceNum * 0.8;
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(revenue);
+    }
+    return null;
+  }, [price]);
+
   // Handle original price change
   const handleOriginalPriceChange = (e) => {
     const newOriginalPrice = e.target.value;
@@ -147,12 +161,30 @@ export default function CreateProductContent() {
     if (!files || files.length === 0) return;
 
     setUploadingImage(true);
-    const file = files[0];
 
     try {
-      // Store the file object and create a preview URL
-      const previewUrl = URL.createObjectURL(file);
-      setImages([...images, { file, previewUrl }]);
+      const maxCombinedSize = 3 * 1024 * 1024; // 3MB total
+      const incomingFiles = Array.from(files);
+
+      const existingTotal = images.reduce(
+        (acc, imageObj) => acc + (imageObj.file?.size || 0),
+        0
+      );
+      const incomingTotal = incomingFiles.reduce((acc, file) => acc + file.size, 0);
+
+      if (existingTotal + incomingTotal > maxCombinedSize) {
+        toast.error("Total images size must not exceed 3MB.");
+        return;
+      }
+
+      const validImages = incomingFiles.map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
+
+      if (validImages.length) {
+        setImages((prev) => [...prev, ...validImages]);
+      }
     } catch (error) {
       console.error("Error handling image:", error);
       toast.error("Failed to process image");
@@ -495,6 +527,16 @@ export default function CreateProductContent() {
                       ? state?.errors?.price[0]
                       : priceError || null}
                   </span>
+                  <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+                    <p className="text-xs font-medium text-emerald-700">
+                      Estimated merchant earnings
+                    </p>
+                    <p className="text-sm text-emerald-800">
+                      {netRevenue
+                        ? `${netRevenue} after 20% platform fee`
+                        : "Enter a price to see your earnings after fees."}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

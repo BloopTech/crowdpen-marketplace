@@ -135,6 +135,32 @@ export async function createProduct(prevState, queryData) {
     what_included,
   } = validatedFields.data;
 
+  const persistedValues = {
+    title: getTitle,
+    description: getDescription,
+    price: getPrice,
+    originalPrice: getOriginalPrice,
+    marketplace_category_id: getMarketplaceCategoryId,
+    marketplace_subcategory_id: getMarketplaceSubcategoryId,
+    images: getImages,
+    fileType: getFileType,
+    fileSize: getFileSize,
+    license: getLicense,
+    deliveryTime: getDeliveryTime,
+    what_included: getWhatIncluded,
+  };
+
+  const buildErrorState = (message) => ({
+    success: false,
+    message: message || "Failed to create product",
+    errors: {
+      ...defaultProductValues,
+      credentials: message,
+    },
+    values: persistedValues,
+    data: {},
+  });
+
   const formData = new FormData();
   formData.append("title", title);
   formData.append("description", description);
@@ -217,32 +243,32 @@ export async function createProduct(prevState, queryData) {
     // The browser will set it automatically with the boundary
     body: formData,
   });
-  const result = await response.json();
+  let result;
+  try {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      result = {
+        status: response.ok ? "success" : "error",
+        message: text || undefined,
+      };
+    }
+  } catch (error) {
+    console.error("Error parsing product creation response:", error);
+  }
 
-  if (result.status === "error") {
-    return {
-      success: false,
-      message: result.message || "Failed to create product",
-      errors: {
-        ...defaultProductValues,
-        credentials: result?.message,
-      },
-      values: {
-        title: getTitle,
-        description: getDescription,
-        price: getPrice,
-        originalPrice: getOriginalPrice,
-        marketplace_category_id: getMarketplaceCategoryId,
-        marketplace_subcategory_id: getMarketplaceSubcategoryId,
-        images: getImages,
-        fileType: getFileType,
-        fileSize: getFileSize,
-        license: getLicense,
-        deliveryTime: getDeliveryTime,
-        what_included: getWhatIncluded,
-      },
-      data: {},
-    };
+  const responseMessage =
+    result?.message ||
+    (response.status === 413
+      ? "Upload too large. Please ensure files meet the size limits."
+      : undefined);
+
+  if (!response.ok || result?.status === "error") {
+    return buildErrorState(
+      responseMessage || "Failed to create product"
+    );
   }
 
   // Revalidate the products page

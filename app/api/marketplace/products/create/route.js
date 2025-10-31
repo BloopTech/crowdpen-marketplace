@@ -171,7 +171,7 @@ export async function POST(request) {
     if (productFile && productFile.size > 0) {
       const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
       const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
-      
+
       try {
         // Validate file size (max 10MB)
         const maxSize = 10 * 1024 * 1024; // 10MB
@@ -181,7 +181,7 @@ export async function POST(request) {
               status: "error",
               message: "Product file size must be less than 10MB",
             },
-            { status: 400 }
+            { status: 413 }
           );
         }
         
@@ -249,6 +249,24 @@ export async function POST(request) {
     if (imageFiles && imageFiles.length > 0 && imageFiles[0].size > 0) {
       const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
       const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+
+      const maxTotalImageSize = 3 * 1024 * 1024; // 3MB total across all images
+      const totalImageSize = imageFiles.reduce((sum, file) => {
+        if (file && typeof file.size === "number") {
+          return sum + file.size;
+        }
+        return sum;
+      }, 0);
+
+      if (totalImageSize > maxTotalImageSize) {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: "Total images size must be less than 3MB",
+          },
+          { status: 413 }
+        );
+      }
 
       // Process each image file
       for (const file of imageFiles) {
