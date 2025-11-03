@@ -2,7 +2,13 @@
 
 import React from "react";
 import { useAdmin } from "./context";
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import millify from "millify";
 
 export default function AdminPage() {
   const { dashboardQuery } = useAdmin();
@@ -10,12 +16,30 @@ export default function AdminPage() {
   const loading = dashboardQuery?.isFetching || dashboardQuery?.isLoading;
 
   const items = [
-    { label: "Total Users", value: data.totalUsers },
-    { label: "Total Merchants", value: data.totalMerchants },
-    { label: "Pending KYC", value: data.pendingKyc },
-    { label: "Transactions", value: data.transactions },
-    { label: "Total Payout Amount", value: data.totalPayoutAmount },
-    { label: "Total Sales", value: data.totalSales },
+    {
+      label: "Total Users",
+      value: millify(data?.totalUsers, { precision: 2 }),
+    },
+    {
+      label: "Total Merchants",
+      value: millify(data?.totalMerchants, { precision: 2 }),
+    },
+    {
+      label: "Pending KYC",
+      value: millify(data?.pendingKyc, { precision: 2 }),
+    },
+    {
+      label: "Transactions",
+      value: millify(data?.transactions, { precision: 2 }),
+    },
+    {
+      label: "Total Payout Amount",
+      value: millify(data?.totalPayoutAmount, { precision: 2 }),
+    },
+    {
+      label: "Total Sales",
+      value: millify(data?.totalSales, { precision: 2 }),
+    },
   ];
 
   return (

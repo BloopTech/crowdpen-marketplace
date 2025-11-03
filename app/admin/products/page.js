@@ -1,8 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
@@ -10,91 +8,25 @@ import { Input } from "../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
 import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../../components/ui/pagination";
+import ProductDetailsDialog from "./ProductDetailsDialog";
+import { AdminProductDialogProvider, useAdminProductDialog } from "./details-context";
+import { AdminProductsProvider, useAdminProducts } from "./list-context";
 
-function fetchJson(url) {
-  return fetch(url, { credentials: "include", cache: "no-store" }).then(async (res) => {
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data?.status !== "success") {
-      const message = data?.message || `Failed to fetch ${url}`;
-      throw new Error(message);
-    }
-    return data;
-  });
-}
-
-export default function AdminProductsPage() {
-  const qc = useQueryClient();
-  const [qs, setQs] = useQueryStates(
-    {
-      page: parseAsInteger.withDefault(1),
-      pageSize: parseAsInteger.withDefault(20),
-      q: parseAsString.withDefault(""),
-      featured: parseAsString.withDefault("all"), // all | true | false
-      sort: parseAsString.withDefault("rank"), // rank | newest | price-low | price-high | rating | downloads
-    },
-    { clearOnDefault: true }
-  );
-
-  const queryKey = useMemo(() => ["admin", "products", qs], [qs]);
-
-  const query = useQuery({
-    queryKey,
-    queryFn: () => {
-      const searchParams = new URLSearchParams({
-        page: String(qs.page || 1),
-        pageSize: String(qs.pageSize || 20),
-        sort: qs.sort || "rank",
-      });
-      if (qs.q) searchParams.set("q", qs.q);
-      if (qs.featured && qs.featured !== "all") searchParams.set("featured", qs.featured);
-      return fetchJson(`/api/admin/products?${searchParams.toString()}`);
-    },
-  });
-
-  const toggleMutation = useMutation({
-    mutationFn: async ({ id, featured }) => {
-      const res = await fetch("/api/admin/products", {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id, featured }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.status !== "success") {
-        throw new Error(data?.message || "Failed to update product");
-      }
-      return data?.data;
-    },
-    onMutate: async (vars) => {
-      await qc.cancelQueries({ queryKey });
-      const prev = qc.getQueryData(queryKey);
-      qc.setQueryData(queryKey, (old) => {
-        const next = { ...(old || {}) };
-        next.data = (old?.data || []).map((p) => (p.id === vars.id ? { ...p, featured: vars.featured } : p));
-        return next;
-      });
-      return { prev };
-    },
-    onError: (_err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(queryKey, ctx.prev);
-    },
-    onSettled: () => {
-      qc.invalidateQueries({ queryKey });
-    },
-  });
-
-  const list = query?.data?.data || [];
-  const loading = query?.isFetching || query?.isLoading;
-  const page = query?.data?.page || qs.page || 1;
-  const pageSize = query?.data?.pageSize || qs.pageSize || 20;
-  const total = query?.data?.total || 0;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-
-  useEffect(() => {
-    // Trigger first fetch on mount
-    query.refetch();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+function AdminProductsInner() {
+  const { openDetails } = useAdminProductDialog();
+  const {
+    qs,
+    setQs,
+    list,
+    loading,
+    page,
+    pageSize,
+    total,
+    totalPages,
+    refetch,
+    toggleFeatured,
+    togglePending,
+  } = useAdminProducts();
 
   return (
     <div className="px-4 space-y-6">
@@ -102,7 +34,7 @@ export default function AdminProductsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Products</CardTitle>
-            <Button onClick={() => query.refetch()} disabled={loading}>
+            <Button onClick={() => refetch()} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
@@ -177,7 +109,7 @@ export default function AdminProductsPage() {
             </TableHeader>
             <TableBody>
               {list.map((p) => (
-                <TableRow key={p.id}>
+                <TableRow key={p.id} onClick={() => openDetails(p.id)} className="cursor-pointer hover:bg-muted/30">
                   <TableCell>
                     <div className="max-w-[320px] truncate" title={p.title}>{p.title}</div>
                     <div className="text-xs text-muted-foreground">{p.category?.name || "-"}</div>
@@ -186,8 +118,10 @@ export default function AdminProductsPage() {
                   <TableCell>
                     <Switch
                       checked={Boolean(p.featured)}
-                      onCheckedChange={(checked) => toggleMutation.mutate({ id: p.id, featured: checked })}
-                      disabled={toggleMutation.isPending}
+                      onCheckedChange={(checked) => toggleFeatured(p.id, checked)}
+                      disabled={togglePending}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
                     />
                   </TableCell>
                   <TableCell>{Number(p.rating || 0).toFixed(1)}</TableCell>
@@ -222,5 +156,16 @@ export default function AdminProductsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function AdminProductsPage() {
+  return (
+    <AdminProductsProvider>
+      <AdminProductDialogProvider>
+        <AdminProductsInner />
+        <ProductDetailsDialog />
+      </AdminProductDialogProvider>
+    </AdminProductsProvider>
   );
 }
