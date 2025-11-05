@@ -13,6 +13,8 @@ const {
   MarketplaceCart,
   MarketplaceWishlists,
   MarketplaceKycVerification,
+  MarketplaceOrder,
+  MarketplaceOrderItems,
 } = db;
 
 export async function GET(request, { params }) {
@@ -72,7 +74,17 @@ export async function GET(request, { params }) {
       (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
       + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
       + (1.0 * COALESCE("MarketplaceProduct"."authorRating", 0))
+      + (0.5 * LN(COALESCE((
+          SELECT s."sales_count"
+          FROM "mv_product_sales" AS s
+          WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
+        ), 0) + 1))
     `);
+    const salesCountLiteral = db.sequelize.literal(`COALESCE((
+      SELECT s."sales_count"
+      FROM "mv_product_sales" AS s
+      WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
+    ), 0)`);
     let orderClause;
     switch (sortBy) {
       case "price-low":
@@ -92,7 +104,8 @@ export async function GET(request, { params }) {
         ];
         break;
       case "sales":
-        orderClause = [["sales_count", "DESC"]];
+      case "bestsellers":
+        orderClause = [[salesCountLiteral, "DESC"]];
         break;
       default: // default ranking
         orderClause = [[rankScoreLiteral, "DESC"], ["createdAt", "DESC"]];
@@ -113,6 +126,11 @@ export async function GET(request, { params }) {
           hasMore: false,
         },
       });
+    }
+
+    // Flagged gating: only show non-flagged products to public viewers
+    if (!isViewerAuthor) {
+      whereConditions.flagged = false;
     }
 
     // Get products with pagination
@@ -136,6 +154,19 @@ export async function GET(request, { params }) {
     });
 
     const productIDs = products?.map((product) => product?.id);
+
+    // Compute sales count per product from completed orders
+    const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
+    let salesMap = {};
+    if (productIDs && productIDs.length) {
+      const salesRows = await db.sequelize.query(
+        'SELECT "marketplace_product_id", "sales_count" FROM "mv_product_sales" WHERE "marketplace_product_id" IN (:ids)',
+        { replacements: { ids: productIDs }, type: db.Sequelize.QueryTypes.SELECT }
+      );
+      salesRows.forEach((row) => {
+        salesMap[row.marketplace_product_id] = Number(row.sales_count) || 0;
+      });
+    }
 
     const carts = await MarketplaceCart.findAll({
       where: {
@@ -186,6 +217,9 @@ export async function GET(request, { params }) {
           )
         );
 
+        const salesCount = salesMap[productJson.id] || 0;
+        const isBestseller = salesCount >= BESTSELLER_MIN_SALES;
+
         return {
           id: productJson.id,
           title: productJson.title,
@@ -200,7 +234,8 @@ export async function GET(request, { params }) {
             ? parseFloat(reviewStats.averageRating).toFixed(1)
             : 0,
           reviewCount: parseInt(reviewStats?.reviewCount) || 0,
-          salesCount: productJson.downloads || 0,
+          salesCount,
+          isBestseller,
           createdAt: productJson.createdAt,
           wishlist: getWishes,
           Cart: getCart,

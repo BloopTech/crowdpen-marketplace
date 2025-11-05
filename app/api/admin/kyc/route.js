@@ -37,29 +37,32 @@ export async function GET(request) {
     if (level) where.level = level;
     if (reviewer) where.reviewed_by = reviewer;
 
-    const { rows, count } = await db.MarketplaceKycVerification.findAndCountAll(
-      {
-        where,
-        include: [
-          {
-            model: db.User,
-            attributes: [
-              "id",
-              "name",
-              "email",
-              "image",
-              "color",
-              "role",
-              "creator",
-              "merchant",
-            ],
-          },
-        ],
-        order: [["submitted_at", "DESC"]],
-        limit: pageSize,
-        offset,
-      }
-    );
+    const { rows, count } = await db.MarketplaceKycVerification.findAndCountAll({
+      where,
+      include: [
+        {
+          model: db.User,
+          attributes: [
+            "id",
+            "name",
+            "email",
+            "image",
+            "color",
+            "role",
+            "creator",
+            "merchant",
+          ],
+        },
+        {
+          model: db.User,
+          as: "Reviewer",
+          attributes: ["id", "name", "email", "image", "color"],
+        },
+      ],
+      order: [["submitted_at", "DESC"]],
+      limit: pageSize,
+      offset,
+    });
 
     return NextResponse.json({
       status: "success",

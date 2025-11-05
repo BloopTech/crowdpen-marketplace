@@ -7,12 +7,20 @@ import React, {
   createContext,
   useContext,
 } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 export const AccountContext = createContext();
 
 export function AccountContextProvider({ children }) {
   const [payoutType, setPayoutType] = useState("bank");
+  const [myProductsSearch, setMyProductsSearch] = useState("");
+  const [myProductsSelectedCategory, setMyProductsSelectedCategory] =
+    useState("all");
+  const [myProductsSortBy, setMyProductsSortBy] = useState("newest");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const {
     isLoading: accountQueryLoading,
@@ -62,6 +70,122 @@ export function AccountContextProvider({ children }) {
     [accountQuery]
   );
 
+  const categoriesQuery = useQuery({
+    queryKey: ["marketplace", "categories"],
+    queryFn: async () => {
+      const res = await fetch(`/api/marketplace/categories`, { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to fetch categories");
+      }
+      return data;
+    },
+  });
+
+  const categories = useMemo(() => {
+    const list = Array.isArray(categoriesQuery?.data)
+      ? categoriesQuery.data
+      : [];
+    const names = list.map((c) => c?.name).filter(Boolean);
+    return Array.from(new Set(names));
+  }, [categoriesQuery?.data]);
+
+  useEffect(() => {
+    if (!searchParams) return;
+    const q = searchParams.get("q") || "";
+    const cat = searchParams.get("category") || "all";
+    const sort = searchParams.get("sort") || "newest";
+    if (q !== myProductsSearch) setMyProductsSearch(q);
+    if (cat !== myProductsSelectedCategory) setMyProductsSelectedCategory(cat);
+    if (sort !== myProductsSortBy) setMyProductsSortBy(sort);
+  }, [searchParams, myProductsSearch, myProductsSelectedCategory, myProductsSortBy]);
+
+  useEffect(() => {
+    if (!pathname) return;
+    const params = new URLSearchParams(searchParams?.toString() || "");
+    const currentQ = params.get("q") || "";
+    const currentCat = params.get("category") || "all";
+    const currentSort = params.get("sort") || "newest";
+    if (myProductsSearch) {
+      if (currentQ !== myProductsSearch) params.set("q", myProductsSearch);
+    } else {
+      if (currentQ) params.delete("q");
+    }
+    if (myProductsSelectedCategory && myProductsSelectedCategory !== "all") {
+      if (currentCat !== myProductsSelectedCategory)
+        params.set("category", myProductsSelectedCategory);
+    } else {
+      if (currentCat && currentCat !== "all") params.delete("category");
+    }
+    if (myProductsSortBy && myProductsSortBy !== "newest") {
+      if (currentSort !== myProductsSortBy) params.set("sort", myProductsSortBy);
+    } else {
+      if (currentSort && currentSort !== "newest") params.delete("sort");
+    }
+    const next = params.toString();
+    const curr = searchParams?.toString() || "";
+    if (next !== curr) router.replace(next ? `${pathname}?${next}` : pathname);
+  }, [pathname, searchParams, router, myProductsSearch, myProductsSelectedCategory, myProductsSortBy]);
+
+  const myProductsQuery = useInfiniteQuery({
+    queryKey: [
+      "account",
+      "my-products",
+      value?.profile?.pen_name,
+      myProductsSearch,
+      myProductsSelectedCategory,
+      myProductsSortBy,
+    ],
+    enabled: Boolean(value?.profile?.pen_name),
+    initialPageParam: 1,
+    queryFn: async ({ pageParam = 1 }) => {
+      const params = new URLSearchParams({
+        page: String(pageParam || 1),
+        limit: "12",
+        sortBy: myProductsSortBy || "newest",
+      });
+      if (myProductsSearch) params.set("search", myProductsSearch);
+      if (myProductsSelectedCategory && myProductsSelectedCategory !== "all") {
+        params.set("category", myProductsSelectedCategory);
+      }
+      const pen = value?.profile?.pen_name;
+      const res = await fetch(
+        `/api/marketplace/author/${encodeURIComponent(
+          pen
+        )}/products?${params.toString()}`,
+        { credentials: "include" }
+      );
+      const data = await res.json();
+      if (!res.ok || data?.status !== "success") {
+        throw new Error(data?.message || "Failed to fetch products");
+      }
+      return data;
+    },
+    getNextPageParam: (lastPage) => {
+      return lastPage?.pagination?.hasMore
+        ? lastPage.pagination.page + 1
+        : undefined;
+    },
+  });
+
+  const myProducts = useMemo(() => {
+    const pages = myProductsQuery?.data?.pages || [];
+    return pages.flatMap((p) => p?.products || []);
+  }, [myProductsQuery?.data?.pages]);
+
+  const myProductsTotal = useMemo(() => {
+    return myProductsQuery?.data?.pages?.[0]?.pagination?.total || 0;
+  }, [myProductsQuery?.data?.pages]);
+
+  const myProductsHasMore = Boolean(myProductsQuery?.hasNextPage);
+  const myProductsLoading = Boolean(
+    myProductsQuery?.isFetching && !myProductsQuery?.data
+  );
+  const myProductsLoadingMore = Boolean(myProductsQuery?.isFetchingNextPage);
+  const myProductsError = myProductsQuery?.error
+    ? myProductsQuery.error.message || "Failed to fetch products"
+    : null;
+
   const banks = useMemo(() => {
     const list = bankListQuery?.data?.banks;
     if (!Array.isArray(list)) return [];
@@ -80,6 +204,22 @@ export function AccountContextProvider({ children }) {
     <AccountContext.Provider
       value={{
         ...value,
+        myProducts,
+        myProductsTotal,
+        myProductsHasMore,
+        myProductsLoading,
+        myProductsLoadingMore,
+        myProductsError,
+        loadMoreMyProducts: myProductsQuery.fetchNextPage,
+        myProductsSearch,
+        setMyProductsSearch,
+        myProductsSelectedCategory,
+        setMyProductsSelectedCategory,
+        myProductsSortBy,
+        setMyProductsSortBy,
+        categories,
+        categoriesQuery,
+        categoriesLoading: categoriesQuery?.isFetching,
         bankListQuery,
         banks,
         loadingBanks,

@@ -105,9 +105,6 @@ export async function POST(request, { params }) {
       fileSize: formData.get("fileSize") || "",
       license: formData.get("license") || "Standard",
       deliveryTime: formData.get("deliveryTime") || "Instant",
-      featured:
-        formData.get("featured") === "true" ||
-        formData.get("featured") === "on",
       what_included: formData.get("what_included") || "",
     };
 
@@ -150,6 +147,24 @@ export async function POST(request, { params }) {
 
     // Process new images if any
     if (newImageFiles && newImageFiles.length > 0) {
+      const maxTotalImageSize = 3 * 1024 * 1024; // 3MB total across all images
+      const totalNewImageSize = newImageFiles.reduce((sum, file) => {
+        if (file && typeof file.size === "number") {
+          return sum + file.size;
+        }
+        return sum;
+      }, 0);
+
+      if (totalNewImageSize > maxTotalImageSize) {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: "Total images size must be less than 3MB",
+          },
+          { status: 413 }
+        );
+      }
+
       for (const imageFile of newImageFiles) {
         if (imageFile && imageFile.size > 0) {
           try {
@@ -226,13 +241,13 @@ export async function POST(request, { params }) {
     const newProductFile = formData.get("productFile");
     if (newProductFile && newProductFile.size > 0) {
       try {
-        // Validate file size (max 100MB)
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        // Validate file size (max 25MB)
+        const maxSize = 25 * 1024 * 1024; // 25MB
         if (newProductFile.size > maxSize) {
           return NextResponse.json(
             {
               status: "error",
-              message: "Product file size must be less than 10MB",
+              message: "Product file size must be 25MB or less",
             },
             { status: 400 }
           );
@@ -317,8 +332,7 @@ export async function POST(request, { params }) {
       fileSize: finalFileSize,
       license: productData.license,
       deliveryTime: productData.deliveryTime,
-      featured: productData.featured,
-      what_included: productData.what_included
+      what_included: productData.what_included,
     });
 
     return NextResponse.json(

@@ -14,6 +14,8 @@ const {
   MarketplaceCart,
   MarketplaceCartItems,
   MarketplaceKycVerification,
+  MarketplaceOrder,
+  MarketplaceOrderItems,
 } = db;
 
 export async function GET(request, { params }) {
@@ -81,6 +83,11 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // Flagged gating: hide if not owner and product is flagged
+    if (!isOwner && product?.flagged === true) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
     const carts = await MarketplaceCart.findAll({
       where: {
         user_id: userId,
@@ -103,10 +110,21 @@ export async function GET(request, { params }) {
       },
     });
 
+    // Compute sales count using materialized view
+    const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
+    const mvRow = await db.sequelize.query(
+      'SELECT "sales_count" FROM "mv_product_sales" WHERE "marketplace_product_id" = :id LIMIT 1',
+      { replacements: { id: product?.id }, type: db.Sequelize.QueryTypes.SELECT }
+    );
+    const salesCount = mvRow?.[0]?.sales_count ? Number(mvRow[0].sales_count) : 0;
+    const isBestseller = salesCount >= BESTSELLER_MIN_SALES;
+
     const getProduct = {
       ...product?.toJSON(),
       Cart: carts,
       wishlist: wishlists,
+      salesCount,
+      isBestseller,
     };
 
     return NextResponse.json(getProduct);

@@ -11,16 +11,21 @@ function fetchAdminProducts(qs) {
     sort: qs.sort || "rank",
   });
   if (qs.q) searchParams.set("q", qs.q);
-  if (qs.featured && qs.featured !== "all") searchParams.set("featured", qs.featured);
-  return fetch(`/api/admin/products?${searchParams.toString()}`, { credentials: "include", cache: "no-store" })
-    .then(async (res) => {
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.status !== "success") {
-        const message = data?.message || "Failed to fetch products";
-        throw new Error(message);
-      }
-      return data;
-    });
+  if (qs.featured && qs.featured !== "all")
+    searchParams.set("featured", qs.featured);
+  if (qs.flagged && qs.flagged !== "all")
+    searchParams.set("flagged", qs.flagged);
+  return fetch(`/api/admin/products?${searchParams.toString()}`, {
+    credentials: "include",
+    cache: "no-store",
+  }).then(async (res) => {
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.status !== "success") {
+      const message = data?.message || "Failed to fetch products";
+      throw new Error(message);
+    }
+    return data;
+  });
 }
 
 const AdminProductsContext = createContext(null);
@@ -33,6 +38,7 @@ export function AdminProductsProvider({ children }) {
       pageSize: parseAsInteger.withDefault(20),
       q: parseAsString.withDefault(""),
       featured: parseAsString.withDefault("all"), // all | true | false
+      flagged: parseAsString.withDefault("all"), // all | true | false
       sort: parseAsString.withDefault("rank"), // rank | newest | price-low | price-high | rating | downloads
     },
     { clearOnDefault: true }
@@ -64,7 +70,9 @@ export function AdminProductsProvider({ children }) {
       const prev = qc.getQueryData(queryKey);
       qc.setQueryData(queryKey, (old) => {
         const next = { ...(old || {}) };
-        next.data = (old?.data || []).map((p) => (p.id === vars.id ? { ...p, featured: vars.featured } : p));
+        next.data = (old?.data || []).map((p) =>
+          p.id === vars.id ? { ...p, featured: vars.featured } : p
+        );
         return next;
       });
       return { prev };
@@ -77,7 +85,7 @@ export function AdminProductsProvider({ children }) {
     },
   });
 
-  const list = query?.data?.data || [];
+  const list = useMemo(() => query?.data?.data || [], [query?.data?.data]);
   const loading = query?.isFetching || query?.isLoading;
   const page = query?.data?.page || qs.page || 1;
   const pageSize = query?.data?.pageSize || qs.pageSize || 20;
@@ -98,16 +106,32 @@ export function AdminProductsProvider({ children }) {
       toggleFeatured: (id, featured) => toggleMutation.mutate({ id, featured }),
       togglePending: toggleMutation.isPending,
     }),
-    [qs, setQs, list, loading, page, pageSize, total, totalPages, query.refetch, toggleMutation]
+    [
+      qs,
+      setQs,
+      list,
+      loading,
+      page,
+      pageSize,
+      total,
+      totalPages,
+      query.refetch,
+      toggleMutation,
+    ]
   );
 
   return (
-    <AdminProductsContext.Provider value={value}>{children}</AdminProductsContext.Provider>
+    <AdminProductsContext.Provider value={value}>
+      {children}
+    </AdminProductsContext.Provider>
   );
 }
 
 export function useAdminProducts() {
   const ctx = useContext(AdminProductsContext);
-  if (!ctx) throw new Error("useAdminProducts must be used within AdminProductsProvider");
+  if (!ctx)
+    throw new Error(
+      "useAdminProducts must be used within AdminProductsProvider"
+    );
   return ctx;
 }

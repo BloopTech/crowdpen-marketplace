@@ -3,11 +3,17 @@ import React,{forwardRef} from "react"
 
 import { cn } from "../../lib/utils"
 
-const Table = forwardRef(({ className, ...props }, ref) => (
+const Table = forwardRef(({ className, stickyFirstColumn = false, ...props }, ref) => (
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn(
+        "w-full caption-bottom text-sm",
+        stickyFirstColumn
+          ? "[&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:z-20 [&_th:first-child]:bg-background [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:first-child]:z-10 [&_td:first-child]:bg-background"
+          : "",
+        className
+      )}
       {...props}
     />
   </div>

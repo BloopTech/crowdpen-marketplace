@@ -3,10 +3,11 @@
 import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 import { Card, CardContent } from "../components/ui/card"
-import { Download, Star, FileText, LayoutGrid, LayoutList } from "lucide-react"
+import { Download, Star, FileText, LayoutGrid, LayoutList, Sparkles, Crown } from "lucide-react"
 import Image from "next/image"
 import GridCard from "./grid-card"
 import Link from "next/link"
+import { StatusPill } from "./status-pill"
 
 
 export default function SearchResults({ resources, query, searchTime, viewMode, setViewMode }) {
@@ -75,9 +76,22 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                       priority
                     />
-                    {resource.featured && (
-                      <Badge className="absolute top-1 left-1 text-xs bg-orange-500">Featured</Badge>
-                    )}
+                    <div className="absolute top-1 left-1 flex flex-col gap-2">
+                      {resource.featured && (
+                        <StatusPill
+                          icon={Sparkles}
+                          label="Featured"
+                          className="bg-orange-500/90 backdrop-blur"
+                        />
+                      )}
+                      {resource.isBestseller && (
+                        <StatusPill
+                          icon={Crown}
+                          label="Bestseller"
+                          className="bg-amber-500/90 backdrop-blur"
+                        />
+                      )}
+                    </div>
                   </div>
 
                   {/* Content */}

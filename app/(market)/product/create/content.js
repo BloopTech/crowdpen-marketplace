@@ -1,5 +1,11 @@
 "use client";
-import React, { useState, useEffect, useRef, useActionState, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useActionState,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { createProduct } from "./action";
@@ -170,7 +176,10 @@ export default function CreateProductContent() {
         (acc, imageObj) => acc + (imageObj.file?.size || 0),
         0
       );
-      const incomingTotal = incomingFiles.reduce((acc, file) => acc + file.size, 0);
+      const incomingTotal = incomingFiles.reduce(
+        (acc, file) => acc + file.size,
+        0
+      );
 
       if (existingTotal + incomingTotal > maxCombinedSize) {
         toast.error("Total images size must not exceed 3MB.");
@@ -207,10 +216,10 @@ export default function CreateProductContent() {
     const file = files[0];
 
     try {
-      // Validate file size (max 10MB)
-      const maxSize = 10 * 1024 * 1024; // 10MB
+      // Validate file size (max 25MB)
+      const maxSize = 25 * 1024 * 1024; // 25MB
       if (file.size > maxSize) {
-        toast.error("File size must be less than 10MB");
+        toast.error("File size must be 25MB or less");
         return;
       }
 
@@ -536,6 +545,10 @@ export default function CreateProductContent() {
                         ? `${netRevenue} after 20% platform fee`
                         : "Enter a price to see your earnings after fees."}
                     </p>
+                    <p className="mt-1 text-xs text-emerald-700">
+                      The platform fee covers payment processing, creator
+                      support, and ongoing marketplace maintenance.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -660,7 +673,7 @@ export default function CreateProductContent() {
                           : "Upload your product file"}
                       </p>
                       <p className="text-xs text-gray-500 text-center">
-                        PDF, PSD, AI, Figma, ZIP, DOC, XLS, PPT files up to 10MB
+                        PDF, PSD, AI, Figma, ZIP, DOC, XLS, PPT files up to 25MB
                       </p>
                       <input
                         id="productFile"
@@ -681,7 +694,7 @@ export default function CreateProductContent() {
                     File Requirements:
                   </h4>
                   <ul className="text-xs text-yellow-700 space-y-1">
-                    <li>• Maximum file size: 10MB</li>
+                    <li>• Maximum file size: 25MB</li>
                     <li>
                       • Supported formats: PDF, PSD, AI, Figma, ZIP, DOC, XLS,
                       PPT

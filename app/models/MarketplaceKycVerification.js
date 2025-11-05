@@ -4,7 +4,13 @@ import sequelize from "./database";
 
 class MarketplaceKycVerification extends Model {
   static associate(models) {
-    MarketplaceKycVerification.belongsTo(models.User, { foreignKey: "user_id" });
+    MarketplaceKycVerification.belongsTo(models.User, {
+      foreignKey: "user_id",
+    });
+    MarketplaceKycVerification.belongsTo(models.User, {
+      as: "Reviewer",
+      foreignKey: "reviewed_by",
+    });
   }
 }
 
@@ -48,7 +54,12 @@ MarketplaceKycVerification.init(
     country: DataTypes.STRING,
     // ID Document
     id_type: {
-      type: DataTypes.ENUM("passport", "national_id", "driver_license", "other"),
+      type: DataTypes.ENUM(
+        "passport",
+        "national_id",
+        "driver_license",
+        "other"
+      ),
     },
     id_number: DataTypes.STRING,
     id_country: DataTypes.STRING,
@@ -59,7 +70,13 @@ MarketplaceKycVerification.init(
     selfie_url: DataTypes.TEXT,
     // Review metadata
     rejection_reason: DataTypes.TEXT,
-    reviewed_by: DataTypes.UUID,
+    reviewed_by: {
+      type: DataTypes.UUID,
+      references: {
+        model: "users",
+        key: "id",
+      },
+    },
     reviewed_at: DataTypes.DATE,
     submitted_at: DataTypes.DATE,
     provider: DataTypes.STRING,

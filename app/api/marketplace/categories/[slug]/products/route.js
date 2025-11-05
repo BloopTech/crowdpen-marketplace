@@ -17,6 +17,8 @@ const {
   MarketplaceCartItems,
   MarketplaceProductVariation,
   MarketplaceKycVerification,
+  MarketplaceOrder,
+  MarketplaceOrderItems,
 } = db;
 
 export async function GET(request, { params }) {
@@ -149,7 +151,17 @@ export async function GET(request, { params }) {
       (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
       + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
       + (1.0 * COALESCE("MarketplaceProduct"."authorRating", 0))
+      + (0.5 * LN(COALESCE((
+          SELECT s."sales_count"
+          FROM "mv_product_sales" AS s
+          WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
+        ), 0) + 1))
     `);
+    const salesCountLiteral = db.Sequelize.literal(`COALESCE((
+      SELECT s."sales_count"
+      FROM "mv_product_sales" AS s
+      WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
+    ), 0)`);
     let order = [];
     switch (sort) {
       case "price-low":
@@ -166,6 +178,9 @@ export async function GET(request, { params }) {
         break;
       case "popular":
         order.push(["downloads", "DESC"]); // Using downloads instead of purchases
+        break;
+      case "bestsellers":
+        order.push([salesCountLiteral, "DESC"]);
         break;
       case "featured":
         order.push(["featured", "DESC"]);
@@ -195,7 +210,10 @@ export async function GET(request, { params }) {
     if (userId) {
       visibilityOr.push({ user_id: userId });
     }
-    const finalWhere = { [Op.and]: [ where, { [Op.or]: visibilityOr } ] };
+    const flaggedOr = userId
+      ? [{ flagged: false }, { user_id: userId }]
+      : [{ flagged: false }];
+    const finalWhere = { [Op.and]: [ where, { [Op.or]: visibilityOr }, { [Op.or]: flaggedOr } ] };
 
     const { count, rows: products } = await MarketplaceProduct.findAndCountAll({
       where: finalWhere,
@@ -245,6 +263,18 @@ export async function GET(request, { params }) {
     });
 
     const productIDs = products?.map((product) => product?.id);
+
+    const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
+    let salesMap = {};
+    if (productIDs && productIDs.length) {
+      const salesRows = await db.sequelize.query(
+        'SELECT "marketplace_product_id", "sales_count" FROM "mv_product_sales" WHERE "marketplace_product_id" IN (:ids)',
+        { replacements: { ids: productIDs }, type: db.Sequelize.QueryTypes.SELECT }
+      );
+      salesRows.forEach((row) => {
+        salesMap[row.marketplace_product_id] = Number(row.sales_count) || 0;
+      });
+    }
 
     const wishlists = await MarketplaceWishlists.findAll({
       where: {
@@ -297,6 +327,9 @@ export async function GET(request, { params }) {
       const tags =
         productJson.productTags?.map((pt) => pt.MarketplaceTags?.name) || [];
 
+      const salesCount = salesMap[productJson.id] || 0;
+      const isBestseller = salesCount >= BESTSELLER_MIN_SALES;
+
       return {
         ...productJson,
         tags,
@@ -304,6 +337,8 @@ export async function GET(request, { params }) {
         wishlist: getWishes,
         User: getUser,
         Cart: getCart,
+        salesCount,
+        isBestseller,
       };
     });
 

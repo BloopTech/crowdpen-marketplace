@@ -2,10 +2,9 @@ import Image from "next/image"
 import { Badge } from "../components/ui/badge"
 import { Button } from "../components/ui/button"
 import { Card, CardContent, CardFooter } from "..//components/ui/card"
-import { Download, Star } from "lucide-react"
+import { Download, Star, Sparkles } from "lucide-react"
 import Link from "next/link"
-
-
+import { StatusPill } from "./status-pill"
 
 export default function ResourceCard({ resource }) {
   return (
@@ -20,7 +19,13 @@ export default function ResourceCard({ resource }) {
           priority
         />
         {resource.featured && (
-          <Badge className="absolute top-2 left-2 bg-orange-500 hover:bg-orange-600">Featured</Badge>
+          <div className="absolute top-2 left-2">
+            <StatusPill
+              icon={Sparkles}
+              label="Featured"
+              className="bg-orange-500/90 backdrop-blur"
+            />
+          </div>
         )}
         <div className="absolute top-2 right-2">
           <Badge variant="secondary" className="bg-black/70 text-white">

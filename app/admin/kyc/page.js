@@ -81,6 +81,9 @@ export default function KycPage() {
       rejectState.message
     ) {
       toast.success(rejectState.message);
+      if (rejectState?.data?.email?.error) {
+        toast.error(`Email failed: ${rejectState.data.email.error}`);
+      }
       kycApprovedQueryRefetch();
       kycPendingQueryRefetch();
       kycRejectedQueryRefetch();
@@ -103,6 +106,9 @@ export default function KycPage() {
       approveState.message
     ) {
       toast.success(approveState.message);
+      if (approveState?.data?.email?.error) {
+        toast.error(`Email failed: ${approveState.data.email.error}`);
+      }
       kycApprovedQueryRefetch();
       kycPendingQueryRefetch();
     } else if (
@@ -310,6 +316,8 @@ export default function KycPage() {
             approveIsPending={approveIsPending}
             setReviewId={setReviewId}
             reviewId={reviewId}
+            approveState={approveState}
+            rejectState={rejectState}
           />
         </CardContent>
       </Card>

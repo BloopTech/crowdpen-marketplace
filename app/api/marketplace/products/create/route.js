@@ -173,13 +173,13 @@ export async function POST(request) {
       const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
 
       try {
-        // Validate file size (max 10MB)
-        const maxSize = 10 * 1024 * 1024; // 10MB
+        // Validate file size (max 25MB)
+        const maxSize = 25 * 1024 * 1024; // 25MB
         if (productFile.size > maxSize) {
           return NextResponse.json(
             {
               status: "error",
-              message: "Product file size must be less than 10MB",
+              message: "Product file size must be 25MB or less",
             },
             { status: 413 }
           );

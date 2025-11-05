@@ -16,12 +16,15 @@ import {
   Download,
   FileText,
   LoaderCircle,
+  Crown,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { addProductWishlist, addProductToCart } from "../actions";
 import { useHome } from "../context";
 import { toast } from "sonner";
+import { StatusPill } from "./status-pill";
 
 const initialStateValues = {
   message: "",
@@ -203,11 +206,20 @@ export default function ProductCard(props) {
           />
 
           {/* Badges */}
-          <div className="absolute top-2 left-2 flex flex-col gap-1">
+          <div className="absolute top-2 left-2 flex flex-col gap-2">
             {resource.featured && (
-              <Badge className="bg-purple-500 hover:bg-purple-600 text-white">
-                Bestseller
-              </Badge>
+              <StatusPill
+                icon={Sparkles}
+                label="Featured"
+                className="bg-purple-500/90 backdrop-blur"
+              />
+            )}
+            {resource.isBestseller && (
+              <StatusPill
+                icon={Crown}
+                label="Bestseller"
+                className="bg-amber-500/90 backdrop-blur"
+              />
             )}
             {discountPercentage > 0 && (
               <Badge className="bg-red-500 hover:bg-red-600 text-white">

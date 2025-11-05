@@ -3,7 +3,8 @@ import Link from "next/link";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter } from "../components/ui/card";
-import { Download, Star } from "lucide-react";
+import { Download, Star, Sparkles, Crown } from "lucide-react";
+import { StatusPill } from "./status-pill";
 
 export default function GridCard({ resource }) {
   return (
@@ -17,11 +18,22 @@ export default function GridCard({ resource }) {
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           priority
         />
-        {resource.featured && (
-          <Badge className="absolute top-2 left-2 text-xs bg-orange-500">
-            Featured
-          </Badge>
-        )}
+        <div className="absolute top-2 left-2 flex flex-col gap-2">
+          {resource.featured && (
+            <StatusPill
+              icon={Sparkles}
+              label="Featured"
+              className="bg-orange-500/90 backdrop-blur"
+            />
+          )}
+          {resource.isBestseller && (
+            <StatusPill
+              icon={Crown}
+              label="Bestseller"
+              className="bg-amber-500/90 backdrop-blur"
+            />
+          )}
+        </div>
       </div>
 
       <CardContent className="flex-1 p-4">

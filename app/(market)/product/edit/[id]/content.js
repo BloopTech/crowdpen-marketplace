@@ -52,7 +52,6 @@ const initialStateValues = {
     fileSize: [],
     license: [],
     deliveryTime: [],
-    featured: [],
     what_included: [],
     credentials: {},
     unknown: "",
@@ -80,7 +79,6 @@ export default function EditProductContent(props) {
   const [originalPrice, setOriginalPrice] = useState("");
   const [whatIncluded, setWhatIncluded] = useState("");
   const [priceError, setPriceError] = useState("");
-  const [featured, setFeatured] = useState(false);
   const [deliveryTime, setDeliveryTime] = useState("");
   const [license, setLicense] = useState("");
   const [title, setTitle] = useState("");
@@ -97,7 +95,6 @@ export default function EditProductContent(props) {
       setPrice(product?.price || "");
       setOriginalPrice(product?.originalPrice || "");
       setWhatIncluded(product?.what_included || "");
-      setFeatured(product?.featured || false);
       setDeliveryTime(product?.deliveryTime || "");
       setFileType(product?.fileType || "");
       setFileSize(product?.fileSize || "");
@@ -105,11 +102,11 @@ export default function EditProductContent(props) {
       setDescription(product?.description || "");
       setLicense(product?.license || "");
 
-      if(categoriesData?.length){
+      if (categoriesData?.length) {
         setCategoryID(product?.marketplace_category_id || "");
       }
 
-      if(subCategories?.length){
+      if (subCategories?.length) {
         setSubcategoryID(product?.marketplace_subcategory_id || "");
       }
 
@@ -161,12 +158,17 @@ export default function EditProductContent(props) {
 
   useEffect(() => {
     if (categoriesData?.length && categoryID) {
-      const selectedCategory = categoriesData?.find((category) => category.id === categoryID);
+      const selectedCategory = categoriesData?.find(
+        (category) => category.id === categoryID
+      );
       const subcategories = selectedCategory?.MarketplaceSubCategories || [];
       setSubCategories(subcategories);
-      
+
       // If subcategory ID is set but not in the new subcategories, reset it
-      if (subcategoryID && !subcategories.find(sub => sub.id === subcategoryID)) {
+      if (
+        subcategoryID &&
+        !subcategories.find((sub) => sub.id === subcategoryID)
+      ) {
         setSubcategoryID("");
       }
     } else {
@@ -174,6 +176,20 @@ export default function EditProductContent(props) {
       setSubcategoryID("");
     }
   }, [categoriesData, categoryID, subcategoryID]);
+
+  const netRevenue = useMemo(() => {
+    const priceNum = parseFloat(price);
+    if (Number.isFinite(priceNum) && priceNum > 0) {
+      const revenue = priceNum * 0.8;
+      return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(revenue);
+    }
+    return null;
+  }, [price]);
 
   // Validate price relationship
   const validatePrices = (currentPrice, currentOriginalPrice) => {
@@ -215,32 +231,40 @@ export default function EditProductContent(props) {
     setUploadingImage(true);
 
     try {
-      const newImages = [];
-
-      // Process all selected files
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-
-        // Validate file type
-        if (!file.type.startsWith("image/")) {
+      const incomingFiles = Array.from(files).filter((file) => {
+        if (!file.type?.startsWith("image/")) {
           toast.error(`${file.name} is not a valid image file`);
-          continue;
+          return false;
         }
+        return true;
+      });
 
-        // Validate file size (max 10MB per image)
-        const maxSize = 10 * 1024 * 1024; // 10MB
-        if (file.size > maxSize) {
-          toast.error(`${file.name} is too large. Maximum size is 10MB`);
-          continue;
-        }
-
-        // Create preview URL and add to array
-        const previewUrl = URL.createObjectURL(file);
-        newImages.push({ file, previewUrl });
+      if (incomingFiles.length === 0) {
+        return;
       }
 
+      const maxCombinedSize = 3 * 1024 * 1024; // 3MB total
+      const existingTotal = images.reduce(
+        (acc, imageObj) => acc + (imageObj.file?.size || 0),
+        0
+      );
+      const incomingTotal = incomingFiles.reduce(
+        (acc, file) => acc + (file.size || 0),
+        0
+      );
+
+      if (existingTotal + incomingTotal > maxCombinedSize) {
+        toast.error("Total images size must not exceed 3MB.");
+        return;
+      }
+
+      const newImages = incomingFiles.map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+      }));
+
       if (newImages.length > 0) {
-        setImages([...images, ...newImages]);
+        setImages((prev) => [...prev, ...newImages]);
         toast.success(`${newImages.length} image(s) added successfully`);
       }
     } catch (error) {
@@ -270,10 +294,10 @@ export default function EditProductContent(props) {
     const file = files[0]; // Only take the first file (single file upload)
 
     try {
-      // Validate file size (max 100MB)
-      const maxSize = 100 * 1024 * 1024; // 100MB
+      // Validate file size (max 25MB)
+      const maxSize = 25 * 1024 * 1024; // 25MB
       if (file.size > maxSize) {
-        toast.error("Product file size must be less than 100MB");
+        toast.error("Product file size must be 25MB or less");
         return;
       }
 
@@ -523,7 +547,11 @@ export default function EditProductContent(props) {
                       ? state?.errors?.marketplace_category_id[0]
                       : null}
                   </span>
-                  <input type="hidden" value={categoryID} name="marketplace_category_id" />
+                  <input
+                    type="hidden"
+                    value={categoryID}
+                    name="marketplace_category_id"
+                  />
                 </div>
 
                 {/* Subcategory */}
@@ -562,44 +590,16 @@ export default function EditProductContent(props) {
                       ? state?.errors?.marketplace_subcategory_id[0]
                       : null}
                   </span>
-                  <input type="hidden" value={subcategoryID} name="marketplace_subcategory_id" />
+                  <input
+                    type="hidden"
+                    value={subcategoryID}
+                    name="marketplace_subcategory_id"
+                  />
                 </div>
               </div>
 
               {/* Pricing */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Price */}
-                <div className="space-y-2">
-                  <Label htmlFor="price">
-                    Price ($) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="19.99"
-                    value={price}
-                    onChange={handlePriceChange}
-                    required
-                    className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
-                      (Object.keys(state?.errors).length !== 0 &&
-                        state?.errors?.price?.length) ||
-                      priceError
-                        ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-tertiary"
-                    }`}
-                    disabled={isPending}
-                  />
-                  <span className="text-xs text-red-500">
-                    {Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.price?.length
-                      ? state?.errors?.price[0]
-                      : priceError || null}
-                  </span>
-                </div>
-
                 {/* Original Price */}
                 <div className="space-y-2">
                   <Label htmlFor="originalPrice">
@@ -640,6 +640,52 @@ export default function EditProductContent(props) {
                       % off
                     </p>
                   )}
+                </div>
+
+                {/* Price */}
+                <div className="space-y-2">
+                  <Label htmlFor="price">
+                    Price ($) <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="price"
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="19.99"
+                    value={price}
+                    onChange={handlePriceChange}
+                    required
+                    className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
+                      (Object.keys(state?.errors).length !== 0 &&
+                        state?.errors?.price?.length) ||
+                      priceError
+                        ? "border-red-500 focus:ring-red-500"
+                        : "focus:ring-tertiary"
+                    }`}
+                    disabled={isPending}
+                  />
+                  <span className="text-xs text-red-500">
+                    {Object.keys(state?.errors).length !== 0 &&
+                    state?.errors?.price?.length
+                      ? state?.errors?.price[0]
+                      : priceError || null}
+                  </span>
+                  <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+                    <p className="text-xs font-medium text-emerald-700">
+                      Estimated merchant earnings
+                    </p>
+                    <p className="text-sm text-emerald-800">
+                      {netRevenue
+                        ? `${netRevenue} after 20% platform fee`
+                        : "Enter a price to see your earnings after fees."}
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-700">
+                      The platform fee covers payment processing, creator
+                      support, and ongoing marketplace maintenance.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -849,8 +895,7 @@ export default function EditProductContent(props) {
                             : "Upload your product file"}
                       </p>
                       <p className="text-xs text-gray-500 text-center mb-1">
-                        PDF, PSD, AI, Figma, ZIP, DOC, XLS, PPT files up to
-                        100MB
+                        PDF, PSD, AI, Figma, ZIP, DOC, XLS, PPT files up to 25MB
                       </p>
                       <p className="text-xs text-gray-400 text-center">
                         Only one product file allowed
@@ -874,7 +919,7 @@ export default function EditProductContent(props) {
                     File Requirements:
                   </h4>
                   <ul className="text-xs text-yellow-700 space-y-1">
-                    <li>• Maximum file size: 10MB</li>
+                    <li>• Maximum file size: 25MB</li>
                     <li>
                       • Supported formats: PDF, PSD, AI, Figma, ZIP, DOC, XLS,
                       PPT
@@ -994,20 +1039,6 @@ export default function EditProductContent(props) {
                     name="deliveryTime"
                   />
                 </div>
-              </div>
-
-              {/* Featured */}
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="featured"
-                  name="featured"
-                  value={featured}
-                  onCheckedChange={(value) => setFeatured(value)}
-                />
-                <Label htmlFor="featured">
-                  Mark as featured product (may require approval)
-                </Label>
-                <input type="hidden" value={featured} name="featured" />
               </div>
             </div>
           </CardContent>

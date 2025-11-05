@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useActionState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
@@ -11,6 +11,8 @@ import { Pagination, PaginationContent, PaginationItem, PaginationNext, Paginati
 import ProductDetailsDialog from "./ProductDetailsDialog";
 import { AdminProductDialogProvider, useAdminProductDialog } from "./details-context";
 import { AdminProductsProvider, useAdminProducts } from "./list-context";
+import { format } from "date-fns";
+import { toggleFeatured as actionToggleFeatured, toggleFlagged as actionToggleFlagged } from "./actions";
 
 function AdminProductsInner() {
   const { openDetails } = useAdminProductDialog();
@@ -24,9 +26,31 @@ function AdminProductsInner() {
     total,
     totalPages,
     refetch,
-    toggleFeatured,
-    togglePending,
   } = useAdminProducts();
+
+  const [featState, featAction, featPending] = useActionState(actionToggleFeatured, { success: false });
+  const [flagState, flagAction, flagPending] = useActionState(actionToggleFlagged, { success: false });
+
+  useEffect(() => {
+    if (featState?.success) refetch();
+  }, [featState?.success, refetch]);
+  useEffect(() => {
+    if (flagState?.success) refetch();
+  }, [flagState?.success, refetch]);
+
+  const onToggleFeatured = (id, featured) => {
+    const fd = new FormData();
+    fd.set("id", id);
+    fd.set("featured", String(!!featured));
+    featAction(fd);
+  };
+
+  const onToggleFlagged = (id, flagged) => {
+    const fd = new FormData();
+    fd.set("id", id);
+    fd.set("flagged", String(!!flagged));
+    flagAction(fd);
+  };
 
   return (
     <div className="px-4 space-y-6">
@@ -65,6 +89,17 @@ function AdminProductsInner() {
               </Select>
             </div>
             <div>
+              <label className="block text-xs mb-1">Flagged</label>
+              <Select value={qs.flagged} onValueChange={(v) => setQs({ flagged: v, page: 1 })}>
+                <SelectTrigger className="w-40"><SelectValue placeholder="All" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="true">Flagged</SelectItem>
+                  <SelectItem value="false">Not Flagged</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <label className="block text-xs mb-1">Sort</label>
               <Select value={qs.sort} onValueChange={(v) => setQs({ sort: v, page: 1 })}>
                 <SelectTrigger className="w-48"><SelectValue placeholder="Rank" /></SelectTrigger>
@@ -75,6 +110,7 @@ function AdminProductsInner() {
                   <SelectItem value="price-high">Price: High to Low</SelectItem>
                   <SelectItem value="rating">Rating</SelectItem>
                   <SelectItem value="downloads">Downloads</SelectItem>
+                  <SelectItem value="bestsellers">Bestsellers</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -90,15 +126,16 @@ function AdminProductsInner() {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" onClick={() => query.refetch()}>Apply</Button>
+            <Button variant="outline" onClick={() => refetch()}>Apply</Button>
           </div>
 
-          <Table>
+          <Table stickyFirstColumn>
             <TableHeader>
               <TableRow>
                 <TableHead>Title</TableHead>
                 <TableHead>Author</TableHead>
                 <TableHead>Featured</TableHead>
+                <TableHead>Flagged</TableHead>
                 <TableHead>Rating</TableHead>
                 <TableHead>Author Rating</TableHead>
                 <TableHead>Downloads</TableHead>
@@ -118,8 +155,17 @@ function AdminProductsInner() {
                   <TableCell>
                     <Switch
                       checked={Boolean(p.featured)}
-                      onCheckedChange={(checked) => toggleFeatured(p.id, checked)}
-                      disabled={togglePending}
+                      onCheckedChange={(checked) => onToggleFeatured(p.id, checked)}
+                      disabled={featPending || flagPending}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Switch
+                      checked={Boolean(p.flagged)}
+                      onCheckedChange={(checked) => onToggleFlagged(p.id, checked)}
+                      disabled={featPending || flagPending}
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     />
@@ -129,12 +175,12 @@ function AdminProductsInner() {
                   <TableCell>{Number(p.downloads || 0)}</TableCell>
                   <TableCell>{isNaN(Number(p.price)) ? "-" : Number(p.price).toFixed(2)}</TableCell>
                   <TableCell>{Number(p.rankScore || 0).toFixed(2)}</TableCell>
-                  <TableCell>{p.createdAt ? new Date(p.createdAt).toLocaleString() : "-"}</TableCell>
+                  <TableCell>{p.createdAt ? format(new Date(p.createdAt), "dd-MM-yyyy") : "-"}</TableCell>
                 </TableRow>
               ))}
               {list.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center text-sm text-muted-foreground">No products found.</TableCell>
+                  <TableCell colSpan={10} className="text-center text-sm text-muted-foreground">No products found.</TableCell>
                 </TableRow>
               )}
             </TableBody>

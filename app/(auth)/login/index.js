@@ -17,7 +17,7 @@ import { useCrowdpenSSO } from "../../hooks/useCrowdpenSSO";
 // Login component that integrates with Crowdpen SSO
 export default function Login() {
   // Get context safely with useContext
-  const { loginDialog, closeLoginDialog } = useHome();
+  const { loginDialog, closeLoginDialog, authDialogMode } = useHome();
 
   // Use the Crowdpen SSO hook
   const { isCheckingSSO, ssoAvailable, attemptSSOLogin } = useCrowdpenSSO();
@@ -39,9 +39,15 @@ export default function Login() {
     <Dialog open={loginDialog} onOpenChange={closeLoginDialog}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Sign in to Crowdpen Marketplace</DialogTitle>
+          <DialogTitle>
+            {authDialogMode === "signup"
+              ? "Create your Crowdpen Marketplace account"
+              : "Sign in to Crowdpen Marketplace"}
+          </DialogTitle>
           <DialogDescription>
-            Use your existing Crowdpen account to sign in.
+            {authDialogMode === "signup"
+              ? "We’ll redirect you to Crowdpen to finish setting up your account."
+              : "Use your existing Crowdpen account to sign in."}
           </DialogDescription>
         </DialogHeader>
 
@@ -67,10 +73,12 @@ export default function Login() {
                 {isCheckingSSO ? (
                   <>
                     <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
+                    {authDialogMode === "signup" ? "Creating account..." : "Signing in..."}
                   </>
+                ) : authDialogMode === "signup" ? (
+                  "Sign up with Crowdpen (redirect)"
                 ) : (
-                  "Sign in with Crowdpen (will redirect)"
+                  "Sign in with Crowdpen (redirect)"
                 )}
               </Button>
 

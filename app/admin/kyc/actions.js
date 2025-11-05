@@ -4,6 +4,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { db } from "../../models/index";
+import { render } from "@react-email/render";
+import KycApproved from "../../emails/KycApproved";
+import KycRejected from "../../emails/KycRejected";
+import { sendEmail } from "../../lib/sendEmail";
 
 function isAdminOrSenior(user) {
   return user?.role === "admin" || user?.role === "senior_admin";
@@ -51,11 +55,53 @@ export async function approveKyc(prevState, formData) {
     await db.User.update({ merchant: true }, { where: { id: record.user_id } });
   }
 
+  // Send approval email (best-effort)
+  let emailInfo = { sent: false, error: null };
+  try {
+    if (record?.user_id) {
+      const user = await db.User.findOne({
+        where: { id: record.user_id },
+        attributes: ["id", "name", "email"],
+      });
+      const to = user?.email;
+      if (to) {
+        const origin =
+          process.env.NEXTAUTH_URL ||
+          process.env.NEXT_PUBLIC_APP_URL ||
+          "http://localhost:3000";
+        const accountUrl = new URL("/account", origin).toString();
+        const component = KycApproved({
+          name: user?.name || "there",
+          accountUrl,
+          level: record?.level || "standard",
+        });
+        const html = render(component);
+        const text = render(component, { plainText: true });
+        await sendEmail({ to, subject: "Your KYC has been approved", html, text });
+        emailInfo.sent = true;
+      }
+    }
+  } catch (e) {
+    console.error("approveKyc email error", e);
+    emailInfo.error = e?.message || "Failed to send email";
+  }
+
   // Revalidate merchants page so the newly promoted user appears there
   revalidatePath("/admin/merchants");
 
   revalidatePath("/admin/kyc");
-  return { success: true, message: "KYC approved", data: record, error: {} };
+  return {
+    success: true,
+    message: "KYC approved",
+    data: {
+      id: record.id,
+      status: record.status,
+      level: record.level,
+      rejection_reason: record.rejection_reason,
+      email: emailInfo,
+    },
+    error: {},
+  };
 }
 
 export async function rejectKyc(prevState, formData) {
@@ -77,6 +123,14 @@ export async function rejectKyc(prevState, formData) {
       error: { kycId },
       data: {},
     };
+  if (!reason) {
+    return {
+      success: false,
+      message: "Rejection reason is required",
+      error: { reason: "required" },
+      data: {},
+    };
+  }
 
   const record = await db.MarketplaceKycVerification.findOne({
     where: { id: kycId },
@@ -96,6 +150,48 @@ export async function rejectKyc(prevState, formData) {
     reviewed_at: new Date(),
   });
 
+  // Send rejection email (best-effort)
+  let emailInfo = { sent: false, error: null };
+  try {
+    if (record?.user_id) {
+      const user = await db.User.findOne({
+        where: { id: record.user_id },
+        attributes: ["id", "name", "email"],
+      });
+      const to = user?.email;
+      if (to) {
+        const origin =
+          process.env.NEXTAUTH_URL ||
+          process.env.NEXT_PUBLIC_APP_URL ||
+          "http://localhost:3000";
+        const accountUrl = new URL("/account", origin).toString();
+        const component = KycRejected({
+          name: user?.name || "there",
+          accountUrl,
+          reason: reason || record?.rejection_reason || "",
+        });
+        const html = render(component);
+        const text = render(component, { plainText: true });
+        await sendEmail({ to, subject: "Update on your KYC verification", html, text });
+        emailInfo.sent = true;
+      }
+    }
+  } catch (e) {
+    console.error("rejectKyc email error", e);
+    emailInfo.error = e?.message || "Failed to send email";
+  }
+
   revalidatePath("/admin/kyc");
-  return { success: true, message: "KYC rejected", error: {}, data: record };
+  return {
+    success: true,
+    message: "KYC rejected",
+    error: {},
+    data: {
+      id: record.id,
+      status: record.status,
+      level: record.level,
+      rejection_reason: record.rejection_reason,
+      email: emailInfo,
+    },
+  };
 }

@@ -198,6 +198,13 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
   }
   andConditions.push({ [Op.or]: visibilityOr })
 
+  // Flagged gating: require flagged=false for public viewers; owners can see their own flagged items
+  if (viewerId) {
+    andConditions.push({ [Op.or]: [{ flagged: false }, { user_id: viewerId }] })
+  } else {
+    andConditions.push({ flagged: false })
+  }
+
   // Explicit filter params
   const {
     categoryIds = [],
@@ -236,7 +243,17 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
     (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
     + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
     + (1.0 * COALESCE("MarketplaceProduct"."authorRating", 0))
+    + (0.5 * LN(COALESCE((
+        SELECT s."sales_count"
+        FROM "mv_product_sales" AS s
+        WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
+      ), 0) + 1))
   `)
+  const salesCountLiteral = literal(`COALESCE((
+    SELECT s."sales_count"
+    FROM "mv_product_sales" AS s
+    WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
+  ), 0)`)
 
   const rows = await MarketplaceProduct.findAll({
     where,
@@ -257,9 +274,10 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
               "similarityScore",
             ],
             [rankScoreLiteral, 'rankScore'],
+            [salesCountLiteral, 'salesCount'],
           ],
         }
-      : { include: [[rankScoreLiteral, 'rankScore']] },
+      : { include: [[rankScoreLiteral, 'rankScore'], [salesCountLiteral, 'salesCount']] },
     include: [
       { model: MarketplaceCategory, attributes: ["name", "slug"], required: false },
       { model: MarketplaceSubCategory, attributes: ["name", "slug"], required: false },
@@ -293,6 +311,7 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
   })
 
   // Shape to UI resource
+  const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100)
   const shaped = rows.map((p) => {
     const json = p.toJSON()
     const authorName = json.User?.pen_name || json.User?.name || "Unknown"
@@ -320,6 +339,8 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
       fileSize: json.fileSize || "",
       license: json.license || "",
       author: authorName,
+      salesCount: typeof json.salesCount === "number" ? json.salesCount : Number(json.salesCount || 0),
+      isBestseller: (typeof json.salesCount === "number" ? json.salesCount : Number(json.salesCount || 0)) >= BESTSELLER_MIN_SALES,
     }
   })
 

@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   Table,
   TableBody,
@@ -33,6 +33,21 @@ import { Button } from "../../components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import { useAdmin } from "../context";
+import { Alert, AlertTitle, AlertDescription } from "../../components/ui/alert";
+import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "../../components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "../../components/ui/hover-card";
 
 export default function KYCTabs(props) {
   const {
@@ -57,14 +72,32 @@ export default function KYCTabs(props) {
     approveIsPending,
     setReviewId,
     reviewId,
+    approveState,
+    rejectState,
   } = props;
   const {
     kycPendingQueryRefetch,
     kycApprovedQueryRefetch,
     kycRejectedQueryRefetch,
   } = useAdmin();
+  const [rejectReasons, setRejectReasons] = useState({});
+
+  // Auto-close the review dialog when an action succeeds for the current record
+  useEffect(() => {
+    if (approveState?.success && approveState?.data?.id && reviewId === approveState.data.id) {
+      setReviewId("");
+      setQs({ kycReviewId: "" });
+    }
+  }, [approveState, reviewId, setReviewId, setQs]);
+  useEffect(() => {
+    if (rejectState?.success && rejectState?.data?.id && reviewId === rejectState.data.id) {
+      setReviewId("");
+      setQs({ kycReviewId: "" });
+    }
+  }, [rejectState, reviewId, setReviewId, setQs]);
   return (
     <>
+      <TooltipProvider>
       <Tabs
         defaultValue="pending"
         value={tab}
@@ -280,49 +313,192 @@ export default function KYCTabs(props) {
                             </TabsContent>
                             <TabsContent value="decision">
                               <div className="flex flex-col gap-3">
-                                <form action={approveFormAction}>
+                                {/* Approve flow with confirmation */}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button
+                                      type="button"
+                                      disabled={rejectIsPending || approveIsPending}
+                                      aria-busy={approveIsPending}
+                                    >
+                                      {approveIsPending ? (
+                                        <span className="inline-flex items-center">
+                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                          Approving...
+                                        </span>
+                                      ) : (
+                                        "Approve"
+                                      )}
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Approve verification?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This will mark the user as verified and send them an email notification.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <form action={approveFormAction}>
+                                      <input type="hidden" name="kycId" value={r.id} />
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction type="submit" disabled={rejectIsPending || approveIsPending} aria-busy={approveIsPending}>
+                                          {approveIsPending ? (
+                                            <span className="inline-flex items-center">
+                                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                              Confirming...
+                                            </span>
+                                          ) : (
+                                            "Confirm"
+                                          )}
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </form>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+
+                                {/* Reject flow with controlled reason and confirmation */}
+                                <div className="flex items-center gap-2">
                                   <input
-                                    type="hidden"
-                                    name="kycId"
-                                    value={r.id}
-                                  />
-                                  <Button
-                                    type="submit"
-                                    disabled={
-                                      rejectIsPending || approveIsPending
-                                    }
-                                  >
-                                    Approve
-                                  </Button>
-                                </form>
-                                <form
-                                  action={rejectFormAction}
-                                  className="flex items-center gap-2"
-                                >
-                                  <input
-                                    type="hidden"
-                                    name="kycId"
-                                    value={r.id}
-                                  />
-                                  <input
-                                    disabled={
-                                      rejectIsPending || approveIsPending
-                                    }
+                                    disabled={rejectIsPending || approveIsPending}
                                     type="text"
-                                    name="reason"
-                                    placeholder="Reason (optional)"
+                                    placeholder="Reason (required)"
+                                    required
+                                    aria-required="true"
                                     className="border border-slate-300 rounded px-2 py-2 text-sm flex-1"
-                                  />
-                                  <Button
-                                    type="submit"
-                                    variant="outline"
-                                    disabled={
-                                      rejectIsPending || approveIsPending
+                                    value={rejectReasons[r.id] || ""}
+                                    onChange={(e) =>
+                                      setRejectReasons((prev) => ({ ...prev, [r.id]: e.target.value }))
                                     }
-                                  >
-                                    Reject
-                                  </Button>
-                                </form>
+                                  />
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        disabled={rejectIsPending || approveIsPending}
+                                        aria-busy={rejectIsPending}
+                                      >
+                                        {rejectIsPending ? (
+                                          <span className="inline-flex items-center">
+                                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                            Rejecting...
+                                          </span>
+                                        ) : (
+                                          "Reject"
+                                        )}
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Reject verification?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Reason: {rejectReasons[r.id] || "(none)"}
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <form action={rejectFormAction}>
+                                        <input type="hidden" name="kycId" value={r.id} />
+                                        <input type="hidden" name="reason" value={rejectReasons[r.id] || ""} />
+                                        <AlertDialogFooter>
+                                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                          <AlertDialogAction
+                                            type="submit"
+                                            disabled={!rejectReasons[r.id] || rejectIsPending || approveIsPending}
+                                            aria-busy={rejectIsPending}
+                                          >
+                                            {rejectIsPending ? (
+                                              <span className="inline-flex items-center">
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                Confirming...
+                                              </span>
+                                            ) : (
+                                              "Confirm"
+                                            )}
+                                          </AlertDialogAction>
+                                        </AlertDialogFooter>
+                                      </form>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
+                                {(approveState?.success && approveState?.data?.id === r.id) && (
+                                  <Alert className="mt-2">
+                                    <CheckCircle className="h-5 w-5" />
+                                    <AlertTitle>KYC approved</AlertTitle>
+                                    <AlertDescription>
+                                      {approveState?.data?.email?.sent
+                                        ? "Notification email sent to the user."
+                                        : approveState?.data?.email?.error
+                                          ? `Email failed: ${approveState.data.email.error}`
+                                          : ""}
+                                    </AlertDescription>
+                                  </Alert>
+                                )}
+                                {(rejectState?.success && rejectState?.data?.id === r.id) && (
+                                  <Alert className="mt-2" variant="destructive">
+                                    <AlertCircle className="h-5 w-5" />
+                                    <AlertTitle>KYC rejected</AlertTitle>
+                                    <AlertDescription>
+                                      {rejectState?.data?.email?.sent
+                                        ? "Notification email sent to the user."
+                                        : rejectState?.data?.email?.error
+                                          ? `Email failed: ${rejectState.data.email.error}`
+                                          : "Decision submitted."}
+                                  </AlertDescription>
+                                  </Alert>
+                                )}
+
+                                {/* Activity log */}
+                                <div className="mt-2 text-xs text-slate-600">
+                                  <div className="flex items-center gap-2">
+                                    <span>Reviewed by:</span>
+                                    <HoverCard>
+                                      <HoverCardTrigger asChild>
+                                        <div className="flex items-center gap-2 cursor-default">
+                                          <Avatar
+                                            imageUrl={r?.Reviewer?.image}
+                                            color={r?.Reviewer?.color}
+                                            className="h-6 w-6"
+                                          >
+                                            <AvatarFallback>
+                                              {(r?.Reviewer?.name || r?.Reviewer?.email || "—")
+                                                .slice(0, 2)
+                                                .toUpperCase()}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="text-sm">
+                                            {r?.Reviewer?.name || r?.Reviewer?.email || r.reviewed_by || "—"}
+                                          </span>
+                                        </div>
+                                      </HoverCardTrigger>
+                                      <HoverCardContent>
+                                        <div className="space-y-1">
+                                          <div className="flex items-center gap-2">
+                                            <Avatar
+                                              imageUrl={r?.Reviewer?.image}
+                                              color={r?.Reviewer?.color}
+                                              className="h-6 w-6"
+                                            >
+                                              <AvatarFallback>
+                                                {(r?.Reviewer?.name || r?.Reviewer?.email || "—")
+                                                  .slice(0, 2)
+                                                  .toUpperCase()}
+                                              </AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-sm font-medium">
+                                              {r?.Reviewer?.name || r?.Reviewer?.email || "—"}
+                                            </span>
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            {r?.Reviewer?.email || "-"}
+                                          </div>
+                                        </div>
+                                      </HoverCardContent>
+                                    </HoverCard>
+                                  </div>
+                                  <div>
+                                    Reviewed at: {r.reviewed_at ? new Date(r.reviewed_at).toLocaleString() : "—"}
+                                  </div>
+                                </div>
                               </div>
                             </TabsContent>
                           </Tabs>
@@ -423,7 +599,38 @@ export default function KYCTabs(props) {
                       ? new Date(r.reviewed_at).toLocaleString()
                       : "-"}
                   </TableCell>
-                  <TableCell>{r.reviewed_by || "-"}</TableCell>
+                  <TableCell>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <div className="flex items-center gap-2 cursor-default">
+                          <Avatar
+                            imageUrl={r?.Reviewer?.image}
+                            color={r?.Reviewer?.color}
+                            className="h-6 w-6"
+                          >
+                            <AvatarFallback>
+                              {(r?.Reviewer?.name || r?.Reviewer?.email || "-")
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm">
+                            {r?.Reviewer?.name || r?.Reviewer?.email || r.reviewed_by || "-"}
+                          </span>
+                        </div>
+                      </HoverCardTrigger>
+                      <HoverCardContent>
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            {r?.Reviewer?.name || r?.Reviewer?.email || "-"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {r?.Reviewer?.email || "-"}
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </TableCell>
                 </TableRow>
               ))}
               {approved.length === 0 && (
@@ -482,6 +689,7 @@ export default function KYCTabs(props) {
                 <TableHead>User</TableHead>
                 <TableHead>Reason</TableHead>
                 <TableHead>Reviewed At</TableHead>
+                <TableHead>Reviewer</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -516,12 +724,44 @@ export default function KYCTabs(props) {
                       ? new Date(r.reviewed_at).toLocaleString()
                       : "-"}
                   </TableCell>
+                  <TableCell>
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <div className="flex items-center gap-2 cursor-default">
+                          <Avatar
+                            imageUrl={r?.Reviewer?.image}
+                            color={r?.Reviewer?.color}
+                            className="h-6 w-6"
+                          >
+                            <AvatarFallback>
+                              {(r?.Reviewer?.name || r?.Reviewer?.email || "-")
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm">
+                            {r?.Reviewer?.name || r?.Reviewer?.email || r.reviewed_by || "-"}
+                          </span>
+                        </div>
+                      </HoverCardTrigger>
+                      <HoverCardContent>
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            {r?.Reviewer?.name || r?.Reviewer?.email || "-"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {r?.Reviewer?.email || "-"}
+                          </div>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
+                  </TableCell>
                 </TableRow>
               ))}
               {rejected.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={3}
+                    colSpan={4}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No rejected KYC.
@@ -567,6 +807,7 @@ export default function KYCTabs(props) {
           </div>
         </TabsContent>
       </Tabs>
+      </TooltipProvider>
     </>
   );
 }

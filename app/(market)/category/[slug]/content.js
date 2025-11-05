@@ -147,6 +147,7 @@ export default function CategoryContentPage() {
                       <SelectItem value="rating">Customer Rating</SelectItem>
                       <SelectItem value="newest">Newest Arrivals</SelectItem>
                       <SelectItem value="popular">Most Popular</SelectItem>
+                      <SelectItem value="bestsellers">Bestsellers</SelectItem>
                     </SelectContent>
                   </Select>
 

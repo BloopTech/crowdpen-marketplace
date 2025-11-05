@@ -5,6 +5,8 @@ import {
   ShoppingCart,
   Heart,
   User,
+  UserPlus,
+  LogIn,
   ArrowLeft,
   LoaderCircle,
 } from "lucide-react";
@@ -40,10 +42,9 @@ export default function MarketplaceHeader(props) {
   console.log("cartCountData", cartCountData);
 
   const handleCreateClick = () => {
-      router.push("/product/create");
+    router.push("/product/create");
   };
 
-  
   return (
     <header className="border-b bg-white sticky top-0 z-10 border-slate-300 w-full">
       {/* Top Bar */}
@@ -59,9 +60,9 @@ export default function MarketplaceHeader(props) {
             <span>Back to the CrowdPen dashboard</span>
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/creator/apply" className="hover:text-gray-300">
+            {/* <Link href="/creator/apply" className="hover:text-gray-300">
               <span>Become a Merchant</span>
-            </Link>
+            </Link> */}
             <Link href="/help" className="hover:text-gray-300">
               <span>Help & Support</span>
             </Link>
@@ -162,15 +163,29 @@ export default function MarketplaceHeader(props) {
                 </Button>
               </>
             ) : (
-              <Button
-                //variant="ghost"
-                size="sm"
-                onClick={openLoginDialog}
-                className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
-              >
-                <User className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Login</span>
-              </Button>
+              <div className="flex items-center gap-3">
+                <div className="flex flex-col items-start">
+                  <Button
+                    size="sm"
+                    onClick={() => openLoginDialog("login")}
+                    className="bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+                  >
+                    <LogIn className="h-4 w-4 mr-2" />
+                    <span>Log in</span>
+                  </Button>
+                </div>
+                <div className="flex flex-col items-start">
+                  <Button
+                    size="sm"
+                    onClick={() => openLoginDialog("signup")}
+                    className="bg-[#d3a155] text-black shadow-sm hover:bg-black hover:text-[#d3a155]"
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+
+                    <span>Join</span>
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
         </div>

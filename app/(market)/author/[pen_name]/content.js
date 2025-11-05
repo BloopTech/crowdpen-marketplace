@@ -431,6 +431,7 @@ export default function AuthorProfileContent({ author }) {
                     </SelectItem>
                     <SelectItem value="rating">Highest Rated</SelectItem>
                     <SelectItem value="sales">Most Popular</SelectItem>
+                    <SelectItem value="bestsellers">Bestsellers</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

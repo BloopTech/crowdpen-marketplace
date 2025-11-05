@@ -17,7 +17,6 @@ const defaultProductValues = {
   fileSize: [],
   license: [],
   deliveryTime: [],
-  featured: [],
 };
 
 const productSchema = z.object({
@@ -47,7 +46,6 @@ const productSchema = z.object({
   fileSize: z.string().optional(),
   license: z.string().optional(),
   deliveryTime: z.string().optional(),
-  featured: z.boolean().optional().default(false),
   what_included: z.string().optional(),
 });
 
@@ -76,30 +74,29 @@ export async function EditProduct(prevState, queryData) {
   const getMarketplaceSubcategoryId = queryData.get(
     "marketplace_subcategory_id"
   );
-  
+
   // Handle images - both new uploads and existing URLs
   const getNewImages = queryData.getAll("images"); // New uploaded images
   const getExistingImages = queryData.get("existingImages"); // Existing image URLs as JSON
-  
+
   // Handle product file - both new upload and existing URL
   const getNewProductFile = queryData.get("productFile"); // New uploaded file
   const getExistingProductFile = queryData.get("existingProductFile"); // Existing file URL
-  
+
   const getFileType = queryData.get("fileType");
   const getFileSize = queryData.get("fileSize");
   const getLicense = queryData.get("license");
   const getDeliveryTime = queryData.get("deliveryTime");
-  const getFeatured = queryData.get("featured");
   const getWhatIncluded = queryData.get("what_included");
 
-  const featured = getFeatured === "on" || getFeatured === "true";
-
   // Validate that we have at least one image (either existing or new)
-  const hasImages = (getExistingImages && getExistingImages !== '[]') || (getNewImages && getNewImages.length > 0);
-  
+  const hasImages =
+    (getExistingImages && getExistingImages !== "[]") ||
+    (getNewImages && getNewImages.length > 0);
+
   // Validate that we have at least one product file (either existing or new)
   const hasProductFile = getExistingProductFile || getNewProductFile;
-  
+
   if (!hasImages) {
     return {
       message: "At least one image is required",
@@ -116,7 +113,7 @@ export async function EditProduct(prevState, queryData) {
       },
     };
   }
-  
+
   if (!hasProductFile) {
     return {
       message: "Product file is required",
@@ -150,7 +147,6 @@ export async function EditProduct(prevState, queryData) {
     fileSize: getFileSize,
     license: getLicense,
     deliveryTime: getDeliveryTime,
-    featured: featured,
     what_included: getWhatIncluded,
   });
   //console.log("validatedFields", validatedFields?.error);
@@ -173,7 +169,6 @@ export async function EditProduct(prevState, queryData) {
         fileSize: getFileSize,
         license: getLicense,
         deliveryTime: getDeliveryTime,
-        featured: featured,
         what_included: getWhatIncluded,
       },
       data: {},
@@ -211,15 +206,14 @@ export async function EditProduct(prevState, queryData) {
   if (fileSize) formData.append("fileSize", fileSize);
   if (license) formData.append("license", license);
   if (deliveryTime) formData.append("deliveryTime", deliveryTime);
-  formData.append("featured", featured);
   if (what_included) formData.append("what_included", what_included);
   formData.append("user_id", userId);
-  
+
   // Add existing images if they exist
   if (existingImages) {
     formData.append("existingImages", existingImages);
   }
-  
+
   // Add existing product file if it exists
   if (existingProductFile) {
     formData.append("existingProductFile", existingProductFile);
@@ -233,7 +227,7 @@ export async function EditProduct(prevState, queryData) {
       }
     });
   }
-  
+
   // Append new product file to form data
   if (productFile && productFile.name && productFile.size) {
     formData.append("productFile", productFile);
@@ -241,7 +235,10 @@ export async function EditProduct(prevState, queryData) {
 
   // For server actions, we need to use an absolute URL
   const origin = process.env.NEXTAUTH_URL;
-  const url = new URL(`/api/marketplace/products/${productId}/edit`, origin).toString();
+  const url = new URL(
+    `/api/marketplace/products/${productId}/edit`,
+    origin
+  ).toString();
 
   const response = await fetch(url, {
     method: "POST",
@@ -271,7 +268,6 @@ export async function EditProduct(prevState, queryData) {
         fileSize: getFileSize,
         license: getLicense,
         deliveryTime: getDeliveryTime,
-        featured: featured,
         what_included: getWhatIncluded,
       },
       data: {},

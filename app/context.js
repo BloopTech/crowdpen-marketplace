@@ -75,6 +75,7 @@ const HomeContext = createContext(null);
 
 const HomeProvider = ({ children }) => {
   const [loginDialog, setLoginDialog] = useState(false);
+  const [authDialogMode, setAuthDialogMode] = useState("login");
   const { data: session } = useSession();
 
   // Use nuqs for URL state management directly
@@ -276,7 +277,8 @@ const HomeProvider = ({ children }) => {
 
 
   // Auth related functions
-  const openLoginDialog = () => {
+  const openLoginDialog = (mode = "login") => {
+    setAuthDialogMode(mode);
     setLoginDialog(true);
   };
 
@@ -343,6 +345,8 @@ const HomeProvider = ({ children }) => {
         loginDialog,
         openLoginDialog,
         closeLoginDialog,
+        authDialogMode,
+        setAuthDialogMode,
 
         // Data
         products: optimisticProducts,

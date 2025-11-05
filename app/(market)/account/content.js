@@ -30,6 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../../components/ui/select";
+import { Alert, AlertTitle, AlertDescription } from "../../components/ui/alert";
 import {
   User,
   Download,
@@ -45,8 +46,11 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
+  Pencil,
 } from "lucide-react";
 import MarketplaceHeader from "../../components/marketplace-header";
+import Link from "next/link";
+import NextImage from "next/image";
 import { useAccount } from "./context";
 import { toast } from "sonner";
 import { upsertKyc } from "./action";
@@ -73,6 +77,22 @@ export default function AccountContentPage() {
     refetchAccountQuery,
     accountQueryLoading,
     accountQueryError,
+    // My Products from context (tanstack query)
+    myProducts,
+    myProductsTotal,
+    myProductsHasMore,
+    myProductsLoading,
+    myProductsLoadingMore,
+    myProductsError,
+    loadMoreMyProducts,
+    // Filters/sort
+    myProductsSearch,
+    setMyProductsSearch,
+    myProductsSelectedCategory,
+    setMyProductsSelectedCategory,
+    myProductsSortBy,
+    setMyProductsSortBy,
+    categories,
   } = useAccount();
 
   // Server Action wiring
@@ -262,6 +282,7 @@ export default function AccountContentPage() {
     return profile?.name || combined;
   }, [displayFirstName, displayLastName, profile?.name]);
 
+
   if (accountQueryLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -320,6 +341,7 @@ export default function AccountContentPage() {
         <Tabs defaultValue="purchases" className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="purchases">My Purchases</TabsTrigger>
+            <TabsTrigger value="my-products">My Products</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
             <TabsTrigger value="settings">Settings</TabsTrigger>
             <TabsTrigger value="verification">Verification</TabsTrigger>
@@ -369,6 +391,142 @@ export default function AccountContentPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="my-products" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center gap-2">
+                    <User className="h-5 w-5" />
+                    My Products ({myProductsTotal || myProducts.length})
+                  </span>
+                  <Link href="/product/create">
+                    <Button size="sm">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Create Product
+                    </Button>
+                  </Link>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col md:flex-row gap-4 mb-4">
+                  <Input
+                    placeholder="Search products..."
+                    value={myProductsSearch}
+                    onChange={(e) => setMyProductsSearch(e.target.value)}
+                    className="md:flex-1"
+                  />
+                  <Select
+                    value={myProductsSelectedCategory}
+                    onValueChange={setMyProductsSelectedCategory}
+                  >
+                    <SelectTrigger className="w-full md:w-48">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories?.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={myProductsSortBy} onValueChange={setMyProductsSortBy}>
+                    <SelectTrigger className="w-full md:w-48">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Newest First</SelectItem>
+                      <SelectItem value="price-low">Price: Low to High</SelectItem>
+                      <SelectItem value="price-high">Price: High to Low</SelectItem>
+                      <SelectItem value="rating">Highest Rated</SelectItem>
+                      <SelectItem value="sales">Most Popular</SelectItem>
+                      <SelectItem value="bestsellers">Bestsellers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {myProductsError ? (
+                  <div className="text-sm text-red-600 mb-4">{myProductsError}</div>
+                ) : null}
+
+                {myProductsLoading && myProducts.length === 0 ? (
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Loading your products...
+                  </div>
+                ) : null}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {myProducts.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex flex-col border border-slate-300 rounded-lg p-3"
+                    >
+                      <div className="relative aspect-[3/2] bg-slate-100 rounded overflow-hidden mb-3">
+                        <NextImage
+                          src={p.image || "/placeholder.svg"}
+                          alt={p.title}
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {p.category || ""}
+                      </div>
+                      <h3 className="font-semibold text-sm line-clamp-2">
+                        {p.title}
+                      </h3>
+                      <div className="text-sm text-slate-700 mt-2">${p.price}</div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <Link href={`/product/${p.id}`}>
+                          <Button variant="outline" size="sm">
+                            Preview
+                          </Button>
+                        </Link>
+                        <Link href={`/product/edit/${p.id}`}>
+                          <Button size="sm">
+                            <Pencil className="h-4 w-4 mr-2" /> Edit
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {!myProductsLoading && myProducts.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed rounded-lg">
+                    <p className="text-sm text-slate-600 mb-4">
+                      You have not created any products yet.
+                    </p>
+                    <Link href="/product/create">
+                      <Button size="sm">Create your first product</Button>
+                    </Link>
+                  </div>
+                ) : null}
+
+                <div className="flex justify-center mt-6">
+                  {myProductsHasMore ? (
+                    <Button
+                      onClick={() => loadMoreMyProducts?.()}
+                      disabled={myProductsLoadingMore}
+                      variant="outline"
+                    >
+                      {myProductsLoadingMore ? (
+                        <span className="inline-flex items-center">
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </span>
+                      ) : (
+                        "Load More"
+                      )}
+                    </Button>
+                  ) : null}
                 </div>
               </CardContent>
             </Card>
@@ -561,10 +719,29 @@ export default function AccountContentPage() {
                           ? "You're verified. Thanks for keeping our marketplace safe!"
                           : kyc?.status === "pending"
                             ? "Your documents are under review. We'll notify you once it's done."
-                            : "Get verified to unlock purchases and selling with confidence."}
+                            : kyc?.status === "rejected"
+                              ? "We couldn't approve your verification. See the reason below and resubmit your details."
+                              : "Get verified to unlock purchases and selling with confidence."}
                       </p>
                     </div>
                   </div>
+
+                  {kyc?.status === "rejected" && (
+                    <div className="mt-3">
+                      <Alert variant="destructive" className="border-red-300 bg-red-50">
+                        <AlertCircle className="h-5 w-5" />
+                        <AlertTitle>Verification not approved</AlertTitle>
+                        <AlertDescription>
+                          <div className="space-y-2">
+                            <p className="text-sm">
+                              {kyc?.rejection_reason || "Please review your details and resubmit."}
+                            </p>
+                            <p className="text-sm">Update your information below and submit again.</p>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    </div>
+                  )}
 
                   {kyc?.status === "approved" && (
                     <div className="text-sm text-slate-600">

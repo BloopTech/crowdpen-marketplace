@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useActionState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardFooter } from "../../../components/ui/card";
-import { Heart, LoaderCircle, ShoppingCart, Star } from "lucide-react";
+import { Heart, LoaderCircle, ShoppingCart, Star, Sparkles, Crown } from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { addProductToCart, addProductWishlist } from "./action";
@@ -10,6 +10,7 @@ import { useSession } from "next-auth/react";
 import { useHome } from "../../../context";
 import { Badge } from "../../../components/ui/badge";
 import Link from "next/link";
+import { StatusPill } from "../../../components/status-pill";
 
 const initialStateValues = {
   message: "",
@@ -114,11 +115,20 @@ export default function MyProductCard(props) {
           priority
         />
 
-        <div className="absolute top-2 left-2 flex flex-col gap-1">
+        <div className="absolute top-2 left-2 flex flex-col gap-2">
           {product.featured && (
-            <Badge className="bg-purple-500 hover:bg-purple-600 text-white">
-              Bestseller
-            </Badge>
+            <StatusPill
+              icon={Sparkles}
+              label="Featured"
+              className="bg-purple-500/90 backdrop-blur"
+            />
+          )}
+          {product.isBestseller && (
+            <StatusPill
+              icon={Crown}
+              label="Bestseller"
+              className="bg-amber-500/90 backdrop-blur"
+            />
           )}
           {discountPercentage > 0 && (
             <Badge className="bg-red-500 hover:bg-red-600 text-white">

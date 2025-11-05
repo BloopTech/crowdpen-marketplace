@@ -22,7 +22,7 @@ export async function GET(_request, { params }) {
       );
     }
 
-    const { id } = params || {};
+    const { id } = await params || {};
     const pid = String(id || "").trim();
     if (!pid) {
       return NextResponse.json({ status: "error", message: "Missing id" }, { status: 400 });
@@ -56,6 +56,56 @@ export async function GET(_request, { params }) {
     }
 
     const j = product.toJSON();
+    // Aggregate units sold and total revenue from completed orders
+    const [agg] = await db.sequelize.query(
+      `SELECT
+         COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",
+         COALESCE(SUM((oi."subtotal")::numeric), 0) AS "totalRevenue"
+       FROM "marketplace_order_items" AS oi
+       JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
+       WHERE oi."marketplace_product_id" = :pid
+         AND o."paymentStatus" = 'completed'`,
+      { replacements: { pid: j.id }, type: db.Sequelize.QueryTypes.SELECT }
+    );
+
+    // Parse optional fee rates from env (% provided as '0.2' or '20')
+    const parsePct = (v) => {
+      if (v == null || v === "") return 0;
+      const n = Number(String(v).replace(/%/g, ""));
+      if (!isFinite(n) || isNaN(n)) return 0;
+      return n > 1 ? n / 100 : n; // accept 20 => 0.2
+    };
+    const CROWD_PCT = parsePct(process.env.CROWDPEN_FEE_PCT || process.env.CROWD_PEN_FEE_PCT || process.env.PLATFORM_FEE_PCT);
+    const SB_PCT = parsePct(process.env.STARTBUTTON_FEE_PCT || process.env.START_BUTTON_FEE_PCT || process.env.GATEWAY_FEE_PCT);
+    const revenue = Number(agg?.totalRevenue || 0) || 0;
+    const crowdpenFee = revenue * (CROWD_PCT || 0);
+    const startbuttonFee = revenue * (SB_PCT || 0);
+    const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
+
+    const fileUrl = typeof j.file === "string" && j.file.trim() ? j.file : null;
+    let fileName = null;
+    let fileExtension = null;
+    if (fileUrl) {
+      try {
+        const parsed = new URL(fileUrl);
+        const lastSegment = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).pop() || "");
+        if (lastSegment) {
+          fileName = lastSegment;
+        }
+      } catch (error) {
+        const fallbackSegment = decodeURIComponent(fileUrl.split("/").pop() || "");
+        if (fallbackSegment) {
+          fileName = fallbackSegment;
+        }
+      }
+
+      if (fileName) {
+        const parts = fileName.split(".");
+        if (parts.length > 1) {
+          fileExtension = parts.pop().toLowerCase();
+        }
+      }
+    }
 
     const data = {
       id: j.id,
@@ -65,6 +115,7 @@ export async function GET(_request, { params }) {
       images: Array.isArray(j.images) ? j.images : (j.image ? [j.image] : []),
       image_alt: j.image_alt || null,
       featured: Boolean(j.featured),
+      flagged: Boolean(j.flagged),
       price: j.price != null ? Number(j.price) : null,
       originalPrice: j.originalPrice != null ? Number(j.originalPrice) : null,
       rating: Number(j.rating) || 0,
@@ -72,6 +123,11 @@ export async function GET(_request, { params }) {
       reviewCount: Number(j.reviewCount) || 0,
       downloads: Number(j.downloads) || 0,
       inStock: Boolean(j.inStock),
+      unitsSold: Number(agg?.unitsSold || 0) || 0,
+      totalRevenue: revenue,
+      crowdpenFee,
+      startbuttonFee,
+      creatorPayout,
       fileType: j.fileType || null,
       fileSize: j.fileSize || null,
       license: j.license || null,
@@ -79,7 +135,10 @@ export async function GET(_request, { params }) {
       lastUpdated: j.lastUpdated || j.updatedAt || null,
       createdAt: j.createdAt || null,
       what_included: j.what_included || null,
-      file: j.file || null,
+      file: fileUrl,
+      fileUrl,
+      fileName,
+      fileExtension,
       category: j.MarketplaceCategory ? { id: j.MarketplaceCategory.id, name: j.MarketplaceCategory.name } : null,
       subcategory: j.MarketplaceSubCategory ? { id: j.MarketplaceSubCategory.id, name: j.MarketplaceSubCategory.name } : null,
       owner: j.User
