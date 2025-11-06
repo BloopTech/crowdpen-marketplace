@@ -97,6 +97,38 @@ export async function POST(request) {
       what_included: formData.get("what_included") || "",
     };
 
+    // Parse stock
+    const stockRaw = formData.get("stock");
+    const stock =
+      stockRaw !== null && stockRaw !== undefined && stockRaw !== ""
+        ? parseInt(stockRaw, 10)
+        : null;
+
+    if (stock !== null && (Number.isNaN(stock) || stock < 0)) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Stock must be a non-negative integer",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate price relationship originalPrice >= price when provided
+    if (
+      productData.originalPrice !== null &&
+      typeof productData.price === "number" &&
+      productData.originalPrice < productData.price
+    ) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Original price must be greater than or equal to sale price",
+        },
+        { status: 400 }
+      );
+    }
+
     // Validate required fields
     if (
       !productData.title ||
@@ -368,6 +400,8 @@ export async function POST(request) {
           deliveryTime: productData.deliveryTime || "Instant",
           what_included: productData.what_included || "",
           product_id: productId,
+          stock: stock,
+          inStock: stock === null ? true : stock > 0,
         });
         lastError = undefined;
         break;

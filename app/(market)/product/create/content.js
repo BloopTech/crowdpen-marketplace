@@ -51,6 +51,7 @@ const initialStateValues = {
     description: [],
     price: [],
     originalPrice: [],
+    stock: [],
     marketplace_category_id: [],
     marketplace_subcategory_id: [],
     images: [],
@@ -79,8 +80,10 @@ export default function CreateProductContent() {
   const [categoryID, setCategoryID] = useState("");
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
+  const [stock, setStock] = useState("");
   const [whatIncluded, setWhatIncluded] = useState("");
   const [priceError, setPriceError] = useState("");
+  const [pricesInitialized, setPricesInitialized] = useState(false);
   const [state, formAction, isPending] = useActionState(
     createProduct,
     initialStateValues
@@ -115,14 +118,20 @@ export default function CreateProductContent() {
     }
   }, [categoriesData, categoryID]);
 
+  useEffect(() => {
+    if (price && originalPrice && !pricesInitialized) {
+      setPricesInitialized(true);
+    }
+  }, [price, originalPrice, pricesInitialized]);
+
   // Validate price relationship
   const validatePrices = (currentPrice, currentOriginalPrice) => {
     if (currentOriginalPrice && currentPrice) {
       const priceNum = parseFloat(currentPrice);
       const originalPriceNum = parseFloat(currentOriginalPrice);
 
-      if (originalPriceNum <= priceNum) {
-        setPriceError("Original price must be higher than the current price");
+      if (originalPriceNum < priceNum) {
+        setPriceError("Original price must be greater than or equal to sale price");
         return false;
       } else {
         setPriceError("");
@@ -137,6 +146,9 @@ export default function CreateProductContent() {
   const handlePriceChange = (e) => {
     const newPrice = e.target.value;
     setPrice(newPrice);
+    if (!pricesInitialized && !originalPrice) {
+      setOriginalPrice(newPrice);
+    }
     validatePrices(newPrice, originalPrice);
   };
 
@@ -158,6 +170,9 @@ export default function CreateProductContent() {
   const handleOriginalPriceChange = (e) => {
     const newOriginalPrice = e.target.value;
     setOriginalPrice(newOriginalPrice);
+    if (!pricesInitialized && !price) {
+      setPrice(newOriginalPrice);
+    }
     validatePrices(price, newOriginalPrice);
   };
 
@@ -554,16 +569,37 @@ export default function CreateProductContent() {
               </div>
             </div>
 
-            {/* Images */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold">Product Images</h3>
+            {/* Stock */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="stock">In Stock Quantity</Label>
+                  <Input
+                    id="stock"
+                    name="stock"
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="0"
+                    value={stock}
+                    onChange={(e) => setStock(e.target.value)}
+                    className="w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
+                    disabled={isPending}
+                  />
+                  <span className="text-xs text-red-500">
+                    {Object.keys(state?.errors).length !== 0 && state?.errors?.stock?.length
+                      ? state?.errors?.stock[0]
+                      : null}
+                  </span>
+                </div>
+              </div>
 
-              {/* Image Upload */}
-              <div className="space-y-2">
-                <Label htmlFor="images">
-                  Images <span className="text-red-500">*</span>
-                </Label>
-                <div className="flex flex-wrap gap-3">
+              {/* Images */}
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="images">
+                    Images <span className="text-red-500">*</span>
+                  </Label>
+                  <div className="flex flex-wrap gap-3">
                   {images.map((imageObj, index) => (
                     <div
                       key={index}

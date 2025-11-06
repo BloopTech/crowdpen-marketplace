@@ -51,7 +51,7 @@ export function AdminProductsProvider({ children }) {
     queryFn: () => fetchAdminProducts(qs),
   });
 
-  const toggleMutation = useMutation({
+  const toggleFeaturedMutation = useMutation({
     mutationFn: async ({ id, featured }) => {
       const res = await fetch("/api/admin/products", {
         method: "PATCH",
@@ -85,6 +85,40 @@ export function AdminProductsProvider({ children }) {
     },
   });
 
+  const toggleFlaggedMutation = useMutation({
+    mutationFn: async ({ id, flagged }) => {
+      const res = await fetch("/api/admin/products", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, flagged }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.status !== "success") {
+        throw new Error(data?.message || "Failed to update product");
+      }
+      return data?.data;
+    },
+    onMutate: async (vars) => {
+      await qc.cancelQueries({ queryKey });
+      const prev = qc.getQueryData(queryKey);
+      qc.setQueryData(queryKey, (old) => {
+        const next = { ...(old || {}) };
+        next.data = (old?.data || []).map((p) =>
+          p.id === vars.id ? { ...p, flagged: vars.flagged } : p
+        );
+        return next;
+      });
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(queryKey, ctx.prev);
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey });
+    },
+  });
+
   const list = useMemo(() => query?.data?.data || [], [query?.data?.data]);
   const loading = query?.isFetching || query?.isLoading;
   const page = query?.data?.page || qs.page || 1;
@@ -103,8 +137,11 @@ export function AdminProductsProvider({ children }) {
       total,
       totalPages,
       refetch: query.refetch,
-      toggleFeatured: (id, featured) => toggleMutation.mutate({ id, featured }),
-      togglePending: toggleMutation.isPending,
+      toggleFeatured: (id, featured) => toggleFeaturedMutation.mutate({ id, featured }),
+      toggleFlagged: (id, flagged) => toggleFlaggedMutation.mutate({ id, flagged }),
+      toggleFeaturedPending: toggleFeaturedMutation.isPending,
+      toggleFlaggedPending: toggleFlaggedMutation.isPending,
+      togglePending: toggleFeaturedMutation.isPending || toggleFlaggedMutation.isPending,
     }),
     [
       qs,
@@ -116,7 +153,8 @@ export function AdminProductsProvider({ children }) {
       total,
       totalPages,
       query.refetch,
-      toggleMutation,
+      toggleFeaturedMutation,
+      toggleFlaggedMutation,
     ]
   );
 

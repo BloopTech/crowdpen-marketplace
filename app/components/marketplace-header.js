@@ -88,7 +88,7 @@ export default function MarketplaceHeader(props) {
               />
             </div>
             <h1 className="text-xl font-bold hidden sm:block">
-              CrowdPen Market
+              Marketplace
             </h1>
           </Link>
 

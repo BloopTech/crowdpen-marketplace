@@ -52,7 +52,7 @@ export async function POST(request) {
     // Get products to add including owner KYC status for gating
     const products = await MarketplaceProduct.findAll({
       where: { id: productIds },
-      attributes: ['id', 'title', 'price', 'user_id'],
+      attributes: ['id', 'title', 'price', 'user_id', 'stock', 'inStock'],
       include: [
         {
           model: User,
@@ -86,6 +86,16 @@ export async function POST(request) {
           id: product.id,
           title: product.title,
           reason: 'Product is not available',
+        });
+        continue;
+      }
+
+      // Stock gating
+      if (product?.inStock === false || (product?.stock !== null && typeof product?.stock !== 'undefined' && Number(product.stock) <= 0)) {
+        skippedProducts.push({
+          id: product.id,
+          title: product.title,
+          reason: 'Out of stock',
         });
         continue;
       }

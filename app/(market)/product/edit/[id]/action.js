@@ -10,6 +10,7 @@ const defaultProductValues = {
   description: [],
   price: [],
   originalPrice: [],
+  stock: [],
   marketplace_category_id: [],
   marketplace_subcategory_id: [],
   images: [],
@@ -33,6 +34,12 @@ const productSchema = z.object({
     .positive({ message: "Original price must be a positive number" })
     .optional()
     .nullable(),
+  stock: z.coerce
+    .number()
+    .int({ message: "Stock must be an integer" })
+    .min(0, { message: "Stock cannot be negative" })
+    .optional()
+    .nullable(),
   marketplace_category_id: z.uuid({ message: "Valid category is required" }),
   marketplace_subcategory_id: z.uuid({
     message: "Valid subcategory is required",
@@ -47,6 +54,9 @@ const productSchema = z.object({
   license: z.string().optional(),
   deliveryTime: z.string().optional(),
   what_included: z.string().optional(),
+}).refine((data) => !data.originalPrice || data.originalPrice >= data.price, {
+  message: "Original price must be greater than or equal to sale price",
+  path: ["originalPrice"],
 });
 
 export async function EditProduct(prevState, queryData) {
@@ -70,6 +80,7 @@ export async function EditProduct(prevState, queryData) {
   const getDescription = queryData.get("description");
   const getPrice = queryData.get("price");
   const getOriginalPrice = queryData.get("originalPrice");
+  const getStock = queryData.get("stock");
   const getMarketplaceCategoryId = queryData.get("marketplace_category_id");
   const getMarketplaceSubcategoryId = queryData.get(
     "marketplace_subcategory_id"
@@ -137,6 +148,7 @@ export async function EditProduct(prevState, queryData) {
     description: getDescription,
     price: getPrice,
     originalPrice: getOriginalPrice,
+    stock: getStock,
     marketplace_category_id: getMarketplaceCategoryId,
     marketplace_subcategory_id: getMarketplaceSubcategoryId,
     images: getNewImages,
@@ -159,6 +171,7 @@ export async function EditProduct(prevState, queryData) {
         description: getDescription,
         price: getPrice,
         originalPrice: getOriginalPrice,
+        stock: getStock,
         marketplace_category_id: getMarketplaceCategoryId,
         marketplace_subcategory_id: getMarketplaceSubcategoryId,
         images: getNewImages,
@@ -181,6 +194,7 @@ export async function EditProduct(prevState, queryData) {
     description,
     price,
     originalPrice,
+    stock,
     marketplace_category_id,
     marketplace_subcategory_id,
     images,
@@ -200,6 +214,9 @@ export async function EditProduct(prevState, queryData) {
   formData.append("description", description);
   formData.append("price", price);
   if (originalPrice) formData.append("originalPrice", originalPrice);
+  if (typeof stock !== "undefined" && stock !== null && stock !== "") {
+    formData.append("stock", String(stock));
+  }
   formData.append("marketplace_category_id", marketplace_category_id);
   formData.append("marketplace_subcategory_id", marketplace_subcategory_id);
   if (fileType) formData.append("fileType", fileType);

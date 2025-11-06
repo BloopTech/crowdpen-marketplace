@@ -7,6 +7,9 @@ import Link from "next/link"
 import { StatusPill } from "./status-pill"
 
 export default function ResourceCard({ resource }) {
+  const isOutOfStock =
+    resource?.inStock === false ||
+    (resource?.stock !== null && typeof resource?.stock !== "undefined" && Number(resource?.stock) <= 0);
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -59,8 +62,17 @@ export default function ResourceCard({ resource }) {
       </CardContent>
 
       <CardFooter className="p-4 pt-0 flex items-center justify-between">
-        <div className="text-2xl font-bold">${resource.price}</div>
-        <Button size="sm">Add to Cart</Button>
+        <div>
+          <div className="text-2xl font-bold">${resource.price}</div>
+          <div className="text-xs mt-1">
+            {isOutOfStock ? (
+              <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
+            ) : typeof resource?.stock !== "undefined" && resource?.stock !== null ? (
+              `In stock: ${resource?.stock}`
+            ) : null}
+          </div>
+        </div>
+        <Button size="sm" disabled={isOutOfStock}>{isOutOfStock ? "Out of Stock" : "Add to Cart"}</Button>
       </CardFooter>
     </Card>
   )

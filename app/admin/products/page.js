@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useActionState, useEffect } from "react";
+import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
@@ -12,7 +12,6 @@ import ProductDetailsDialog from "./ProductDetailsDialog";
 import { AdminProductDialogProvider, useAdminProductDialog } from "./details-context";
 import { AdminProductsProvider, useAdminProducts } from "./list-context";
 import { format } from "date-fns";
-import { toggleFeatured as actionToggleFeatured, toggleFlagged as actionToggleFlagged } from "./actions";
 
 function AdminProductsInner() {
   const { openDetails } = useAdminProductDialog();
@@ -26,30 +25,17 @@ function AdminProductsInner() {
     total,
     totalPages,
     refetch,
+    toggleFeatured,
+    toggleFlagged,
+    togglePending,
   } = useAdminProducts();
 
-  const [featState, featAction, featPending] = useActionState(actionToggleFeatured, { success: false });
-  const [flagState, flagAction, flagPending] = useActionState(actionToggleFlagged, { success: false });
-
-  useEffect(() => {
-    if (featState?.success) refetch();
-  }, [featState?.success, refetch]);
-  useEffect(() => {
-    if (flagState?.success) refetch();
-  }, [flagState?.success, refetch]);
-
   const onToggleFeatured = (id, featured) => {
-    const fd = new FormData();
-    fd.set("id", id);
-    fd.set("featured", String(!!featured));
-    featAction(fd);
+    toggleFeatured(id, !!featured);
   };
 
   const onToggleFlagged = (id, flagged) => {
-    const fd = new FormData();
-    fd.set("id", id);
-    fd.set("flagged", String(!!flagged));
-    flagAction(fd);
+    toggleFlagged(id, !!flagged);
   };
 
   return (
@@ -139,6 +125,8 @@ function AdminProductsInner() {
                 <TableHead>Rating</TableHead>
                 <TableHead>Author Rating</TableHead>
                 <TableHead>Downloads</TableHead>
+                <TableHead>In Stock</TableHead>
+                <TableHead>Stock</TableHead>
                 <TableHead>Price</TableHead>
                 <TableHead>Rank</TableHead>
                 <TableHead>Created</TableHead>
@@ -156,7 +144,7 @@ function AdminProductsInner() {
                     <Switch
                       checked={Boolean(p.featured)}
                       onCheckedChange={(checked) => onToggleFeatured(p.id, checked)}
-                      disabled={featPending || flagPending}
+                      disabled={togglePending}
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     />
@@ -165,7 +153,7 @@ function AdminProductsInner() {
                     <Switch
                       checked={Boolean(p.flagged)}
                       onCheckedChange={(checked) => onToggleFlagged(p.id, checked)}
-                      disabled={featPending || flagPending}
+                      disabled={togglePending}
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
                     />
@@ -173,6 +161,8 @@ function AdminProductsInner() {
                   <TableCell>{Number(p.rating || 0).toFixed(1)}</TableCell>
                   <TableCell>{Number(p.authorRating || 0).toFixed(1)}</TableCell>
                   <TableCell>{Number(p.downloads || 0)}</TableCell>
+                  <TableCell>{p.inStock ? "Yes" : "No"}</TableCell>
+                  <TableCell>{typeof p.stock === "number" ? p.stock : p.stock ?? "-"}</TableCell>
                   <TableCell>{isNaN(Number(p.price)) ? "-" : Number(p.price).toFixed(2)}</TableCell>
                   <TableCell>{Number(p.rankScore || 0).toFixed(2)}</TableCell>
                   <TableCell>{p.createdAt ? format(new Date(p.createdAt), "dd-MM-yyyy") : "-"}</TableCell>
@@ -180,7 +170,7 @@ function AdminProductsInner() {
               ))}
               {list.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center text-sm text-muted-foreground">No products found.</TableCell>
+                  <TableCell colSpan={12} className="text-center text-sm text-muted-foreground">No products found.</TableCell>
                 </TableRow>
               )}
             </TableBody>

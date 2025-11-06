@@ -216,6 +216,8 @@ export async function GET(request) {
         "title",
         "price",
         "originalPrice",
+        "stock",
+        "inStock",
         "rating",
         "reviewCount",
         "featured",

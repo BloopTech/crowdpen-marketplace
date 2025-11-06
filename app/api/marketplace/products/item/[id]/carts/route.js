@@ -81,6 +81,26 @@ export async function POST(request, { params }) {
       );
     }
 
+    // Prevent add when product is out of stock
+    if (product?.inStock === false || (product?.stock !== null && typeof product?.stock !== 'undefined' && Number(product.stock) <= 0)) {
+      return NextResponse.json(
+        { status: "error", message: "Product is out of stock" },
+        { status: 400 }
+      );
+    }
+
+    // Prevent add when requested quantity exceeds available stock (if tracked)
+    if (
+      typeof quantity === 'number' &&
+      product?.stock !== null && typeof product?.stock !== 'undefined' &&
+      Number(quantity) > Number(product.stock)
+    ) {
+      return NextResponse.json(
+        { status: "error", message: "Requested quantity exceeds available stock" },
+        { status: 400 }
+      );
+    }
+
     // Find or create user's active cart
     let cart = await MarketplaceCart.findOne({
       where: {

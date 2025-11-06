@@ -483,6 +483,13 @@ export default function AccountContentPage() {
                         {p.title}
                       </h3>
                       <div className="text-sm text-slate-700 mt-2">${p.price}</div>
+                      <div className="text-xs mt-1">
+                        {p?.inStock === false || (p?.stock !== null && typeof p?.stock !== "undefined" && Number(p?.stock) <= 0) ? (
+                          <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
+                        ) : typeof p?.stock !== "undefined" && p?.stock !== null ? (
+                          `In stock: ${p?.stock}`
+                        ) : null}
+                      </div>
                       <div className="mt-3 flex items-center gap-2">
                         <Link href={`/product/${p.id}`}>
                           <Button variant="outline" size="sm">

@@ -41,6 +41,12 @@ export default function MyProductCard(props) {
       )
     : 0;
 
+  const isOutOfStock =
+    product?.inStock === false ||
+    (product?.stock !== null &&
+      typeof product?.stock !== "undefined" &&
+      Number(product?.stock) <= 0);
+
   const wishes = product?.wishlist?.find(
     (wish) =>
       wish?.user_id === session?.user?.id &&
@@ -210,6 +216,13 @@ export default function MyProductCard(props) {
             ${product.price}
           </div>
         </div>
+        <div className="text-xs mb-2">
+          {isOutOfStock ? (
+            <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
+          ) : typeof product?.stock !== "undefined" && product?.stock !== null ? (
+            `In stock: ${product?.stock}`
+          ) : null}
+        </div>
       </CardContent>
 
       <CardFooter className="pt-0 w-full">
@@ -235,7 +248,7 @@ export default function MyProductCard(props) {
             className="w-full disabled:cursor-not-allowed text-white"
             size="sm"
             disabled={
-              isCartPending || !session || product.user_id === session.user.id
+              isCartPending || !session || product.user_id === session.user.id || isOutOfStock
             }
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
@@ -243,6 +256,8 @@ export default function MyProductCard(props) {
               <LoaderCircle className="h-4 w-4 animate-spin" />
             ) : isCarted ? (
               "Remove from Cart"
+            ) : isOutOfStock ? (
+              "Out of Stock"
             ) : (
               "Add to Cart"
             )}

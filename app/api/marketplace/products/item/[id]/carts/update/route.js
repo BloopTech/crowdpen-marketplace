@@ -57,7 +57,7 @@ export async function POST(request, { params }) {
         },
         {
           model: MarketplaceProduct,
-          attributes: ['id', 'title', 'price']
+          attributes: ['id', 'title', 'price', 'stock', 'inStock']
         }
       ]
     });
@@ -102,7 +102,25 @@ export async function POST(request, { params }) {
           { status: 400 }
         );
       }
-      
+
+      // Enforce stock limits
+      const prod = cartItem.MarketplaceProduct;
+      if (prod?.inStock === false || (prod?.stock !== null && typeof prod?.stock !== 'undefined' && Number(prod.stock) <= 0)) {
+        return NextResponse.json(
+          { error: "Product is out of stock" },
+          { status: 400 }
+        );
+      }
+      if (
+        prod?.stock !== null && typeof prod?.stock !== 'undefined' &&
+        Number(quantity) > Number(prod.stock)
+      ) {
+        return NextResponse.json(
+          { error: "Requested quantity exceeds available stock" },
+          { status: 400 }
+        );
+      }
+
       // Update the quantity and price
       const newPrice = parseFloat(cartItem.MarketplaceProduct.price) * quantity;
       

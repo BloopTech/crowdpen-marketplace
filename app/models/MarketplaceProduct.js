@@ -130,6 +130,13 @@ MarketplaceProduct.init(
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
+    stock: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      validate: {
+        min: 0,
+      },
+    },
     image: {
       type: DataTypes.STRING,
     },

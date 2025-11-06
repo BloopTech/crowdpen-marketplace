@@ -62,7 +62,11 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
       {/* Results View - Conditional rendering based on viewMode */}
       {viewMode === "list" ? (
         <div className="space-y-4">
-          {resources.map((resource) => (
+          {resources.map((resource) => {
+            const isOutOfStock =
+              resource?.inStock === false ||
+              (resource?.stock !== null && typeof resource?.stock !== "undefined" && Number(resource?.stock) <= 0);
+            return (
             <Card key={resource.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-0">
                 <div className="flex gap-4 p-4">
@@ -116,8 +120,15 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                       </div>
                       <div className="text-right">
                         <div className="text-2xl font-bold">${resource.price}</div>
-                        <Button size="sm" className="mt-1">
-                          Add to Cart
+                        <div className="text-xs mt-1">
+                          {isOutOfStock ? (
+                            <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
+                          ) : typeof resource?.stock !== "undefined" && resource?.stock !== null ? (
+                            `In stock: ${resource?.stock}`
+                          ) : null}
+                        </div>
+                        <Button size="sm" className="mt-1" disabled={isOutOfStock}>
+                          {isOutOfStock ? "Out of Stock" : "Add to Cart"}
                         </Button>
                       </div>
                     </div>
@@ -156,7 +167,8 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                 </div>
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

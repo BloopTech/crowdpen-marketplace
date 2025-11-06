@@ -140,7 +140,7 @@ export async function beginCheckout(prevState, formData) {
     include: [
       {
         model: db.MarketplaceProduct,
-        attributes: ["id", "title", "user_id"],
+        attributes: ["id", "title", "user_id", "stock", "inStock"],
         include: [
           {
             model: db.User,
@@ -175,6 +175,23 @@ export async function beginCheckout(prevState, formData) {
       success: false,
       message: `Some items are not available for purchase: ${titles.join(", ")}`,
       errors: { cart: ["Contains items from unapproved sellers"] },
+    };
+  }
+
+  // Stock gating: disallow checkout if any item is out of stock or exceeds available stock
+  const stockIssues = cartItems.filter((ci) => {
+    const p = ci?.MarketplaceProduct;
+    if (!p) return false;
+    const out = (p?.inStock === false) || (p?.stock !== null && typeof p?.stock !== 'undefined' && Number(p.stock) <= 0);
+    const exceeds = (p?.stock !== null && typeof p?.stock !== 'undefined' && Number(ci.quantity) > Number(p.stock));
+    return out || exceeds;
+  });
+  if (stockIssues.length > 0) {
+    const titles = stockIssues.map((ci) => ci?.MarketplaceProduct?.title).filter(Boolean);
+    return {
+      success: false,
+      message: `Some items are out of stock or exceed available quantity: ${titles.join(", ")}`,
+      errors: { cart: ["Insufficient stock"] },
     };
   }
 
@@ -309,6 +326,25 @@ export async function finalizeOrder(prevState, formData) {
         },
         { transaction: t }
       );
+
+      // Decrement stock for each order item
+      const items = await MarketplaceOrderItems.findAll({
+        where: { marketplace_order_id: order.id },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      for (const it of items) {
+        const product = await db.MarketplaceProduct.findByPk(it.marketplace_product_id, { transaction: t, lock: t.LOCK.UPDATE });
+        if (product && product.stock !== null && typeof product.stock !== 'undefined') {
+          const current = Number(product.stock);
+          const qty = Number(it.quantity);
+          if (current < qty) {
+            throw new Error(`Insufficient stock for ${product.title}`);
+          }
+          const newStock = current - qty;
+          await product.update({ stock: newStock, inStock: newStock > 0 }, { transaction: t });
+        }
+      }
 
       // Clear cart
       const cart = await MarketplaceCart.findOne({
