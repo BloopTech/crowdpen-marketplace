@@ -92,7 +92,7 @@ export default function CartContent() {
         <MarketplaceHeader
           searchQuery={search}
           onSearchChange={setSearch}
-          onSearch={() => { }}
+          onSearch={() => {}}
           cartItemCount={0}
         />
         <div className="container mx-auto px-4 py-16">
@@ -118,7 +118,7 @@ export default function CartContent() {
       <MarketplaceHeader
         searchQuery={search}
         onSearchChange={setSearch}
-        onSearch={() => { }}
+        onSearch={() => {}}
         cartItemCount={Array.isArray(cartItems) ? cartItems.length : 0}
       />
 
@@ -202,7 +202,10 @@ export default function CartContent() {
                 {isLoading ? (
                   <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
-                      <div key={i} className="flex gap-4 p-4 border border-slate-300 rounded-lg">
+                      <div
+                        key={i}
+                        className="flex gap-4 p-4 border border-slate-300 rounded-lg"
+                      >
                         <Skeleton className="w-20 h-24 rounded-md" />
                         <div className="flex-1 space-y-2">
                           <Skeleton className="h-4 w-3/4" />
@@ -274,7 +277,7 @@ export default function CartContent() {
                                     <Link
                                       href={`/author/${item?.product?.author?.pen_name}`}
                                     >
-                                      <span className="text-xs text-purple-600 hover:underline cursor-pointer">
+                                      <span className="text-xs text-black hover:text-[#d3a155] hover:underline cursor-pointer">
                                         {item?.product?.author?.name}
                                       </span>
                                     </Link>
@@ -285,17 +288,14 @@ export default function CartContent() {
                                     {fmt(item?.price)}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
-                                    {fmt(item?.product?.price)}{" "}
-                                    each
+                                    {fmt(item?.product?.price)} each
                                   </div>
                                 </div>
                               </div>
 
                               <div className="flex items-center gap-4 mb-3">
                                 {item.product?.category && (
-                                  <Badge
-                                    className="text-xs"
-                                  >
+                                  <Badge className="text-xs">
                                     {item.product.category.name}
                                   </Badge>
                                 )}
@@ -305,18 +305,18 @@ export default function CartContent() {
                                   </span>
                                   {item.product?.rating
                                     ? item.product.rating > 0 && (
-                                      <>
-                                        <span>•</span>
-                                        <div className="flex items-center gap-1">
-                                          <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                          <span>
-                                            {Number(
-                                              item.product.rating
-                                            ).toFixed(1)}
-                                          </span>
-                                        </div>
-                                      </>
-                                    )
+                                        <>
+                                          <span>•</span>
+                                          <div className="flex items-center gap-1">
+                                            <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                            <span>
+                                              {Number(
+                                                item.product.rating
+                                              ).toFixed(1)}
+                                            </span>
+                                          </div>
+                                        </>
+                                      )
                                     : null}
                                 </div>
                               </div>
@@ -434,9 +434,7 @@ export default function CartContent() {
                     {cartSummary?.discount > 0 && (
                       <div className="flex justify-between text-green-600">
                         <span>Discount</span>
-                        <span>
-                          - {fmt(cartSummary?.discount)}
-                        </span>
+                        <span>- {fmt(cartSummary?.discount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between">

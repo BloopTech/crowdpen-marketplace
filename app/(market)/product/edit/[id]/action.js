@@ -31,9 +31,7 @@ const productSchema = z.object({
     .positive({ message: "Price must be a positive number" }),
   originalPrice: z.coerce
     .number()
-    .positive({ message: "Original price must be a positive number" })
-    .optional()
-    .nullable(),
+    .positive({ message: "Original price must be a positive number" }),
   stock: z.coerce
     .number()
     .int({ message: "Stock must be an integer" })
@@ -213,7 +211,7 @@ export async function EditProduct(prevState, queryData) {
   formData.append("title", title);
   formData.append("description", description);
   formData.append("price", price);
-  if (originalPrice) formData.append("originalPrice", originalPrice);
+  formData.append("originalPrice", originalPrice);
   if (typeof stock !== "undefined" && stock !== null && stock !== "") {
     formData.append("stock", String(stock));
   }

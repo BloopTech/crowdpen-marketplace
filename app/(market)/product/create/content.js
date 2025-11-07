@@ -15,16 +15,19 @@ import {
   PlusCircle,
   X,
   Image as ImageIcon,
+  ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
 import { useFormState } from "react-dom";
+import Link from "next/link";
 
 // UI Components
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Textarea } from "../../../components/ui/textarea";
+import { Switch } from "../../../components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -83,6 +86,7 @@ export default function CreateProductContent() {
   const [stock, setStock] = useState("");
   const [whatIncluded, setWhatIncluded] = useState("");
   const [priceError, setPriceError] = useState("");
+  const [hasDiscount, setHasDiscount] = useState(false);
   const [pricesInitialized, setPricesInitialized] = useState(false);
   const [state, formAction, isPending] = useActionState(
     createProduct,
@@ -126,7 +130,7 @@ export default function CreateProductContent() {
 
   // Validate price relationship
   const validatePrices = (currentPrice, currentOriginalPrice) => {
-    if (currentOriginalPrice && currentPrice) {
+    if (hasDiscount && currentOriginalPrice && currentPrice) {
       const priceNum = parseFloat(currentPrice);
       const originalPriceNum = parseFloat(currentOriginalPrice);
 
@@ -146,14 +150,12 @@ export default function CreateProductContent() {
   const handlePriceChange = (e) => {
     const newPrice = e.target.value;
     setPrice(newPrice);
-    if (!pricesInitialized && !originalPrice) {
-      setOriginalPrice(newPrice);
-    }
     validatePrices(newPrice, originalPrice);
   };
 
   const netRevenue = useMemo(() => {
-    const priceNum = parseFloat(price);
+    const effective = hasDiscount ? price : originalPrice;
+    const priceNum = parseFloat(effective);
     if (Number.isFinite(priceNum) && priceNum > 0) {
       const revenue = priceNum * 0.8;
       return new Intl.NumberFormat("en-US", {
@@ -164,13 +166,13 @@ export default function CreateProductContent() {
       }).format(revenue);
     }
     return null;
-  }, [price]);
+  }, [price, originalPrice, hasDiscount]);
 
   // Handle original price change
   const handleOriginalPriceChange = (e) => {
     const newOriginalPrice = e.target.value;
     setOriginalPrice(newOriginalPrice);
-    if (!pricesInitialized && !price) {
+    if (!hasDiscount) {
       setPrice(newOriginalPrice);
     }
     validatePrices(price, newOriginalPrice);
@@ -295,6 +297,15 @@ export default function CreateProductContent() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">
+      <div className="mb-4">
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/">
+            <span className="inline-flex items-center">
+              <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
+            </span>
+          </Link>
+        </Button>
+      </div>
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-bold">
@@ -477,93 +488,127 @@ export default function CreateProductContent() {
                 </div>
               </div>
 
-              {/* Pricing */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Original Price */}
-                <div className="space-y-2">
-                  <Label htmlFor="originalPrice">
-                    Original Price ($) (Optional)
-                  </Label>
-                  <Input
-                    id="originalPrice"
-                    name="originalPrice"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="29.99"
-                    value={originalPrice}
-                    onChange={handleOriginalPriceChange}
-                    className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
-                      (Object.keys(state?.errors).length !== 0 &&
-                        state?.errors?.originalPrice?.length) ||
-                      priceError
-                        ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-tertiary"
-                    }`}
-                    disabled={isPending}
-                  />
-                  <span className="text-xs text-red-500">
-                    {Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.originalPrice?.length
-                      ? state?.errors?.originalPrice[0]
-                      : priceError || null}
-                  </span>
-                  {originalPrice && price && !priceError && (
-                    <p className="text-xs text-green-600">
-                      Discount:{" "}
-                      {(
-                        ((parseFloat(originalPrice) - parseFloat(price)) /
-                          parseFloat(originalPrice)) *
-                        100
-                      ).toFixed(0)}
-                      % off
-                    </p>
-                  )}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor="hasDiscount">Discount / Sale</Label>
+                    <Switch
+                      id="hasDiscount"
+                      checked={hasDiscount}
+                      onCheckedChange={(checked) => {
+                        setHasDiscount(checked);
+                        setPriceError("");
+                        if (!checked) {
+                          setPrice(originalPrice);
+                        } else if (price === originalPrice) {
+                          setPrice("");
+                        }
+                      }}
+                      disabled={isPending}
+                    />
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {hasDiscount
+                      ? "Enter a sale price lower than the original price."
+                      : "Off: Sale price equals original price."}
+                  </div>
                 </div>
 
-                {/* Sale Price */}
-                <div className="space-y-2">
-                  <Label htmlFor="price">
-                    Sale Price ($) <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="price"
-                    name="price"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="19.99"
-                    value={price}
-                    onChange={handlePriceChange}
-                    required
-                    className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
-                      (Object.keys(state?.errors).length !== 0 &&
-                        state?.errors?.price?.length) ||
-                      priceError
-                        ? "border-red-500 focus:ring-red-500"
-                        : "focus:ring-tertiary"
-                    }`}
-                    disabled={isPending}
-                  />
-                  <span className="text-xs text-red-500">
-                    {Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.price?.length
-                      ? state?.errors?.price[0]
-                      : priceError || null}
-                  </span>
-                  <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
-                    <p className="text-xs font-medium text-emerald-700">
-                      Estimated merchant earnings
-                    </p>
-                    <p className="text-sm text-emerald-800">
-                      {netRevenue
-                        ? `${netRevenue} after 20% platform fee`
-                        : "Enter a price to see your earnings after fees."}
-                    </p>
-                    <p className="mt-1 text-xs text-emerald-700">
-                      The platform fee covers payment processing, creator
-                      support, and ongoing marketplace maintenance.
-                    </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="originalPrice">
+                      Original Price ($) <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="originalPrice"
+                      name="originalPrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="29.99"
+                      value={originalPrice}
+                      onChange={handleOriginalPriceChange}
+                      required
+                      className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
+                        (Object.keys(state?.errors).length !== 0 &&
+                          state?.errors?.originalPrice?.length) ||
+                        priceError
+                          ? "border-red-500 focus:ring-red-500"
+                          : "focus:ring-tertiary"
+                      }`}
+                      disabled={isPending}
+                    />
+                    <span className="text-xs text-red-500">
+                      {Object.keys(state?.errors).length !== 0 &&
+                      state?.errors?.originalPrice?.length
+                        ? state?.errors?.originalPrice[0]
+                        : priceError || null}
+                    </span>
+                    {hasDiscount && originalPrice && price && !priceError && (
+                      <p className="text-xs text-green-600">
+                        Discount:{" "}
+                        {(
+                          ((parseFloat(originalPrice) - parseFloat(price)) /
+                            parseFloat(originalPrice)) *
+                          100
+                        ).toFixed(0)}
+                        % off
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {hasDiscount && (
+                      <>
+                        <Label htmlFor="price">
+                          Sale Price ($) <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          id="price"
+                          name="price"
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="19.99"
+                          value={price}
+                          onChange={handlePriceChange}
+                          required={hasDiscount}
+                          className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
+                            (Object.keys(state?.errors).length !== 0 &&
+                              state?.errors?.price?.length) ||
+                            priceError
+                              ? "border-red-500 focus:ring-red-500"
+                              : "focus:ring-tertiary"
+                          }`}
+                          disabled={isPending}
+                        />
+                        <span className="text-xs text-red-500">
+                          {Object.keys(state?.errors).length !== 0 &&
+                          state?.errors?.price?.length
+                            ? state?.errors?.price[0]
+                            : priceError || null}
+                        </span>
+                      </>
+                    )}
+
+                    {!hasDiscount && (
+                      <input type="hidden" name="price" value={originalPrice} />
+                    )}
+
+                    <div className="mt-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2">
+                      <p className="text-xs font-medium text-emerald-700">
+                        Estimated merchant earnings
+                      </p>
+                      <p className="text-sm text-emerald-800">
+                        {netRevenue
+                          ? `${netRevenue} after 20% platform fee`
+                          : "Enter a price to see your earnings after fees."}
+                      </p>
+                      <p className="mt-1 text-xs text-emerald-700">
+                        The platform fee covers payment processing, creator
+                        support, and ongoing marketplace maintenance.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>

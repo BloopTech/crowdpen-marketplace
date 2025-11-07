@@ -1,15 +1,17 @@
-import Image from "next/image"
-import { Badge } from "../components/ui/badge"
-import { Button } from "../components/ui/button"
-import { Card, CardContent, CardFooter } from "..//components/ui/card"
-import { Download, Star, Sparkles } from "lucide-react"
-import Link from "next/link"
-import { StatusPill } from "./status-pill"
+import Image from "next/image";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardFooter } from "..//components/ui/card";
+import { Download, Star, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { StatusPill } from "./status-pill";
 
 export default function ResourceCard({ resource }) {
   const isOutOfStock =
     resource?.inStock === false ||
-    (resource?.stock !== null && typeof resource?.stock !== "undefined" && Number(resource?.stock) <= 0);
+    (resource?.stock !== null &&
+      typeof resource?.stock !== "undefined" &&
+      Number(resource?.stock) <= 0);
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -43,11 +45,17 @@ export default function ResourceCard({ resource }) {
             {resource.title}
           </h3>
         </Link>
-        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">{resource.description}</p>
+        <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
+          {resource.description}
+        </p>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
-          <Link href={`/author/${resource.author.toLowerCase().replace(/\s+/g, "-")}`}>
-            <span className="hover:text-purple-600 cursor-pointer">by {resource.author}</span>
+          <Link
+            href={`/author/${resource.author.toLowerCase().replace(/\s+/g, "-")}`}
+          >
+            <span className="text-black hover:text-[#d3a155] cursor-pointer">
+              by {resource.author}
+            </span>
           </Link>
           <div className="flex items-center gap-1">
             <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
@@ -66,14 +74,19 @@ export default function ResourceCard({ resource }) {
           <div className="text-2xl font-bold">${resource.price}</div>
           <div className="text-xs mt-1">
             {isOutOfStock ? (
-              <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
-            ) : typeof resource?.stock !== "undefined" && resource?.stock !== null ? (
+              <Badge className="bg-red-800/90 text-white text-xs">
+                Out of stock
+              </Badge>
+            ) : typeof resource?.stock !== "undefined" &&
+              resource?.stock !== null ? (
               `In stock: ${resource?.stock}`
             ) : null}
           </div>
         </div>
-        <Button size="sm" disabled={isOutOfStock}>{isOutOfStock ? "Out of Stock" : "Add to Cart"}</Button>
+        <Button size="sm" disabled={isOutOfStock}>
+          {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+        </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }

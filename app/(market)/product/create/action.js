@@ -30,9 +30,7 @@ const productSchema = z.object({
     .positive({ message: "Price must be a positive number" }),
   originalPrice: z.coerce
     .number()
-    .positive({ message: "Original price must be a positive number" })
-    .optional()
-    .nullable(),
+    .positive({ message: "Original price must be a positive number" }),
   stock: z.coerce
     .number()
     .int({ message: "Stock must be an integer" })

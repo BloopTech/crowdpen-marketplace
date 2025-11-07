@@ -300,9 +300,9 @@ export default function ProductCard(props) {
           </form>
 
           {/* Quick Actions Overlay */}
-          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
             <Link href={`/product/${resource.id}`}>
-              <Button variant="secondary" size="sm">
+              <Button variant="secondary" size="sm" className="pointer-events-auto">
                 Preview
               </Button>
             </Link>
@@ -332,7 +332,7 @@ export default function ProductCard(props) {
           {/* Author */}
           <div className="flex items-center gap-1 mb-2">
             <Link href={`/author/${resource?.User?.pen_name}`}>
-              <span className="text-xs text-purple-600 hover:underline cursor-pointer">
+              <span className="text-xs text-black hover:text-[#d3a155] hover:underline cursor-pointer">
                 {resource.User?.name}
               </span>
             </Link>
