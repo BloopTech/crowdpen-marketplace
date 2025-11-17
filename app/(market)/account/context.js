@@ -95,10 +95,10 @@ export function AccountContextProvider({ children }) {
     const q = searchParams.get("q") || "";
     const cat = searchParams.get("category") || "all";
     const sort = searchParams.get("sort") || "newest";
-    if (q !== myProductsSearch) setMyProductsSearch(q);
-    if (cat !== myProductsSelectedCategory) setMyProductsSelectedCategory(cat);
-    if (sort !== myProductsSortBy) setMyProductsSortBy(sort);
-  }, [searchParams, myProductsSearch, myProductsSelectedCategory, myProductsSortBy]);
+    setMyProductsSearch((prev) => (prev !== q ? q : prev));
+    setMyProductsSelectedCategory((prev) => (prev !== cat ? cat : prev));
+    setMyProductsSortBy((prev) => (prev !== sort ? sort : prev));
+  }, [searchParams, setMyProductsSearch, setMyProductsSelectedCategory, setMyProductsSortBy]);
 
   useEffect(() => {
     if (!pathname) return;
