@@ -214,9 +214,9 @@ function CheckoutContent() {
             "mobile_money",
           ],
           standard: false,
-          env: process.env.NODE_ENV === "production" ? "test" : "test",
+          env: process.env.NODE_ENV === "production" ? "prod" : "prod",
           email: order.customer?.email || formData.email,
-          currency: order.currency,
+          currency: "GHS",//order.currency
           key: process.env.STARTBUTTON_PUBLIC_KEY,
           reference: order.orderNumber,
           metadata: {

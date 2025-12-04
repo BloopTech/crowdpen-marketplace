@@ -8,7 +8,7 @@ const csp = [
   "img-src 'self' data: blob: https:",
   "object-src 'none'",
   // Allow GA/Tag Manager and inline scripts (Next.js inline snippets). 'unsafe-eval' for dev HMR only.
-  `script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app ${isDev ? "'unsafe-inline' 'unsafe-eval'" : "'unsafe-inline'"}`,
+  `script-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://crowdpen-marketplace.vercel.app https://marketplace.crowdpen.co ${isDev ? "'unsafe-inline' 'unsafe-eval'" : "'unsafe-inline'"}`,
   "style-src 'self' 'unsafe-inline'",
   "connect-src 'self' https: wss: ws:",
   "frame-ancestors 'none'",
@@ -77,6 +77,7 @@ const nextConfig = {
     CLOUDFLARE_R2_TOKEN_VALUE: process.env.CLOUDFLARE_R2_TOKEN_VALUE,
     CROWDPEN_URL: process.env.CROWDPEN_URL,
     STARTBUTTON_PUBLIC_KEY: process.env.STARTBUTTON_PUBLIC_KEY,
+    STARTBUTTON_SECRET_KEY: process.env.STARTBUTTON_SECRET_KEY,
     STARTBUTTON_DEV_URL: process.env.STARTBUTTON_DEV_URL,
     STARTBUTTON_PROD_URL: process.env.STARTBUTTON_PROD_URL
   },

@@ -36,6 +36,7 @@ export default async function handler(req, res) {
     const allowedOrigins = [
       'http://localhost:3000',
       'https://crowdpen-marketplace.vercel.app',
+      'https://marketplace.crowdpen.co'
       // Add other allowed marketplace domains
     ];
     

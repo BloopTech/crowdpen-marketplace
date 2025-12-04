@@ -6,7 +6,8 @@ const getBaseUrl = () =>
   process.env.STARTBUTTON_BASE_URL ||
   (process.env.NODE_ENV === "production"
     ? "https://api.startbutton.tech"
-    : "https://api-dev.startbutton.tech");
+    //: "https://api-dev.startbutton.tech");
+    : "https://api.startbutton.tech");
 
 const getSecret = () =>
   process.env.STARTBUTTON_SECRET_KEY ||
