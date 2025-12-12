@@ -17,7 +17,7 @@ const csp = [
 ].join("; ");
 
 const nextConfig = {
-  webpack: (config, { isServer }) => {
+  turbopack: (config, { isServer }) => {
     // Ignore sequelize dynamic import warnings
     config.ignoreWarnings = [
       { module: /sequelize/ },
