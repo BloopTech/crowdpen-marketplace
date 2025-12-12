@@ -31,7 +31,7 @@ function isProtectedRoute(pathname) {
   return protectedPatterns.some((pattern) => pattern.test(pathname));
 }
 
-export async function middleware(request) {
+export async function proxy(request) {
   const { pathname } = request.nextUrl;
   // Generate a per-request CSP nonce
   const nonce =
