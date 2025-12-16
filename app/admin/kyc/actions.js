@@ -10,7 +10,11 @@ import KycRejected from "../../emails/KycRejected";
 import { sendEmail } from "../../lib/sendEmail";
 
 function isAdminOrSenior(user) {
-  return user?.role === "admin" || user?.role === "senior_admin";
+  return (
+    user?.crowdpen_staff === true ||
+    user?.role === "admin" ||
+    user?.role === "senior_admin"
+  );
 }
 
 export async function approveKyc(prevState, formData) {

@@ -201,7 +201,7 @@ function CheckoutContent() {
         const cleanupHooks = setupSbCloseHooks();
 
         const config = {
-          amount: Number(total) * 100,
+          amount: (Number(total) * 100).toFixed(0),
           phone: order?.customer?.phone || "",
           channels: [
             "bank",

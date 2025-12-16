@@ -342,15 +342,17 @@ export default function KYCTabs(props) {
                                       <input type="hidden" name="kycId" value={r.id} />
                                       <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction type="submit" disabled={rejectIsPending || approveIsPending} aria-busy={approveIsPending}>
-                                          {approveIsPending ? (
-                                            <span className="inline-flex items-center">
-                                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                              Confirming...
-                                            </span>
-                                          ) : (
-                                            "Confirm"
-                                          )}
+                                        <AlertDialogAction asChild>
+                                          <button type="submit" disabled={rejectIsPending || approveIsPending} aria-busy={approveIsPending}>
+                                            {approveIsPending ? (
+                                              <span className="inline-flex items-center">
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                Confirming...
+                                              </span>
+                                            ) : (
+                                              "Confirm"
+                                            )}
+                                          </button>
                                         </AlertDialogAction>
                                       </AlertDialogFooter>
                                     </form>
@@ -401,19 +403,17 @@ export default function KYCTabs(props) {
                                         <input type="hidden" name="reason" value={rejectReasons[r.id] || ""} />
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction
-                                            type="submit"
-                                            disabled={!rejectReasons[r.id] || rejectIsPending || approveIsPending}
-                                            aria-busy={rejectIsPending}
-                                          >
-                                            {rejectIsPending ? (
-                                              <span className="inline-flex items-center">
-                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                Confirming...
-                                              </span>
-                                            ) : (
-                                              "Confirm"
-                                            )}
+                                          <AlertDialogAction asChild>
+                                            <button type="submit" disabled={!rejectReasons[r.id] || rejectIsPending || approveIsPending} aria-busy={rejectIsPending}>
+                                              {rejectIsPending ? (
+                                                <span className="inline-flex items-center">
+                                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                  Confirming...
+                                                </span>
+                                              ) : (
+                                                "Confirm"
+                                              )}
+                                            </button>
                                           </AlertDialogAction>
                                         </AlertDialogFooter>
                                       </form>
