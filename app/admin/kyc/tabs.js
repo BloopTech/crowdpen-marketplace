@@ -81,6 +81,8 @@ export default function KYCTabs(props) {
     kycRejectedQueryRefetch,
   } = useAdmin();
   const [rejectReasons, setRejectReasons] = useState({});
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState({});
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState({});
 
   // Auto-close the review dialog when an action succeeds for the current record
   useEffect(() => {
@@ -88,11 +90,21 @@ export default function KYCTabs(props) {
       setReviewId("");
       setQs({ kycReviewId: "" });
     }
+    if (approveState?.success && approveState?.data?.id) {
+      const id = approveState.data.id;
+      setApproveConfirmOpen((prev) => ({ ...prev, [id]: false }));
+      setRejectConfirmOpen((prev) => ({ ...prev, [id]: false }));
+    }
   }, [approveState, reviewId, setReviewId, setQs]);
   useEffect(() => {
     if (rejectState?.success && rejectState?.data?.id && reviewId === rejectState.data.id) {
       setReviewId("");
       setQs({ kycReviewId: "" });
+    }
+    if (rejectState?.success && rejectState?.data?.id) {
+      const id = rejectState.data.id;
+      setRejectConfirmOpen((prev) => ({ ...prev, [id]: false }));
+      setApproveConfirmOpen((prev) => ({ ...prev, [id]: false }));
     }
   }, [rejectState, reviewId, setReviewId, setQs]);
   return (
@@ -314,7 +326,12 @@ export default function KYCTabs(props) {
                             <TabsContent value="decision">
                               <div className="flex flex-col gap-3">
                                 {/* Approve flow with confirmation */}
-                                <AlertDialog>
+                                <AlertDialog
+                                  open={!!approveConfirmOpen[r.id]}
+                                  onOpenChange={(o) =>
+                                    setApproveConfirmOpen((prev) => ({ ...prev, [r.id]: o }))
+                                  }
+                                >
                                   <AlertDialogTrigger asChild>
                                     <Button
                                       type="button"
@@ -342,18 +359,20 @@ export default function KYCTabs(props) {
                                       <input type="hidden" name="kycId" value={r.id} />
                                       <AlertDialogFooter>
                                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction asChild>
-                                          <button type="submit" disabled={rejectIsPending || approveIsPending} aria-busy={approveIsPending}>
-                                            {approveIsPending ? (
-                                              <span className="inline-flex items-center">
-                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                Confirming...
-                                              </span>
-                                            ) : (
-                                              "Confirm"
-                                            )}
-                                          </button>
-                                        </AlertDialogAction>
+                                        <Button
+                                          type="submit"
+                                          disabled={rejectIsPending || approveIsPending}
+                                          aria-busy={approveIsPending}
+                                        >
+                                          {approveIsPending ? (
+                                            <span className="inline-flex items-center">
+                                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                              Confirming...
+                                            </span>
+                                          ) : (
+                                            "Confirm"
+                                          )}
+                                        </Button>
                                       </AlertDialogFooter>
                                     </form>
                                   </AlertDialogContent>
@@ -373,7 +392,12 @@ export default function KYCTabs(props) {
                                       setRejectReasons((prev) => ({ ...prev, [r.id]: e.target.value }))
                                     }
                                   />
-                                  <AlertDialog>
+                                  <AlertDialog
+                                    open={!!rejectConfirmOpen[r.id]}
+                                    onOpenChange={(o) =>
+                                      setRejectConfirmOpen((prev) => ({ ...prev, [r.id]: o }))
+                                    }
+                                  >
                                     <AlertDialogTrigger asChild>
                                       <Button
                                         type="button"
@@ -403,18 +427,20 @@ export default function KYCTabs(props) {
                                         <input type="hidden" name="reason" value={rejectReasons[r.id] || ""} />
                                         <AlertDialogFooter>
                                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                          <AlertDialogAction asChild>
-                                            <button type="submit" disabled={!rejectReasons[r.id] || rejectIsPending || approveIsPending} aria-busy={rejectIsPending}>
-                                              {rejectIsPending ? (
-                                                <span className="inline-flex items-center">
-                                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                                  Confirming...
-                                                </span>
-                                              ) : (
-                                                "Confirm"
-                                              )}
-                                            </button>
-                                          </AlertDialogAction>
+                                          <Button
+                                            type="submit"
+                                            disabled={!rejectReasons[r.id] || rejectIsPending || approveIsPending}
+                                            aria-busy={rejectIsPending}
+                                          >
+                                            {rejectIsPending ? (
+                                              <span className="inline-flex items-center">
+                                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                                Confirming...
+                                              </span>
+                                            ) : (
+                                              "Confirm"
+                                            )}
+                                          </Button>
                                         </AlertDialogFooter>
                                       </form>
                                     </AlertDialogContent>

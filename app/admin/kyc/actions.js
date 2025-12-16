@@ -79,8 +79,8 @@ export async function approveKyc(prevState, formData) {
           accountUrl,
           level: record?.level || "standard",
         });
-        const html = render(component);
-        const text = render(component, { plainText: true });
+        const html = String(await render(component));
+        const text = String(await render(component, { plainText: true }));
         await sendEmail({ to, subject: "Your KYC has been approved", html, text });
         emailInfo.sent = true;
       }
@@ -174,8 +174,8 @@ export async function rejectKyc(prevState, formData) {
           accountUrl,
           reason: reason || record?.rejection_reason || "",
         });
-        const html = render(component);
-        const text = render(component, { plainText: true });
+        const html = String(await render(component));
+        const text = String(await render(component, { plainText: true }));
         await sendEmail({ to, subject: "Update on your KYC verification", html, text });
         emailInfo.sent = true;
       }
