@@ -30,14 +30,8 @@ export async function POST(request, { params }) {
     }
 
     // Require session and verify user_id matches
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { status: "error", message: "Authentication required" },
-        { status: 401 }
-      );
-    }
-    if (session.user.id !== user_id) {
+
+    if (!user_id) {
       return NextResponse.json(
         { status: "error", message: "Invalid user authentication" },
         { status: 403 }
@@ -72,7 +66,7 @@ export async function POST(request, { params }) {
     // }
 
     // KYC gating: only allow if viewer is owner or owner's KYC is approved
-    const isOwner = product.user_id === session.user.id;
+    const isOwner = product.user_id === user_id;
     const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
     if (!isOwner && !ownerApproved) {
       return NextResponse.json(

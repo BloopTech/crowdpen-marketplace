@@ -63,7 +63,7 @@ export default function AmazonStyleMarketplace() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 w-full">
         <MarketplaceHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}

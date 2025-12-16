@@ -216,19 +216,21 @@ function CheckoutContent() {
           standard: false,
           env: process.env.NODE_ENV === "production" ? "prod" : "prod",
           email: order.customer?.email || formData.email,
-          currency: "GHS",//order.currency
+          currency: order.currency,
           key: process.env.STARTBUTTON_PUBLIC_KEY,
-          reference: order.orderNumber,
+          //reference: order.orderNumber,
           metadata: {
             orderId: order.orderId,
             reference: order.orderNumber,
             name: `${order.customer?.firstName || formData.firstName} ${order.customer?.lastName || formData.lastName}`.trim(),
           },
           success: (res) => {
+            console.log("res success..................", res);
             cleanupHooks();
             finalize("success", res);
           },
           error: (err) => {
+            console.log("err error..................", err);
             cleanupHooks();
             finalize("error", err);
           },

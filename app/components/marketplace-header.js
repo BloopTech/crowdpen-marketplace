@@ -49,17 +49,20 @@ export default function MarketplaceHeader(props) {
     <header className="border-b bg-white sticky top-0 z-10 border-slate-300 w-full">
       {/* Top Bar */}
       <div className="bg-gray-900 text-white text-xs py-1 px-5 md:px-10 w-full">
-        <div className="container mx-auto px-4 flex justify-between items-center">
+        <div className="flex justify-between items-center gap-3 w-full min-w-0">
           <Link
             href="https://crowdpen.co"
-            className="flex items-center gap-2 hover:text-gray-300 transition-colors"
+            className="flex items-center gap-2 hover:text-gray-300 transition-colors min-w-0"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <ArrowLeft className="h-3 w-3" />
-            <span>Back to the CrowdPen dashboard</span>
+            <ArrowLeft className="h-3 w-3 shrink-0" />
+            <span className="truncate hidden sm:inline">
+              Back to the CrowdPen dashboard
+            </span>
+            <span className="truncate sm:hidden">Back</span>
           </Link>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 shrink-0">
             {/* <Link href="/creator/apply" className="hover:text-gray-300">
               <span>Become a Merchant</span>
             </Link> */}
@@ -71,11 +74,11 @@ export default function MarketplaceHeader(props) {
       </div>
       {/* Main Header */}
       <div className="md:px-10 px-5 py-4 w-full">
-        <div className="flex items-center justify-between w-full">
+        <div className="flex flex-wrap items-center justify-between w-full gap-3 min-w-0">
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center hover:opacity-80 transition-opacity space-x-1"
+            className="flex items-center hover:opacity-80 transition-opacity space-x-1 shrink-0"
           >
             <div>
               <Image
@@ -93,7 +96,7 @@ export default function MarketplaceHeader(props) {
           </Link>
 
           {/* Search Bar */}
-          <div className="flex-1 max-w-2xl">
+          <div className="order-3 w-full md:order-none md:flex-1 min-w-0">
             <div className="relative flex">
               <Input
                 type="text"
@@ -114,13 +117,13 @@ export default function MarketplaceHeader(props) {
           </div>
 
           {/* User Actions */}
-          <div className="flex items-center gap-2">
+          <div className="order-2 md:order-none flex items-center gap-1 sm:gap-2 shrink-0">
             {session ? (
               <>
                 <UserId />
 
                 <Link href="/wishlist">
-                  <Button variant="ghost" size="sm" className="relative">
+                  <Button variant="ghost" size="sm" className="relative px-2 sm:px-3">
                     <Heart className="h-4 w-4" />
                     <span className="hidden sm:inline">Wishlist</span>
                     {wishlistCountData?.count > 0 && (
@@ -137,7 +140,7 @@ export default function MarketplaceHeader(props) {
                 </Link>
 
                 <Link href="/cart">
-                  <Button variant="ghost" size="sm" className="relative">
+                  <Button variant="ghost" size="sm" className="relative px-2 sm:px-3">
                     <ShoppingCart className="h-4 w-4" />
                     <span className="hidden sm:inline">Cart</span>
                     {cartCountData?.count > 0 && (
@@ -167,22 +170,24 @@ export default function MarketplaceHeader(props) {
                 <div className="flex flex-col items-start">
                   <Button
                     size="sm"
+                    aria-label="Log in"
                     onClick={() => openLoginDialog("login")}
                     className="bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 hover:text-gray-900"
                   >
-                    <LogIn className="h-4 w-4 mr-2" />
-                    <span>Log in</span>
+                    <LogIn className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Log in</span>
                   </Button>
                 </div>
                 <div className="flex flex-col items-start">
                   <Button
                     size="sm"
+                    aria-label="Join"
                     onClick={() => openLoginDialog("signup")}
                     className="bg-[#d3a155] text-black shadow-sm hover:bg-black hover:text-[#d3a155]"
                   >
-                    <UserPlus className="h-4 w-4 mr-2" />
+                    <UserPlus className="h-4 w-4 sm:mr-2" />
 
-                    <span>Join</span>
+                    <span className="hidden sm:inline">Join</span>
                   </Button>
                 </div>
               </div>
@@ -197,13 +202,13 @@ export default function MarketplaceHeader(props) {
               <NavigationMenuItem>
                 <NavigationMenuTrigger>All Categories</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid w-96 gap-3 p-4 bg-white">
+                  <div className="grid w-[calc(100vw-2rem)] sm:w-96 gap-3 p-4 bg-white">
                     {categories.map((category) => (
                       <div key={category.name}>
                         <h4 className="font-semibold text-sm mb-2">
                           {category.name}
                         </h4>
-                        <div className="grid grid-cols-2 gap-1">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                           {category.subcategories.map((sub) => (
                             <button
                               key={sub}
