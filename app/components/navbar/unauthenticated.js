@@ -32,7 +32,7 @@ function UnauthenticatedNavBar(props) {
 
   return (
     <nav className="fixed left-0 top-0 w-full z-10">
-      <div className="lg:flex lg:justify-between lg:items-center md:px-10 px-5 bg-white text-black dark:bg-[#121212] dark:text-white">
+      <div className="lg:flex lg:justify-between lg:items-center md:px-10 px-5 bg-background text-foreground border-b border-border">
         <div className="flex justify-between items-center -ml-7">
           <div>
             <Link href="https://crowdpen.co">
@@ -48,7 +48,7 @@ function UnauthenticatedNavBar(props) {
           </div>
           <span
             onClick={() => setOpenMenu(!openMenu)}
-            className="text-[35px] text-black dark:text-white lg:hidden block cursor-pointer lg:mt-0"
+            className="text-[35px] text-foreground lg:hidden block cursor-pointer lg:mt-0"
           >
             {openMenu ? <X /> : <Menu />}
           </span>
@@ -57,27 +57,27 @@ function UnauthenticatedNavBar(props) {
         <ul
           className={`lg:flex lg:items-center z-[-1] lg:z-auto lg:static absolute w-full left-0 lg:w-auto lg:py-0 py-4 lg:pl-0 pl-7 lg:opacity-100 opacity-0 transition-all ease-in duration-500 ${
             openMenu
-              ? "opacity-[100%] text-black-500 bg-white dark:bg-[#121212] ml-10"
+              ? "opacity-[100%] bg-background text-foreground ml-10"
               : "top-[-490px] "
           } `}
         >
-          <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-slate-200 dark:hover:text-black  hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
+          <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-accent hover:text-accent-foreground hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
             <Link href="https://crowdpen.co/stories">Stories</Link>
           </li>
-          <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-slate-200 dark:hover:text-black  hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
+          <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-accent hover:text-accent-foreground hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
             <Link href="https://crowdpen.co/pens">Pens</Link>
           </li>
-          <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-slate-200 dark:hover:text-black hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
+          <li className="font-poynterroman mr-4 text-base mt-3 lg:mt-0 font-semibold hover:bg-accent hover:text-accent-foreground hover:rounded-[10px] w-[5.5rem] h-9 flex items-center duration-500 justify-center">
             <Link href="https://crowdpen.co/challenges">Challenges</Link>
           </li>
           <li
-            className="font-poynterroman duration-500 mr-4 text-base hover:bg-slate-200 dark:hover:text-black hover:rounded-[10px] w-[5.5rem] h-9 mt-3 lg:mt-0 font-semibold flex items-center justify-center cursor-pointer"
+            className="font-poynterroman duration-500 mr-4 text-base hover:bg-accent hover:text-accent-foreground hover:rounded-[10px] w-[5.5rem] h-9 mt-3 lg:mt-0 font-semibold flex items-center justify-center cursor-pointer"
             onClick={() => signIn()}
           >
             Sign In
           </li>
           <li
-            className={`font-poynterroman mt-3 lg:mt-0 bg-black font-semibold text-white rounded-[10px] w-[5.5rem] h-9 text-base hover:bg-white hover:text-black hover:border-black hover:border-2 cursor-pointer flex items-center justify-center dark:text-black dark:bg-[#d3a155] dark:hover:bg-[#f2f2f2] dark:hover:text-black  mr-4`}
+            className={`font-poynterroman mt-3 lg:mt-0 bg-tertiary font-semibold text-black rounded-[10px] w-[5.5rem] h-9 text-base hover:bg-tertiary/90 cursor-pointer flex items-center justify-center mr-4`}
             onClick={() =>
               router.push(`https://crowdpen.co/signup?callbackUrl=${encodeURIComponent(callback)}`)
             }

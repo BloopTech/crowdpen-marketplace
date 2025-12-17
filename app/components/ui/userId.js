@@ -64,7 +64,7 @@ export function UserId() {
             </div>
           </div>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="z-20 overflow-y-auto bg-white w-56">
+        <DropdownMenuContent className="z-20 overflow-y-auto w-56">
           <DropdownMenuItem>
             <Link href="/account" className="w-full">
               <div

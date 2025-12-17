@@ -233,7 +233,7 @@ export default function KycPage() {
                     level: e.target.value,
                   }))
                 }
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value="">All</option>
                 <option value="basic">Basic</option>
@@ -253,7 +253,7 @@ export default function KycPage() {
                       reviewer: e.target.value,
                     }))
                   }
-                  className="border border-slate-300 rounded px-2 py-2 text-sm min-w-56"
+                  className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm min-w-56 focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="">All</option>
                   {reviewers.map((u) => (
@@ -275,7 +275,7 @@ export default function KycPage() {
                     pageSize: Number(e.target.value),
                   }))
                 }
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>

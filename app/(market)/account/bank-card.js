@@ -162,7 +162,7 @@ export default function BankDetailsCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
-        <div className="p-3 rounded-md border bg-slate-50 text-slate-700 text-sm flex items-start gap-3">
+        <div className="p-3 rounded-md border border-border bg-muted/50 text-muted-foreground text-sm flex items-start gap-3">
           <Shield className="h-4 w-4 mt-0.5 text-emerald-600" />
           <div>
             Your bank details are encrypted at rest and only used when we
@@ -171,7 +171,7 @@ export default function BankDetailsCard() {
         </div>
 
         <div className="flex items-center justify-between">
-          <div className="text-sm text-slate-700">
+          <div className="text-sm text-foreground">
             <span className="font-medium">Current:</span> {summary}
           </div>
           <div className="flex items-center gap-2">
@@ -216,7 +216,7 @@ export default function BankDetailsCard() {
               </div>
               <div className="sm:col-span-2">
                 <Label>Detected Region</Label>
-                <div className="text-sm text-slate-700 mt-2">
+                <div className="text-sm text-muted-foreground mt-2">
                   {currency ? (
                     <span>
                       Currency: <span className="font-medium">{currency}</span>
@@ -228,7 +228,7 @@ export default function BankDetailsCard() {
                       ) : null}
                     </span>
                   ) : (
-                    <span className="text-slate-500">Detecting...</span>
+                    <span className="text-muted-foreground">Detecting...</span>
                   )}
                 </div>
                 <input type="hidden" name="currency" value={currency} />
@@ -263,7 +263,7 @@ export default function BankDetailsCard() {
                       />
                     </SelectTrigger>
                     <SelectContent>
-                      <div className="sticky top-0 z-10 p-2 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+                      <div className="sticky top-0 z-10 p-2 bg-popover border-b border-border">
                         <Input
                           autoFocus
                           placeholder="Type to search..."
@@ -281,7 +281,7 @@ export default function BankDetailsCard() {
                       ))}
                       {filteredBanks.length > visibleCount && (
                         <div
-                          className="px-3 py-2 text-center text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 hover:dark:bg-gray-900 cursor-pointer"
+                          className="px-3 py-2 text-center text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={(e) => {
                             e.stopPropagation();

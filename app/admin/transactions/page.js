@@ -87,7 +87,7 @@ export default function TransactionsPage() {
                   setTransactionsParams((p) => ({ ...p, page: 1, from: v }));
                   setQs({ from: v, page: 1 });
                 }}
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -100,7 +100,7 @@ export default function TransactionsPage() {
                   setTransactionsParams((p) => ({ ...p, page: 1, to: v }));
                   setQs({ to: v, page: 1 });
                 }}
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -116,7 +116,7 @@ export default function TransactionsPage() {
                   }));
                   setQs({ pageSize: v, page: 1 });
                 }}
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>

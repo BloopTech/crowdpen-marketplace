@@ -58,7 +58,7 @@ export default function CategoryContentPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <MarketplaceHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -82,14 +82,14 @@ export default function CategoryContentPage() {
             <main className="flex-1">
               {/* Category Header */}
               {category && (
-                <div className="mb-6 bg-white p-6 rounded-lg shadow-sm">
+                <div className="mb-6 bg-card text-card-foreground border border-border p-6 rounded-lg shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                      <h1 className="text-3xl font-bold text-foreground mb-2">
                         {category.name}
                       </h1>
                       {category.description && (
-                        <p className="text-gray-600 max-w-2xl">
+                        <p className="text-muted-foreground max-w-2xl">
                           {category.description}
                         </p>
                       )}
@@ -101,7 +101,7 @@ export default function CategoryContentPage() {
               )}
 
               {/* Results Header */}
-              <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-6 bg-card text-card-foreground border border-border p-4 rounded-lg shadow-sm">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-muted-foreground">
                     {totalProducts.toLocaleString()} results
@@ -175,7 +175,7 @@ export default function CategoryContentPage() {
 
               {/* Loading State */}
               {isProductsLoading && (
-                <div className="flex justify-center items-center py-12 bg-white rounded-lg">
+                <div className="flex justify-center items-center py-12 bg-card text-card-foreground border border-border rounded-lg">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <span className="ml-2">Loading products...</span>
                 </div>
@@ -183,7 +183,7 @@ export default function CategoryContentPage() {
               
               {/* Error State */}
               {productsError && (
-                <div className="text-center py-12 bg-white rounded-lg">
+                <div className="text-center py-12 bg-card text-card-foreground border border-border rounded-lg">
                   <div className="text-6xl mb-4">⚠️</div>
                   <h3 className="text-xl font-semibold mb-2">
                     Error loading products
@@ -201,7 +201,7 @@ export default function CategoryContentPage() {
               {!isProductsLoading && !productsError && (
                 <>
                   {products.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-lg">
+                    <div className="text-center py-12 bg-card text-card-foreground border border-border rounded-lg">
                       <div className="text-6xl mb-4">🔍</div>
                       <h3 className="text-xl font-semibold mb-2">
                         No products found

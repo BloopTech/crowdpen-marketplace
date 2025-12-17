@@ -386,7 +386,7 @@ export default function KYCTabs(props) {
                                     placeholder="Reason (required)"
                                     required
                                     aria-required="true"
-                                    className="border border-slate-300 rounded px-2 py-2 text-sm flex-1"
+                                    className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-ring"
                                     value={rejectReasons[r.id] || ""}
                                     onChange={(e) =>
                                       setRejectReasons((prev) => ({ ...prev, [r.id]: e.target.value }))
@@ -474,7 +474,7 @@ export default function KYCTabs(props) {
                                 )}
 
                                 {/* Activity log */}
-                                <div className="mt-2 text-xs text-slate-600">
+                                <div className="mt-2 text-xs text-muted-foreground">
                                   <div className="flex items-center gap-2">
                                     <span>Reviewed by:</span>
                                     <HoverCard>

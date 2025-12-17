@@ -41,7 +41,7 @@ export default function GridCard({ resource }) {
 
       <CardContent className="flex-1 p-4">
         <Link href={`/product/${resource.id}`}>
-          <h3 className="font-semibold text-blue-600 hover:underline cursor-pointer line-clamp-1">
+          <h3 className="font-semibold text-foreground hover:text-tertiary hover:underline cursor-pointer line-clamp-1">
             {resource.title}
           </h3>
         </Link>
@@ -49,7 +49,7 @@ export default function GridCard({ resource }) {
         <Link
           href={`/author/${resource.author.toLowerCase().replace(/\s+/g, "-")}`}
         >
-          <div className="text-xs text-green-600 mt-1 mb-2 hover:underline cursor-pointer">
+          <div className="text-xs text-muted-foreground mt-1 mb-2 hover:text-tertiary hover:underline cursor-pointer">
             {resource.author}
           </div>
         </Link>

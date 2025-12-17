@@ -88,7 +88,7 @@ export default function CartContent() {
   // Show login prompt if not authenticated
   if (!session) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <MarketplaceHeader
           searchQuery={search}
           onSearchChange={setSearch}
@@ -114,7 +114,7 @@ export default function CartContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <MarketplaceHeader
         searchQuery={search}
         onSearchChange={setSearch}
@@ -204,7 +204,7 @@ export default function CartContent() {
                     {[...Array(3)].map((_, i) => (
                       <div
                         key={i}
-                        className="flex gap-4 p-4 border border-slate-300 rounded-lg"
+                        className="flex gap-4 p-4 border border-border rounded-lg"
                       >
                         <Skeleton className="w-20 h-24 rounded-md" />
                         <div className="flex-1 space-y-2">
@@ -249,9 +249,9 @@ export default function CartContent() {
                         .map((item) => (
                           <div
                             key={item.id}
-                            className="flex gap-4 p-4 border border-slate-300 rounded-lg hover:shadow-sm transition-shadow"
+                            className="flex gap-4 p-4 border border-border rounded-lg hover:shadow-sm transition-shadow"
                           >
-                            <div className="relative w-20 h-24 shrink-0 rounded-md overflow-hidden bg-gray-100">
+                            <div className="relative w-20 h-24 shrink-0 rounded-md overflow-hidden bg-muted">
                               <Image
                                 src={item.product?.image || "/placeholder.svg"}
                                 alt={item.product?.title || "Product"}
@@ -277,7 +277,7 @@ export default function CartContent() {
                                     <Link
                                       href={`/author/${item?.product?.author?.pen_name}`}
                                     >
-                                      <span className="text-xs text-black hover:text-[#d3a155] hover:underline cursor-pointer">
+                                      <span className="text-xs text-foreground hover:text-tertiary hover:underline cursor-pointer">
                                         {item?.product?.author?.name}
                                       </span>
                                     </Link>
@@ -363,7 +363,7 @@ export default function CartContent() {
                                   size="sm"
                                   onClick={() => handleRemoveItem(item.id)}
                                   disabled={isRemoving}
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
                                 >
                                   {isRemoving ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -437,10 +437,6 @@ export default function CartContent() {
                         <span>- {fmt(cartSummary?.discount)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span>Tax (10%)</span>
-                      <span>{fmt(cartSummary?.tax)}</span>
-                    </div>
                     <Separator />
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total</span>

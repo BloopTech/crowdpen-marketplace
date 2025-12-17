@@ -163,10 +163,10 @@ export default function AuthorProfileContent({ author }) {
 
   if (!author) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600">Loading author profile...</p>
+          <p className="text-muted-foreground">Loading author profile...</p>
         </div>
       </div>
     );
@@ -175,7 +175,7 @@ export default function AuthorProfileContent({ author }) {
   const categories = author.categories || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-background">
       {/* Hero Section */}
       <div className="relative">
         <div
@@ -198,11 +198,11 @@ export default function AuthorProfileContent({ author }) {
       {/* Profile Card - Extended below hero */}
       <div className="relative -mt-20 z-10">
         <div className="max-w-4xl mx-auto px-6">
-          <Card className="bg-white/85 backdrop-blur-sm shadow-2xl border-0 rounded-2xl">
+          <Card className="bg-card/85 backdrop-blur-sm shadow-2xl rounded-2xl">
             <CardContent className="p-8">
               <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
                 <div className="relative">
-                  <Avatar className="w-32 h-32 ring-4 ring-white shadow-xl">
+                  <Avatar className="w-32 h-32 ring-4 ring-border shadow-xl">
                     <AvatarImage
                       src={author.image || "/default-avatar.png"}
                       alt={author.name}
@@ -221,20 +221,20 @@ export default function AuthorProfileContent({ author }) {
 
                 <div className="flex-1 text-center md:text-left">
                   <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
-                    <h1 className="text-3xl font-bold text-slate-900">
+                    <h1 className="text-3xl font-bold text-foreground">
                       {author.name}
                     </h1>
                     {author.verification_badge && (
-                      <Badge className="bg-green-100 text-green-700 hover:bg-green-200">
+                      <Badge className="bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-400">
                         <Verified className="w-4 h-4 mr-1" />
                         Verified Creator
                       </Badge>
                     )}
                   </div>
 
-                  <p className="text-slate-600 mb-4 max-w-2xl">{author?.bio}</p>
+                  <p className="text-muted-foreground mb-4 max-w-2xl">{author?.bio}</p>
 
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-slate-500 mb-4">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-muted-foreground mb-4">
                     {author?.residence && (
                       <div className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
@@ -320,7 +320,7 @@ export default function AuthorProfileContent({ author }) {
       <div className="pt-28 pb-12 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-500/10 dark:to-blue-500/5 dark:border-blue-500/20">
               <CardContent className="p-6 text-center">
                 <BookOpen className="w-8 h-8 text-blue-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-blue-900">
@@ -332,7 +332,7 @@ export default function AuthorProfileContent({ author }) {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 dark:from-emerald-500/10 dark:to-emerald-500/5 dark:border-emerald-500/20">
               <CardContent className="p-6 text-center">
                 <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-green-900">
@@ -342,7 +342,7 @@ export default function AuthorProfileContent({ author }) {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+            <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200 dark:from-amber-500/10 dark:to-amber-500/5 dark:border-amber-500/20">
               <CardContent className="p-6 text-center">
                 <Star className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-yellow-900">
@@ -352,7 +352,7 @@ export default function AuthorProfileContent({ author }) {
               </CardContent>
             </Card>
 
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 dark:from-purple-500/10 dark:to-purple-500/5 dark:border-purple-500/20">
               <CardContent className="p-6 text-center">
                 <MessageSquare className="w-8 h-8 text-purple-600 mx-auto mb-2" />
                 <div className="text-2xl font-bold text-purple-900">
@@ -389,9 +389,9 @@ export default function AuthorProfileContent({ author }) {
             {/* Products Tab */}
             <TabsContent value="products" className="space-y-6">
               {/* Search and Filters */}
-              <div className="flex flex-col md:flex-row gap-4 bg-white p-6 rounded-xl shadow-sm border">
+              <div className="flex flex-col md:flex-row gap-4 bg-card text-card-foreground p-6 rounded-xl shadow-sm border border-border">
                 <div className="flex-1 relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                   <Input
                     placeholder="Search products..."
                     value={searchQuery}
@@ -450,16 +450,16 @@ export default function AuthorProfileContent({ author }) {
               {/* Products Loading/End Indicator */}
               <div ref={productsScrollRef} className="flex justify-center py-8">
                 {productsLoading && (
-                  <div className="flex items-center gap-2 text-slate-600">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Loading more products...
                   </div>
                 )}
                 {!productsHasMore && products.length > 0 && (
-                  <p className="text-slate-500">No more products to load</p>
+                  <p className="text-muted-foreground">No more products to load</p>
                 )}
                 {!productsLoading && products.length === 0 && (
-                  <p className="text-slate-500">No products found</p>
+                  <p className="text-muted-foreground">No products found</p>
                 )}
               </div>
             </TabsContent>
@@ -467,7 +467,7 @@ export default function AuthorProfileContent({ author }) {
             {/* Reviews Tab */}
             <TabsContent value="reviews" className="space-y-6">
               {/* Review Filters */}
-              <div className="flex flex-col md:flex-row gap-4 bg-white p-6 rounded-xl shadow-sm border">
+              <div className="flex flex-col md:flex-row gap-4 bg-card text-card-foreground p-6 rounded-xl shadow-sm border border-border">
                 <Select value={reviewsRating} onValueChange={setReviewsRating}>
                   <SelectTrigger className="w-full md:w-48">
                     <SelectValue placeholder="Filter by Rating" />
@@ -502,7 +502,7 @@ export default function AuthorProfileContent({ author }) {
                       return (
                         <Card
                           key={review.id}
-                          className="bg-white shadow-sm border"
+                          className="shadow-sm"
                         >
                           <CardContent className="p-6">
                             <div className="flex items-start gap-4">
@@ -521,7 +521,7 @@ export default function AuthorProfileContent({ author }) {
                               <div className="flex-1">
                                 <div className="flex items-center justify-between mb-2">
                                   <div>
-                                    <h4 className="font-semibold text-slate-900">
+                                    <h4 className="font-semibold text-foreground">
                                       {review.user?.name || "Anonymous User"}
                                     </h4>
                                     <div className="flex items-center gap-1 mt-1">
@@ -531,11 +531,11 @@ export default function AuthorProfileContent({ author }) {
                                           className={`w-4 h-4 ${
                                             i < review.rating
                                               ? "fill-yellow-400 text-yellow-400"
-                                              : "text-slate-300"
+                                              : "text-slate-300 dark:text-gray-600"
                                           }`}
                                         />
                                       ))}
-                                      <span className="text-sm text-slate-500 ml-2">
+                                      <span className="text-sm text-muted-foreground ml-2">
                                         {new Date(
                                           review.createdAt
                                         ).toLocaleDateString()}
@@ -544,14 +544,14 @@ export default function AuthorProfileContent({ author }) {
                                   </div>
                                 </div>
 
-                                <p className="text-slate-700 mb-3">
+                                <p className="text-foreground mb-3">
                                   {review.comment}
                                 </p>
 
                                 {review.product && (
-                                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <span>Product:</span>
-                                    <span className="font-medium text-slate-700">
+                                    <span className="font-medium text-foreground">
                                       {review.product.title}
                                     </span>
                                   </div>
@@ -568,16 +568,16 @@ export default function AuthorProfileContent({ author }) {
               {/* Reviews Loading/End Indicator */}
               <div ref={reviewsScrollRef} className="flex justify-center py-8">
                 {reviewsLoading && (
-                  <div className="flex items-center gap-2 text-slate-600">
+                  <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="w-5 h-5 animate-spin" />
                     Loading more reviews...
                   </div>
                 )}
                 {!reviewsHasMore && reviews.length > 0 && (
-                  <p className="text-slate-500">No more reviews to load</p>
+                  <p className="text-muted-foreground">No more reviews to load</p>
                 )}
                 {!reviewsLoading && reviews.length === 0 && (
-                  <p className="text-slate-500">No reviews found</p>
+                  <p className="text-muted-foreground">No reviews found</p>
                 )}
               </div>
             </TabsContent>

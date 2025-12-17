@@ -52,7 +52,7 @@ export async function POST(request) {
     // Get products to add including owner KYC status for gating
     const products = await MarketplaceProduct.findAll({
       where: { id: productIds },
-      attributes: ['id', 'title', 'price', 'user_id', 'stock', 'inStock'],
+      attributes: ['id', 'title', 'price', 'currency', 'user_id', 'stock', 'inStock'],
       include: [
         {
           model: User,
@@ -76,8 +76,21 @@ export async function POST(request) {
     const addedProducts = [];
     const skippedProducts = [];
 
+    let cartCurrency = (cart?.currency || "").toString().toUpperCase();
+
     // Add each product to cart
     for (const product of products) {
+      const productCurrency = (product?.currency || "USD").toString().toUpperCase();
+
+      if (cartCurrency && cartCurrency !== productCurrency) {
+        skippedProducts.push({
+          id: product.id,
+          title: product.title,
+          reason: 'Different currency',
+        });
+        continue;
+      }
+
       // Per-product KYC gating
       const isOwner = product.user_id === session.user.id;
       const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
@@ -114,8 +127,14 @@ export async function POST(request) {
           marketplace_cart_id: cart.id,
           marketplace_product_id: product.id,
           quantity: 1,
-          price: product.price
+          price: product.price,
+          subtotal: product.price
         });
+
+        if (!cartCurrency) {
+          cartCurrency = productCurrency;
+          await cart.update({ currency: cartCurrency });
+        }
         
         addedCount++;
         totalAmount += parseFloat(product.price);

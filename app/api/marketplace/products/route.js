@@ -215,6 +215,7 @@ export async function GET(request) {
         "id",
         "title",
         "price",
+        "currency",
         "originalPrice",
         "stock",
         "inStock",

@@ -35,7 +35,7 @@ export default function RolesPage() {
         </CardHeader>
         <CardContent>
           {error ? (
-            <div className="text-red-600 text-sm">{error}</div>
+            <div className="text-destructive text-sm">{error}</div>
           ) : null}
           <Table>
             <TableHeader>
@@ -167,11 +167,11 @@ function AddRoleDialog({ isSenior, onDone }) {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by name or email"
-              className="flex-1 border border-slate-300 rounded px-2 py-2 text-sm"
+              className="flex-1 border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
             <Button onClick={doSearch} disabled={loading}>{loading ? "Searching..." : "Search"}</Button>
           </div>
-          {error ? <div className="text-sm text-red-600">{error}</div> : null}
+          {error ? <div className="text-sm text-destructive">{error}</div> : null}
           <div className="max-h-80 overflow-auto divide-y">
             {results.map((u) => {
               const initials = (u?.name || u?.email || "").trim().slice(0, 2).toUpperCase();

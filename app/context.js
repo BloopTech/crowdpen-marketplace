@@ -181,7 +181,7 @@ const HomeProvider = ({ children }) => {
     data: wishlistCountData,
     refetch: refetchWishlistCount,
   } = useQuery({
-    queryKey: ["wishlistCount"],
+    queryKey: ["wishlistCount", session?.user?.id],
     queryFn: async () => {
       const response = await fetch(`/api/marketplace/products/wishlist`, {
         method: "GET",
@@ -191,6 +191,7 @@ const HomeProvider = ({ children }) => {
       });
       return response.json();
     },
+    enabled: !!session?.user?.id,
   });
 
   const {
@@ -199,7 +200,7 @@ const HomeProvider = ({ children }) => {
     data: cartCountData,
     refetch: refetchCartCount,
   } = useQuery({
-    queryKey: ["cartCount"],
+    queryKey: ["cartCount", session?.user?.id],
     queryFn: async () => {
       const response = await fetch(`/api/marketplace/products/carts`, {
         method: "GET",
@@ -209,6 +210,7 @@ const HomeProvider = ({ children }) => {
       });
       return response.json();
     },
+    enabled: !!session?.user?.id,
   });
 
   // Optimistic state management for cart and wishlist

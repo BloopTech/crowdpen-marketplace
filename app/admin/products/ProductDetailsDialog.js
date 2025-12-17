@@ -79,7 +79,7 @@ export default function ProductDetailsDialog() {
                     {images.slice(0, 8).map((src, i) => (
                       <div
                         key={i}
-                        className="relative w-16 h-16 rounded overflow-hidden border"
+                        className="relative w-16 h-16 rounded overflow-hidden border border-border"
                       >
                         <Image
                           src={src}
@@ -187,7 +187,7 @@ export default function ProductDetailsDialog() {
 
                   {/* Pricing & Stats */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">Price</div>
                       <div className="text-base font-semibold">
                         {data?.price != null
@@ -201,7 +201,7 @@ export default function ProductDetailsDialog() {
                           </div>
                         )}
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">
                         Rating
                       </div>
@@ -212,7 +212,7 @@ export default function ProductDetailsDialog() {
                         {data?.reviewCount || 0} reviews
                       </div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">
                         Downloads
                       </div>
@@ -220,7 +220,7 @@ export default function ProductDetailsDialog() {
                         {Number(data?.downloads || 0)}
                       </div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">
                         Inventory
                       </div>
@@ -232,23 +232,23 @@ export default function ProductDetailsDialog() {
 
                   {/* Sales & Revenue */}
                   <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">Units Sold</div>
                       <div className="text-base font-semibold">{Number(data?.unitsSold || 0)}</div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">Total Revenue</div>
                       <div className="text-base font-semibold">${Number(data?.totalRevenue || 0).toFixed(2)}</div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">Crowdpen Fee</div>
                       <div className="text-base font-semibold">${Number(data?.crowdpenFee || 0).toFixed(2)}</div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">Gateway Fee</div>
                       <div className="text-base font-semibold">${Number(data?.startbuttonFee || 0).toFixed(2)}</div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3 col-span-2">
+                    <div className="rounded border border-border p-3 col-span-2">
                       <div className="text-xs text-muted-foreground">Creator Payout</div>
                       <div className="text-base font-semibold">${Number(data?.creatorPayout || 0).toFixed(2)}</div>
                     </div>
@@ -256,7 +256,7 @@ export default function ProductDetailsDialog() {
 
                   {/* Meta */}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">
                         Category
                       </div>
@@ -264,7 +264,7 @@ export default function ProductDetailsDialog() {
                         {data?.category?.name || "-"}
                       </div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">
                         Subcategory
                       </div>
@@ -272,7 +272,7 @@ export default function ProductDetailsDialog() {
                         {data?.subcategory?.name || "-"}
                       </div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">
                         Updated
                       </div>
@@ -282,7 +282,7 @@ export default function ProductDetailsDialog() {
                           : "-"}
                       </div>
                     </div>
-                    <div className="rounded border border-slate-300 p-3">
+                    <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">
                         Created
                       </div>
@@ -295,7 +295,7 @@ export default function ProductDetailsDialog() {
                   </div>
 
                   {/* File info */}
-                  <div className="rounded border border-slate-300 p-3 space-y-3">
+                  <div className="rounded border border-border p-3 space-y-3">
                     <div className="flex items-start flex-col space-y-2">
                       <div>
                         <div className="text-xs text-muted-foreground">
@@ -318,7 +318,7 @@ export default function ProductDetailsDialog() {
                           <Link
                             href={data.fileUrl}
                             download={data.fileName || undefined}
-                            className="inline-flex items-center gap-1 text-xs font-medium rounded border px-2 py-1 hover:bg-muted transition"
+                            className="inline-flex items-center gap-1 text-xs font-medium rounded border border-border px-2 py-1 hover:bg-muted transition"
                             target="_blank"
                             rel="noopener noreferrer"
                           >
@@ -329,7 +329,7 @@ export default function ProductDetailsDialog() {
                             href={data.fileUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-medium rounded border px-2 py-1 hover:bg-muted transition"
+                            className="inline-flex items-center gap-1 text-xs font-medium rounded border border-border px-2 py-1 hover:bg-muted transition"
                           >
                             View
                           </Link>

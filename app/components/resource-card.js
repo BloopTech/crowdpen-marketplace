@@ -41,7 +41,7 @@ export default function ResourceCard({ resource }) {
 
       <CardContent className="p-4">
         <Link href={`/product/${resource.id}`}>
-          <h3 className="font-semibold text-lg mb-2 line-clamp-1 hover:text-purple-600 cursor-pointer">
+          <h3 className="font-semibold text-lg mb-2 line-clamp-1 hover:text-tertiary cursor-pointer">
             {resource.title}
           </h3>
         </Link>
@@ -53,7 +53,7 @@ export default function ResourceCard({ resource }) {
           <Link
             href={`/author/${resource.author.toLowerCase().replace(/\s+/g, "-")}`}
           >
-            <span className="text-black hover:text-[#d3a155] cursor-pointer">
+            <span className="text-foreground hover:text-tertiary cursor-pointer">
               by {resource.author}
             </span>
           </Link>

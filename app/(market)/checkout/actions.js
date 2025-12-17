@@ -197,7 +197,7 @@ export async function beginCheckout(prevState, formData) {
 
   // Compute totals from cart
   const subtotal = cartItems.reduce(
-    (sum, item) => sum + Number(item.price) * Number(item.quantity),
+    (sum, item) => sum + Number(item.price),
     0
   );
   const tax = Number(cart.tax ?? 0);

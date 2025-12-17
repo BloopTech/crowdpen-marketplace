@@ -29,44 +29,44 @@ export default function PaymentResultModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white border-0 shadow-2xl rounded-2xl p-6">
+      <DialogContent className="max-w-md rounded-2xl p-6 shadow-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3 text-xl font-bold">
             {isSuccess && (
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
                 <CheckCircle className="h-6 w-6 text-green-600" />
               </span>
             )}
             {isError && (
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10">
                 <XCircle className="h-6 w-6 text-red-600" />
               </span>
             )}
             {isProcessing && (
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/10">
                 <Loader2 className="h-6 w-6 text-blue-600 animate-spin" />
               </span>
             )}
             <span>{title || (isSuccess ? "Payment successful" : isError ? "Payment failed" : "Processing payment")}</span>
           </DialogTitle>
-          <DialogDescription className="text-gray-600">
+          <DialogDescription>
             {message || (isSuccess ? "Your order has been placed successfully." : isError ? "We couldn't complete your payment." : "Please wait while we confirm your payment.")}
           </DialogDescription>
         </DialogHeader>
 
         {orderNumber && (
-          <div className="mt-3 rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm">
-            <div className="text-gray-700">Order number</div>
-            <div className="font-semibold text-gray-900">{orderNumber}</div>
+          <div className="mt-3 rounded-lg border border-border bg-muted/50 p-3 text-sm">
+            <div className="text-muted-foreground">Order number</div>
+            <div className="font-semibold text-foreground">{orderNumber}</div>
           </div>
         )}
 
         {details && (
-          <div className="mt-4 text-sm text-gray-700 space-y-1">
+          <div className="mt-4 space-y-1 text-sm text-foreground">
             {typeof details === "string" ? (
               <p className="break-words">{details}</p>
             ) : (
-              <pre className="bg-gray-50 rounded-md p-3 text-xs overflow-auto max-h-48">
+              <pre className="max-h-48 overflow-auto rounded-md bg-muted p-3 text-xs">
                 {JSON.stringify(details, null, 2)}
               </pre>
             )}

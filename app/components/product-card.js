@@ -198,10 +198,10 @@ export default function ProductCard(props) {
   };
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border !border-slate-300 shadow-sm">
+    <Card className="group hover:shadow-lg transition-all duration-300 shadow-sm">
       <CardContent className="p-0">
         {/* Image Container */}
-        <div className="relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gradient-to-br from-muted to-accent">
           <Image
             src={resource.image || "/placeholder.svg"}
             alt={resource.title}
@@ -228,7 +228,7 @@ export default function ProductCard(props) {
               />
             )}
             {discountPercentage > 0 && (
-              <Badge className="bg-red-500 hover:bg-red-600 text-white">
+              <Badge className="!bg-red-500 hover:!bg-red-600 !text-white">
                 -{discountPercentage}%
               </Badge>
             )}
@@ -324,7 +324,7 @@ export default function ProductCard(props) {
 
           {/* Title */}
           <Link href={`/product/${resource.id}`}>
-            <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-purple-600 cursor-pointer">
+            <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-tertiary cursor-pointer">
               {resource.title}
             </h3>
           </Link>
@@ -332,7 +332,7 @@ export default function ProductCard(props) {
           {/* Author */}
           <div className="flex items-center gap-1 mb-2">
             <Link href={`/author/${resource?.User?.pen_name}`}>
-              <span className="text-xs text-black hover:text-[#d3a155] hover:underline cursor-pointer">
+              <span className="text-xs text-foreground hover:text-tertiary hover:underline cursor-pointer">
                 {resource.User?.name}
               </span>
             </Link>
@@ -354,7 +354,7 @@ export default function ProductCard(props) {
                   className={`h-3 w-3 ${
                     i < Math.floor(resource?.rating)
                       ? "fill-yellow-400 text-yellow-400"
-                      : "text-gray-300"
+                      : "text-gray-300 dark:text-gray-600"
                   }`}
                 />
               ))}

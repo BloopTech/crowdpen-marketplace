@@ -39,7 +39,7 @@ export default function NotificationUser(props) {
             >
               <Bell className="text-[25px]" />
               {notifyCount > 0 ? (
-                <span className="absolute inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-black border-2 border-white rounded-full -top-2 -right-2 dark:border-gray-900 dark:bg-[#f2f2f2] dark:text-black">
+                <span className="absolute inline-flex items-center justify-center w-6 h-6 text-xs font-bold text-primary-foreground bg-primary border-2 border-background rounded-full -top-2 -right-2">
                   {notifyCount > 99 ? <span>99<sup>+</sup></span> : millify(notifyCount)}
                 </span>
               ) : null}
@@ -54,8 +54,8 @@ export default function NotificationUser(props) {
               leaveTo="opacity-0 translate-y-1"
             >
               <PopoverPanel className="absolute right-1/2 z-10 mt-3 w-screen max-w-sm transform sm:px-0 lg:max-w-md ">
-                <div className="overflow-hidden rounded-lg shadow-lg ring-1 ring-slate-300 ring-opacity-5">
-                  <div className="relative bg-white text-black p-3 flex flex-col space-y-4 overflow-hidden dark:bg-[#1a1a1a] dark:text-white">
+                <div className="overflow-hidden rounded-lg shadow-lg border border-border bg-popover text-popover-foreground">
+                  <div className="relative p-3 flex flex-col space-y-4 overflow-hidden">
                     {myNotifications?.length
                       ? myNotifications
                           .slice(0, 3)
@@ -109,13 +109,13 @@ export default function NotificationUser(props) {
                           )
                       : null}
                   </div>
-                  <div className="bg-gray-50 p-1 dark:bg-[#1a1a1a] dark:border-t dark:border-[#f2f2f2]">
+                  <div className="bg-muted/50 p-1 border-t border-border">
                     <Link
                       href="https://crowdpen.co/creator/notifications"
-                      className="flow-root hover:underline rounded-md p-1 transition duration-150 ease-in-out hover:bg-gray-100 dark:hover:bg-inherit focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50"
+                      className="flow-root hover:underline rounded-md p-1 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50"
                     >
                       <div className="flex items-center">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                        <span className="text-sm font-medium text-foreground">
                           See all
                         </span>
                       </div>

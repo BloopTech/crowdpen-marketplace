@@ -27,7 +27,7 @@ const Slider = forwardRef(({ className, ariaLabelThumb, ...props }, forwardedRef
       <SliderPrimitive.Track
         className={cn(
           // base
-          "relative grow overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800",
+          "relative grow overflow-hidden rounded-full bg-muted",
           // orientation
           "data-[orientation='horizontal']:h-1.5 data-[orientation='horizontal']:w-full",
           "data-[orientation='vertical']:h-full data-[orientation='vertical']:w-1.5",
@@ -36,7 +36,7 @@ const Slider = forwardRef(({ className, ariaLabelThumb, ...props }, forwardedRef
         <SliderPrimitive.Range
           className={cn(
             // base
-            "absolute rounded-full bg-blue-500 dark:bg-blue-500",
+            "absolute rounded-full bg-primary",
             // orientation
             "data-[orientation='horizontal']:h-full",
             "data-[orientation='vertical']:w-full",
@@ -52,9 +52,9 @@ const Slider = forwardRef(({ className, ariaLabelThumb, ...props }, forwardedRef
             // base
             "block size-[17px] shrink-0 rounded-full border shadow-sm transition-all",
             // boder color
-            "border-gray-400 dark:border-gray-500",
+            "border-border",
             // background color
-            "bg-white",
+            "bg-background",
             // disabled
             "data-disabled:pointer-events-none data-disabled:bg-gray-200 dark:data-disabled:border-gray-800 dark:data-disabled:bg-gray-600",
             focusRing,

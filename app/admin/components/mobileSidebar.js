@@ -42,7 +42,7 @@ export default function MobileSidebar() {
           <button
             //variant="ghost"
             aria-label="open sidebar"
-            className="cursor-pointer group dark:text-white flex items-center rounded-md p-2 text-sm font-medium hover:bg-gray-100 data-[state=open]:bg-gray-100 hover:dark:bg-gray-400/10"
+            className="cursor-pointer group text-foreground flex items-center rounded-md p-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground data-[state=open]:bg-accent"
           >
             <Menu className="size-6 shrink-0 sm:size-5" aria-hidden="true" />
           </button>
@@ -58,7 +58,7 @@ export default function MobileSidebar() {
                 .map(({ label, items, id }) => {
                   return (
                     <div key={id} className="flex flex-col space-y-3">
-                      <span className="text-xs text-black dark:text-white">
+                      <span className="text-xs text-muted-foreground">
                         {label}
                       </span>
                       <ul role="list" className="space-y-1">
@@ -75,9 +75,9 @@ export default function MobileSidebar() {
                                     onClick={() => toggleDropdown(name)}
                                     className={cn(
                                       isActive(href)
-                                        ? "text-white bg-[#d3a155] dark:text-white border border-[#d3a155] hover:text-[#d3a155] hover:!bg-white hover:dark:text-white"
-                                        : "text-black dark:text-white hover:dark:text-gray-50",
-                                      "flex items-center justify-between text-xs py-1.5 transition hover:bg-tertiary hover:dark:bg-gray-900 font-medium group w-full",
+                                        ? "bg-tertiary text-foreground dark:text-background border border-tertiary hover:bg-tertiary/90"
+                                        : "text-foreground",
+                                      "flex items-center justify-between text-xs py-1.5 transition hover:bg-accent hover:text-accent-foreground font-medium group w-full",
                                       focusRing
                                     )}
                                   >
@@ -85,9 +85,9 @@ export default function MobileSidebar() {
                                       <Icon
                                         className={cn(
                                           isActive(href)
-                                            ? " dark:text-white group-hover:text-[#d3a155] dark:group-hover:text-white"
-                                            : "text-black dark:text-white hover:dark:text-gray-50",
-                                          "size-4 shrink-0 text-black flex items-center justify-center",
+                                            ? "text-foreground dark:text-background"
+                                            : "text-muted-foreground group-hover:text-accent-foreground",
+                                          "size-4 shrink-0",
                                           focusRing
                                         )}
                                         aria-hidden="true"
@@ -108,18 +108,18 @@ export default function MobileSidebar() {
                                     href={href}
                                     className={cn(
                                       isActive(href)
-                                        ? "text-white bg-[#d3a155] dark:text-white border border-[#d3a155] hover:text-[#d3a155] hover:!bg-white hover:dark:text-white"
-                                        : "text-black hover:!text-white dark:text-white hover:dark:text-gray-50",
-                                      "flex items-center gap-x-8 text-xs py-1.5 transition hover:bg-[#d3a155] hover:dark:bg-gray-900 font-medium group",
+                                        ? "bg-tertiary text-foreground dark:text-background border border-tertiary hover:bg-tertiary/90"
+                                        : "text-foreground",
+                                      "flex items-center gap-x-8 text-xs py-1.5 transition hover:bg-accent hover:text-accent-foreground font-medium group",
                                       focusRing
                                     )}
                                   >
                                     <Icon
                                       className={cn(
                                         isActive(href)
-                                          ? " dark:text-white group-hover:text-[#d3a155] dark:group-hover:text-white"
-                                          : "text-black group-hover:text-white dark:text-white hover:dark:text-gray-50",
-                                        "size-4 shrink-0 text-black flex items-center justify-center",
+                                          ? "text-foreground dark:text-background"
+                                          : "text-muted-foreground group-hover:text-accent-foreground",
+                                        "size-4 shrink-0",
                                         focusRing
                                       )}
                                       aria-hidden="true"
@@ -137,9 +137,9 @@ export default function MobileSidebar() {
                                           href={subItem.href}
                                           className={cn(
                                             isActive(subItem.href)
-                                              ? "!text-white bg-[#d3a155] dark:text-white border border-[#d3a155] hover:!text-[#d3a155] hover:!bg-white hover:dark:text-white"
-                                              : "text-black hover:!text-white dark:text-white hover:dark:text-gray-50",
-                                            "flex items-center text-xs py-1.5 transition hover:bg-[#d3a155] hover:dark:bg-gray-900 font-medium group pl-4",
+                                              ? "bg-tertiary text-foreground dark:text-background border border-tertiary hover:bg-tertiary/90"
+                                              : "text-foreground",
+                                            "flex items-center text-xs py-1.5 transition hover:bg-accent hover:text-accent-foreground font-medium group pl-4",
                                             focusRing
                                           )}
                                         >

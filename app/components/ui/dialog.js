@@ -54,9 +54,9 @@ const DialogContent = forwardRef(({ className, ...props }, forwardedRef) => {
             // base
             "fixed left-1/2 top-1/2 z-50 w-[95vw] max-w-lg -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-md border p-6 shadow-lg",
             // border color
-            "border-gray-200 dark:border-gray-900",
+            "border-border",
             // background color
-            "bg-white dark:bg-[#090E1A]",
+            "bg-popover text-popover-foreground",
             // transition
             "data-[state=open]:animate-dialogContentShow",
             focusRing,
@@ -84,7 +84,7 @@ const DialogTitle = forwardRef(({ className, ...props }, forwardedRef) => (
       // base
       "text-lg font-semibold",
       // text color
-      "text-gray-900 dark:text-gray-50",
+      "text-foreground",
       className
     )}
     {...props}
@@ -98,7 +98,7 @@ const DialogDescription = forwardRef(
     return (
       <DialogPrimitives.Description
         ref={forwardedRef}
-        className={cn("text-gray-500 dark:text-gray-500", className)}
+        className={cn("text-muted-foreground", className)}
         {...props}
       />
     );

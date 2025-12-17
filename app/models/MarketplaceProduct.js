@@ -64,6 +64,10 @@ MarketplaceProduct.init(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
     },
+    currency: {
+      type: DataTypes.STRING,
+      defaultValue: "USD",
+    },
     originalPrice: {
       type: DataTypes.DECIMAL(10, 2),
     },

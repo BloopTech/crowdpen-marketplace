@@ -50,6 +50,9 @@ MarketplaceCart.init(
       type: DataTypes.DECIMAL(10, 2),
       defaultValue: 0.00
     },
+    currency: {
+      type: DataTypes.TEXT,
+    },
     total: {
       type: DataTypes.DECIMAL(10, 2),
       defaultValue: 0.00

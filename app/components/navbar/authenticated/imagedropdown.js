@@ -112,12 +112,12 @@ export function UserId() {
         >
           <MenuItems
             ref={menuRef}
-            className="px-1 py-1 absolute z-20 overflow-y-auto h-[21rem] right-0 mt-2 w-56 origin-top-right divide-y divide-gray-100 rounded-md bg-white dark:bg-[#1a1a1a] dark:text-white text-black shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none"
+            className="px-1 py-1 absolute z-20 overflow-y-auto h-[21rem] right-0 mt-2 w-56 origin-top-right divide-y divide-border rounded-md bg-popover text-popover-foreground shadow-lg border border-border focus:outline-none"
           >
             <MenuItem>
               <Link href="https://crowdpen.co/creator/profile">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={closeUserDropdown}
                 >
                   <User className="mr-2 h-5 w-5" aria-hidden="true" />
@@ -128,7 +128,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/creator/stories">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={() => {
                     closeUserDropdown();
                   }}
@@ -141,7 +141,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/creator/pens">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={() => {
                     closeUserDropdown();
                   }}
@@ -167,7 +167,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/creator/content-stats">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={() => {
                     closeUserDropdown();
                   }}
@@ -180,7 +180,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/challenges">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={() => {
                     closeUserDropdown();
                   }}
@@ -195,7 +195,7 @@ export function UserId() {
               <MenuItem>
                 <Link href="https://crowdpen.co/creator/stories/write">
                   <div
-                    className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                    className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                     onClick={() => {
                       closeUserDropdown();
                     }}
@@ -209,7 +209,7 @@ export function UserId() {
               <MenuItem>
                 <Link href="https://crowdpen.co/creator/notifications">
                   <div
-                    className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                    className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                     onClick={closeUserDropdown}
                   >
                     <Bell
@@ -237,7 +237,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/become-a-partner">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={closeUserDropdown}
                 >
                   <Crown className="mr-2 h-5 w-5" aria-hidden="true" />
@@ -249,7 +249,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/creator/wallet">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={closeUserDropdown}
                 >
                   <Wallet
@@ -263,7 +263,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/creator/referrals">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={closeUserDropdown}
                 >
                   <span className="rotate-45 relative -mt-[3rem]">
@@ -280,7 +280,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/creator/settings">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={closeUserDropdown}
                 >
                   <Settings className="mr-2 h-5 w-5" aria-hidden="true" />
@@ -292,7 +292,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/creator/leaderboard">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={closeUserDropdown}
                 >
                   <LayoutGrid className="mr-2 h-5 w-5" aria-hidden="true" />
@@ -305,7 +305,7 @@ export function UserId() {
               <MenuItem>
                 <Link href="https://crowdpen.co/admin/dashboard">
                   <div
-                    className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                    className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                     onClick={closeUserDropdown}
                   >
                     <ShieldCheck
@@ -320,7 +320,7 @@ export function UserId() {
             <MenuItem>
               <Link href="https://crowdpen.co/help">
                 <div
-                  className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                  className={`text-foreground hover:bg-accent hover:text-accent-foreground group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                   onClick={closeUserDropdown}
                 >
                   Help
@@ -334,7 +334,7 @@ export function UserId() {
 
             <MenuItem>
               <div
-                className={`hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black cursor-pointer group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
+                className={`text-foreground hover:bg-accent hover:text-accent-foreground cursor-pointer group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                 onClick={() => {
                   signOut();
                   closeUserDropdown();

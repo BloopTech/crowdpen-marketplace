@@ -25,7 +25,6 @@ import {
   arrow,
   FloatingArrow,
 } from "@floating-ui/react";
-import { useTheme } from "next-themes";
 
 export function useTooltip({
   initialOpen = false,
@@ -144,7 +143,6 @@ export const TooltipContent = forwardRef(function TooltipContent(
   { style, ...props },
   propRef
 ) {
-  const { theme, setTheme } = useTheme();
   const context = useTooltipContext();
   const ref = useMergeRefs([context.refs.setFloating, propRef]);
 
@@ -159,14 +157,12 @@ export const TooltipContent = forwardRef(function TooltipContent(
           ...style,
         }}
         {...context.getFloatingProps(props)}
-        className="bg-slate-500 text-white text-xs p-1 rounded-md shadow-md shadow-gray-200/50 flex items-center justify-center dark:bg-[#f2f2f2] dark:text-black"
+        className="bg-popover text-popover-foreground border border-border text-xs px-2 py-1 rounded-md shadow-md shadow-black/10 flex items-center justify-center"
       >
         <FloatingArrow
           context={context.context}
           ref={context.arrowRef}
-          fill={`${
-            theme === "dark" ? "rgb(242, 242, 242)" : "rgb(100, 116, 139)"
-          }`}
+          fill="hsl(var(--popover))"
         />
         {props.children}
       </div>

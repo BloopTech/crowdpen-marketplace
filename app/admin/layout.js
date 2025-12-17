@@ -5,7 +5,7 @@ import { AdminProvider } from "./context";
 
 export default async function AdminDashboardLayout({ children }) {
   return (
-    <div className="bg-[#f4f4f4] dark:bg-[#121212] dark:text-white text-black w-full">
+    <div className="bg-background text-foreground w-full">
       <div className="mx-auto max-w-screen-2xl">
         <AdminSidebar />
         <main className="lg:pl-62 flex flex-col w-full">

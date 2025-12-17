@@ -64,7 +64,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={followingUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 dark:hover:bg-[#f2f2f2] dark:hover:text-black group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -82,11 +82,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : notificationType}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>
@@ -97,7 +97,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={subscribeUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 dark:hover:bg-[#f2f2f2] dark:hover:text-black group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -115,11 +115,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : notificationType}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>
@@ -130,7 +130,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={storiesUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out dark:hover:bg-[#f2f2f2] dark:hover:text-black hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -148,11 +148,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : notificationType}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>
@@ -163,7 +163,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={pensUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out dark:hover:bg-[#f2f2f2] dark:hover:text-black hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -181,11 +181,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : "pens"}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>
@@ -196,7 +196,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={repenUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out dark:hover:bg-[#f2f2f2] dark:hover:text-black hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -214,11 +214,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : "repen"}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>
@@ -229,7 +229,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={commentsUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out dark:hover:bg-[#f2f2f2] dark:hover:text-black hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -247,11 +247,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : notificationType}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>
@@ -262,7 +262,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={topstoryUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out dark:hover:bg-[#f2f2f2] dark:hover:text-black hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -280,11 +280,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : notificationType}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>
@@ -295,7 +295,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={challengesUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out dark:hover:bg-[#f2f2f2] dark:hover:text-black hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -313,11 +313,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : notificationType}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>
@@ -328,7 +328,7 @@ export default function NotificationLayout(props) {
             readNotification(id);
           }}
           href={transactionsUrl}
-          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out dark:hover:bg-[#f2f2f2] dark:hover:text-black hover:bg-gray-50 focus:outline-none focus-visible:ring focus-visible:ring-orange-500 focus-visible:ring-opacity-50 group"
+          className="-m-3 flex rounded-lg p-2 transition duration-150 ease-in-out hover:bg-accent hover:text-accent-foreground focus:outline-none focus-visible:ring focus-visible:ring-ring focus-visible:ring-opacity-50 group"
         >
           <div className="flex items-center justify-center p-4 space-x-4">
             <UserProfilePicture
@@ -346,11 +346,11 @@ export default function NotificationLayout(props) {
               height={10}
             />
           </div>
-          <div className="flex flex-col items-start justify-center dark:text-[#f2f2f2] dark:group-hover:text-black">
+          <div className="flex flex-col items-start justify-center">
             <p className="text-base font-bold font-poynterroman">
               {notifyName ? notifyName : notificationType}
             </p>
-            <p className="text-sm text-gray-500 dark:text-[#f2f2f2] dark:group-hover:text-black break-all line-clamp-1 font-poynterroman">
+            <p className="text-sm text-muted-foreground group-hover:text-accent-foreground/80 break-all line-clamp-1 font-poynterroman">
               {content}
             </p>
           </div>

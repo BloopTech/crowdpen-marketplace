@@ -111,7 +111,23 @@ export async function POST(request, { params }) {
         discount: 0.0,
         tax: 0.0,
         total: 0.0,
+        currency: (product?.currency || "USD"),
       });
+    }
+
+    const productCurrency = (product?.currency || "USD").toString().toUpperCase();
+    const cartCurrency = (cart?.currency || "").toString().toUpperCase();
+    if (cartCurrency && cartCurrency !== productCurrency) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Your cart can only contain items in one currency",
+        },
+        { status: 400 }
+      );
+    }
+    if (!cartCurrency) {
+      await cart.update({ currency: productCurrency });
     }
 
     // Check if item already exists in cart
@@ -144,11 +160,11 @@ export async function POST(request, { params }) {
         });
         
         const subtotal = cartItems.reduce((sum, item) => {
-          return sum + parseFloat(item.price) * item.quantity;
+          return sum + parseFloat(item.price || 0);
         }, 0);
         
         cart.subtotal = subtotal;
-        cart.total = subtotal + parseFloat(cart.discount || 0) + parseFloat(cart.tax || 0);
+        cart.total = subtotal + parseFloat(cart.tax || 0) - parseFloat(cart.discount || 0);
         await cart.save();
       }
       
@@ -165,7 +181,7 @@ export async function POST(request, { params }) {
         marketplace_cart_id: cart.id,
         marketplace_product_id: productId,
         quantity: quantity,
-        price: product.price,
+        price: itemSubtotal,
         subtotal: itemSubtotal,
       });
     }
@@ -178,12 +194,12 @@ export async function POST(request, { params }) {
     });
 
     const subtotal = cartItems.reduce((sum, item) => {
-      return sum + parseFloat(item.price) * item.quantity;
+      return sum + parseFloat(item.price || 0);
     }, 0);
 
     cart.subtotal = subtotal;
     cart.total =
-      subtotal + parseFloat(cart.discount || 0) + parseFloat(cart.tax || 0);
+      subtotal + parseFloat(cart.tax || 0) - parseFloat(cart.discount || 0);
     await cart.save();
 
     // Return success response with cart item data
@@ -202,6 +218,7 @@ export async function POST(request, { params }) {
         subtotal: cart.subtotal,
         total: cart.total,
         itemCount: cartItems.length,
+        currency: cart.currency || productCurrency,
       },
     });
   } catch (error) {

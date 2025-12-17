@@ -63,7 +63,7 @@ export default function AmazonStyleMarketplace() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50 w-full">
+      <div className="min-h-screen bg-background w-full">
         <MarketplaceHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -86,7 +86,7 @@ export default function AmazonStyleMarketplace() {
             {/* Main Content */}
             <main className="flex-1">
               {/* Results Header */}
-              <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-lg shadow-sm">
+              <div className="flex items-center justify-between mb-6 bg-card text-card-foreground border border-border p-4 rounded-lg shadow-sm">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-muted-foreground">
                     {totalProducts.toLocaleString()} results
@@ -160,7 +160,7 @@ export default function AmazonStyleMarketplace() {
 
               {/* Loading State */}
               {isProductsLoading && (
-                <div className="flex justify-center items-center py-12 bg-white rounded-lg">
+                <div className="flex justify-center items-center py-12 bg-card text-card-foreground border border-border rounded-lg">
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <span className="ml-2">Loading products...</span>
                 </div>
@@ -168,7 +168,7 @@ export default function AmazonStyleMarketplace() {
               
               {/* Error State */}
               {productsError && (
-                <div className="text-center py-12 bg-white rounded-lg">
+                <div className="text-center py-12 bg-card text-card-foreground border border-border rounded-lg">
                   <div className="text-6xl mb-4">⚠️</div>
                   <h3 className="text-xl font-semibold mb-2">
                     Error loading products
@@ -186,7 +186,7 @@ export default function AmazonStyleMarketplace() {
               {!isProductsLoading && !productsError && (
                 <>
                   {products.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-lg">
+                    <div className="text-center py-12 bg-card text-card-foreground border border-border rounded-lg">
                       <div className="text-6xl mb-4">🔍</div>
                       <h3 className="text-xl font-semibold mb-2">
                         No products found

@@ -66,7 +66,7 @@ export default function ProfileImage() {
         <DropdownMenuTrigger asChild>
           <div className="mt-1">
             <div className="relative">
-              <Avatar className="w-8 h-8 ring-4 ring-white shadow-xl">
+              <Avatar className="w-8 h-8 ring-4 ring-border shadow-xl">
                 <AvatarImage
                   src={session.user.image || "/default-avatar.png"}
                   alt={session.user.name}
@@ -95,14 +95,14 @@ export default function ProfileImage() {
         <DropdownMenuContent
           side="bottom"
           align="end"
-          className="w-40 bg-white dark:bg-[#1a1a1a] dark:text-white border-slate-300 border shadow-lg z-10 text-gray-900"
+          className="w-40"
         >
           <DropdownMenuItem
             onClick={() => {
               router.push("/");
               closeUserDropdown();
             }}
-            className="hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold justify-between cursor-pointer font-poynterroman"
+            className="w-full justify-between font-semibold cursor-pointer font-poynterroman"
           >
             <LayoutDashboard className="mr-2 h-5 w-5" aria-hidden="true" />
             Dashboard
@@ -113,7 +113,7 @@ export default function ProfileImage() {
               router.push("/creator/profile");
               closeUserDropdown();
             }}
-            className="hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold justify-between cursor-pointer font-poynterroman"
+            className="w-full justify-between font-semibold cursor-pointer font-poynterroman"
           >
             <UserRound className="mr-2 h-5 w-5" aria-hidden="true" />
             Profile
@@ -126,7 +126,7 @@ export default function ProfileImage() {
               signOut();
               closeUserDropdown();
             }}
-            className="hover:bg-black hover:text-white text-gray-900 dark:text-white dark:hover:bg-white dark:hover:text-black group flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold justify-between cursor-pointer font-poynterroman"
+            className="w-full justify-between font-semibold cursor-pointer font-poynterroman"
           >
             <LogOut className="mr-2 h-5 w-5" aria-hidden="true" />
             Logout

@@ -46,9 +46,9 @@ export default function MarketplaceHeader(props) {
   };
 
   return (
-    <header className="border-b bg-white sticky top-0 z-10 border-slate-300 w-full">
+    <header className="sticky top-0 z-10 w-full border-b border-border bg-background">
       {/* Top Bar */}
-      <div className="bg-gray-900 text-white text-xs py-1 px-5 md:px-10 w-full">
+      <div className="w-full bg-gray-900 text-white text-xs py-1 px-5 md:px-10 dark:bg-black">
         <div className="flex justify-between items-center gap-3 w-full min-w-0">
           <Link
             href="https://crowdpen.co"
@@ -131,8 +131,8 @@ export default function MarketplaceHeader(props) {
                         variant="error"
                         className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
                       >
-                        {wishlistCountData?.count > 99
-                          ? "99+"
+                        {wishlistCountData?.count > 9
+                          ? "9+"
                           : millify(wishlistCountData?.count)}
                       </Badge>
                     )}
@@ -148,8 +148,8 @@ export default function MarketplaceHeader(props) {
                         variant="error"
                         className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
                       >
-                        {cartCountData?.count > 99
-                          ? "99+"
+                        {cartCountData?.count > 9
+                          ? "9+"
                           : millify(cartCountData?.count)}
                       </Badge>
                     )}
@@ -158,7 +158,7 @@ export default function MarketplaceHeader(props) {
 
                 <Button
                   size="sm"
-                  className="relative bg-black text-white rounded-md border border-black hover:bg-white hover:text-black cursor-pointer"
+                  className="relative rounded-md border border-input bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                   onClick={handleCreateClick}
                   //onClick={createCategory}
                 >
@@ -172,7 +172,7 @@ export default function MarketplaceHeader(props) {
                     size="sm"
                     aria-label="Log in"
                     onClick={() => openLoginDialog("login")}
-                    className="bg-white text-gray-900 border border-gray-300 hover:bg-gray-100 hover:text-gray-900"
+                    className="bg-background text-foreground border border-input hover:bg-accent hover:text-accent-foreground"
                   >
                     <LogIn className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Log in</span>
@@ -183,7 +183,7 @@ export default function MarketplaceHeader(props) {
                     size="sm"
                     aria-label="Join"
                     onClick={() => openLoginDialog("signup")}
-                    className="bg-[#d3a155] text-black shadow-sm hover:bg-black hover:text-[#d3a155]"
+                    className="bg-tertiary text-black shadow-sm hover:bg-primary hover:text-primary-foreground"
                   >
                     <UserPlus className="h-4 w-4 sm:mr-2" />
 
@@ -202,7 +202,7 @@ export default function MarketplaceHeader(props) {
               <NavigationMenuItem>
                 <NavigationMenuTrigger>All Categories</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid w-[calc(100vw-2rem)] sm:w-96 gap-3 p-4 bg-white">
+                  <div className="grid w-[calc(100vw-2rem)] sm:w-96 gap-3 p-4 bg-popover text-popover-foreground">
                     {categories.map((category) => (
                       <div key={category.name}>
                         <h4 className="font-semibold text-sm mb-2">

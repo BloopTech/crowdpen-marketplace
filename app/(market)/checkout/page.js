@@ -827,7 +827,7 @@ function CheckoutContent() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <MarketplaceHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -856,13 +856,13 @@ function CheckoutContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       {(beginPending || processing) && (
         <>
           <button
             type="button"
             onClick={cancelStartButton}
-            className="cursor-pointer fixed z-[100005] px-2 py-2 rounded-full bg-white text-black text-sm shadow-lg hover:bg-black/80 hover:text-white focus:outline-none focus:ring-2 focus:ring-white"
+            className="cursor-pointer fixed z-[100005] px-2 py-2 rounded-full bg-background text-foreground text-sm shadow-lg border border-border hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             style={{
               top: closePos?.top ?? 24,
               left: closePos?.left ?? undefined,
@@ -966,7 +966,7 @@ function CheckoutContent() {
                       value={paymentMethod}
                       onValueChange={setPaymentMethod}
                     >
-                      <div className="flex items-center space-x-2 p-3 border border-slate-300 rounded-lg w-full justify-between">
+                      <div className="flex items-center space-x-2 p-3 border border-border rounded-lg w-full justify-between">
                         <div className="flex items-center gap-2">
                           <RadioGroupItem
                             value="startbutton"
@@ -981,7 +981,7 @@ function CheckoutContent() {
                           </Label>
                         </div>
                         {!startButtonLoaded && (
-                          <span className="text-xs text-gray-500 flex items-center gap-1">
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
                             <Loader2 className="h-3 w-3 animate-spin" /> Loading
                             gateway…
                           </span>

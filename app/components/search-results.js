@@ -103,14 +103,14 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <Link href={`/product/${resource.id}`}>
-                          <h3 className="text-lg font-semibold text-blue-600 hover:underline cursor-pointer mb-1">
+                          <h3 className="text-lg font-semibold text-foreground hover:text-tertiary hover:underline cursor-pointer mb-1">
                             {resource.title}
                           </h3>
                         </Link>
-                        <div className="text-sm text-green-600 mb-1">
+                        <div className="text-sm text-muted-foreground mb-1">
                           <Link
                             href={`/author/${resource.author.toLowerCase().replace(/\s+/g, "-")}`}
-                            className="hover:underline"
+                            className="hover:text-tertiary hover:underline"
                           >
                             {resource.author}
                           </Link>

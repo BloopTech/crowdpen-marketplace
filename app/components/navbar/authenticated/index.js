@@ -35,7 +35,7 @@ export default function AuthenticatedNavBar() {
 
   return (
     <nav className="fixed left-0 top-0 z-10 w-full">
-      <div className="flex md:px-10 px-5 bg-white text-black dark:bg-[#121212] dark:text-white items-center h-auto justify-center">
+      <div className="flex md:px-10 px-5 bg-background text-foreground items-center h-auto justify-center border-b border-border">
         <div className={`flex grow -ml-7`}>
           <Link href="https://crowdpen.co">
             <Image
@@ -70,8 +70,6 @@ export default function AuthenticatedNavBar() {
 
         <div className={`flex items-center`}>{session ? <UserId /> : null}</div>
       </div>
-
-      <div className="border-[1px] border-solid border-slate-300 w-full"></div>
     </nav>
   );
 }

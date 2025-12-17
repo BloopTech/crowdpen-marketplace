@@ -27,7 +27,7 @@ const badgeVariants = tv({
       ],
       error: [
         "bg-red-500 text-white ring-red-600/20",
-        "dark:bg-red-400/10 dark:text-red-400 dark:ring-red-400/20",
+        "dark:bg-red-500 dark:text-white dark:ring-red-400/20",
       ],
       warning: [
         "bg-yellow-50 text-yellow-900 ring-yellow-600/30",

@@ -25,15 +25,15 @@ const selectTriggerStyles = [
     // base
     "group/trigger flex w-full select-none items-center justify-between gap-2 truncate rounded-md border px-3 py-2 shadow-sm outline-none transition sm:text-sm",
     // border color
-    "border-gray-300 dark:border-gray-800",
+    "border-input",
     // text color
-    "text-gray-900 dark:text-gray-50",
+    "text-foreground",
     // placeholder
     "data-[placeholder]:text-gray-500 data-[placeholder]:dark:text-gray-500",
     // background color
-    "bg-white dark:bg-gray-950",
+    "bg-background",
     // hover
-    "hover:bg-gray-50 hover:dark:bg-gray-950/50",
+    "hover:bg-accent hover:text-accent-foreground",
     // disabled
     "data-[disabled]:bg-gray-100 data-[disabled]:text-gray-400",
     "data-[disabled]:dark:border-gray-700 data-[disabled]:dark:bg-gray-800 data-[disabled]:dark:text-gray-500",
@@ -131,11 +131,11 @@ const SelectContent = forwardRef(
           // heights
           "max-h-[--radix-select-content-available-height]",
           // background color
-          "bg-white dark:bg-gray-950",
+          "bg-popover",
           // text color
-          "text-gray-900 dark:text-gray-50",
+          "text-popover-foreground",
           // border color
-          "border-gray-200 dark:border-gray-800",
+          "border-border",
           // transition
           "will-change-[transform,opacity]",
           // "data-[state=open]:animate-slideDownAndFade",
@@ -203,13 +203,13 @@ const SelectItem = forwardRef(
           // base
           "grid cursor-pointer grid-cols-[1fr_20px] gap-x-2 rounded px-3 py-2 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
           // text color
-          "text-gray-900 dark:text-gray-50",
+          "text-foreground",
           // disabled
           "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
           // focus
-          "focus-visible:bg-gray-100 focus-visible:dark:bg-gray-900",
+          "focus-visible:bg-accent focus-visible:text-accent-foreground",
           // hover
-          "hover:bg-gray-100 hover:dark:bg-gray-900",
+          "hover:bg-accent hover:text-accent-foreground",
           className
         )}
         {...props}
@@ -239,13 +239,13 @@ const SelectItemPeriod = forwardRef(
           // base
           "relative flex cursor-pointer items-center rounded py-2 pl-8 pr-3 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
           // text color
-          "text-gray-900 dark:text-gray-50",
+          "text-foreground",
           // disabled
           "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
           // focus
-          "focus-visible:bg-gray-100 focus-visible:dark:bg-gray-900",
+          "focus-visible:bg-accent focus-visible:text-accent-foreground",
           // hover
-          "hover:bg-gray-100 hover:dark:bg-gray-900",
+          "hover:bg-accent hover:text-accent-foreground",
           className
         )}
         {...props}
@@ -265,7 +265,7 @@ const SelectItemPeriod = forwardRef(
           </span>
           <span>
             {period?.from && period?.to && (
-              <span className="whitespace-nowrap font-normal text-gray-400">
+              <span className="whitespace-nowrap font-normal text-muted-foreground">
                 {format(period.from, "MMM d, yyyy")} –{" "}
                 {format(period.to, "MMM d, yyyy")}
               </span>
@@ -286,7 +286,7 @@ const SelectSeparator = forwardRef(({ className, ...props }, forwardedRef) => (
       // base
       "-mx-1 my-1 h-px",
       // background color
-      "bg-gray-300 dark:bg-gray-700",
+      "bg-border",
       className
     )}
     {...props}

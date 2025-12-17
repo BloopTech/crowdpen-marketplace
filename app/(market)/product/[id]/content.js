@@ -190,7 +190,7 @@ export default function ProductDetailContent(props) {
 
   return (
     <TooltipProvider delayDuration={150} skipDelayDuration={0}>
-      <div className="min-h-screen bg-gray-50 w-full">
+      <div className="min-h-screen bg-background w-full">
         <MarketplaceHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -202,7 +202,7 @@ export default function ProductDetailContent(props) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Product Images */}
             <div className="space-y-4">
-              <div className="aspect-[3/4] relative overflow-hidden rounded-lg bg-gradient-to-br from-purple-50 to-pink-50">
+              <div className="aspect-[3/4] relative overflow-hidden rounded-lg bg-gradient-to-br from-muted to-accent">
                 <Image
                   src={
                     productItemData?.images[selectedImage] || "/placeholder.svg"
@@ -225,8 +225,8 @@ export default function ProductDetailContent(props) {
                       }}
                       className={`relative w-20 h-24 rounded-md overflow-hidden border-2 flex-shrink-0 hover:opacity-80 transition-opacity ${
                         selectedImage === index
-                          ? "border-purple-500"
-                          : "border-gray-200"
+                          ? "border-tertiary"
+                          : "border-border"
                       }`}
                     >
                       <Image
@@ -266,7 +266,7 @@ export default function ProductDetailContent(props) {
                         <DropdownMenuTrigger className="outline-none cursor-pointer">
                           <Ellipsis className="h-4 w-4" />
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="z-20 overflow-y-auto bg-white w-36">
+                        <DropdownMenuContent className="z-20 overflow-y-auto w-36">
                           <DropdownMenuItem>
                             <Link
                               href={`/product/edit/${productItemData?.id}`}
@@ -295,7 +295,7 @@ export default function ProductDetailContent(props) {
                 {/* Author Info */}
                 <div>
                   <Link href={`/author/${productItemData?.User?.pen_name}`}>
-                    <div className="flex items-center gap-3 mb-4 cursor-pointer hover:bg-gray-50 p-2 rounded-lg -m-2">
+                    <div className="flex items-center gap-3 mb-4 cursor-pointer hover:bg-accent p-2 rounded-lg -m-2">
                       <Avatar
                         color={productItemData?.User?.color}
                         imageUrl={productItemData?.User?.image}
@@ -306,7 +306,7 @@ export default function ProductDetailContent(props) {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-semibold text-black hover:text-[#d3a155]">
+                        <div className="font-semibold text-foreground hover:text-tertiary">
                           {productItemData?.User?.name}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -330,7 +330,7 @@ export default function ProductDetailContent(props) {
                         className={`h-4 w-4 ${
                           i < Math.floor(productItemData.rating)
                             ? "fill-yellow-400 text-yellow-400"
-                            : "text-gray-300"
+                            : "text-gray-300 dark:text-gray-600"
                         }`}
                       />
                     ))}
@@ -377,7 +377,7 @@ export default function ProductDetailContent(props) {
                           <button
                             type="button"
                             aria-label="Recommended Retail Price information"
-                            className="rounded-full p-1 text-gray-400 transition-colors hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-1"
+                            className="rounded-full p-1 text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 focus:ring-offset-background"
                           >
                             <Info className="h-4 w-4" aria-hidden="true" />
                           </button>
@@ -392,12 +392,12 @@ export default function ProductDetailContent(props) {
                         </TooltipContent>
                       </Tooltip>
                     </div>
-                    <div className="text-sm text-emerald-700 font-medium">
+                    <div className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
                       Save {formattedSave} ({savePercent}% OFF)
                     </div>
                   </div>
                 )}
-                <div className="border-t border-gray-200" />
+                <div className="border-t border-border" />
               </div>
 
               {/* Variations */}
@@ -411,8 +411,8 @@ export default function ProductDetailContent(props) {
                       key={variation.id}
                       className={`p-3 border rounded-lg cursor-pointer ${
                         selectedVariation === index
-                          ? "border-purple-500 bg-purple-50"
-                          : "border-gray-200"
+                          ? "border-tertiary bg-tertiary/10"
+                          : "border-border"
                       }`}
                       onClick={() => setSelectedVariation(index)}
                     >
@@ -451,7 +451,7 @@ export default function ProductDetailContent(props) {
                 >
                   <Button
                     type="submit"
-                    className="w-full disabled:cursor-not-allowed text-white"
+                    className="w-full disabled:cursor-not-allowed"
                     size="lg"
                     disabled={
                       isCartPending ||
@@ -487,7 +487,7 @@ export default function ProductDetailContent(props) {
                       className={`flex-1 transition-all duration-200 ${
                         isWished
                           ? "bg-red-500 hover:bg-red-600 text-white"
-                          : "bg-white/80 hover:bg-white text-gray-600 hover:text-red-500"
+                          : "bg-background/80 hover:bg-background text-muted-foreground hover:text-red-500"
                       } ${isPending ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
                       type="submit"
                       disabled={
@@ -521,7 +521,7 @@ export default function ProductDetailContent(props) {
               </div>
 
               {/* Product Features */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Download className="h-4 w-4 text-green-600" />
                   <span className="text-sm">

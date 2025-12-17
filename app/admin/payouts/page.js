@@ -85,7 +85,7 @@ export default function PayoutsPage() {
                   setPayoutsParams((p) => ({ ...p, page: 1, from: v }));
                   setQs({ from: v, page: 1 });
                 }}
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -98,7 +98,7 @@ export default function PayoutsPage() {
                   setPayoutsParams((p) => ({ ...p, page: 1, to: v }));
                   setQs({ to: v, page: 1 });
                 }}
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -110,7 +110,7 @@ export default function PayoutsPage() {
                   setPayoutsParams((p) => ({ ...p, page: 1, pageSize: v }));
                   setQs({ pageSize: v, page: 1 });
                 }}
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -143,7 +143,7 @@ export default function PayoutsPage() {
               <label className="block text-xs mb-1">Recipient</label>
               <select
                 name="recipient_id"
-                className="border border-slate-300 rounded px-2 py-2 text-sm min-w-48"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {users.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -157,7 +157,7 @@ export default function PayoutsPage() {
               <input
                 name="amount"
                 placeholder="100"
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -165,7 +165,7 @@ export default function PayoutsPage() {
               <input
                 name="currency"
                 defaultValue="USD"
-                className="border border-slate-300 rounded px-2 py-2 text-sm w-24"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -173,7 +173,7 @@ export default function PayoutsPage() {
               <input
                 name="transaction_reference"
                 placeholder="optional"
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -181,7 +181,7 @@ export default function PayoutsPage() {
               <input
                 name="note"
                 placeholder="optional"
-                className="border border-slate-300 rounded px-2 py-2 text-sm"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <Button type="submit">Create Payout</Button>

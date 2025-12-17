@@ -35,13 +35,13 @@ const DropdownMenuSubMenuTrigger = forwardRef(
         // base
         "relative flex cursor-default select-none items-center rounded py-1.5 pl-2 pr-1 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
         // text color
-        "text-black dark:text-white",
+        "text-foreground",
         // disabled
-        "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
+        "data-[disabled]:pointer-events-none data-[disabled]:text-muted-foreground",
         // focus
-        "focus-visible:bg-black focus-visible:!text-white dark:focus-visible:bg-[#f2f2f2] dark:focus-visible:text-black data-[state=open]:bg-black data-[state=open]:!text-white data-[state=open]:dark:text-black data-[state=open]:dark:bg-[#f2f2f2]",
+        "focus-visible:bg-accent focus-visible:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground",
         // hover
-        "hover:bg-black hover:text-white dark:hover:bg-[#f2f2f2] dark:hover:text-black",
+        "hover:bg-accent hover:text-accent-foreground",
         //
         className
       )}
@@ -71,11 +71,11 @@ const DropdownMenuSubMenuContent = forwardRef(
           // heights
           "max-h-[var(--radix-popper-available-height)]",
           // background color
-          "bg-white dark:bg-gray-950",
+          "bg-popover",
           // text color
-          "text-black dark:text-white",
+          "text-popover-foreground",
           // border color
-          "border-gray-200 dark:border-gray-800",
+          "border-border",
           // transition
           "will-change-[transform,opacity]",
           // "data-[state=open]:animate-slideDownAndFade",
@@ -113,11 +113,11 @@ const DropdownMenuContent = forwardRef(
           // heights
           "max-h-[var(--radix-popper-available-height)]",
           // background color
-          "bg-white dark:bg-gray-950",
+          "bg-popover",
           // text color
-          "text-black dark:text-white",
+          "text-popover-foreground",
           // border color
-          "border-gray-200 dark:border-gray-800",
+          "border-border",
           // transition
           "will-change-[transform,opacity]",
           "data-[state=closed]:animate-hide",
@@ -143,13 +143,13 @@ const DropdownMenuItem = forwardRef(
         // base
         "group/DropdownMenuItem relative flex cursor-pointer select-none items-center rounded outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
         // text color
-        "text-black dark:text-white",
+        "text-foreground",
         // disabled
-        "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
+        "data-[disabled]:pointer-events-none data-[disabled]:text-muted-foreground",
         // focus
-        "focus-visible:bg-black focus-visible:text-white dark:focus-visible:bg-[#f2f2f2] dark:focus-visible:text-black",
+        "focus-visible:bg-accent focus-visible:text-accent-foreground",
         // hover
-        "hover:bg-black hover:text-white dark:hover:bg-[#f2f2f2] dark:hover:text-black",
+        "hover:bg-accent hover:text-accent-foreground",
         className
       )}
       {...props}
@@ -158,7 +158,7 @@ const DropdownMenuItem = forwardRef(
       {hint && (
         <span
           className={cn(
-            "ml-auto pl-2 text-sm hover:bg-black hover:text-white dark:hover:bg-[#f2f2f2] dark:hover:text-black"
+            "ml-auto pl-2 text-sm text-muted-foreground"
           )}
         >
           {hint}
@@ -167,7 +167,7 @@ const DropdownMenuItem = forwardRef(
       {shortcut && (
         <span
           className={cn(
-            "ml-auto pl-2 text-sm hover:bg-black hover:text-white dark:hover:bg-[#f2f2f2] dark:hover:text-black"
+            "ml-auto pl-2 text-sm text-muted-foreground"
           )}
         >
           {shortcut}
@@ -189,13 +189,13 @@ const DropdownMenuCheckboxItem = forwardRef(
         // base
         "relative flex cursor-pointer select-none items-center gap-x-2 rounded py-1.5 pl-8 pr-1 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
         // text color
-        "text-gray-900 dark:text-gray-50",
+        "text-foreground",
         // disabled
-        "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
+        "data-[disabled]:pointer-events-none data-[disabled]:text-muted-foreground",
         // focus
-        "focus-visible:bg-black focus-visible:text-white dark:focus-visible:bg-[#f2f2f2] dark:focus-visible:text-black",
+        "focus-visible:bg-accent focus-visible:text-accent-foreground",
         // hover
-        "hover:bg-black hover:text-white dark:hover:bg-[#f2f2f2] dark:hover:text-black",
+        "hover:bg-accent hover:text-accent-foreground",
         className
       )}
       checked={checked}
@@ -213,7 +213,7 @@ const DropdownMenuCheckboxItem = forwardRef(
       {hint && (
         <span
           className={cn(
-            "ml-auto text-sm font-normal text-gray-400 dark:text-gray-600"
+            "ml-auto text-sm font-normal text-muted-foreground"
           )}
         >
           {hint}
@@ -222,7 +222,7 @@ const DropdownMenuCheckboxItem = forwardRef(
       {shortcut && (
         <span
           className={cn(
-            "ml-auto text-sm font-normal tracking-widest text-gray-400 dark:border-gray-800 dark:text-gray-600"
+            "ml-auto text-sm font-normal tracking-widest text-muted-foreground"
           )}
         >
           {shortcut}
@@ -244,13 +244,13 @@ const DropdownMenuRadioItem = forwardRef(
         // base
         "group/DropdownMenuRadioItem relative flex cursor-pointer select-none items-center gap-x-2 rounded py-1.5 pl-8 pr-1 outline-none transition-colors data-[state=checked]:font-semibold sm:text-sm",
         // text color
-        "text-gray-900 dark:text-gray-50",
+        "text-foreground",
         // disabled
-        "data-[disabled]:pointer-events-none data-[disabled]:text-gray-400 data-[disabled]:hover:bg-none dark:data-[disabled]:text-gray-600",
+        "data-[disabled]:pointer-events-none data-[disabled]:text-muted-foreground",
         // focus
-        "focus-visible:bg-black focus-visible:text-white dark:focus-visible:bg-[#f2f2f2] dark:focus-visible:text-black",
+        "focus-visible:bg-accent focus-visible:text-accent-foreground",
         // hover
-        "hover:bg-black hover:text-white dark:hover:bg-[#f2f2f2] dark:hover:text-black",
+        "hover:bg-accent hover:text-accent-foreground",
         className
       )}
       {...props}
@@ -278,7 +278,7 @@ const DropdownMenuRadioItem = forwardRef(
       {hint && (
         <span
           className={cn(
-            "ml-auto text-sm font-normal text-gray-400 dark:text-gray-600"
+            "ml-auto text-sm font-normal text-muted-foreground"
           )}
         >
           {hint}
@@ -287,7 +287,7 @@ const DropdownMenuRadioItem = forwardRef(
       {shortcut && (
         <span
           className={cn(
-            "ml-auto text-sm font-normal tracking-widest text-gray-400 dark:border-gray-800 dark:text-gray-600"
+            "ml-auto text-sm font-normal tracking-widest text-muted-foreground"
           )}
         >
           {shortcut}
@@ -306,7 +306,7 @@ const DropdownMenuLabel = forwardRef(
         // base
         "px-2 py-2 text-xs font-medium tracking-wide",
         // text color
-        "text-gray-500 dark:text-gray-500",
+        "text-muted-foreground",
         className
       )}
       {...props}
@@ -320,7 +320,7 @@ const DropdownMenuSeparator = forwardRef(
     <DropdownMenuPrimitives.Separator
       ref={forwardedRef}
       className={cn(
-        "-mx-1 my-1 h-px border-t border-gray-200 dark:border-gray-800",
+        "-mx-1 my-1 h-px border-t border-border",
         className
       )}
       {...props}
@@ -334,7 +334,7 @@ const DropdownMenuIconWrapper = ({ className, ...props }) => {
     <div
       className={cn(
         // text color
-        "text-gray-600 dark:text-white",
+        "text-muted-foreground",
         // disabled
         "group-data-[disabled]/DropdownMenuItem:text-gray-400 group-data-[disabled]/DropdownMenuItem:dark:text-gray-700",
         className

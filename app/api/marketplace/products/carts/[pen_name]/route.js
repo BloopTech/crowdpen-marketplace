@@ -99,7 +99,6 @@ export async function GET(request, { params }) {
         active: true,
         subtotal: 0.00,
         discount: 0.00,
-        tax: 0.00,
         total: 0.00
       });
     }
@@ -152,21 +151,26 @@ export async function GET(request, { params }) {
 
     // Calculate cart totals
     const subtotal = cartItems.reduce((sum, item) => {
-      return sum + (parseFloat(item.price) * item.quantity);
+      return sum + parseFloat(item.price || 0);
     }, 0);
 
-    const tax = subtotal * 0.1; // 10% tax
-    const total = subtotal + tax - parseFloat(cart.discount || 0);
+    const total = subtotal - parseFloat(cart.discount || 0);
 
-    // Determine currency by region (default to GHS)
+    // Determine currency from DB (cart -> product -> fallback)
     const headerCountry = readCountryHeader(request.headers);
-    const currency = deriveCurrencyByCountry(headerCountry) || "GHS";
+    const currencyFromItems =
+      cartItems?.find((it) => it?.MarketplaceProduct?.currency)?.MarketplaceProduct?.currency || null;
+    const currency =
+      cart?.currency ||
+      currencyFromItems ||
+      deriveCurrencyByCountry(headerCountry) ||
+      "USD";
 
     // Update cart totals
     await cart.update({
       subtotal: subtotal.toFixed(2),
-      tax: tax.toFixed(2),
-      total: total.toFixed(2)
+      total: total.toFixed(2),
+      currency: cart?.currency || currency,
     });
 
     // Format response data
@@ -181,6 +185,7 @@ export async function GET(request, { params }) {
         title: item.MarketplaceProduct.title,
         description: item.MarketplaceProduct.description,
         price: parseFloat(item.MarketplaceProduct.price),
+        currency: item.MarketplaceProduct.currency,
         image: item.MarketplaceProduct.image,
         file_type: item.MarketplaceProduct.fileType,
         file_size: item.MarketplaceProduct.fileSize,
@@ -204,10 +209,9 @@ export async function GET(request, { params }) {
           id: cart.id,
           subtotal: Number(subtotal.toFixed(2)),
           discount: Number(parseFloat(cart.discount || 0).toFixed(2)),
-          tax: Number(tax.toFixed(2)),
           total: Number(total.toFixed(2)),
           item_count: count,
-          currency
+          currency: (cart?.currency || currency)
         },
         pagination: {
           page,
