@@ -111,23 +111,22 @@ export async function POST(request, { params }) {
         discount: 0.0,
         tax: 0.0,
         total: 0.0,
-        currency: (product?.currency || "USD"),
+        currency: "USD",
       });
     }
 
     const productCurrency = (product?.currency || "USD").toString().toUpperCase();
-    const cartCurrency = (cart?.currency || "").toString().toUpperCase();
-    if (cartCurrency && cartCurrency !== productCurrency) {
+    if (productCurrency !== "USD") {
       return NextResponse.json(
         {
           status: "error",
-          message: "Your cart can only contain items in one currency",
+          message: "Only USD-priced products can be added to cart",
         },
         { status: 400 }
       );
     }
-    if (!cartCurrency) {
-      await cart.update({ currency: productCurrency });
+    if ((cart?.currency || "").toString().toUpperCase() !== "USD") {
+      await cart.update({ currency: "USD" });
     }
 
     // Check if item already exists in cart
@@ -218,7 +217,7 @@ export async function POST(request, { params }) {
         subtotal: cart.subtotal,
         total: cart.total,
         itemCount: cartItems.length,
-        currency: cart.currency || productCurrency,
+        currency: "USD",
       },
     });
   } catch (error) {

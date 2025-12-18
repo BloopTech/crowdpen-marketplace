@@ -98,7 +98,7 @@ export default function TicketsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="capitalize">{t.status || "open"}</TableCell>
-                  <TableCell>{t.createdAt ? new Date(t.createdAt).toLocaleString() : "-"}</TableCell>
+                  <TableCell>{t.createdAt ? new Date(t.createdAt).toLocaleString("en-US", { timeZone: "UTC" }) : "-"}</TableCell>
                 </TableRow>
               ))}
               {list.length === 0 && (

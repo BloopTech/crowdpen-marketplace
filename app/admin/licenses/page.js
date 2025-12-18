@@ -130,7 +130,7 @@ export default function LicensesPage() {
                   <TableCell>{it.downloadCount || 0}</TableCell>
                   <TableCell>
                     {it.lastDownloaded
-                      ? new Date(it.lastDownloaded).toLocaleString()
+                      ? new Date(it.lastDownloaded).toLocaleString("en-US", { timeZone: "UTC" })
                       : "-"}
                   </TableCell>
                   <TableCell>

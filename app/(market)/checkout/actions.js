@@ -19,6 +19,28 @@ const {
   sequelize,
 } = db;
 
+function normalizeCurrency(code) {
+  if (!code) return null;
+  const c = String(code).trim().toUpperCase();
+  return /^[A-Z]{3}$/.test(c) ? c : null;
+}
+
+function getStartButtonSupportedCurrencies() {
+  const raw = process.env.STARTBUTTON_SUPPORTED_CURRENCIES;
+  if (raw) {
+    const set = new Set(
+      raw
+        .split(",")
+        .map((s) => normalizeCurrency(s))
+        .filter(Boolean)
+    );
+    if (set.size > 0) return set;
+  }
+
+  // Default allowlist based on existing app usage.
+  return new Set(["NGN", "GHS", "ZAR", "KES", "UGX", "RWF", "TZS", "ZMW", "XOF", "USD"]);
+}
+
 function generateOrderNumber() {
   const ts = new Date();
   const pad = (n) => String(n).padStart(2, "0");
@@ -34,37 +56,75 @@ function generateOrderNumber() {
 async function getHeaderCountry() {
   try {
     const h = await headers();
-    let ip = h.get("x-forwarded-for") || h.get("x-real-ip");
-
-    if (ip === "::1" || ip === "127.0.0.1" || ip === "::ffff:127.0.0.1") {
-      // Use a known external IP address for testing purposes
-      ip = "154.160.14.46"; // Example IP (Google Public DNS)
-    } else {
-      // Handle IPv6 addresses
-      ip = ip.includes(":") ? ip.split(":").pop() : ip;
-    }
-
-    const getIp = ip.split(",")[0].trim();
-
-    const res = await fetch(`https://ipapi.co/${getIp}/json/`, {
-      headers: { Accept: "application/json" },
-      next: { revalidate: 3600 },
-    });
-    if (!res.ok) {
-      return null;
-    }
-    const data = await res.json();
-
-    return data?.country_code || null;
+    const vercel = h.get("x-vercel-ip-country");
+    const cf = h.get("cf-ipcountry");
+    const generic = h.get("x-country-code");
+    const code = (vercel || cf || generic || "").toUpperCase();
+    return code || null;
   } catch {
     return null;
   }
 }
 
-function deriveCurrencyByCountry(countryCode) {
+function safeJsonParse(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
 
-  const c = countryCode?.toUpperCase();
+function extractMetadata(payload) {
+  return payload?.metadata || payload?.data?.metadata || null;
+}
+
+function toFiniteNumber(v) {
+  const n = v != null ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
+function deriveCurrencyByCountry(countryCode) {
+  const c = (countryCode || "").toUpperCase();
+
+  const euroCountries = new Set([
+    "AT",
+    "BE",
+    "CY",
+    "EE",
+    "FI",
+    "FR",
+    "DE",
+    "GR",
+    "IE",
+    "IT",
+    "LV",
+    "LT",
+    "LU",
+    "MT",
+    "NL",
+    "PT",
+    "SK",
+    "SI",
+    "ES",
+  ]);
+  if (euroCountries.has(c)) return "EUR";
+
   const map = {
+    US: "USD",
+    GB: "GBP",
+    CA: "CAD",
+    AU: "AUD",
+    NZ: "NZD",
+    CH: "CHF",
+    SE: "SEK",
+    NO: "NOK",
+    DK: "DKK",
+    PL: "PLN",
+    CZ: "CZK",
+    HU: "HUF",
+    RO: "RON",
+    BG: "BGN",
+
     NG: "NGN",
     GH: "GHS",
     ZA: "ZAR",
@@ -73,14 +133,45 @@ function deriveCurrencyByCountry(countryCode) {
     RW: "RWF",
     TZ: "TZS",
     ZM: "ZMW",
+
     CI: "XOF",
     BJ: "XOF",
     TG: "XOF",
     SN: "XOF",
     ML: "XOF",
     BF: "XOF",
+
+    JP: "JPY",
+    CN: "CNY",
+    IN: "INR",
+    SG: "SGD",
+    HK: "HKD",
+    KR: "KRW",
+
+    BR: "BRL",
+    MX: "MXN",
+
+    EG: "EGP",
+    MA: "MAD",
   };
-  return map[c] || "GHS";
+
+  return map[c] || "USD";
+}
+
+async function getFxRate(from, to) {
+  if (!from || !to || from === to) return 1;
+  try {
+    const upstream = await fetch(`https://open.er-api.com/v6/latest/${from}`, {
+      next: { revalidate: 3600 },
+    });
+    if (!upstream.ok) return null;
+    const data = await upstream.json().catch(() => null);
+    const rateRaw = data?.rates?.[to];
+    const rate = rateRaw != null ? Number(rateRaw) : null;
+    return Number.isFinite(rate) && rate > 0 ? rate : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function beginCheckout(prevState, formData) {
@@ -140,7 +231,7 @@ export async function beginCheckout(prevState, formData) {
     include: [
       {
         model: db.MarketplaceProduct,
-        attributes: ["id", "title", "user_id", "stock", "inStock"],
+        attributes: ["id", "title", "user_id", "stock", "inStock", "currency"],
         include: [
           {
             model: db.User,
@@ -204,10 +295,35 @@ export async function beginCheckout(prevState, formData) {
   const discount = Number(cart.discount ?? 0);
   const total = subtotal + tax - discount;
 
-  // Derive currency by region with default GHS (Ghana Cedis)
+  const baseCurrency = "USD";
   const ipCountry = await getHeaderCountry();
-  const derived = deriveCurrencyByCountry(ipCountry);
-  const orderCurrency = cart.currency || derived || "GHS";
+  const supported = getStartButtonSupportedCurrencies();
+  const viewerCurrency = normalizeCurrency(deriveCurrencyByCountry(ipCountry)) || baseCurrency;
+
+  // Choose a charge currency that StartButton supports and for which we have an FX rate.
+  const candidates = Array.from(
+    new Set([viewerCurrency, baseCurrency, "GHS"].map((c) => normalizeCurrency(c)).filter(Boolean))
+  );
+
+  let paidCurrency = baseCurrency;
+  let fxRate = 1;
+  for (const cur of candidates) {
+    if (!supported.has(cur)) continue;
+    if (cur === baseCurrency) {
+      paidCurrency = baseCurrency;
+      fxRate = 1;
+      break;
+    }
+
+    const rate = await getFxRate(baseCurrency, cur);
+    if (rate != null) {
+      paidCurrency = cur;
+      fxRate = rate;
+      break;
+    }
+  }
+
+  const paidAmount = Number((Number(total) * Number(fxRate)).toFixed(2));
 
   const t = await sequelize.transaction();
   try {
@@ -242,7 +358,10 @@ export async function beginCheckout(prevState, formData) {
         paymentMethod: paymentMethod,
         paymentStatus: "pending",
         orderStatus: "pending",
-        currency: orderCurrency,
+        currency: baseCurrency,
+        paid_amount: paidAmount,
+        paid_currency: paidCurrency,
+        fx_rate: fxRate,
         notes: null,
       },
       { transaction: t }
@@ -274,8 +393,12 @@ export async function beginCheckout(prevState, formData) {
       message: "Checkout started",
       orderId: order.id,
       orderNumber,
-      amount: Number(order.total),
-      currency: order.currency || "GHS",
+      amount: paidAmount,
+      currency: paidCurrency,
+      baseAmount: Number(order.total),
+      baseCurrency,
+      fxRate,
+      viewerCurrency,
       customer: { email, firstName, lastName },
     };
   } catch (e) {
@@ -317,12 +440,24 @@ export async function finalizeOrder(prevState, formData) {
       : order.notes;
 
     if (status === "success") {
+      const payload = payloadRaw ? safeJsonParse(payloadRaw) : null;
+      const meta = payload ? extractMetadata(payload) : null;
+      const paid_amount = toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
+      const fx_rate = toFiniteNumber(meta?.fxRate) ?? toFiniteNumber(meta?.fx_rate);
+      const paid_currency = (meta?.paidCurrency || meta?.paid_currency || "")
+        .toString()
+        .trim()
+        .toUpperCase();
+
       await order.update(
         {
-          paymentStatus: "completed",
-          orderStatus: "completed",
+          paymentStatus: "successful",
+          orderStatus: "successful",
           paystackReferenceId: reference || order.paystackReferenceId,
           notes,
+          paid_amount: paid_amount != null ? paid_amount : order.paid_amount,
+          paid_currency: paid_currency || order.paid_currency,
+          fx_rate: fx_rate != null ? fx_rate : order.fx_rate,
         },
         { transaction: t }
       );

@@ -1,16 +1,43 @@
 "use client";
 import React from "react";
+import { Button } from "../../../components/ui/button";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
+import { Badge } from "../../../components/ui/badge";
 import { Download, Calendar, DollarSign } from "lucide-react";
 import { useAccount } from "../context";
+import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
 
 export default function MyPurchases() {
   const { purchases = [] } = useAccount();
+
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD");
+  const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase();
+  const displayRate =
+    Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const showConverted = displayCurrency !== "USD" && displayRate !== 1;
+
+  const fmtOriginal = (currency, v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: (currency || "USD").toString().toUpperCase(),
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+
+  const fmtViewerFromUsd = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate);
 
   return (
     <>
@@ -40,13 +67,27 @@ export default function MyPurchases() {
                     </div>
                     <div className="flex items-center gap-1">
                       <DollarSign className="h-3 w-3" />
-                      <span>${purchase.price}</span>
+                      <div className="flex flex-col leading-tight">
+                        <span>
+                          {fmtOriginal(purchase.currency, purchase.price)}
+                        </span>
+                        {showConverted &&
+                        (purchase?.currency || "USD")
+                          .toString()
+                          .toUpperCase() === "USD" ? (
+                          <span className="text-[11px] text-muted-foreground">
+                            ≈ {fmtViewerFromUsd(purchase.price)}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">
-                    {purchase.status === "completed"
+                    {["completed", "successful"].includes(
+                      (purchase.status || "").toString().toLowerCase()
+                    )
                       ? "✓ Complete"
                       : "Processing"}
                   </Badge>

@@ -8,9 +8,22 @@ import Image from "next/image"
 import GridCard from "./grid-card"
 import Link from "next/link"
 import { StatusPill } from "./status-pill"
+import { useViewerCurrency } from "../hooks/use-viewer-currency"
 
 
 export default function SearchResults({ resources, query, searchTime, viewMode, setViewMode }) {
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD")
+  const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase()
+  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1
+  const fmt = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate)
+
   if (resources.length === 0) {
     return (
       <div className="text-center py-12">
@@ -28,7 +41,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
     <div className="space-y-4">
       {/* Search Stats */}
       <div className="text-sm text-muted-foreground">
-        About {resources.length.toLocaleString()} results ({searchTime}ms)
+        About {resources.length.toLocaleString("en-US")} results ({searchTime}ms)
         {query && (
           <span className="ml-2">
             for <strong>&quot;{query}&quot;</strong>
@@ -119,7 +132,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold">${resource.price}</div>
+                        <div className="text-2xl font-bold">{fmt(resource.price)}</div>
                         <div className="text-xs mt-1">
                           {isOutOfStock ? (
                             <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
@@ -143,7 +156,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                       </div>
                       <div className="flex items-center gap-1">
                         <Download className="h-3 w-3" />
-                        <span>{resource.downloads.toLocaleString()}</span>
+                        <span>{resource.downloads.toLocaleString("en-US")}</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <FileText className="h-3 w-3" />

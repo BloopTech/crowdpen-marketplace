@@ -88,6 +88,15 @@ function extractPayerEmail(payload) {
   );
 }
 
+function extractMetadata(payload) {
+  return payload?.metadata || payload?.data?.metadata || null;
+}
+
+function toFiniteNumber(v) {
+  const n = v != null ? Number(v) : NaN;
+  return Number.isFinite(n) ? n : null;
+}
+
 export async function POST(request) {
   const secret = getWebhookSecret();
   if (!secret) {
@@ -136,12 +145,23 @@ export async function POST(request) {
     const mergedNotes = notesPart ? (order.notes ? `${order.notes}\n${notesPart}` : notesPart) : order.notes;
 
     if (ok) {
+      const meta = extractMetadata(payload) || {};
+      const paid_amount = toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
+      const fx_rate = toFiniteNumber(meta?.fxRate) ?? toFiniteNumber(meta?.fx_rate);
+      const paid_currency = (meta?.paidCurrency || meta?.paid_currency || "")
+        .toString()
+        .trim()
+        .toUpperCase();
+
       await order.update(
         {
-          paymentStatus: "completed",
-          orderStatus: "completed",
+          paymentStatus: "successful",
+          orderStatus: "successful",
           paystackReferenceId: reference || order.paystackReferenceId,
           notes: mergedNotes,
+          ...(paid_amount != null ? { paid_amount } : {}),
+          ...(paid_currency ? { paid_currency } : {}),
+          ...(fx_rate != null ? { fx_rate } : {}),
         },
         { transaction: t }
       );

@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import NextImage from "next/image";
 import { useAccount } from "../context";
+import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
 
 
 
@@ -47,6 +48,30 @@ export default function MyProducts() {
         setMyProductsSortBy,
         categories,
       } = useAccount();
+
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD");
+  const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase();
+  const displayRate =
+    Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const showConverted = displayCurrency !== "USD" && displayRate !== 1;
+
+  const fmtOriginal = (currency, v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: (currency || "USD").toString().toUpperCase(),
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+
+  const fmtViewerFromUsd = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate);
 
 
   return (
@@ -139,7 +164,18 @@ export default function MyProducts() {
                 <h3 className="font-semibold text-sm line-clamp-2">
                   {p.title}
                 </h3>
-                <div className="text-sm text-foreground mt-2">${p.price}</div>
+                <div className="text-sm text-foreground mt-2">
+                  <div className="flex flex-col leading-tight">
+                    <span>{fmtOriginal(p.currency, p.price)}</span>
+                    {showConverted &&
+                    (p?.currency || "USD").toString().toUpperCase() ===
+                      "USD" ? (
+                      <span className="text-[11px] text-muted-foreground">
+                        ≈ {fmtViewerFromUsd(p.price)}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
                 <div className="text-xs mt-1">
                   {p?.inStock === false ||
                   (p?.stock !== null &&

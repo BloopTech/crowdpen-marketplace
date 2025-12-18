@@ -42,7 +42,8 @@ export async function GET() {
     const orders = await db.MarketplaceOrder.findAll({ attributes: ["total", "currency", "paymentStatus"] });
     let totalSales = 0;
     for (const o of orders) {
-      if ((o?.paymentStatus || "completed") === "completed" && o?.total) {
+      const ps = String(o?.paymentStatus || "").toLowerCase();
+      if (["successful", "completed"].includes(ps) && o?.total) {
         totalSales += Number(o.total) || 0;
       }
     }

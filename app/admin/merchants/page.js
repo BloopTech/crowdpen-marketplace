@@ -317,7 +317,7 @@ export default function MerchantsPage() {
                       <TableCell className="capitalize">{k.level}</TableCell>
                       <TableCell>
                         {k.submitted_at
-                          ? new Date(k.submitted_at).toLocaleString()
+                          ? new Date(k.submitted_at).toLocaleString("en-US", { timeZone: "UTC" })
                           : "-"}
                       </TableCell>
                       <TableCell>

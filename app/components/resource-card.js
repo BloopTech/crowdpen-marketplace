@@ -1,10 +1,13 @@
+"use client";
+
 import Image from "next/image";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { Card, CardContent, CardFooter } from "..//components/ui/card";
+import { Card, CardContent, CardFooter } from "../components/ui/card";
 import { Download, Star, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { StatusPill } from "./status-pill";
+import { useViewerCurrency } from "../hooks/use-viewer-currency";
 
 export default function ResourceCard({ resource }) {
   const isOutOfStock =
@@ -12,6 +15,19 @@ export default function ResourceCard({ resource }) {
     (resource?.stock !== null &&
       typeof resource?.stock !== "undefined" &&
       Number(resource?.stock) <= 0);
+
+  const baseCurrency = (resource?.currency || "USD").toString().toUpperCase();
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
+  const displayCurrency = (viewerCurrency || baseCurrency).toString().toUpperCase();
+  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const fmt = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate);
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-300">
       <div className="relative aspect-[4/3] overflow-hidden">
@@ -65,13 +81,13 @@ export default function ResourceCard({ resource }) {
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Download className="h-3 w-3" />
-          <span>{resource.downloads.toLocaleString()} downloads</span>
+          <span>{resource.downloads.toLocaleString("en-US")} downloads</span>
         </div>
       </CardContent>
 
       <CardFooter className="p-4 pt-0 flex items-center justify-between">
         <div>
-          <div className="text-2xl font-bold">${resource.price}</div>
+          <div className="text-2xl font-bold">{fmt(resource.price)}</div>
           <div className="text-xs mt-1">
             {isOutOfStock ? (
               <Badge className="bg-red-800/90 text-white text-xs">

@@ -11,6 +11,7 @@ import { useHome } from "../../../context";
 import { Badge } from "../../../components/ui/badge";
 import Link from "next/link";
 import { StatusPill } from "../../../components/status-pill";
+import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
 
 const initialStateValues = {
   message: "",
@@ -23,6 +24,18 @@ export default function MyProductCard(props) {
   const { product } = props;
   const { openLoginDialog, refetchWishlistCount, refetchCartCount } = useHome();
   const { data: session } = useSession();
+  const baseCurrency = (product?.currency || "USD").toString().toUpperCase();
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
+  const displayCurrency = (viewerCurrency || baseCurrency).toString().toUpperCase();
+  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const fmt = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate);
   const [state, formAction, isPending] = useActionState(
     addProductWishlist,
     initialStateValues
@@ -213,7 +226,7 @@ export default function MyProductCard(props) {
             </span>
           </div>
           <div className="text-lg font-bold text-primary">
-            ${product.price}
+            {fmt(product.price)}
           </div>
         </div>
         <div className="text-xs mb-2">

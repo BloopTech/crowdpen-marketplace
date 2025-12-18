@@ -163,7 +163,7 @@ export default function KYCTabs(props) {
                   <TableCell className="capitalize">{r.level}</TableCell>
                   <TableCell>
                     {r.submitted_at
-                      ? new Date(r.submitted_at).toLocaleString()
+                      ? new Date(r.submitted_at).toLocaleString("en-US", { timeZone: "UTC" })
                       : "-"}
                   </TableCell>
                   <TableCell>
@@ -239,7 +239,7 @@ export default function KYCTabs(props) {
                                     DOB:
                                   </span>{" "}
                                   {r.dob
-                                    ? new Date(r.dob).toLocaleDateString()
+                                    ? new Date(r.dob).toLocaleDateString("en-US", { timeZone: "UTC" })
                                     : "-"}
                                 </div>
                                 <div className="col-span-2">
@@ -522,7 +522,7 @@ export default function KYCTabs(props) {
                                     </HoverCard>
                                   </div>
                                   <div>
-                                    Reviewed at: {r.reviewed_at ? new Date(r.reviewed_at).toLocaleString() : "—"}
+                                    Reviewed at: {r.reviewed_at ? new Date(r.reviewed_at).toLocaleString("en-US", { timeZone: "UTC" }) : "—"}
                                   </div>
                                 </div>
                               </div>
@@ -622,7 +622,7 @@ export default function KYCTabs(props) {
                   <TableCell className="capitalize">{r.level}</TableCell>
                   <TableCell>
                     {r.reviewed_at
-                      ? new Date(r.reviewed_at).toLocaleString()
+                      ? new Date(r.reviewed_at).toLocaleString("en-US", { timeZone: "UTC" })
                       : "-"}
                   </TableCell>
                   <TableCell>
@@ -747,7 +747,7 @@ export default function KYCTabs(props) {
                   <TableCell>{r.rejection_reason || "-"}</TableCell>
                   <TableCell>
                     {r.reviewed_at
-                      ? new Date(r.reviewed_at).toLocaleString()
+                      ? new Date(r.reviewed_at).toLocaleString("en-US", { timeZone: "UTC" })
                       : "-"}
                   </TableCell>
                   <TableCell>

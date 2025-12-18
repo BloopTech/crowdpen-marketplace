@@ -45,9 +45,14 @@ export async function POST(request) {
         user_id: user.id,
         subtotal: 0,
         total: 0,
+        currency: "USD",
         active: true
       }
     });
+
+    if ((cart?.currency || "").toString().toUpperCase() !== "USD") {
+      await cart.update({ currency: "USD" });
+    }
 
     // Get products to add including owner KYC status for gating
     const products = await MarketplaceProduct.findAll({
@@ -76,13 +81,13 @@ export async function POST(request) {
     const addedProducts = [];
     const skippedProducts = [];
 
-    let cartCurrency = (cart?.currency || "").toString().toUpperCase();
+    const cartCurrency = "USD";
 
     // Add each product to cart
     for (const product of products) {
       const productCurrency = (product?.currency || "USD").toString().toUpperCase();
 
-      if (cartCurrency && cartCurrency !== productCurrency) {
+      if (productCurrency !== cartCurrency) {
         skippedProducts.push({
           id: product.id,
           title: product.title,
@@ -130,11 +135,6 @@ export async function POST(request) {
           price: product.price,
           subtotal: product.price
         });
-
-        if (!cartCurrency) {
-          cartCurrency = productCurrency;
-          await cart.update({ currency: cartCurrency });
-        }
         
         addedCount++;
         totalAmount += parseFloat(product.price);

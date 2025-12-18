@@ -64,7 +64,7 @@ export default function ProductDetails() {
         <Card>
           <CardContent className="p-6">
             <div className="prose max-w-none">
-              <p className="text-lg mb-4">{productItemData?.description}</p>
+              <p className="text-lg mb-4 dark:text-white">{productItemData?.description}</p>
             </div>
           </CardContent>
         </Card>

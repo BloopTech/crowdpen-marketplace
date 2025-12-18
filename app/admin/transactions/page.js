@@ -192,7 +192,7 @@ export default function TransactionsPage() {
                   <TableCell>{tx.transaction_reference || "-"}</TableCell>
                   <TableCell>
                     {tx.createdAt
-                      ? new Date(tx.createdAt).toLocaleString()
+                      ? new Date(tx.createdAt).toLocaleString("en-US", { timeZone: "UTC" })
                       : "-"}
                   </TableCell>
                 </TableRow>

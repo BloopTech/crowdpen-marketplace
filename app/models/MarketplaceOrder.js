@@ -92,6 +92,18 @@ MarketplaceOrder.init(
     paystackReferenceId: {
       type: DataTypes.STRING,
     },
+    paid_amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    paid_currency: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    fx_rate: {
+      type: DataTypes.DECIMAL(18, 8),
+      allowNull: true,
+    },
   },
   {
     sequelize,

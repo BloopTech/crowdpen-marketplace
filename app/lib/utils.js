@@ -34,7 +34,7 @@ export const hasErrorInput = [
 // Number formatter function
 
 export const usNumberformatter = (number, decimals = 0) =>
-  Intl.NumberFormat("us", {
+  Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   })

@@ -30,6 +30,7 @@ import { useSession } from "next-auth/react";
 import { useHome } from "../../context";
 import { beginCheckout, finalizeOrder } from "./actions";
 import Image from "next/image";
+import { useViewerCurrency } from "../../hooks/use-viewer-currency";
 
 const beginInitializeState = {
   success: false,
@@ -122,6 +123,19 @@ function CheckoutContent() {
     [cartSummary?.tax]
   );
 
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD");
+  const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase();
+  const displayRate =
+    Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const fmt = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate);
+
   // Define finalize and StartButton helpers BEFORE effects that reference them
   const finalize = useCallback(
     async (status, payload) => {
@@ -201,7 +215,7 @@ function CheckoutContent() {
         const cleanupHooks = setupSbCloseHooks();
 
         const config = {
-          amount: (Number(total) * 100).toFixed(0),
+          amount: (Number(order?.amount || 0) * 100).toFixed(0),
           phone: order?.customer?.phone || "",
           channels: [
             "bank",
@@ -223,6 +237,12 @@ function CheckoutContent() {
             orderId: order.orderId,
             reference: order.orderNumber,
             name: `${order.customer?.firstName || formData.firstName} ${order.customer?.lastName || formData.lastName}`.trim(),
+            baseAmount: order?.baseAmount != null ? String(order.baseAmount) : "",
+            baseCurrency: order?.baseCurrency != null ? String(order.baseCurrency) : "",
+            paidAmount: order?.amount != null ? String(order.amount) : "",
+            paidCurrency: order?.currency != null ? String(order.currency) : "",
+            fxRate: order?.fxRate != null ? String(order.fxRate) : "",
+            viewerCurrency: order?.viewerCurrency != null ? String(order.viewerCurrency) : "",
           },
           success: (res) => {
             console.log("res success..................", res);
@@ -772,7 +792,11 @@ function CheckoutContent() {
         orderId: beginState.orderId,
         orderNumber: beginState.orderNumber,
         amount: beginState.amount,
-        currency: beginState.currency || "GHS",
+        currency: beginState.currency || "USD",
+        baseAmount: beginState.baseAmount,
+        baseCurrency: beginState.baseCurrency,
+        fxRate: beginState.fxRate,
+        viewerCurrency: beginState.viewerCurrency,
         customer: beginState.customer,
       };
       currentOrderRef.current = order;
@@ -1087,7 +1111,7 @@ function CheckoutContent() {
                         <Loader2 className="h-4 w-4 animate-spin" /> Processing…
                       </span>
                     ) : (
-                      <>Complete Purchase - ${total.toFixed(2)}</>
+                      <>Complete Purchase - {fmt(total)}</>
                     )}
                   </Button>
                 </form>
@@ -1121,22 +1145,22 @@ function CheckoutContent() {
                           {it?.product?.title || it?.name || "Item"} ×{" "}
                           {it.quantity}
                         </span>
-                        <span>${Number(it.price).toFixed(2)}</span>
+                        <span>{fmt(it.price)}</span>
                       </div>
                     ))}
                   <Separator />
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>{fmt(subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Tax</span>
-                    <span>${tax.toFixed(2)}</span>
+                    <span>{fmt(tax)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>{fmt(total)}</span>
                   </div>
                 </div>
 

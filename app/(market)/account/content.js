@@ -274,8 +274,9 @@ export default function AccountContentPage() {
       return new Date(profile.memberSince).toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
+        timeZone: "UTC",
       });
-    } catch (_) {
+    } catch {
       return null;
     }
   }, [profile?.memberSince]);

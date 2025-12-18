@@ -80,6 +80,8 @@ export async function GET() {
         ? createdAt.toISOString().slice(0, 10)
         : null;
 
+      const orderCurrency = order?.currency ? String(order.currency).toUpperCase() : "USD";
+
       for (const item of order.MarketplaceOrderItems || []) {
         const product = item.MarketplaceProduct;
         const authorUser = product?.User;
@@ -89,6 +91,7 @@ export async function GET() {
           author: authorUser?.pen_name || authorUser?.name || "Unknown Author",
           purchaseDate,
           price: item.price ? Number(item.price) : null,
+          currency: orderCurrency,
           status: order.paymentStatus || order.orderStatus || "completed",
           downloadUrl: item.downloadUrl || "#",
         });

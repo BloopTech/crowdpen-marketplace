@@ -30,6 +30,7 @@ import MarketplaceHeader from "../../components/marketplace-header";
 import { useCart } from "./context";
 import { useHome } from "../../context";
 import { useSession } from "next-auth/react";
+import { useViewerCurrency } from "../../hooks/use-viewer-currency";
 
 export default function CartContent() {
   const { openLoginDialog } = useHome();
@@ -63,16 +64,18 @@ export default function CartContent() {
 
   const { data: session } = useSession();
 
-  // Currency formatter based on API-provided currency (default to GHS)
-  const currency = cartSummary?.currency || "GHS";
+  const baseCurrency = (cartSummary?.currency || "USD").toString().toUpperCase();
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
+  const displayCurrency = (viewerCurrency || baseCurrency).toString().toUpperCase();
+  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
   const fmt = (v) =>
-    new Intl.NumberFormat(undefined, {
+    new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency,
+      currency: displayCurrency,
       currencyDisplay: "narrowSymbol",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(Number(v || 0));
+    }).format(Number(v || 0) * displayRate);
 
   // Handle quantity updates with debouncing
   const handleQuantityChange = (itemId, newQuantity) => {

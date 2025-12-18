@@ -172,7 +172,7 @@ export default function MyVerification(props) {
                   {kyc?.submitted_at && (
                     <span className="text-xs text-muted-foreground">
                       Submitted{" "}
-                      {new Date(kyc.submitted_at).toLocaleDateString()}
+                      {new Date(kyc.submitted_at).toLocaleDateString("en-US", { timeZone: "UTC" })}
                     </span>
                   )}
                 </div>

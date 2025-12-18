@@ -89,7 +89,7 @@ export default function AmazonStyleMarketplace() {
               <div className="flex items-center justify-between mb-6 bg-card text-card-foreground border border-border p-4 rounded-lg shadow-sm">
                 <div className="flex items-center gap-4">
                   <span className="text-sm text-muted-foreground">
-                    {totalProducts.toLocaleString()} results
+                    {totalProducts.toLocaleString("en-US")} results
                     {filters.search && ` for "${filters.search}"`}
                   </span>
 

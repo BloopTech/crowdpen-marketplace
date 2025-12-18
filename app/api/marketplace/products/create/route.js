@@ -80,16 +80,7 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    const merchantBank = db?.MarketplaceMerchantBank
-      ? await db.MarketplaceMerchantBank.findOne({
-          where: { user_id: userId },
-          attributes: ["currency"],
-        })
-      : null;
-    const resolvedCurrency =
-      (typeof merchantBank?.currency === "string" && merchantBank.currency.trim())
-        ? merchantBank.currency.trim().toUpperCase()
-        : "USD";
+    const resolvedCurrency = "USD";
 
     // Extract product data directly from form fields
     const productData = {

@@ -25,6 +25,7 @@ import { addProductWishlist, addProductToCart } from "../actions";
 import { useHome } from "../context";
 import { toast } from "sonner";
 import { StatusPill } from "./status-pill";
+import { useViewerCurrency } from "../hooks/use-viewer-currency";
 
 const initialStateValues = {
   message: "",
@@ -69,6 +70,19 @@ export default function ProductCard(props) {
     (resource?.stock !== null &&
       typeof resource?.stock !== "undefined" &&
       Number(resource?.stock) <= 0);
+
+  const baseCurrency = (resource?.currency || "USD").toString().toUpperCase();
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
+  const displayCurrency = (viewerCurrency || baseCurrency).toString().toUpperCase();
+  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const fmt = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate);
 
   // const wishes = resource?.wishlist?.find(
   //   (wish) =>
@@ -378,10 +392,10 @@ export default function ProductCard(props) {
 
           {/* Price */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="text-lg font-bold">${resource?.price}</span>
+            <span className="text-lg font-bold">{fmt(resource?.price)}</span>
             {resource?.originalPrice && (
               <span className="text-sm text-muted-foreground line-through">
-                ${resource?.originalPrice}
+                {fmt(resource?.originalPrice)}
               </span>
             )}
           </div>

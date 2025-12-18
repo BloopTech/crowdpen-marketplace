@@ -11,9 +11,34 @@ import { Badge } from "../../../components/ui/badge";
 import { Separator } from "../../../components/ui/separator";
 import { useAccount } from "../context";
 import { CreditCard } from "lucide-react";
+import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
 
 export default function MyBillings() {
   const { purchases = [] } = useAccount();
+
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD");
+  const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase();
+  const displayRate =
+    Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const showConverted = displayCurrency !== "USD" && displayRate !== 1;
+
+  const fmtOriginal = (currency, v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: (currency || "USD").toString().toUpperCase(),
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+
+  const fmtViewerFromUsd = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate);
 
   return (
     <>
@@ -49,7 +74,17 @@ export default function MyBillings() {
               {purchases.map((purchase) => (
                 <div key={purchase.id} className="flex justify-between text-sm">
                   <span>{purchase.title}</span>
-                  <span>${purchase.price}</span>
+                  <div className="flex flex-col items-end leading-tight">
+                    <span>{fmtOriginal(purchase.currency, purchase.price)}</span>
+                    {showConverted &&
+                    (purchase?.currency || "USD")
+                      .toString()
+                      .toUpperCase() === "USD" ? (
+                      <span className="text-[11px] text-muted-foreground">
+                        ≈ {fmtViewerFromUsd(purchase.price)}
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               ))}
             </div>

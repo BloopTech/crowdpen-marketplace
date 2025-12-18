@@ -49,6 +49,7 @@ import {
 } from "../../../components/ui/dropdown-menu";
 import RelatedProducts from "./related";
 import { Badge } from "../../../components/ui/badge";
+import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
 
 const initialStateValues = {
   message: "",
@@ -79,6 +80,12 @@ export default function ProductDetailContent(props) {
   const [localWishlistState, setLocalWishlistState] = useState(null);
   const [localCartState, setLocalCartState] = useState(null);
   const [hasLocalCartOverride, setHasLocalCartOverride] = useState(false);
+
+  const productCurrency = (productItemData?.currency || "USD")
+    .toString()
+    .toUpperCase();
+
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency(productCurrency);
 
   const wishes = productItemData?.wishlist?.find(
     (wish) =>
@@ -167,7 +174,7 @@ export default function ProductDetailContent(props) {
     Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
   const currencyFormatter = new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: productCurrency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -187,6 +194,26 @@ export default function ProductDetailContent(props) {
     (productItemData?.stock !== null &&
       typeof productItemData?.stock !== "undefined" &&
       Number(productItemData?.stock) <= 0);
+
+  const displayCurrency = (viewerCurrency || productCurrency)
+    .toString()
+    .toUpperCase();
+  const displayRate =
+    Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const showConverted = displayCurrency !== productCurrency && displayRate !== 1;
+  const displayFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: displayCurrency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const displayFormattedPrice = displayFormatter.format(priceNum * displayRate);
+  const displayFormattedOriginal = hasDiscount
+    ? displayFormatter.format(originalPriceNum * displayRate)
+    : null;
+  const displayFormattedSave = hasDiscount
+    ? displayFormatter.format((originalPriceNum - priceNum) * displayRate)
+    : null;
 
   return (
     <TooltipProvider delayDuration={150} skipDelayDuration={0}>
@@ -341,14 +368,18 @@ export default function ProductDetailContent(props) {
                   </span>
                 </div>
               </div>
-
               {/* Price */}
               <div className="space-y-3">
                 <div className="flex items-baseline gap-3">
                   <span className="text-4xl font-extrabold tracking-tight">
-                    {formattedPrice}
+                    {displayFormattedPrice}
                   </span>
                 </div>
+                {showConverted ? (
+                  <div className="text-sm text-muted-foreground">
+                    ≈ {formattedPrice}
+                  </div>
+                ) : null}
                 <div className="text-sm">
                   {isOutOfStock ? (
                     <Badge className="bg-gray-800/90 text-white text-sm">
@@ -369,7 +400,7 @@ export default function ProductDetailContent(props) {
                       <span>
                         RRP{" "}
                         <span className="line-through">
-                          {formattedOriginal}
+                          {displayFormattedOriginal}
                         </span>
                       </span>
                       <Tooltip>
@@ -393,7 +424,7 @@ export default function ProductDetailContent(props) {
                       </Tooltip>
                     </div>
                     <div className="text-sm text-emerald-700 dark:text-emerald-400 font-medium">
-                      Save {formattedSave} ({savePercent}% OFF)
+                      Save {displayFormattedSave} ({savePercent}% OFF)
                     </div>
                   </div>
                 )}
@@ -423,7 +454,11 @@ export default function ProductDetailContent(props) {
                             {variation.description}
                           </div>
                         </div>
-                        <div className="font-bold">${variation.price}</div>
+                        <div className="font-bold">
+                          {displayFormatter.format(
+                            Number(variation.price || 0) * displayRate
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}

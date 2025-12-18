@@ -57,7 +57,7 @@ export async function POST(request, { params }) {
         },
         {
           model: MarketplaceProduct,
-          attributes: ['id', 'title', 'price', 'stock', 'inStock']
+          attributes: ['id', 'title', 'price', 'currency', 'stock', 'inStock']
         }
       ]
     });
@@ -75,6 +75,20 @@ export async function POST(request, { params }) {
         { error: "Access denied" },
         { status: 403 }
       );
+    }
+
+    const productCurrency = (cartItem?.MarketplaceProduct?.currency || "USD")
+      .toString()
+      .toUpperCase();
+    if (productCurrency !== "USD") {
+      return NextResponse.json(
+        { error: "Only USD-priced products can be updated in cart" },
+        { status: 400 }
+      );
+    }
+
+    if ((cartItem?.MarketplaceCart?.currency || "").toString().toUpperCase() !== "USD") {
+      await cartItem.MarketplaceCart.update({ currency: "USD" });
     }
     
     let updatedItem = null;
@@ -180,7 +194,8 @@ async function recalculateCartTotals(cartId) {
     await cart.update({
       subtotal: subtotal.toFixed(2),
       tax: tax.toFixed(2),
-      total: total.toFixed(2)
+      total: total.toFixed(2),
+      currency: "USD",
     });
     
   } catch (error) {

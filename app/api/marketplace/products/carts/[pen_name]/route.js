@@ -99,8 +99,13 @@ export async function GET(request, { params }) {
         active: true,
         subtotal: 0.00,
         discount: 0.00,
-        total: 0.00
+        total: 0.00,
+        currency: "USD",
       });
+    }
+
+    if ((cart?.currency || "").toString().toUpperCase() !== "USD") {
+      await cart.update({ currency: "USD" });
     }
 
     // Build where conditions for product search
@@ -156,21 +161,13 @@ export async function GET(request, { params }) {
 
     const total = subtotal - parseFloat(cart.discount || 0);
 
-    // Determine currency from DB (cart -> product -> fallback)
-    const headerCountry = readCountryHeader(request.headers);
-    const currencyFromItems =
-      cartItems?.find((it) => it?.MarketplaceProduct?.currency)?.MarketplaceProduct?.currency || null;
-    const currency =
-      cart?.currency ||
-      currencyFromItems ||
-      deriveCurrencyByCountry(headerCountry) ||
-      "USD";
+    const currency = "USD";
 
     // Update cart totals
     await cart.update({
       subtotal: subtotal.toFixed(2),
       total: total.toFixed(2),
-      currency: cart?.currency || currency,
+      currency,
     });
 
     // Format response data
@@ -211,7 +208,7 @@ export async function GET(request, { params }) {
           discount: Number(parseFloat(cart.discount || 0).toFixed(2)),
           total: Number(total.toFixed(2)),
           item_count: count,
-          currency: (cart?.currency || currency)
+          currency
         },
         pagination: {
           page,

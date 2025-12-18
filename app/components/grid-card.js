@@ -1,3 +1,5 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "../components/ui/badge";
@@ -5,11 +7,25 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent, CardFooter } from "../components/ui/card";
 import { Download, Star, Sparkles, Crown } from "lucide-react";
 import { StatusPill } from "./status-pill";
+import { useViewerCurrency } from "../hooks/use-viewer-currency";
 
 export default function GridCard({ resource }) {
   const isOutOfStock =
     resource?.inStock === false ||
     (resource?.stock !== null && typeof resource?.stock !== "undefined" && Number(resource?.stock) <= 0);
+
+  const baseCurrency = (resource?.currency || "USD").toString().toUpperCase();
+  const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
+  const displayCurrency = (viewerCurrency || baseCurrency).toString().toUpperCase();
+  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const fmt = (v) =>
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: displayCurrency,
+      currencyDisplay: "narrowSymbol",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0) * displayRate);
   return (
     <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
       <div className="relative aspect-square overflow-hidden">
@@ -65,7 +81,7 @@ export default function GridCard({ resource }) {
           </div>
           <div className="flex items-center gap-1">
             <Download className="h-3 w-3" />
-            <span>{resource.downloads.toLocaleString()}</span>
+            <span>{resource.downloads.toLocaleString("en-US")}</span>
           </div>
         </div>
 
@@ -80,7 +96,7 @@ export default function GridCard({ resource }) {
 
       <CardFooter className="p-4 pt-0 flex items-center justify-between">
         <div>
-          <div className="text-lg font-bold">${resource.price}</div>
+          <div className="text-lg font-bold">{fmt(resource.price)}</div>
           <div className="text-xs mt-1">
             {isOutOfStock ? (
               <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>

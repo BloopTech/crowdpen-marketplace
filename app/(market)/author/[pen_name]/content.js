@@ -247,6 +247,7 @@ export default function AuthorProfileContent({ author }) {
                       {new Date(author.joinDate).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "long",
+                        timeZone: "UTC",
                       })}
                     </div>
                     <div className="flex items-center gap-1">
@@ -256,7 +257,9 @@ export default function AuthorProfileContent({ author }) {
                         "en-US",
                         {
                           year: "numeric",
-                          month: "long",
+                          month: "short",
+                          day: "numeric",
+                          timeZone: "UTC",
                         }
                       )}
                     </div>
@@ -538,7 +541,9 @@ export default function AuthorProfileContent({ author }) {
                                       <span className="text-sm text-muted-foreground ml-2">
                                         {new Date(
                                           review.createdAt
-                                        ).toLocaleDateString()}
+                                        ).toLocaleDateString("en-US", {
+                                          timeZone: "UTC",
+                                        })}
                                       </span>
                                     </div>
                                   </div>

@@ -354,6 +354,7 @@ export async function POST(request, { params }) {
       title: productData.title,
       description: productData.description,
       price: productData.price,
+      currency: "USD",
       originalPrice: productData.originalPrice,
       marketplace_category_id: productData.marketplace_category_id,
       marketplace_subcategory_id: productData.marketplace_subcategory_id,

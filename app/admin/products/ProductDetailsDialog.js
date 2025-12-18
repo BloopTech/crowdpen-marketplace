@@ -278,7 +278,7 @@ export default function ProductDetailsDialog() {
                       </div>
                       <div className="text-sm">
                         {data?.lastUpdated
-                          ? new Date(data.lastUpdated).toLocaleString()
+                          ? new Date(data.lastUpdated).toLocaleString("en-US", { timeZone: "UTC" })
                           : "-"}
                       </div>
                     </div>
@@ -288,7 +288,7 @@ export default function ProductDetailsDialog() {
                       </div>
                       <div className="text-sm">
                         {data?.createdAt
-                          ? new Date(data.createdAt).toLocaleString()
+                          ? new Date(data.createdAt).toLocaleString("en-US", { timeZone: "UTC" })
                           : "-"}
                       </div>
                     </div>
