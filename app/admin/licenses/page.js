@@ -139,7 +139,10 @@ export default function LicensesPage() {
                       <Button
                         size="sm"
                         variant="destructive"
-                        disabled={!it.downloadUrl}
+                        disabled={
+                          (it?.downloadUrl || "").toString().toUpperCase() ===
+                          "REVOKED"
+                        }
                       >
                         Revoke
                       </Button>

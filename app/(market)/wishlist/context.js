@@ -41,7 +41,7 @@ const WishlistContextProvider = ({ children }) => {
     queryFn: async ({ pageParam = 1 }) => {
       const params = new URLSearchParams({
         page: pageParam.toString(),
-        limit: '12',
+        limit: '20',
         ...(search && { search }),
         ...(category && { category }),
         sort: sortBy,

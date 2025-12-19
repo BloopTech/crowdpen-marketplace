@@ -33,12 +33,20 @@ export async function GET(request, { params }) {
   const userId = session?.user?.id || null;
 
   try {
+    const idParam = String(id);
+    const orConditions = [{ product_id: idParam }];
+    if (
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        idParam
+      )
+    ) {
+      orConditions.unshift({ id: idParam });
+    }
+
     const product = await MarketplaceProduct.findOne({
       where: {
-        [Op.or]: [
-          { id },
-          { product_id: id },
-        ],
+        //[Op.or]: orConditions,
+        [Op.or]: [{ id: id }, { product_id: id }],
       },
       include: [
         { model: MarketplaceCategory },
@@ -78,7 +86,8 @@ export async function GET(request, { params }) {
     // Enforce KYC visibility: if not owner and owner's KYC not approved, hide
     const viewerId = userId;
     const isOwner = viewerId && product?.user_id === viewerId;
-    const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
+    const ownerApproved =
+      product?.User?.MarketplaceKycVerification?.status === "approved";
     if (!isOwner && !ownerApproved) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
@@ -111,12 +120,19 @@ export async function GET(request, { params }) {
     });
 
     // Compute sales count using materialized view
-    const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
+    const BESTSELLER_MIN_SALES = Number(
+      process.env.BESTSELLER_MIN_SALES || 100
+    );
     const mvRow = await db.sequelize.query(
       'SELECT "sales_count" FROM "mv_product_sales" WHERE "marketplace_product_id" = :id LIMIT 1',
-      { replacements: { id: product?.id }, type: db.Sequelize.QueryTypes.SELECT }
+      {
+        replacements: { id: product?.id },
+        type: db.Sequelize.QueryTypes.SELECT,
+      }
     );
-    const salesCount = mvRow?.[0]?.sales_count ? Number(mvRow[0].sales_count) : 0;
+    const salesCount = mvRow?.[0]?.sales_count
+      ? Number(mvRow[0].sales_count)
+      : 0;
     const isBestseller = salesCount >= BESTSELLER_MIN_SALES;
 
     const getProduct = {

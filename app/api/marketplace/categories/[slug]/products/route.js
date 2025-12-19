@@ -51,7 +51,7 @@ export async function GET(request, { params }) {
     const fileType = searchParams.get("fileType");
     const deliveryTime = searchParams.get("deliveryTime");
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "12");
+    const limit = parseInt(searchParams.get("limit") || "20");
 
     // Build query conditions
     let where = {};

@@ -21,7 +21,7 @@ export async function revokeLicense(prevState, formData) {
   const item = await db.MarketplaceOrderItems.findOne({ where: { id: itemId } });
   if (!item) return { success: false, message: "Order item not found" };
 
-  await item.update({ downloadUrl: null });
+  await item.update({ downloadUrl: "REVOKED" });
   revalidatePath("/admin/licenses");
   return { success: true, message: "License revoked" };
 }

@@ -238,6 +238,21 @@ export const authOptions = {
       // Always use the absolute URL from environment variables if available
       const effectiveBaseUrl = process.env.NEXTAUTH_URL || baseUrl;
 
+      // Allow callback URLs on the same origin
+      if (url.startsWith(effectiveBaseUrl)) {
+        return url;
+      }
+
+      try {
+        const urlOrigin = new URL(url).origin;
+        const baseOrigin = new URL(effectiveBaseUrl).origin;
+        if (urlOrigin === baseOrigin) {
+          return url;
+        }
+      } catch (e) {
+        // ignore parsing errors for relative or invalid URLs
+      }
+
       // If URL starts with '?', it's a query string relative to base
       if (url.startsWith("?")) {
         return `${effectiveBaseUrl}${url}`;

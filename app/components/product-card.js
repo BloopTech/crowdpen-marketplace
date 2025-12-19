@@ -1,10 +1,5 @@
 "use client";
-import React, {
-  useActionState,
-  useEffect,
-  useState,
-  startTransition,
-} from "react";
+import React, { useActionState, useEffect, useState, startTransition } from "react";
 import Image from "next/image";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -98,11 +93,28 @@ export default function ProductCard(props) {
       wish.marketplace_product_id === resource.id
   );
 
+  const initialWished = typeof wishes === "object";
+  const serverWished =
+    session?.user?.id &&
+    !isPending &&
+    state?.success &&
+    typeof state?.inWishlist !== "undefined"
+      ? state.inWishlist
+      : undefined;
+  const hasWishlistActionError =
+    session?.user?.id && !isPending && state?.success === false && state?.message;
+
   // Use local state if available, otherwise fall back to server state
   const isWished =
-    localWishlistState !== null
-      ? localWishlistState
-      : typeof wishes === "object";
+    !session?.user?.id
+      ? false
+      : typeof serverWished === "boolean"
+        ? serverWished
+        : hasWishlistActionError
+          ? initialWished
+          : localWishlistState !== null
+            ? localWishlistState
+            : initialWished;
 
   // const carts = resource?.Cart?.find(
   //   (cart) =>
@@ -122,72 +134,74 @@ export default function ProductCard(props) {
       )
   );
 
-  const isCarted = hasLocalCartOverride
-    ? Boolean(localCartState) // If we have a local override, use its boolean value
-    : typeof carts === "object"; // Otherwise fall back to server state
+  const initialCarted = typeof carts === "object";
+  const serverCarted =
+    session?.user?.id &&
+    !isCartPending &&
+    cartState?.success &&
+    cartState?.action
+      ? cartState.action === "added"
+      : undefined;
+  const hasCartActionError =
+    session?.user?.id &&
+    !isCartPending &&
+    cartState?.success === false &&
+    cartState?.message;
+
+  const isCarted =
+    !session?.user?.id
+      ? false
+      : typeof serverCarted === "boolean"
+        ? serverCarted
+        : hasCartActionError
+          ? initialCarted
+          : hasLocalCartOverride
+            ? Boolean(localCartState) // If we have a local override, use its boolean value
+            : initialCarted; // Otherwise fall back to server state
 
   //
 
   // Update local state when server action completes
   useEffect(() => {
-    if (state.success && state.inWishlist !== undefined) {
-      setLocalWishlistState(state.inWishlist);
+    if (!isPending && state?.success && typeof state?.inWishlist !== "undefined") {
       refetchWishlistCount();
     }
-  }, [state, refetchWishlistCount]);
+  }, [state, isPending, refetchWishlistCount]);
 
   // Handle cart state responses
   useEffect(() => {
-    if (cartState.success && cartState.action) {
-      console.log("state cart", cartState);
-      // Update local state based on action (added/removed)
+    if (!isCartPending && cartState?.success && cartState?.action) {
       if (cartState.action === "added") {
-        setLocalCartState(cartState.cartItem);
-        setHasLocalCartOverride(true);
         toast.success(cartState.message || "Item added to cart successfully");
       } else if (cartState.action === "removed") {
-        setLocalCartState(null);
-        setHasLocalCartOverride(true);
-        toast.success(
-          cartState.message || "Item removed from cart successfully"
-        );
+        toast.success(cartState.message || "Item removed from cart successfully");
       }
 
       refetchCartCount();
-      console.log(
-        "Cart action completed:",
-        cartState.action,
-        cartState.message
-      );
-    } else if (cartState.message && !cartState.success) {
+    } else if (!isCartPending && cartState?.success === false && cartState?.message) {
       // Show error message
       console.error("Failed to update cart:", cartState.message);
       toast.error(cartState.message);
-      // Reset override on error to fall back to server state
-      setHasLocalCartOverride(false);
     }
-  }, [cartState, refetchCartCount]);
+  }, [cartState, isCartPending, refetchCartCount]);
 
   // Combined action functions that wrap optimistic updates in transitions
   const handleWishlistAction = async (formData) => {
-    console.log("form data", formData);
-    const productId = formData.get("productId");
     if (!session?.user?.id) {
       openLoginDialog();
       return;
     }
 
+    setLocalWishlistState(!isWished);
+
     // Apply optimistic update in transition
     //startTransition(() => {
     if (isWished) {
       removeOptimisticWishlist(resource.id);
-      console.log("id again..............");
     } else {
       addOptimisticWishlist(resource.id);
-      console.log("id again..............");
     }
     //});
-    console.log("stage org", state);
     // Call server action (result handled by useEffect)
     return formAction(formData);
   };
@@ -281,7 +295,7 @@ export default function ProductCard(props) {
             <input type="hidden" name="productId" value={resource.id} />
           </form> */}
 
-          <form action={session?.user?.id ? formAction : openLoginDialog}>
+          <form action={handleWishlistAction}>
             <Button
               variant="ghost"
               size="sm"
@@ -315,7 +329,7 @@ export default function ProductCard(props) {
 
           {/* Quick Actions Overlay */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
-            <Link href={`/product/${resource.id}`}>
+            <Link href={`/product/${resource.product_id ? resource.product_id : resource.id}`}>
               <Button variant="secondary" size="sm" className="pointer-events-auto">
                 Preview
               </Button>
@@ -438,7 +452,7 @@ export default function ProductCard(props) {
           </form> */}
 
           <form
-            action={session?.user?.id ? cartFormAction : openLoginDialog}
+            action={handleCartAction}
             onSubmit={() => {
               // Optimistic update for immediate visual feedback
               if (isCarted) {

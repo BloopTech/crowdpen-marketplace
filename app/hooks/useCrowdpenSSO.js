@@ -36,17 +36,18 @@ export function useCrowdpenSSO() {
   };
 
   // Attempt SSO login with Crowdpen
-  const attemptSSOLogin = async () => {
+  const attemptSSOLogin = async (callbackUrlOverride) => {
     try {
       setIsCheckingSSO(true);
       
       // Skip session check and go directly to Crowdpen SSO endpoint
       const crowdpenUrl = 'https://crowdpen.co'; // Always use production Crowdpen
       const marketplaceUrl = window.location.origin;
-      const callbackUrl = `${marketplaceUrl}/api/auth/sso/callback`;
+      const callbackUrl = callbackUrlOverride || window.location.href;
+      const ssoCallbackUrl = `${marketplaceUrl}/api/auth/sso/callback?callbackUrl=${encodeURIComponent(callbackUrl)}`;
       
       // Use correct parameters as specified in SSO endpoint documentation
-      const ssoUrl = `${crowdpenUrl}/api/auth/sso?app=marketplace&callback=${encodeURIComponent(callbackUrl)}&origin=${encodeURIComponent(marketplaceUrl)}`;
+      const ssoUrl = `${crowdpenUrl}/api/auth/sso?app=marketplace&callback=${encodeURIComponent(ssoCallbackUrl)}&origin=${encodeURIComponent(marketplaceUrl)}`;
       
       console.log('Redirecting to Crowdpen SSO:', ssoUrl);
       

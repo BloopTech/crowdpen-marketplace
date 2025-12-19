@@ -111,7 +111,7 @@ const HomeProvider = ({ children }) => {
     parse: Number,
   });
   const [limit, setLimit] = useQueryState("limit", {
-    defaultValue: 12,
+    defaultValue: 20,
     parse: Number,
   });
 

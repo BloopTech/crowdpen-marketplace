@@ -231,7 +231,16 @@ export async function beginCheckout(prevState, formData) {
     include: [
       {
         model: db.MarketplaceProduct,
-        attributes: ["id", "title", "user_id", "stock", "inStock", "currency"],
+        attributes: [
+          "id",
+          "title",
+          "user_id",
+          "stock",
+          "inStock",
+          "currency",
+          "file",
+          "fileType",
+        ],
         include: [
           {
             model: db.User,

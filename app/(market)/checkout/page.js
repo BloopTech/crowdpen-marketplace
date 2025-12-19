@@ -232,7 +232,6 @@ function CheckoutContent() {
           email: order.customer?.email || formData.email,
           currency: order.currency,
           key: process.env.STARTBUTTON_PUBLIC_KEY,
-          //reference: order.orderNumber,
           metadata: {
             orderId: order.orderId,
             reference: order.orderNumber,

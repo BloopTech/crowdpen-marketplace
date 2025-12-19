@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
+ import { Op } from "sequelize";
 
 // GET /api/marketplace/account
 // Returns current user's profile and purchases
@@ -52,7 +53,10 @@ export async function GET() {
 
     // Fetch purchases: orders + order items + products + product authors
     const orders = await db.MarketplaceOrder.findAll({
-      where: { user_id: userId },
+      where: {
+        user_id: userId,
+        [Op.or]: [{ paymentStatus: "successful" }, { orderStatus: "successful" }],
+      },
       include: [
         {
           model: db.MarketplaceOrderItems,
@@ -80,20 +84,31 @@ export async function GET() {
         ? createdAt.toISOString().slice(0, 10)
         : null;
 
-      const orderCurrency = order?.currency ? String(order.currency).toUpperCase() : "USD";
+      const orderCurrency = "USD";
+      const orderSubtotal = order?.subtotal != null ? Number(order.subtotal) : null;
+      const orderTotal = order?.total != null ? Number(order.total) : null;
 
       for (const item of order.MarketplaceOrderItems || []) {
         const product = item.MarketplaceProduct;
         const authorUser = product?.User;
+        const downloadUrl =
+          item?.downloadUrl != null ? String(item.downloadUrl).trim() : "";
+        const productFile =
+          product?.file != null ? String(product.file).trim() : "";
+        const revoked = downloadUrl.toUpperCase() === "REVOKED";
+        const canDownload = !revoked && (Boolean(downloadUrl) || Boolean(productFile));
         purchases.push({
           id: item.id,
-          title: product?.title || item.name,
+          orderId: order.id,
+          orderNumber: order.order_number,
+          title: item.name || product?.title,
           author: authorUser?.pen_name || authorUser?.name || "Unknown Author",
           purchaseDate,
-          price: item.price ? Number(item.price) : null,
+          price: orderTotal,
+          subtotal: orderSubtotal,
           currency: orderCurrency,
           status: order.paymentStatus || order.orderStatus || "completed",
-          downloadUrl: item.downloadUrl || "#",
+          canDownload,
         });
       }
     }

@@ -40,7 +40,7 @@ export async function GET(request) {
     const fileType = searchParams.get("fileType");
     const deliveryTime = searchParams.get("deliveryTime");
     const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "12");
+    const limit = parseInt(searchParams.get("limit") || "20");
 
     // Build query conditions
     let where = {};
@@ -231,6 +231,7 @@ export async function GET(request) {
         "fileType",
         "image",
         "downloads",
+        "product_id",
         [rankScoreLiteral, 'rankScore']
       ],
       //transaction: t,

@@ -21,6 +21,34 @@ export default function MyPurchases() {
     Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
   const showConverted = displayCurrency !== "USD" && displayRate !== 1;
 
+  const orders = React.useMemo(() => {
+    const byOrder = new Map();
+    for (const p of purchases) {
+      const key = p?.orderId || p?.orderNumber || p?.id;
+      if (!byOrder.has(key)) {
+        byOrder.set(key, {
+          orderId: p?.orderId || null,
+          orderNumber: p?.orderNumber || null,
+          purchaseDate: p?.purchaseDate || null,
+          status: p?.status || null,
+          currency: p?.currency || "USD",
+          price: p?.price ?? null,
+          subtotal: p?.subtotal ?? null,
+          items: [],
+        });
+      }
+      const entry = byOrder.get(key);
+      entry.items.push(p);
+      if (entry.purchaseDate == null && p?.purchaseDate != null)
+        entry.purchaseDate = p.purchaseDate;
+      if (entry.status == null && p?.status != null) entry.status = p.status;
+      if (entry.currency == null && p?.currency != null) entry.currency = p.currency;
+      if (entry.price == null && p?.price != null) entry.price = p.price;
+      if (entry.subtotal == null && p?.subtotal != null) entry.subtotal = p.subtotal;
+    }
+    return Array.from(byOrder.values());
+  }, [purchases]);
+
   const fmtOriginal = (currency, v) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -45,59 +73,102 @@ export default function MyPurchases() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            My Purchases ({purchases.length})
+            My Purchases ({orders.length})
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {purchases.map((purchase) => (
-              <div
-                key={purchase.id}
-                className="flex items-center justify-between p-4 border border-border rounded-lg"
-              >
-                <div className="flex-1">
-                  <h3 className="font-semibold">{purchase.title}</h3>
-                  <p className="text-sm text-muted-foreground">
-                    by {purchase.author}
-                  </p>
-                  <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Purchased {purchase.purchaseDate}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-3 w-3" />
-                      <div className="flex flex-col leading-tight">
-                        <span>
-                          {fmtOriginal(purchase.currency, purchase.price)}
-                        </span>
-                        {showConverted &&
-                        (purchase?.currency || "USD")
-                          .toString()
-                          .toUpperCase() === "USD" ? (
-                          <span className="text-[11px] text-muted-foreground">
-                            ≈ {fmtViewerFromUsd(purchase.price)}
-                          </span>
-                        ) : null}
+            {orders.map((order) => {
+              const usdAmount =
+                order?.price != null
+                  ? order.price
+                  : order?.subtotal != null
+                    ? order.subtotal
+                    : 0;
+              const key =
+                order?.orderId || order?.orderNumber || order?.items?.[0]?.id;
+              const orderCurrency = (order?.currency || "USD")
+                .toString()
+                .toUpperCase();
+
+              return (
+                <div
+                  key={key}
+                  className="border border-border rounded-lg overflow-hidden"
+                >
+                  <div className="flex items-start justify-between p-4">
+                    <div className="flex-1">
+                      <h3 className="font-semibold">
+                        {order.orderNumber
+                          ? `Order ${order.orderNumber}`
+                          : "Order"}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {order.items.length} item
+                        {order.items.length === 1 ? "" : "s"}
+                      </p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          <span>Purchased {order.purchaseDate || "-"}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          <div className="flex flex-col leading-tight">
+                            <span>{fmtOriginal(orderCurrency, usdAmount)}</span>
+                            {showConverted && orderCurrency === "USD" ? (
+                              <span className="text-[11px] text-muted-foreground">
+                                ≈ {fmtViewerFromUsd(usdAmount)}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">
+                        {["completed", "successful"].includes(
+                          (order.status || "").toString().toLowerCase()
+                        )
+                          ? "✓ Complete"
+                          : "Processing"}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border">
+                    {order.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex items-center justify-between p-4"
+                      >
+                        <div className="flex-1">
+                          <h4 className="font-medium">{item.title}</h4>
+                          <p className="text-sm text-muted-foreground">
+                            by {item.author}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          disabled={!item?.canDownload}
+                          onClick={() => {
+                            if (!item?.id) return;
+                            window.open(
+                              `/api/marketplace/download/${item.id}`,
+                              "_blank",
+                              "noopener,noreferrer"
+                            );
+                          }}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">
-                    {["completed", "successful"].includes(
-                      (purchase.status || "").toString().toLowerCase()
-                    )
-                      ? "✓ Complete"
-                      : "Processing"}
-                  </Badge>
-                  <Button size="sm">
-                    <Download className="h-4 w-4 mr-2" />
-                    Download
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

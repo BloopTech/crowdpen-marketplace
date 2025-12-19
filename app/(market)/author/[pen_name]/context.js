@@ -22,7 +22,7 @@ function AuthorProfileContextProvider({ children }) {
   const fetchProducts = async ({ pageParam = 1 }) => {
     const params = new URLSearchParams({
       page: pageParam.toString(),
-      limit: '12',
+      limit: '20',
       ...(searchQuery && { search: searchQuery }),
       ...(selectedCategory !== 'all' && { category: selectedCategory }),
       sortBy
