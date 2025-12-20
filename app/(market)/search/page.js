@@ -9,6 +9,7 @@ import MarketplaceHeader from "../../components/marketplace-header"
 import SearchResults from "../../components/search-results"
 import { SearchEngine } from "../../lib/search-engine"
 import GoogleSearchBar from "../../components/google-search-bar"
+import { useDebounce } from "../../hooks/use-debounce"
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
@@ -39,15 +40,17 @@ export default function SearchPage() {
     }
   }, [searchParams])
 
+  const debouncedQuery = useDebounce(searchQuery, 300)
+
   // Fetch results from API whenever search query or filter params change
   useEffect(() => {
-    let isActive = true
-    const q = (searchQuery || "").trim()
     const controller = new AbortController()
+    let isActive = true
+    const q = (debouncedQuery || "").trim()
     setLoading(true)
     setError(null)
 
-    const timer = setTimeout(async () => {
+    ;(async () => {
       try {
         // Forward category/subcategory filters from the URL if present
         const allowedFilterKeys = [
@@ -65,10 +68,12 @@ export default function SearchPage() {
           if (v) qp.set(key, v)
         }
 
-        const res = await fetch(`/api/marketplace/products/search?${qp.toString()}`,
-        {
-          signal: controller.signal,
-        })
+        const res = await fetch(
+          `/api/marketplace/products/search?${qp.toString()}`,
+          {
+            signal: controller.signal,
+          }
+        )
         if (!res.ok) {
           // Try to surface server error message
           let errMsg = res.statusText
@@ -85,21 +90,20 @@ export default function SearchPage() {
         setResources(Array.isArray(data?.results) ? data.results : [])
         setSearchTime(Number.isFinite(data?.searchTime) ? data.searchTime : 0)
       } catch (err) {
-        if (!isActive) return
+        if (!isActive || err?.name === "AbortError") return
         setError(err?.message || "Failed to fetch search results")
         setResources([])
         setSearchTime(0)
       } finally {
         if (isActive) setLoading(false)
       }
-    }, 300)
+    })()
 
     return () => {
       isActive = false
-      clearTimeout(timer)
       controller.abort()
     }
-  }, [searchQuery, searchParams])
+  }, [debouncedQuery, searchParams])
 
   const handleAddToCart = (resourceId) => {
     setCartItems((prev) => [...prev, resourceId])

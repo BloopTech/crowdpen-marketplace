@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useMemo } from "react";
 import { Button } from "../../../components/ui/button";
 import {
   Card,
@@ -21,7 +21,7 @@ export default function MyPurchases() {
     Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
   const showConverted = displayCurrency !== "USD" && displayRate !== 1;
 
-  const orders = React.useMemo(() => {
+  const orders = useMemo(() => {
     const byOrder = new Map();
     for (const p of purchases) {
       const key = p?.orderId || p?.orderNumber || p?.id;

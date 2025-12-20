@@ -50,7 +50,7 @@ export default function ReviewBox() {
   const [title, setTitle] = useState("");
   const [showEditor, setShowEditor] = useState(false);
   const [content, setContent] = useState("");
-  const [disabled, setDisabled] = useState(false);
+  // Removed disabled state, deriving it during render instead
   const [open, setOpen] = useState(false);
   const [lastIntent, setLastIntent] = useState(null);
   const [promptToWrite, setPromptToWrite] = useState(false);
@@ -66,6 +66,13 @@ export default function ReviewBox() {
 
   // Memoized sanitized content for safe submission
   const safeContent = React.useMemo(() => sanitizeHtml(content || ""), [content]);
+
+  // Derive disabled state from content
+  const htmlParser = content && typeof content === "string" && parser(content);
+  const isContent = Array.isArray(htmlParser)
+    ? htmlParser.some((item) => item.props?.children)
+    : htmlParser?.props?.children;
+  const disabled = !(content && isContent);
 
   const editor = useEditor({
     extensions: [
@@ -109,6 +116,7 @@ export default function ReviewBox() {
   useEffect(() => {
     if (!editor) return;
     if (currentUserReview) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsEditing(true);
       setRating(currentUserReview.rating || 0);
       setTitle(currentUserReview.title || "");
@@ -131,6 +139,7 @@ export default function ReviewBox() {
   useEffect(() => {
     if (!open || !editor) return;
     if (currentUserReview) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsEditing(true);
       setRating(currentUserReview.rating || 0);
       setTitle(currentUserReview.title || "");
@@ -155,30 +164,34 @@ export default function ReviewBox() {
   }, [open, currentUserReview, editor]);
 
   // Clear transient intent/prompt when dialog closes
-  useEffect(() => {
-    if (!open) {
-      setPromptToWrite(false);
-      setLastIntent(null);
-    }
-  }, [open]);
+  // Moved to handleOpenChange
+  // useEffect(() => {
+  //   if (!open) {
+  //     setPromptToWrite(false);
+  //     setLastIntent(null);
+  //   }
+  // }, [open]);
 
-  useEffect(() => {
-    const htmlParser =
-      content && typeof content === "string" && parser(content);
-    const isContent = Array.isArray(htmlParser)
-      ? htmlParser.some((item) => item.props?.children)
-      : htmlParser?.props?.children;
-
-    if (content && isContent) {
-      setDisabled(false);
-    } else {
-      setDisabled(true);
-    }
-  }, [content]);
+  // Derived disabled state replaced useEffect
+  // useEffect(() => {
+  //   const htmlParser =
+  //     content && typeof content === "string" && parser(content);
+  //   const isContent = Array.isArray(htmlParser)
+  //     ? htmlParser.some((item) => item.props?.children)
+  //     : htmlParser?.props?.children;
+  //
+  //   if (content && isContent) {
+  //     setDisabled(false);
+  //   } else {
+  //     setDisabled(true);
+  //   }
+  // }, [content]);
 
   // Guard closing the dialog if there are unsaved changes
   const handleOpenChange = (nextOpen) => {
     if (!nextOpen) {
+      setPromptToWrite(false);
+      setLastIntent(null);
       if (isPending) return;
       const isDirty =
         rating !== initialRating ||
@@ -202,6 +215,7 @@ export default function ReviewBox() {
 
       if (lastIntent === 'rating_only') {
         // Keep dialog open and prompt to write a full review
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setPromptToWrite(true);
       } else {
         // Full review publish or edit — reset and close

@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server"
-import { Op } from "sequelize"
-import { db } from "../../../../models/index"
+import { NextResponse } from "next/server";
+import { Op } from "sequelize";
+import { db } from "../../../../models/index";
 import { literal } from "sequelize";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
@@ -12,103 +12,118 @@ const {
   User,
   MarketplaceTags,
   MarketplaceKycVerification,
-} = db
+} = db;
 
 function parseOperators(q = "") {
-  let text = q || ""
-  let type = null
-  let author = null
-  let price = null // [op, value]
-  let rating = null
-  let categoryTerm = null
-  let subcategoryTerm = null
+  let text = q || "";
+  let type = null;
+  let author = null;
+  let price = null; // [op, value]
+  let rating = null;
+  let categoryTerm = null;
+  let subcategoryTerm = null;
 
-  const typeMatch = text.match(/type:([\w-]+)/i)
+  const typeMatch = text.match(/type:([\w-]+)/i);
   if (typeMatch) {
-    type = typeMatch[1]
-    text = text.replace(/type:[\w-]+/i, "").trim()
+    type = typeMatch[1];
+    text = text.replace(/type:[\w-]+/i, "").trim();
   }
 
-  const authorMatch = text.match(/author:([\w-]+)/i)
+  const authorMatch = text.match(/author:([\w-]+)/i);
   if (authorMatch) {
-    author = authorMatch[1]
-    text = text.replace(/author:[\w-]+/i, "").trim()
+    author = authorMatch[1];
+    text = text.replace(/author:[\w-]+/i, "").trim();
   }
 
-  const priceMatch = text.match(/price:([<>=])(\d+(?:\.\d+)?)/i)
+  const priceMatch = text.match(/price:([<>=])(\d+(?:\.\d+)?)/i);
   if (priceMatch) {
-    price = [priceMatch[1], Number.parseFloat(priceMatch[2])]
-    text = text.replace(/price:[<>=]\d+(?:\.\d+)?/i, "").trim()
+    price = [priceMatch[1], Number.parseFloat(priceMatch[2])];
+    text = text.replace(/price:[<>=]\d+(?:\.\d+)?/i, "").trim();
   }
 
-  const ratingMatch = text.match(/rating:(\d+(?:\.\d+)?)/i)
+  const ratingMatch = text.match(/rating:(\d+(?:\.\d+)?)/i);
   if (ratingMatch) {
-    rating = Number.parseFloat(ratingMatch[1])
-    text = text.replace(/rating:\d+(?:\.\d+)?/i, "").trim()
+    rating = Number.parseFloat(ratingMatch[1]);
+    text = text.replace(/rating:\d+(?:\.\d+)?/i, "").trim();
   }
 
-  const categoryMatch = text.match(/category:([\w-]+)/i)
+  const categoryMatch = text.match(/category:([\w-]+)/i);
   if (categoryMatch) {
-    categoryTerm = categoryMatch[1]
-    text = text.replace(/category:[\w-]+/i, "").trim()
+    categoryTerm = categoryMatch[1];
+    text = text.replace(/category:[\w-]+/i, "").trim();
   }
 
-  const subcategoryMatch = text.match(/subcategory:([\w-]+)/i)
+  const subcategoryMatch = text.match(/subcategory:([\w-]+)/i);
   if (subcategoryMatch) {
-    subcategoryTerm = subcategoryMatch[1]
-    text = text.replace(/subcategory:[\w-]+/i, "").trim()
+    subcategoryTerm = subcategoryMatch[1];
+    text = text.replace(/subcategory:[\w-]+/i, "").trim();
   }
 
-  return { text, type, author, price, rating, categoryTerm, subcategoryTerm }
+  return { text, type, author, price, rating, categoryTerm, subcategoryTerm };
 }
 
 function calculateRelevance(resource, searchTerms) {
-  let score = 0
-  const title = (resource.title || "").toLowerCase()
-  const desc = (resource.description || "").toLowerCase()
-  const category = (resource.category || "").toLowerCase()
-  const author = (resource.author || "").toLowerCase()
-  const tags = Array.isArray(resource.tags) ? resource.tags.map((t) => (t || "").toLowerCase()) : []
+  let score = 0;
+  const title = (resource.title || "").toLowerCase();
+  const desc = (resource.description || "").toLowerCase();
+  const category = (resource.category || "").toLowerCase();
+  const author = (resource.author || "").toLowerCase();
+  const tags = Array.isArray(resource.tags)
+    ? resource.tags.map((t) => (t || "").toLowerCase())
+    : [];
 
   searchTerms.forEach((term) => {
-    if (!term) return
+    if (!term) return;
     if (title.includes(term)) {
-      score += 10
-      if (title.startsWith(term)) score += 5
+      score += 10;
+      if (title.startsWith(term)) score += 5;
     }
-    if (tags.some((t) => t.includes(term))) score += 8
-    if (category.includes(term)) score += 6
-    if (author.includes(term)) score += 5
-    if (desc.includes(term)) score += 3
-  })
+    if (tags.some((t) => t.includes(term))) score += 8;
+    if (category.includes(term)) score += 6;
+    if (author.includes(term)) score += 5;
+    if (desc.includes(term)) score += 3;
+  });
 
-  if (resource.featured) score *= 1.2
-  if (typeof resource.rating === "number" && resource.rating > 0) score *= resource.rating / 5
-  if (typeof resource.downloads === "number") score *= Math.log10(resource.downloads + 1) / 4
+  if (resource.featured) score *= 1.2;
+  if (typeof resource.rating === "number" && resource.rating > 0)
+    score *= resource.rating / 5;
+  if (typeof resource.downloads === "number")
+    score *= Math.log10(resource.downloads + 1) / 4;
 
-  return score
+  return score;
 }
 
 async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
-  const { text, type, author, price, rating, categoryTerm, subcategoryTerm } = parseOperators(q)
+  const { text, type, author, price, rating, categoryTerm, subcategoryTerm } =
+    parseOperators(q);
 
-  const andConditions = []
+  const andConditions = [];
 
   // Text search via pg_trgm similarity across key fields
   if (text && text.trim().length > 0) {
-    const qText = text.toLowerCase()
-    const threshold = 0.1
-    const likeTerm = `%${qText}%`
-    const qEsc = db.sequelize.escape(qText)
-    const likeEsc = db.sequelize.escape(likeTerm)
+    const qText = text.toLowerCase();
+    const threshold = 0.1;
+    const likeTerm = `%${qText}%`;
+    const qEsc = db.sequelize.escape(qText);
+    const likeEsc = db.sequelize.escape(likeTerm);
     andConditions.push({
       [Op.or]: [
         // pg_trgm similarity via SQL literals (faster/clearer)
-        literal(`SIMILARITY(lower("MarketplaceProduct"."title"), ${qEsc}) >= ${threshold}`),
-        literal(`SIMILARITY(lower(regexp_replace(regexp_replace("MarketplaceProduct"."description", '<[^>]+>', '', 'g'), '(https?:\\/\\/[^\\s]+)', '', 'g')), ${qEsc}) >= ${threshold / 2}`),
-        literal(`SIMILARITY(lower("MarketplaceCategory"."name"), ${qEsc}) >= ${threshold}`),
-        literal(`SIMILARITY(lower("MarketplaceSubCategory"."name"), ${qEsc}) >= ${threshold}`),
-        literal(`SIMILARITY(lower("User"."pen_name"), ${qEsc}) >= ${threshold}`),
+        literal(
+          `SIMILARITY(lower("MarketplaceProduct"."title"), ${qEsc}) >= ${threshold}`
+        ),
+        literal(
+          `SIMILARITY(lower(regexp_replace(regexp_replace("MarketplaceProduct"."description", '<[^>]+>', '', 'g'), '(https?:\\/\\/[^\\s]+)', '', 'g')), ${qEsc}) >= ${threshold / 2}`
+        ),
+        literal(
+          `SIMILARITY(lower("MarketplaceCategory"."name"), ${qEsc}) >= ${threshold}`
+        ),
+        literal(
+          `SIMILARITY(lower("MarketplaceSubCategory"."name"), ${qEsc}) >= ${threshold}`
+        ),
+        literal(
+          `SIMILARITY(lower("User"."pen_name"), ${qEsc}) >= ${threshold}`
+        ),
         literal(`SIMILARITY(lower("User"."name"), ${qEsc}) >= ${threshold}`),
         // Tag name similarity via EXISTS subquery
         literal(`EXISTS (
@@ -129,7 +144,7 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
         { "$User.pen_name$": { [Op.iLike]: likeTerm } },
         { "$User.name$": { [Op.iLike]: likeTerm } },
       ],
-    })
+    });
   }
 
   // type: matches category name or fileType
@@ -139,7 +154,7 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
         { fileType: { [Op.iLike]: `%${type}%` } },
         { "$MarketplaceCategory.name$": { [Op.iLike]: `%${type}%` } },
       ],
-    })
+    });
   }
 
   // category: operator filter by category name or slug
@@ -149,17 +164,25 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
         { "$MarketplaceCategory.name$": { [Op.iLike]: `%${categoryTerm}%` } },
         { "$MarketplaceCategory.slug$": { [Op.iLike]: `%${categoryTerm}%` } },
       ],
-    })
+    });
   }
 
   // subcategory: operator filter by subcategory name or slug
   if (subcategoryTerm) {
     andConditions.push({
       [Op.or]: [
-        { "$MarketplaceSubCategory.name$": { [Op.iLike]: `%${subcategoryTerm}%` } },
-        { "$MarketplaceSubCategory.slug$": { [Op.iLike]: `%${subcategoryTerm}%` } },
+        {
+          "$MarketplaceSubCategory.name$": {
+            [Op.iLike]: `%${subcategoryTerm}%`,
+          },
+        },
+        {
+          "$MarketplaceSubCategory.slug$": {
+            [Op.iLike]: `%${subcategoryTerm}%`,
+          },
+        },
       ],
-    })
+    });
   }
 
   // author: matches User name or pen_name
@@ -169,18 +192,18 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
         { "$User.name$": { [Op.iLike]: `%${author}%` } },
         { "$User.pen_name$": { [Op.iLike]: `%${author}%` } },
       ],
-    })
+    });
   }
 
   if (price) {
-    const [op, value] = price
-    if (op === "<") andConditions.push({ price: { [Op.lt]: value } })
-    if (op === ">") andConditions.push({ price: { [Op.gt]: value } })
-    if (op === "=") andConditions.push({ price: { [Op.eq]: value } })
+    const [op, value] = price;
+    if (op === "<") andConditions.push({ price: { [Op.lt]: value } });
+    if (op === ">") andConditions.push({ price: { [Op.gt]: value } });
+    if (op === "=") andConditions.push({ price: { [Op.eq]: value } });
   }
 
   if (typeof rating === "number") {
-    andConditions.push({ rating: { [Op.gte]: rating } })
+    andConditions.push({ rating: { [Op.gte]: rating } });
   }
 
   // KYC visibility: owner's KYC must be approved unless the viewer is the owner
@@ -191,18 +214,20 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
       WHERE mkv.user_id = "MarketplaceProduct"."user_id"
         AND mkv.status = 'approved'
     )
-  `)
-  const visibilityOr = [approvedSellerLiteral]
+  `);
+  const visibilityOr = [approvedSellerLiteral];
   if (viewerId) {
-    visibilityOr.push({ user_id: viewerId })
+    visibilityOr.push({ user_id: viewerId });
   }
-  andConditions.push({ [Op.or]: visibilityOr })
+  andConditions.push({ [Op.or]: visibilityOr });
 
   // Flagged gating: require flagged=false for public viewers; owners can see their own flagged items
   if (viewerId) {
-    andConditions.push({ [Op.or]: [{ flagged: false }, { user_id: viewerId }] })
+    andConditions.push({
+      [Op.or]: [{ flagged: false }, { user_id: viewerId }],
+    });
   } else {
-    andConditions.push({ flagged: false })
+    andConditions.push({ flagged: false });
   }
 
   // Explicit filter params
@@ -213,31 +238,45 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
     subcategoryIds = [],
     subcategorySlugs = [],
     subcategoryNames = [],
-  } = filters
+  } = filters;
 
   if (Array.isArray(categoryIds) && categoryIds.length) {
-    andConditions.push({ marketplace_category_id: { [Op.in]: categoryIds } })
+    andConditions.push({ marketplace_category_id: { [Op.in]: categoryIds } });
   }
   if (Array.isArray(categorySlugs) && categorySlugs.length) {
-    andConditions.push({ "$MarketplaceCategory.slug$": { [Op.in]: categorySlugs } })
+    andConditions.push({
+      "$MarketplaceCategory.slug$": { [Op.in]: categorySlugs },
+    });
   }
   if (Array.isArray(categoryNames) && categoryNames.length) {
-    andConditions.push({ [Op.or]: categoryNames.map((n) => ({ "$MarketplaceCategory.name$": { [Op.iLike]: `%${n}%` } })) })
+    andConditions.push({
+      [Op.or]: categoryNames.map((n) => ({
+        "$MarketplaceCategory.name$": { [Op.iLike]: `%${n}%` },
+      })),
+    });
   }
   if (Array.isArray(subcategoryIds) && subcategoryIds.length) {
-    andConditions.push({ marketplace_subcategory_id: { [Op.in]: subcategoryIds } })
+    andConditions.push({
+      marketplace_subcategory_id: { [Op.in]: subcategoryIds },
+    });
   }
   if (Array.isArray(subcategorySlugs) && subcategorySlugs.length) {
-    andConditions.push({ "$MarketplaceSubCategory.slug$": { [Op.in]: subcategorySlugs } })
+    andConditions.push({
+      "$MarketplaceSubCategory.slug$": { [Op.in]: subcategorySlugs },
+    });
   }
   if (Array.isArray(subcategoryNames) && subcategoryNames.length) {
-    andConditions.push({ [Op.or]: subcategoryNames.map((n) => ({ "$MarketplaceSubCategory.name$": { [Op.iLike]: `%${n}%` } })) })
+    andConditions.push({
+      [Op.or]: subcategoryNames.map((n) => ({
+        "$MarketplaceSubCategory.name$": { [Op.iLike]: `%${n}%` },
+      })),
+    });
   }
 
-  const where = andConditions.length ? { [Op.and]: andConditions } : {}
+  const where = andConditions.length ? { [Op.and]: andConditions } : {};
 
-  const hasText = Boolean(text && text.trim().length > 0)
-  const qText = hasText ? text.toLowerCase() : null
+  const hasText = Boolean(text && text.trim().length > 0);
+  const qText = hasText ? text.toLowerCase() : null;
 
   const rankScoreLiteral = literal(`
     (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
@@ -248,12 +287,12 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
         FROM "mv_product_sales" AS s
         WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
       ), 0) + 1))
-  `)
+  `);
   const salesCountLiteral = literal(`COALESCE((
     SELECT s."sales_count"
     FROM "mv_product_sales" AS s
     WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
-  ), 0)`)
+  ), 0)`);
 
   const rows = await MarketplaceProduct.findAll({
     where,
@@ -273,21 +312,38 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
               `),
               "similarityScore",
             ],
-            [rankScoreLiteral, 'rankScore'],
-            [salesCountLiteral, 'salesCount'],
+            [rankScoreLiteral, "rankScore"],
+            [salesCountLiteral, "salesCount"],
           ],
         }
-      : { include: [[rankScoreLiteral, 'rankScore'], [salesCountLiteral, 'salesCount']] },
+      : {
+          include: [
+            [rankScoreLiteral, "rankScore"],
+            [salesCountLiteral, "salesCount"],
+          ],
+        },
     include: [
-      { model: MarketplaceCategory, attributes: ["name", "slug"], required: false },
-      { model: MarketplaceSubCategory, attributes: ["name", "slug"], required: false },
-      { 
-        model: User, 
-        attributes: ["id", "name", "pen_name"], 
+      {
+        model: MarketplaceCategory,
+        attributes: ["name", "slug"],
+        required: false,
+      },
+      {
+        model: MarketplaceSubCategory,
+        attributes: ["name", "slug"],
+        required: false,
+      },
+      {
+        model: User,
+        attributes: ["id", "name", "pen_name"],
         required: false,
         include: [
-          { model: MarketplaceKycVerification, attributes: ["status"], required: false }
-        ]
+          {
+            model: MarketplaceKycVerification,
+            attributes: ["status"],
+            required: false,
+          },
+        ],
       },
       {
         model: MarketplaceTags,
@@ -308,18 +364,18 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
           ["createdAt", "DESC"],
         ],
     limit,
-  })
+  });
 
   // Shape to UI resource
-  const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100)
+  const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
   const shaped = rows.map((p) => {
-    const json = p.toJSON()
-    const authorName = json.User?.pen_name || json.User?.name || "Unknown"
-    const categoryName = json.MarketplaceCategory?.name || "Misc"
-    const categorySlug = json.MarketplaceCategory?.slug || ""
-    const subCategoryName = json.MarketplaceSubCategory?.name || ""
-    const subCategorySlug = json.MarketplaceSubCategory?.slug || ""
-    const tags = Array.isArray(json.tags) ? json.tags.map((t) => t.name) : []
+    const json = p.toJSON();
+    const authorName = json.User?.pen_name || json.User?.name || "Unknown";
+    const categoryName = json.MarketplaceCategory?.name || "Misc";
+    const categorySlug = json.MarketplaceCategory?.slug || "";
+    const subCategoryName = json.MarketplaceSubCategory?.name || "";
+    const subCategorySlug = json.MarketplaceSubCategory?.slug || "";
+    const tags = Array.isArray(json.tags) ? json.tags.map((t) => t.name) : [];
 
     return {
       id: json.id,
@@ -339,30 +395,42 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
       fileSize: json.fileSize || "",
       license: json.license || "",
       author: authorName,
-      salesCount: typeof json.salesCount === "number" ? json.salesCount : Number(json.salesCount || 0),
-      isBestseller: (typeof json.salesCount === "number" ? json.salesCount : Number(json.salesCount || 0)) >= BESTSELLER_MIN_SALES,
-    }
-  })
+      salesCount:
+        typeof json.salesCount === "number"
+          ? json.salesCount
+          : Number(json.salesCount || 0),
+      isBestseller:
+        (typeof json.salesCount === "number"
+          ? json.salesCount
+          : Number(json.salesCount || 0)) >= BESTSELLER_MIN_SALES,
+    };
+  });
 
-  return shaped
+  return shaped;
 }
 
 export async function GET(request) {
-  const { searchParams } = new URL(request.url)
-  const q = searchParams.get("q") || ""
-  const limit = parseInt(searchParams.get("limit") || "50", 10)
+  const { searchParams } = new URL(request.url);
+  const q = searchParams.get("q") || "";
+  const limit = parseInt(searchParams.get("limit") || "50", 10);
 
-  const parseCsv = (v) => (v ? v.split(",").map((s) => s.trim()).filter(Boolean) : [])
-  const categoryIds = parseCsv(searchParams.get("categoryId"))
-  const categorySlugs = parseCsv(searchParams.get("categorySlug"))
-  const categoryNames = parseCsv(searchParams.get("category"))
-  const subcategoryIds = parseCsv(searchParams.get("subcategoryId"))
-  const subcategorySlugs = parseCsv(searchParams.get("subcategorySlug"))
-  const subcategoryNames = parseCsv(searchParams.get("subcategory"))
+  const parseCsv = (v) =>
+    v
+      ? v
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : [];
+  const categoryIds = parseCsv(searchParams.get("categoryId"));
+  const categorySlugs = parseCsv(searchParams.get("categorySlug"));
+  const categoryNames = parseCsv(searchParams.get("category"));
+  const subcategoryIds = parseCsv(searchParams.get("subcategoryId"));
+  const subcategorySlugs = parseCsv(searchParams.get("subcategorySlug"));
+  const subcategoryNames = parseCsv(searchParams.get("subcategory"));
 
-  const started = Date.now()
-  const session = await getServerSession(authOptions)
-  const viewerId = session?.user?.id || null
+  const started = Date.now();
+  const session = await getServerSession(authOptions);
+  const viewerId = session?.user?.id || null;
   try {
     const dbResults = await queryDB({
       q,
@@ -376,23 +444,26 @@ export async function GET(request) {
         subcategoryNames,
       },
       viewerId,
-    })
+    });
     // No fallback to mock; return DB results only
 
-    const ended = Date.now()
+    const ended = Date.now();
     return NextResponse.json({
       results: dbResults,
       source: "db",
       searchTime: ended - started,
-    })
+    });
   } catch (err) {
-    console.error("/api/marketplace/products/search error:", err)
-    const ended = Date.now()
-    return NextResponse.json({
-      results: [],
-      source: "db",
-      searchTime: ended - started,
-      error: err?.message || "Search failed",
-    }, { status: 500 })
+    console.error("/api/marketplace/products/search error:", err);
+    const ended = Date.now();
+    return NextResponse.json(
+      {
+        results: [],
+        source: "db",
+        searchTime: ended - started,
+        error: err?.message || "Search failed",
+      },
+      { status: 500 }
+    );
   }
 }

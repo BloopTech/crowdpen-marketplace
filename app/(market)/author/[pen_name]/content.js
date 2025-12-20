@@ -118,7 +118,7 @@ export default function AuthorProfileContent({ author }) {
       loadMoreProducts(author.pen_name, true);
       loadMoreReviews(author.pen_name, true);
     }
-  }, [author?.pen_name, loadMoreProducts, loadMoreReviews]);
+  }, [author, loadMoreProducts, loadMoreReviews]);
 
   useEffect(() => {
     initializeData();
@@ -129,7 +129,7 @@ export default function AuthorProfileContent({ author }) {
     if (author?.pen_name) {
       loadMoreProducts(author.pen_name, true);
     }
-  }, [author?.pen_name, loadMoreProducts]);
+  }, [author, loadMoreProducts]);
 
   useEffect(() => {
     reloadProducts();
@@ -140,7 +140,7 @@ export default function AuthorProfileContent({ author }) {
     if (author?.pen_name) {
       loadMoreReviews(author.pen_name, true);
     }
-  }, [author?.pen_name, loadMoreReviews]);
+  }, [author, loadMoreReviews]);
 
   useEffect(() => {
     reloadReviews();

@@ -1,13 +1,12 @@
 "use client";
 
-import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
 import { Input } from "../../components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Switch } from "../../components/ui/switch";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../../components/ui/pagination";
+import { PaginationSmart } from "../../components/ui/pagination";
 import ProductDetailsDialog from "./ProductDetailsDialog";
 import { AdminProductDialogProvider, useAdminProductDialog } from "./details-context";
 import { AdminProductsProvider, useAdminProducts } from "./list-context";
@@ -22,7 +21,6 @@ function AdminProductsInner() {
     loading,
     page,
     pageSize,
-    total,
     totalPages,
     refetch,
     toggleFeatured,
@@ -177,17 +175,11 @@ function AdminProductsInner() {
           </Table>
 
           <div className="mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious href="#" disabled={page <= 1} onClick={(e) => { e.preventDefault(); const np = Math.max(1, page - 1); setQs({ page: np }); }} />
-                </PaginationItem>
-                <span className="px-3 text-sm">Page {page} of {totalPages}</span>
-                <PaginationItem>
-                  <PaginationNext href="#" disabled={page >= totalPages} onClick={(e) => { e.preventDefault(); const np = Math.min(totalPages, page + 1); setQs({ page: np }); }} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginationSmart
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={(np) => setQs({ page: np })}
+            />
           </div>
         </CardContent>
       </Card>

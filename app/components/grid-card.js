@@ -12,12 +12,17 @@ import { useViewerCurrency } from "../hooks/use-viewer-currency";
 export default function GridCard({ resource }) {
   const isOutOfStock =
     resource?.inStock === false ||
-    (resource?.stock !== null && typeof resource?.stock !== "undefined" && Number(resource?.stock) <= 0);
+    (resource?.stock !== null &&
+      typeof resource?.stock !== "undefined" &&
+      Number(resource?.stock) <= 0);
 
   const baseCurrency = (resource?.currency || "USD").toString().toUpperCase();
   const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
-  const displayCurrency = (viewerCurrency || baseCurrency).toString().toUpperCase();
-  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const displayCurrency = (viewerCurrency || baseCurrency)
+    .toString()
+    .toUpperCase();
+  const displayRate =
+    Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
   const fmt = (v) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -56,7 +61,9 @@ export default function GridCard({ resource }) {
       </div>
 
       <CardContent className="flex-1 p-4">
-        <Link href={`/product/${resource.id}`}>
+        <Link
+          href={`/product/${resource.product_id ? resource.product_id : resource.id}`}
+        >
           <h3 className="font-semibold text-foreground hover:text-tertiary hover:underline cursor-pointer line-clamp-1">
             {resource.title}
           </h3>
@@ -99,13 +106,18 @@ export default function GridCard({ resource }) {
           <div className="text-lg font-bold">{fmt(resource.price)}</div>
           <div className="text-xs mt-1">
             {isOutOfStock ? (
-              <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
-            ) : typeof resource?.stock !== "undefined" && resource?.stock !== null ? (
+              <Badge className="bg-red-800/90 text-white text-xs">
+                Out of stock
+              </Badge>
+            ) : typeof resource?.stock !== "undefined" &&
+              resource?.stock !== null ? (
               `In stock: ${resource?.stock}`
             ) : null}
           </div>
         </div>
-        <Button size="sm" disabled={isOutOfStock}>{isOutOfStock ? "Out of Stock" : "Add"}</Button>
+        <Button size="sm" disabled={isOutOfStock}>
+          {isOutOfStock ? "Out of Stock" : "Add"}
+        </Button>
       </CardFooter>
     </Card>
   );

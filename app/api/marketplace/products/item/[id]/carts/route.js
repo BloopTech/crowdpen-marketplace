@@ -2,8 +2,16 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../../models/index";
+import { validate as isUUID } from "uuid";
+import { Op } from "sequelize";
 
-const { MarketplaceProduct, MarketplaceCartItems, MarketplaceCart, User, MarketplaceKycVerification } = db;
+const {
+  MarketplaceProduct,
+  MarketplaceCartItems,
+  MarketplaceCart,
+  User,
+  MarketplaceKycVerification,
+} = db;
 
 export async function POST(request, { params }) {
   const getParams = await params;
@@ -39,13 +47,26 @@ export async function POST(request, { params }) {
     }
 
     // Check if product exists and load owner's KYC status
-    const product = await MarketplaceProduct.findByPk(productId, {
+    const idParam = String(productId);
+    const orConditions = [{ product_id: idParam }];
+    if (isUUID(idParam)) {
+      orConditions.unshift({ id: idParam });
+    }
+
+    const product = await MarketplaceProduct.findOne({
+      where: {
+        [Op.or]: orConditions,
+      },
       include: [
         {
           model: User,
           attributes: ["id"],
           include: [
-            { model: MarketplaceKycVerification, attributes: ["status"], required: false },
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
           ],
         },
       ],
@@ -67,7 +88,8 @@ export async function POST(request, { params }) {
 
     // KYC gating: only allow if viewer is owner or owner's KYC is approved
     const isOwner = product.user_id === user_id;
-    const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
+    const ownerApproved =
+      product?.User?.MarketplaceKycVerification?.status === "approved";
     if (!isOwner && !ownerApproved) {
       return NextResponse.json(
         { status: "error", message: "Product is not available" },
@@ -76,7 +98,12 @@ export async function POST(request, { params }) {
     }
 
     // Prevent add when product is out of stock
-    if (product?.inStock === false || (product?.stock !== null && typeof product?.stock !== 'undefined' && Number(product.stock) <= 0)) {
+    if (
+      product?.inStock === false ||
+      (product?.stock !== null &&
+        typeof product?.stock !== "undefined" &&
+        Number(product.stock) <= 0)
+    ) {
       return NextResponse.json(
         { status: "error", message: "Product is out of stock" },
         { status: 400 }
@@ -85,12 +112,16 @@ export async function POST(request, { params }) {
 
     // Prevent add when requested quantity exceeds available stock (if tracked)
     if (
-      typeof quantity === 'number' &&
-      product?.stock !== null && typeof product?.stock !== 'undefined' &&
+      typeof quantity === "number" &&
+      product?.stock !== null &&
+      typeof product?.stock !== "undefined" &&
       Number(quantity) > Number(product.stock)
     ) {
       return NextResponse.json(
-        { status: "error", message: "Requested quantity exceeds available stock" },
+        {
+          status: "error",
+          message: "Requested quantity exceeds available stock",
+        },
         { status: 400 }
       );
     }
@@ -115,7 +146,9 @@ export async function POST(request, { params }) {
       });
     }
 
-    const productCurrency = (product?.currency || "USD").toString().toUpperCase();
+    const productCurrency = (product?.currency || "USD")
+      .toString()
+      .toUpperCase();
     if (productCurrency !== "USD") {
       return NextResponse.json(
         {
@@ -133,21 +166,21 @@ export async function POST(request, { params }) {
     let cartItem = await MarketplaceCartItems.findOne({
       where: {
         marketplace_cart_id: cart.id,
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
       },
     });
 
     if (cartItem) {
       // Item exists, remove it from cart (toggle off)
       await cartItem.destroy();
-      
+
       // Check if cart is now empty and remove it if so
       const remainingItems = await MarketplaceCartItems.count({
         where: {
           marketplace_cart_id: cart.id,
         },
       });
-      
+
       if (remainingItems === 0) {
         await cart.destroy();
       } else {
@@ -157,16 +190,17 @@ export async function POST(request, { params }) {
             marketplace_cart_id: cart.id,
           },
         });
-        
+
         const subtotal = cartItems.reduce((sum, item) => {
           return sum + parseFloat(item.price || 0);
         }, 0);
-        
+
         cart.subtotal = subtotal;
-        cart.total = subtotal + parseFloat(cart.tax || 0) - parseFloat(cart.discount || 0);
+        cart.total =
+          subtotal + parseFloat(cart.tax || 0) - parseFloat(cart.discount || 0);
         await cart.save();
       }
-      
+
       return NextResponse.json({
         status: "success",
         message: "Item removed from cart successfully",
@@ -178,7 +212,7 @@ export async function POST(request, { params }) {
       const itemSubtotal = parseFloat(product.price) * quantity;
       cartItem = await MarketplaceCartItems.create({
         marketplace_cart_id: cart.id,
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
         quantity: quantity,
         price: itemSubtotal,
         subtotal: itemSubtotal,

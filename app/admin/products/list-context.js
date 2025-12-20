@@ -119,7 +119,8 @@ export function AdminProductsProvider({ children }) {
     },
   });
 
-  const list = useMemo(() => query?.data?.data || [], [query?.data?.data]);
+  const queryData = query?.data?.data;
+  const list = useMemo(() => queryData || [], [queryData]);
   const loading = query?.isFetching || query?.isLoading;
   const page = query?.data?.page || qs.page || 1;
   const pageSize = query?.data?.pageSize || qs.pageSize || 20;

@@ -1,5 +1,10 @@
 "use client";
-import React, { useActionState, useEffect, useState, startTransition } from "react";
+import React, {
+  useActionState,
+  useEffect,
+  useState,
+  startTransition,
+} from "react";
 import Image from "next/image";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -68,8 +73,11 @@ export default function ProductCard(props) {
 
   const baseCurrency = (resource?.currency || "USD").toString().toUpperCase();
   const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
-  const displayCurrency = (viewerCurrency || baseCurrency).toString().toUpperCase();
-  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const displayCurrency = (viewerCurrency || baseCurrency)
+    .toString()
+    .toUpperCase();
+  const displayRate =
+    Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
   const fmt = (v) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -102,19 +110,21 @@ export default function ProductCard(props) {
       ? state.inWishlist
       : undefined;
   const hasWishlistActionError =
-    session?.user?.id && !isPending && state?.success === false && state?.message;
+    session?.user?.id &&
+    !isPending &&
+    state?.success === false &&
+    state?.message;
 
   // Use local state if available, otherwise fall back to server state
-  const isWished =
-    !session?.user?.id
-      ? false
-      : typeof serverWished === "boolean"
-        ? serverWished
-        : hasWishlistActionError
-          ? initialWished
-          : localWishlistState !== null
-            ? localWishlistState
-            : initialWished;
+  const isWished = !session?.user?.id
+    ? false
+    : typeof serverWished === "boolean"
+      ? serverWished
+      : hasWishlistActionError
+        ? initialWished
+        : localWishlistState !== null
+          ? localWishlistState
+          : initialWished;
 
   // const carts = resource?.Cart?.find(
   //   (cart) =>
@@ -148,22 +158,25 @@ export default function ProductCard(props) {
     cartState?.success === false &&
     cartState?.message;
 
-  const isCarted =
-    !session?.user?.id
-      ? false
-      : typeof serverCarted === "boolean"
-        ? serverCarted
-        : hasCartActionError
-          ? initialCarted
-          : hasLocalCartOverride
-            ? Boolean(localCartState) // If we have a local override, use its boolean value
-            : initialCarted; // Otherwise fall back to server state
+  const isCarted = !session?.user?.id
+    ? false
+    : typeof serverCarted === "boolean"
+      ? serverCarted
+      : hasCartActionError
+        ? initialCarted
+        : hasLocalCartOverride
+          ? Boolean(localCartState) // If we have a local override, use its boolean value
+          : initialCarted; // Otherwise fall back to server state
 
   //
 
   // Update local state when server action completes
   useEffect(() => {
-    if (!isPending && state?.success && typeof state?.inWishlist !== "undefined") {
+    if (
+      !isPending &&
+      state?.success &&
+      typeof state?.inWishlist !== "undefined"
+    ) {
       refetchWishlistCount();
     }
   }, [state, isPending, refetchWishlistCount]);
@@ -174,11 +187,17 @@ export default function ProductCard(props) {
       if (cartState.action === "added") {
         toast.success(cartState.message || "Item added to cart successfully");
       } else if (cartState.action === "removed") {
-        toast.success(cartState.message || "Item removed from cart successfully");
+        toast.success(
+          cartState.message || "Item removed from cart successfully"
+        );
       }
 
       refetchCartCount();
-    } else if (!isCartPending && cartState?.success === false && cartState?.message) {
+    } else if (
+      !isCartPending &&
+      cartState?.success === false &&
+      cartState?.message
+    ) {
       // Show error message
       console.error("Failed to update cart:", cartState.message);
       toast.error(cartState.message);
@@ -329,8 +348,14 @@ export default function ProductCard(props) {
 
           {/* Quick Actions Overlay */}
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
-            <Link href={`/product/${resource.product_id ? resource.product_id : resource.id}`}>
-              <Button variant="secondary" size="sm" className="pointer-events-auto">
+            <Link
+              href={`/product/${resource.product_id ? resource.product_id : resource.id}`}
+            >
+              <Button
+                variant="secondary"
+                size="sm"
+                className="pointer-events-auto"
+              >
                 Preview
               </Button>
             </Link>
@@ -351,7 +376,9 @@ export default function ProductCard(props) {
           </div>
 
           {/* Title */}
-          <Link href={`/product/${resource.id}`}>
+          <Link
+            href={`/product/${resource.product_id ? resource.product_id : resource.id}`}
+          >
             <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-tertiary cursor-pointer">
               {resource.title}
             </h3>
@@ -407,7 +434,7 @@ export default function ProductCard(props) {
           {/* Price */}
           <div className="flex items-center gap-2 mb-3">
             <span className="text-lg font-bold">{fmt(resource?.price)}</span>
-            {resource?.originalPrice && (
+            {resource?.originalPrice && discountPercentage > 0 && (
               <span className="text-sm text-muted-foreground line-through">
                 {fmt(resource?.originalPrice)}
               </span>
@@ -415,7 +442,9 @@ export default function ProductCard(props) {
           </div>
           <div className="text-xs mb-3">
             {isOutOfStock ? (
-              <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
+              <Badge className="bg-red-800/90 text-white text-xs">
+                Out of stock
+              </Badge>
             ) : typeof resource?.stock !== "undefined" &&
               resource?.stock !== null ? (
               `In stock: ${resource?.stock}`

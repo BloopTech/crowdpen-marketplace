@@ -328,7 +328,6 @@ function CheckoutContent() {
       formData.email,
       formData.firstName,
       formData.lastName,
-      total,
       cancelStartButton,
     ]
   );

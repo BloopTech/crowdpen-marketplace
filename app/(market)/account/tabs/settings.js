@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "../../../components/ui/card";
 import { Separator } from "../../../components/ui/separator";
+import { Settings } from "lucide-react";
 
 export default function AccountSettings() {
   return (

@@ -3,6 +3,7 @@ import { db } from "../../../../../models";
 import { Op } from "sequelize";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../api/auth/[...nextauth]/route";
+import { validate as isUUID } from "uuid";
 
 const {
   MarketplaceProduct,
@@ -27,8 +28,16 @@ export async function GET(request, { params }) {
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit")) || 5;
 
+    const idParam = String(id);
+    const orConditions = [{ product_id: idParam }];
+    if (isUUID(idParam)) {
+      orConditions.unshift({ id: idParam });
+    }
+
     // First, get the current product to find its category
-    const currentProduct = await MarketplaceProduct.findByPk(id);
+    const currentProduct = await MarketplaceProduct.findOne({
+      where: { [Op.or]: orConditions },
+    });
     console.log(
       "Current product for related products:",
       currentProduct?.id,
@@ -66,7 +75,7 @@ export async function GET(request, { params }) {
     const relatedProducts = await MarketplaceProduct.findAll({
       where: {
         id: {
-          [Op.ne]: id, // Exclude current product
+          [Op.ne]: currentProduct.id, // Exclude current product
         },
         marketplace_category_id: currentProduct.marketplace_category_id,
         [Op.or]: visibilityOr,
@@ -83,7 +92,11 @@ export async function GET(request, { params }) {
           attributes: [],
           required: false,
           include: [
-            { model: MarketplaceKycVerification, attributes: ["status"], required: false },
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
           ],
         },
       ],
@@ -104,7 +117,8 @@ export async function GET(request, { params }) {
         "fileType",
         "image",
         "downloads",
-        [rankScoreLiteral, 'rankScore']
+        "product_id",
+        [rankScoreLiteral, "rankScore"],
       ],
       order: [
         [rankScoreLiteral, "DESC"],
@@ -116,12 +130,17 @@ export async function GET(request, { params }) {
     const productIDs = relatedProducts?.map((product) => product?.id);
 
     // Compute sales count per product from MV
-    const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
+    const BESTSELLER_MIN_SALES = Number(
+      process.env.BESTSELLER_MIN_SALES || 100
+    );
     let salesMap = {};
     if (productIDs && productIDs.length) {
       const salesRows = await db.sequelize.query(
         'SELECT "marketplace_product_id", "sales_count" FROM "mv_product_sales" WHERE "marketplace_product_id" IN (:ids)',
-        { replacements: { ids: productIDs }, type: db.Sequelize.QueryTypes.SELECT }
+        {
+          replacements: { ids: productIDs },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }
       );
       salesRows.forEach((row) => {
         salesMap[row.marketplace_product_id] = Number(row.sales_count) || 0;

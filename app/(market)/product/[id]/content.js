@@ -114,6 +114,7 @@ export default function ProductDetailContent(props) {
   // Update local state when server action completes
   useEffect(() => {
     if (state.success && state.inWishlist !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLocalWishlistState(state.inWishlist);
       refetchWishlistCount();
     }
@@ -125,10 +126,12 @@ export default function ProductDetailContent(props) {
       console.log("state cart", cartState);
       // Update local state based on action (added/removed)
       if (cartState.action === "added") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCartState(cartState.cartItem);
         setHasLocalCartOverride(true);
         toast.success(cartState.message || "Item added to cart successfully");
       } else if (cartState.action === "removed") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCartState(null);
         setHasLocalCartOverride(true);
         toast.success(

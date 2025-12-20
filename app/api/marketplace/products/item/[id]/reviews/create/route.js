@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../../auth/[...nextauth]/route";
+import { validate as isUUID } from "uuid";
+import { Op } from "sequelize";
 
-const { MarketplaceReview, User } = db;
+const { MarketplaceReview, User, MarketplaceProduct } = db;
 
 /**
  * POST handler to create a new review for a product
@@ -12,9 +14,8 @@ const { MarketplaceReview, User } = db;
  * @returns {NextResponse} - JSON response with created review
  */
 export async function POST(request, { params }) {
-    const getParams = await params;
+  const getParams = await params;
   try {
-
     const productId = getParams.id;
 
     if (!productId) {
@@ -52,11 +53,34 @@ export async function POST(request, { params }) {
       );
     }
 
+    const idParam = String(productId);
+    const orConditions = [{ product_id: idParam }];
+    if (isUUID(idParam)) {
+      orConditions.unshift({ id: idParam });
+    }
+
+    const product = await MarketplaceProduct.findOne({
+      where: {
+        [Op.or]: orConditions,
+      },
+      attributes: ["id", "product_id"],
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product does not exist",
+        },
+        { status: 400 }
+      );
+    }
+
     // Check if user has already reviewed this product
     const existingReview = await MarketplaceReview.findOne({
       where: {
         user_id: userId,
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
       },
     });
 
@@ -72,7 +96,7 @@ export async function POST(request, { params }) {
 
     // Create the review
     const newReview = await MarketplaceReview.create({
-      marketplace_product_id: productId,
+      marketplace_product_id: product.id,
       user_id: userId,
       rating: parseInt(rating),
       title: title?.trim() || null,
@@ -86,7 +110,7 @@ export async function POST(request, { params }) {
       include: [
         {
           model: User,
-          attributes: ['id', 'name', 'email'],
+          attributes: ["id", "name", "email"],
         },
       ],
     });

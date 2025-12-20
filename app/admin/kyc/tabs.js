@@ -15,11 +15,7 @@ import {
   TabsTrigger,
 } from "../../components/ui/tabs";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
+  PaginationSmart
 } from "../../components/ui/pagination";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import {
@@ -27,7 +23,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import Image from "next/image";
@@ -44,9 +39,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogCancel,
-  AlertDialogAction,
 } from "../../components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../../components/ui/tooltip";
+import { TooltipProvider } from "../../components/ui/tooltip";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "../../components/ui/hover-card";
 
 export default function KYCTabs(props) {
@@ -92,6 +86,7 @@ export default function KYCTabs(props) {
     }
     if (approveState?.success && approveState?.data?.id) {
       const id = approveState.data.id;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setApproveConfirmOpen((prev) => ({ ...prev, [id]: false }));
       setRejectConfirmOpen((prev) => ({ ...prev, [id]: false }));
     }
@@ -103,6 +98,7 @@ export default function KYCTabs(props) {
     }
     if (rejectState?.success && rejectState?.data?.id) {
       const id = rejectState.data.id;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRejectConfirmOpen((prev) => ({ ...prev, [id]: false }));
       setApproveConfirmOpen((prev) => ({ ...prev, [id]: false }));
     }
@@ -547,39 +543,15 @@ export default function KYCTabs(props) {
             </TableBody>
           </Table>
           <div className="mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.max(1, pendingPage - 1);
-                      setKycPendingParams((p) => ({ ...p, page: np }));
-                      setQs({ pendingPage: np });
-                      kycPendingQueryRefetch();
-                    }}
-                    disabled={pendingPage <= 1}
-                  />
-                </PaginationItem>
-                <span className="px-3 text-sm">
-                  Page {pendingPage} of {pendingTotalPages}
-                </span>
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.min(pendingTotalPages, pendingPage + 1);
-                      setKycPendingParams((p) => ({ ...p, page: np }));
-                      setQs({ pendingPage: np });
-                      kycPendingQueryRefetch();
-                    }}
-                    disabled={pendingPage >= pendingTotalPages}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginationSmart
+              currentPage={pendingPage}
+              totalPages={pendingTotalPages}
+              onPageChange={(np) => {
+                setKycPendingParams((p) => ({ ...p, page: np }));
+                setQs({ pendingPage: np });
+                kycPendingQueryRefetch();
+              }}
+            />
           </div>
         </TabsContent>
 
@@ -672,39 +644,15 @@ export default function KYCTabs(props) {
             </TableBody>
           </Table>
           <div className="mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.max(1, approvedPage - 1);
-                      setKycApprovedParams((p) => ({ ...p, page: np }));
-                      setQs({ approvedPage: np });
-                      kycApprovedQueryRefetch();
-                    }}
-                    disabled={approvedPage <= 1}
-                  />
-                </PaginationItem>
-                <span className="px-3 text-sm">
-                  Page {approvedPage} of {approvedTotalPages}
-                </span>
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    disabled={approvedPage >= approvedTotalPages}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.min(approvedTotalPages, approvedPage + 1);
-                      setKycApprovedParams((p) => ({ ...p, page: np }));
-                      setQs({ approvedPage: np });
-                      kycApprovedQueryRefetch();
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginationSmart
+              currentPage={approvedPage}
+              totalPages={approvedTotalPages}
+              onPageChange={(np) => {
+                setKycApprovedParams((p) => ({ ...p, page: np }));
+                setQs({ approvedPage: np });
+                kycApprovedQueryRefetch();
+              }}
+            />
           </div>
         </TabsContent>
 
@@ -797,39 +745,15 @@ export default function KYCTabs(props) {
             </TableBody>
           </Table>
           <div className="mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.max(1, rejectedPage - 1);
-                      setKycRejectedParams((p) => ({ ...p, page: np }));
-                      setQs({ rejectedPage: np });
-                      kycRejectedQueryRefetch();
-                    }}
-                    disabled={rejectedPage <= 1}
-                  />
-                </PaginationItem>
-                <span className="px-3 text-sm">
-                  Page {rejectedPage} of {rejectedTotalPages}
-                </span>
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.min(rejectedTotalPages, rejectedPage + 1);
-                      setKycRejectedParams((p) => ({ ...p, page: np }));
-                      setQs({ rejectedPage: np });
-                      kycRejectedQueryRefetch();
-                    }}
-                    disabled={rejectedPage >= rejectedTotalPages}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginationSmart
+              currentPage={rejectedPage}
+              totalPages={rejectedTotalPages}
+              onPageChange={(np) => {
+                setKycRejectedParams((p) => ({ ...p, page: np }));
+                setQs({ rejectedPage: np });
+                kycRejectedQueryRefetch();
+              }}
+            />
           </div>
         </TabsContent>
       </Tabs>

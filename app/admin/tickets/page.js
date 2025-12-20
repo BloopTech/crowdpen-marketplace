@@ -5,7 +5,7 @@ import { useAdmin } from "../context";
 import { Button } from "../../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
-import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "../../components/ui/pagination";
+import { PaginationSmart } from "../../components/ui/pagination";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 
@@ -110,17 +110,15 @@ export default function TicketsPage() {
           </Table>
 
           <div className="mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious href="#" disabled={page <= 1} onClick={(e) => { e.preventDefault(); const np = Math.max(1, page - 1); setTicketsParams((p)=>({ ...p, page: np })); setQs({ page: np }); ticketsQuery.refetch(); }} />
-                </PaginationItem>
-                <span className="px-3 text-sm">Page {page} of {totalPages}</span>
-                <PaginationItem>
-                  <PaginationNext href="#" disabled={page >= totalPages} onClick={(e) => { e.preventDefault(); const np = Math.min(totalPages, page + 1); setTicketsParams((p)=>({ ...p, page: np })); setQs({ page: np }); ticketsQuery.refetch(); }} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginationSmart
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={(np) => {
+                setTicketsParams((p) => ({ ...p, page: np }));
+                setQs({ page: np });
+                ticketsQuery.refetch();
+              }}
+            />
           </div>
         </CardContent>
       </Card>

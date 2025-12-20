@@ -16,6 +16,7 @@ export default function IdleLogout() {
   const warningTimeoutRef = useRef(null);
   const logoutTimeoutRef = useRef(null);
   const warningToastIdRef = useRef(null);
+  const scheduleTimersFromRef = useRef(null);
 
   const clearTimers = useCallback(() => {
     if (warningTimeoutRef.current) {
@@ -75,7 +76,7 @@ export default function IdleLogout() {
                 try {
                   localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()));
                 } catch {}
-                scheduleTimersFrom(Date.now());
+                scheduleTimersFromRef.current?.(Date.now());
               },
             },
           }
@@ -87,6 +88,10 @@ export default function IdleLogout() {
     },
     [doLogout, clearTimers, dismissWarningToast]
   );
+
+  useEffect(() => {
+    scheduleTimersFromRef.current = scheduleTimersFrom;
+  }, [scheduleTimersFrom]);
   
   function readLastActivity() {
     try {

@@ -18,11 +18,7 @@ import {
   TableRow,
 } from "../../components/ui/table";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
+PaginationSmart
 } from "../../components/ui/pagination";
 import { createPayout } from "./actions";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
@@ -249,39 +245,15 @@ export default function PayoutsPage() {
           </Table>
 
           <div className="mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    disabled={page <= 1}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.max(1, page - 1);
-                      setPayoutsParams((p) => ({ ...p, page: np }));
-                      setQs({ page: np });
-                      payoutsQuery.refetch();
-                    }}
-                  />
-                </PaginationItem>
-                <span className="px-3 text-sm">
-                  Page {page} of {totalPages}
-                </span>
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    disabled={page >= totalPages}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.min(totalPages, page + 1);
-                      setPayoutsParams((p) => ({ ...p, page: np }));
-                      setQs({ page: np });
-                      payoutsQuery.refetch();
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginationSmart
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={(np) => {
+                setPayoutsParams((p) => ({ ...p, page: np }));
+                setQs({ page: np });
+                payoutsQuery.refetch();
+              }}
+            />
           </div>
         </CardContent>
       </Card>

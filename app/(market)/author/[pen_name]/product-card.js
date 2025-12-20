@@ -44,7 +44,6 @@ export default function MyProductCard(props) {
     addProductToCart,
     initialStateValues
   );
-  const [localWishlistState, setLocalWishlistState] = useState(null);
   const [localCartState, setLocalCartState] = useState(null);
   const [hasLocalCartOverride, setHasLocalCartOverride] = useState(false);
 
@@ -66,10 +65,10 @@ export default function MyProductCard(props) {
       wish.marketplace_product_id === product.id
   );
 
-  // Use local state if available, otherwise fall back to server state
+  // Use action state if available, otherwise fall back to server state
   const isWished =
-    localWishlistState !== null
-      ? localWishlistState
+    state.success && state.inWishlist !== undefined
+      ? state.inWishlist
       : typeof wishes === "object";
 
   const carts = product?.Cart?.find(
@@ -85,7 +84,6 @@ export default function MyProductCard(props) {
   // Update local state when server action completes
   useEffect(() => {
     if (state.success && state.inWishlist !== undefined) {
-      setLocalWishlistState(state.inWishlist);
       refetchWishlistCount();
     }
   }, [state, refetchWishlistCount]);
@@ -96,6 +94,7 @@ export default function MyProductCard(props) {
       console.log("state cart", cartState);
       // Update local state based on action (added/removed)
       if (cartState.action === "added") {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCartState(cartState.cartItem);
         setHasLocalCartOverride(true);
         toast.success(cartState.message || "Item added to cart successfully");
@@ -191,7 +190,7 @@ export default function MyProductCard(props) {
         </div>
         {/* Quick Actions Overlay */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-          <Link href={`/product/${product.id}`}>
+          <Link href={`/product/${product.product_id ? product.product_id : product.id}`}>
             <Button variant="secondary" size="sm">
               Preview
             </Button>

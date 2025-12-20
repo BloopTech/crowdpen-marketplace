@@ -14,6 +14,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  TooltipProvider,
 } from "../../components/ui/tooltip";
 import ThemeToggle from "../../components/themetoggle";
 import { useRouter } from "next/navigation";
@@ -53,6 +54,7 @@ export default function ProfileImage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -78,14 +80,16 @@ export default function ProfileImage() {
               </Avatar>
               {(session?.user?.subscribed || session?.user?.crowdpen_staff) && (
                 <div className="absolute top-0 right-0 -mr-1 -mt-1">
-                  <Tooltip placement="bottom">
-                    <TooltipTrigger>
-                      <span className="relative inline-flex rounded-full h-3 w-3 bg-[#d3a155]"></span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      You&apos;re now on the plus membership 🎉
-                    </TooltipContent>
-                  </Tooltip>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-[#d3a155]"></span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        You&apos;re now on the plus membership 🎉
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               )}
             </div>

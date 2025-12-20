@@ -3,6 +3,7 @@ import { db } from "../../../../../models";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../api/auth/[...nextauth]/route";
 import { Op } from "sequelize";
+import { validate as isUUID } from "uuid";
 
 const {
   MarketplaceProduct,
@@ -35,18 +36,14 @@ export async function GET(request, { params }) {
   try {
     const idParam = String(id);
     const orConditions = [{ product_id: idParam }];
-    if (
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        idParam
-      )
-    ) {
+    if (isUUID(idParam)) {
       orConditions.unshift({ id: idParam });
     }
 
     const product = await MarketplaceProduct.findOne({
       where: {
-        //[Op.or]: orConditions,
-        [Op.or]: [{ id: id }, { product_id: id }],
+        [Op.or]: orConditions,
+        //[Op.or]: [{ id: id }, { product_id: id }],
       },
       include: [
         { model: MarketplaceCategory },

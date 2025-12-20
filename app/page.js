@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Select,
   SelectContent,
@@ -14,37 +14,26 @@ import { Sheet, SheetContent, SheetTrigger } from "./components/ui/sheet";
 import MarketplaceHeader from "./components/marketplace-header";
 import FilterSidebar from "./components/filter-sidebar";
 import ProductCard from "./components/product-card";
-import { useRouter } from "next/navigation";
-import Login from "./(auth)/login";
 import { useHome } from "./context";
+import { PaginationSmart } from "./components/ui/pagination";
 
-export default function AmazonStyleMarketplace() {  
+export default function AmazonStyleMarketplace() {
   // Use the context instead of local state for filters and data
-  const { 
-    filters, 
-    updateFilters, 
+  const {
+    filters,
+    updateFilters,
     clearFilters,
-    products, 
+    products,
     totalProducts,
     isProductsLoading,
-    isProductsFetching,
     productsError,
-    categories,
-    isCategoriesLoading,
-    tags,
-    isTagsLoading,
     currentPage,
     totalPages,
-    nextPage,
-    prevPage
   } = useHome();
 
-   const router = useRouter();
-   const [searchQuery, setSearchQuery] = useState("");
-   const [viewMode, setViewMode] = useState("grid");
-   const [cartItems, setCartItems] = useState([]);
-   const [wishlistID, setWishlistID] = useState("");
-   
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState("grid");
+
   // We don't need the filteredResources useMemo anymore as data is filtered by the API
   // and exposed through the context
 
@@ -55,10 +44,6 @@ export default function AmazonStyleMarketplace() {
     }
   };
 
-  const handleAddToCart = (resourceId) => {
-    setCartItems((prev) => [...prev, resourceId]);
-  };
-  
   // Use clearFilters from context instead
 
   return (
@@ -165,7 +150,7 @@ export default function AmazonStyleMarketplace() {
                   <span className="ml-2">Loading products...</span>
                 </div>
               )}
-              
+
               {/* Error State */}
               {productsError && (
                 <div className="text-center py-12 bg-card text-card-foreground border border-border rounded-lg">
@@ -174,14 +159,15 @@ export default function AmazonStyleMarketplace() {
                     Error loading products
                   </h3>
                   <p className="text-muted-foreground mb-4">
-                    {productsError.message || 'Something went wrong while fetching products'}
+                    {productsError.message ||
+                      "Something went wrong while fetching products"}
                   </p>
                   <Button onClick={() => window.location.reload()}>
                     Try again
                   </Button>
                 </div>
               )}
-              
+
               {/* Products Grid */}
               {!isProductsLoading && !productsError && (
                 <>
@@ -194,9 +180,7 @@ export default function AmazonStyleMarketplace() {
                       <p className="text-muted-foreground mb-4">
                         Try adjusting your search or filters
                       </p>
-                      <Button onClick={clearFilters}>
-                        Clear all filters
-                      </Button>
+                      <Button onClick={clearFilters}>Clear all filters</Button>
                     </div>
                   ) : (
                     <>
@@ -211,33 +195,18 @@ export default function AmazonStyleMarketplace() {
                           <ProductCard
                             key={product.id}
                             resource={product}
-                            onAddToCart={handleAddToCart}
-                            setWishlistID={setWishlistID}
-                            wishlistID={wishlistID}
                           />
                         ))}
                       </div>
-                      
+
                       {/* Pagination */}
                       {totalPages > 1 && (
-                        <div className="flex justify-center mt-8 gap-2">
-                          <Button 
-                            variant="outline" 
-                            onClick={prevPage}
-                            disabled={currentPage === 1 || isProductsFetching}
-                          >
-                            Previous
-                          </Button>
-                          <span className="py-2 px-4 bg-muted rounded">
-                            Page {currentPage} of {totalPages}
-                          </span>
-                          <Button 
-                            variant="outline" 
-                            onClick={nextPage}
-                            disabled={currentPage >= totalPages || isProductsFetching}
-                          >
-                            Next
-                          </Button>
+                        <div className="mt-8">
+                          <PaginationSmart
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={(page) => updateFilters({ page })}
+                          />
                         </div>
                       )}
                     </>

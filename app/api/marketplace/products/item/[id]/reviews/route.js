@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../auth/[...nextauth]/route";
+import { validate as isUUID } from "uuid";
+import { Op } from "sequelize";
 
-const { MarketplaceReview, User, Sequelize } = db;
-const { Op } = Sequelize;
+const { MarketplaceReview, User, MarketplaceProduct } = db;
 
 /**
  * GET handler to fetch reviews for a product
@@ -17,8 +18,8 @@ export async function GET(request, { params }) {
   try {
     const productId = getParams.id;
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 10;
+    const page = parseInt(searchParams.get("page")) || 1;
+    const limit = parseInt(searchParams.get("limit")) || 10;
     const offset = (page - 1) * limit;
 
     if (!productId) {
@@ -31,26 +32,49 @@ export async function GET(request, { params }) {
       );
     }
 
+    const idParam = String(productId);
+    const orConditions = [{ product_id: idParam }];
+    if (isUUID(idParam)) {
+      orConditions.unshift({ id: idParam });
+    }
+
+    const product = await MarketplaceProduct.findOne({
+      where: {
+        [Op.or]: orConditions,
+      },
+      attributes: ["id", "product_id"],
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product does not exist",
+        },
+        { status: 400 }
+      );
+    }
+
     // Fetch written reviews (with non-empty content) for the product with user information and pagination
     const { count, rows: reviews } = await MarketplaceReview.findAndCountAll({
       where: {
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
         visible: true,
-        content: { [Op.and]: [{ [Op.ne]: '' }, { [Op.not]: null }] },
+        content: { [Op.and]: [{ [Op.ne]: "" }, { [Op.not]: null }] },
       },
       include: [
         {
           model: User,
-          attributes: ['id', 'name', 'email'],
+          attributes: ["id", "name", "email"],
         },
       ],
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
       limit,
       offset,
     });
 
     // Format reviews for frontend
-    const formattedReviews = reviews.map(review => ({
+    const formattedReviews = reviews.map((review) => ({
       id: review.id,
       rating: review.rating,
       title: review.title,
@@ -69,23 +93,25 @@ export async function GET(request, { params }) {
     // Calculate rating statistics (include all ratings, even rating-only without written content)
     const allRatings = await MarketplaceReview.findAll({
       where: {
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
         visible: true,
       },
-      attributes: ['rating'],
+      attributes: ["rating"],
     });
 
     const totalReviews = allRatings.length; // total number of ratings
-    const averageRating = allRatings.length > 0
-      ? allRatings.reduce((sum, review) => sum + review.rating, 0) / allRatings.length
-      : 0;
+    const averageRating =
+      allRatings.length > 0
+        ? allRatings.reduce((sum, review) => sum + review.rating, 0) /
+          allRatings.length
+        : 0;
 
     const ratingDistribution = {
-      5: allRatings.filter(r => r.rating === 5).length,
-      4: allRatings.filter(r => r.rating === 4).length,
-      3: allRatings.filter(r => r.rating === 3).length,
-      2: allRatings.filter(r => r.rating === 2).length,
-      1: allRatings.filter(r => r.rating === 1).length,
+      5: allRatings.filter((r) => r.rating === 5).length,
+      4: allRatings.filter((r) => r.rating === 4).length,
+      3: allRatings.filter((r) => r.rating === 3).length,
+      2: allRatings.filter((r) => r.rating === 2).length,
+      1: allRatings.filter((r) => r.rating === 1).length,
     };
 
     // Get current user's review if logged in
@@ -94,13 +120,13 @@ export async function GET(request, { params }) {
     if (session?.user?.id) {
       const myReview = await MarketplaceReview.findOne({
         where: {
-          marketplace_product_id: productId,
+          marketplace_product_id: product.id,
           user_id: session.user.id,
         },
         include: [
           {
             model: User,
-            attributes: ['id', 'name', 'email'],
+            attributes: ["id", "name", "email"],
           },
         ],
       });
@@ -184,6 +210,12 @@ export async function PUT(request, { params }) {
       );
     }
 
+    const idParam = String(productId);
+    const orConditions = [{ product_id: idParam }];
+    if (isUUID(idParam)) {
+      orConditions.unshift({ id: idParam });
+    }
+
     const body = await request.json();
     const rating = parseInt(body.rating, 10);
     const title = body.title ?? null;
@@ -196,11 +228,28 @@ export async function PUT(request, { params }) {
       );
     }
 
+    const product = await MarketplaceProduct.findOne({
+      where: {
+        [Op.or]: orConditions,
+      },
+      attributes: ["id", "product_id"],
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product does not exist",
+        },
+        { status: 400 }
+      );
+    }
+
     // Find existing review
     let review = await MarketplaceReview.findOne({
       where: {
         user_id: userId,
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
       },
     });
 
@@ -212,17 +261,17 @@ export async function PUT(request, { params }) {
       }
       if (content !== undefined) {
         // Allow empty string to represent rating-only
-        review.content = content ?? '';
+        review.content = content ?? "";
       }
       await review.save();
     } else {
       // Create new review (content optional for rating-only)
       review = await MarketplaceReview.create({
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
         user_id: userId,
         rating,
         title: title && String(title).trim().length > 0 ? title : null,
-        content: content ?? '',
+        content: content ?? "",
         verifiedPurchase: false,
         visible: true,
       });
@@ -233,7 +282,7 @@ export async function PUT(request, { params }) {
       include: [
         {
           model: User,
-          attributes: ['id', 'name', 'email'],
+          attributes: ["id", "name", "email"],
         },
       ],
     });

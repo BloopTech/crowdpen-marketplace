@@ -1,18 +1,15 @@
 "use client"
 
-import React,{ useState, useMemo } from "react";
-import Link from "next/link";
+import React, { useState } from "react";
 import { Button } from "../../../components/ui/button";
-import { Card, CardHeader, CardTitle } from "../../../components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select";
-import { Badge } from "../../../components/ui/badge";
-import { ArrowLeft, LayoutGrid, List, Filter, Loader2 } from "lucide-react";
+import { LayoutGrid, List, Filter, Loader2 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "../../../components/ui/sheet";
+import { PaginationSmart } from "../../../components/ui/pagination";
 import MarketplaceHeader from "../../../components/marketplace-header";
 import ProductCard from "../../../components/product-card";
 import { useCategoryContext } from "./context";
 import FilterCategorySidebar from "./filter-sidebar";
-
 
 export default function CategoryContentPage() {
   const { 
@@ -22,22 +19,16 @@ export default function CategoryContentPage() {
     products, 
     totalProducts,
     isProductsLoading,
-    isProductsFetching,
     productsError,
     category,
-    isCategoriesLoading,
-    tags,
-    isTagsLoading,
     currentPage,
     totalPages,
-    nextPage,
-    prevPage
   } = useCategoryContext();
 
   
    const [searchQuery, setSearchQuery] = useState("");
    const [viewMode, setViewMode] = useState("grid");
-   const [cartItems, setCartItems] = useState([]);
+   const [, setCartItems] = useState([]);
    const [wishlistID, setWishlistID] = useState("");
    
   // We don't need the filteredResources useMemo anymore as data is filtered by the API
@@ -235,24 +226,12 @@ export default function CategoryContentPage() {
                       
                       {/* Pagination */}
                       {totalPages > 1 && (
-                        <div className="flex justify-center mt-8 gap-2">
-                          <Button 
-                            variant="outline" 
-                            onClick={prevPage}
-                            disabled={currentPage === 1 || isProductsFetching}
-                          >
-                            Previous
-                          </Button>
-                          <span className="py-2 px-4 bg-muted rounded">
-                            Page {currentPage} of {totalPages}
-                          </span>
-                          <Button 
-                            variant="outline" 
-                            onClick={nextPage}
-                            disabled={currentPage >= totalPages || isProductsFetching}
-                          >
-                            Next
-                          </Button>
+                        <div className="mt-8">
+                          <PaginationSmart
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            onPageChange={(page) => updateFilters({ page })}
+                          />
                         </div>
                       )}
                     </>

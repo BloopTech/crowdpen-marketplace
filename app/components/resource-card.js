@@ -56,7 +56,7 @@ export default function ResourceCard({ resource }) {
       </div>
 
       <CardContent className="p-4">
-        <Link href={`/product/${resource.id}`}>
+        <Link href={`/product/${resource.product_id ? resource.product_id : resource.id }`}>
           <h3 className="font-semibold text-lg mb-2 line-clamp-1 hover:text-tertiary cursor-pointer">
             {resource.title}
           </h3>

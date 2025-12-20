@@ -17,13 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "../../components/ui/pagination";
+import { PaginationSmart } from "../../components/ui/pagination";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 
@@ -211,39 +205,15 @@ export default function TransactionsPage() {
           </Table>
 
           <div className="mt-4">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    href="#"
-                    disabled={page <= 1}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.max(1, page - 1);
-                      setTransactionsParams((p) => ({ ...p, page: np }));
-                      setQs({ page: np });
-                      transactionsQuery.refetch();
-                    }}
-                  />
-                </PaginationItem>
-                <span className="px-3 text-sm">
-                  Page {page} of {totalPages}
-                </span>
-                <PaginationItem>
-                  <PaginationNext
-                    href="#"
-                    disabled={page >= totalPages}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const np = Math.min(totalPages, page + 1);
-                      setTransactionsParams((p) => ({ ...p, page: np }));
-                      setQs({ page: np });
-                      transactionsQuery.refetch();
-                    }}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginationSmart
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={(np) => {
+                setTransactionsParams((p) => ({ ...p, page: np }));
+                setQs({ page: np });
+                transactionsQuery.refetch();
+              }}
+            />
           </div>
         </CardContent>
       </Card>

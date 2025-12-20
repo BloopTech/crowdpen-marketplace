@@ -2,8 +2,15 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../auth/[...nextauth]/route";
+import { validate as isUUID } from "uuid";
+import { Op } from "sequelize";
 
-const { MarketplaceWishlists, MarketplaceProduct, User, MarketplaceKycVerification } = db;
+const {
+  MarketplaceWishlists,
+  MarketplaceProduct,
+  User,
+  MarketplaceKycVerification
+} = db;
 
 /**
  * GET handler to check if a product is in user's wishlist
@@ -89,14 +96,28 @@ export async function POST(request, { params }) {
       );
     }
 
+    const idParam = String(productId);
+    const orConditions = [{ product_id: idParam }];
+    if (isUUID(idParam)) {
+      orConditions.unshift({ id: idParam });
+    }
+
     // Check if product exists and load owner's KYC status
-    const product = await MarketplaceProduct.findByPk(productId, {
+
+    const product = await MarketplaceProduct.findOne({
+      where: {
+        [Op.or]: orConditions,
+      },
       include: [
         {
           model: User,
           attributes: ["id"],
           include: [
-            { model: MarketplaceKycVerification, attributes: ["status"], required: false },
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
           ],
         },
       ],
@@ -113,7 +134,8 @@ export async function POST(request, { params }) {
 
     // KYC gating: if viewer is not the owner and owner's KYC not approved, block
     const isOwner = product.user_id === user_id;
-    const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
+    const ownerApproved =
+      product?.User?.MarketplaceKycVerification?.status === "approved";
     if (!isOwner && !ownerApproved) {
       return NextResponse.json(
         {
@@ -128,7 +150,7 @@ export async function POST(request, { params }) {
     const existingWishlistItem = await MarketplaceWishlists.findOne({
       where: {
         user_id,
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
       },
     });
 
@@ -147,7 +169,7 @@ export async function POST(request, { params }) {
       // Add to wishlist
       await MarketplaceWishlists.create({
         user_id,
-        marketplace_product_id: productId,
+        marketplace_product_id: product.id,
       });
       return NextResponse.json(
         {

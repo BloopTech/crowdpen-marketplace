@@ -24,11 +24,7 @@ import {
   TabsTrigger,
 } from "../../components/ui/tabs";
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
+  PaginationSmart
 } from "../../components/ui/pagination";
 import { Badge } from "../../components/ui/badge";
 import { toggleMerchant } from "./actions";
@@ -234,33 +230,11 @@ export default function MerchantsPage() {
               </Table>
 
               <div className="mt-4">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        disabled={page <= 1}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toPage(page - 1);
-                        }}
-                      />
-                    </PaginationItem>
-                    <span className="px-3 text-sm">
-                      Page {page} of {totalPages}
-                    </span>
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        disabled={page >= totalPages}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toPage(page + 1);
-                        }}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+                <PaginationSmart
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={(np) => toPage(np)}
+                />
               </div>
             </TabsContent>
 
@@ -343,33 +317,11 @@ export default function MerchantsPage() {
                 </TableBody>
               </Table>
               <div className="mt-4">
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious
-                        href="#"
-                        disabled={page <= 1}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toPage(page - 1);
-                        }}
-                      />
-                    </PaginationItem>
-                    <span className="px-3 text-sm">
-                      Page {page} of {totalPages}
-                    </span>
-                    <PaginationItem>
-                      <PaginationNext
-                        href="#"
-                        disabled={page >= totalPages}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          toPage(page + 1);
-                        }}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+                <PaginationSmart
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={(np) => toPage(np)}
+                />
               </div>
             </TabsContent>
           </Tabs>
