@@ -27,15 +27,16 @@ import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { UserId } from "./ui/userId";
 import { useHome } from "../context";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useCrowdpenSSO } from "../hooks/useCrowdpenSSO";
 import millify from "millify";
 
 export default function MarketplaceHeader(props) {
-  const { searchQuery, onSearchChange, onSearch } = props;
+  const { searchQuery, onSearchChange, onSearch, hideFilters = false } = props;
   const { openLoginDialog, wishlistCountData, cartCountData } = useHome();
   const { data: session } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
   const { isCheckingSSO, ssoAvailable, attemptSSOLogin } = useCrowdpenSSO();
 
   const [loading, setLoading] = useState(false);
@@ -196,6 +197,7 @@ export default function MarketplaceHeader(props) {
         </div>
 
         {/* Navigation */}
+        {!hideFilters && (
         <div className="mt-4">
           <NavigationMenu>
             <NavigationMenuList className="flex-wrap">
@@ -224,22 +226,29 @@ export default function MarketplaceHeader(props) {
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              {categories.slice(0, 4).map((category) => (
-                <NavigationMenuItem key={category.name}>
-                  <Link
-                    href={`/category/${category.name
-                      .toLowerCase()
-                      .replace(/\s+/g, "-")}`}
-                  >
-                    <Button variant="ghost" size="sm">
-                      {category.name}
-                    </Button>
-                  </Link>
-                </NavigationMenuItem>
-              ))}
+              {categories.slice(0, 4).map((category) => {
+                const categorySlug = category.name.toLowerCase().replace(/\s+/g, "-");
+                const isActive = pathname === `/category/${categorySlug}`;
+                return (
+                  <NavigationMenuItem key={category.name}>
+                    <Link
+                      href={`/category/${categorySlug}`}
+                    >
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className={isActive ? "text-[#d3a155] hover:text-[#d3a155]" : ""}
+                      >
+                        {category.name}
+                      </Button>
+                    </Link>
+                  </NavigationMenuItem>
+                );
+              })}
             </NavigationMenuList>
           </NavigationMenu>
         </div>
+        )}
       </div>
     </header>
   );

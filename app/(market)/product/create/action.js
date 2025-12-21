@@ -10,6 +10,8 @@ const defaultProductValues = {
   description: [],
   price: [],
   originalPrice: [],
+  sale_end_date: [],
+  product_status: [],
   stock: [],
   marketplace_category_id: [],
   marketplace_subcategory_id: [],
@@ -31,6 +33,22 @@ const productSchema = z.object({
   originalPrice: z.coerce
     .number()
     .positive({ message: "Original price must be a positive number" }),
+  sale_end_date: z.preprocess(
+    (val) => {
+      const s = val == null ? "" : String(val).trim();
+      if (!s) return undefined;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T23:59:59.999Z`;
+      return s;
+    },
+    z.coerce.date().optional()
+  ),
+  product_status: z.preprocess(
+    (val) => {
+      const s = val == null ? "" : String(val).trim();
+      return s ? s : undefined;
+    },
+    z.enum(["draft", "published", "archived"]).default("draft")
+  ),
   stock: z.coerce
     .number()
     .int({ message: "Stock must be an integer" })
@@ -76,6 +94,8 @@ export async function createProduct(prevState, queryData) {
   const getDescription = queryData.get("description");
   const getPrice = queryData.get("price");
   const getOriginalPrice = queryData.get("originalPrice");
+  const getSaleEndDate = queryData.get("sale_end_date");
+  const getProductStatus = queryData.get("product_status");
   const getStock = queryData.get("stock");
   const getMarketplaceCategoryId = queryData.get("marketplace_category_id");
   const getMarketplaceSubcategoryId = queryData.get(
@@ -95,6 +115,8 @@ export async function createProduct(prevState, queryData) {
     description: getDescription,
     price: getPrice,
     originalPrice: getOriginalPrice,
+    sale_end_date: getSaleEndDate,
+    product_status: getProductStatus,
     stock: getStock,
     marketplace_category_id: getMarketplaceCategoryId,
     marketplace_subcategory_id: getMarketplaceSubcategoryId,
@@ -116,6 +138,8 @@ export async function createProduct(prevState, queryData) {
         description: getDescription,
         price: getPrice,
         originalPrice: getOriginalPrice,
+        sale_end_date: getSaleEndDate,
+        product_status: getProductStatus,
         stock: getStock,
         marketplace_category_id: getMarketplaceCategoryId,
         marketplace_subcategory_id: getMarketplaceSubcategoryId,
@@ -135,6 +159,8 @@ export async function createProduct(prevState, queryData) {
     description,
     price,
     originalPrice,
+    sale_end_date,
+    product_status,
     marketplace_category_id,
     marketplace_subcategory_id,
     images,
@@ -152,6 +178,8 @@ export async function createProduct(prevState, queryData) {
     description: getDescription,
     price: getPrice,
     originalPrice: getOriginalPrice,
+    sale_end_date: getSaleEndDate,
+    product_status: getProductStatus,
     stock: getStock,
     marketplace_category_id: getMarketplaceCategoryId,
     marketplace_subcategory_id: getMarketplaceSubcategoryId,
@@ -179,6 +207,10 @@ export async function createProduct(prevState, queryData) {
   formData.append("description", description);
   formData.append("price", price);
   formData.append("originalPrice", originalPrice);
+  if (sale_end_date) {
+    formData.append("sale_end_date", sale_end_date.toISOString());
+  }
+  formData.append("product_status", product_status);
   if (typeof stock !== "undefined" && stock !== null && stock !== "") {
     formData.append("stock", String(stock));
   }

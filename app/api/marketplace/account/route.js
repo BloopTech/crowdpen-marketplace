@@ -49,6 +49,14 @@ export async function GET() {
       image: user?.image || null,
       pen_name: user?.pen_name || null,
       memberSince: user?.createdAt || null,
+      settings: {
+        newProductNotifications: true,
+        weeklyNewsletter: true,
+        marketingEmails: false,
+        publicPurchases: true,
+        publicWishlist: false,
+        ...(user?.settings || {}),
+      },
     };
 
     // Fetch purchases: orders + order items + products + product authors

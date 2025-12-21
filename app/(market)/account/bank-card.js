@@ -79,13 +79,16 @@ export default function BankDetailsCard() {
 
   // Load bank list based on server-derived location; no manual currency/country
   useEffect(() => {
-    if (bankListQuery.data?.currency) {
+    if (bankListQuery?.data?.currency) {
       setCurrency(bankListQuery.data.currency);
     }
-    if (bankListQuery.data?.countryCode) {
+    if (bankListQuery?.data?.countryCode) {
       setCountryCode(bankListQuery.data.countryCode);
     }
-  }, [bankListQuery.data?.currency, bankListQuery.data?.countryCode]);
+  }, [bankListQuery?.data?.currency, bankListQuery?.data?.countryCode]);
+
+  // Show loading state or fallback if detection takes too long
+  const isDetecting = loadingBanks && !currency;
 
   useEffect(() => {
     if (payoutType !== "bank" && payoutType !== "mobile_money") {
@@ -222,13 +225,17 @@ export default function BankDetailsCard() {
                       Currency: <span className="font-medium">{currency}</span>
                       {countryCode ? (
                         <span className="ml-2">
-                          Country Code:{" "}
+                          Country:{" "}
                           <span className="font-medium">{countryCode}</span>
                         </span>
                       ) : null}
                     </span>
+                  ) : loadingBanks ? (
+                    <span className="text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Detecting region...
+                    </span>
                   ) : (
-                    <span className="text-muted-foreground">Detecting...</span>
+                    <span className="text-amber-600">Region not detected. Using default (NGN).</span>
                   )}
                 </div>
                 <input type="hidden" name="currency" value={currency} />

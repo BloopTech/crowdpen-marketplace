@@ -195,6 +195,7 @@ export default function AmazonStyleMarketplace() {
                           <ProductCard
                             key={product.id}
                             resource={product}
+                            viewMode={viewMode}
                           />
                         ))}
                       </div>

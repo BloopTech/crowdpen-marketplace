@@ -9,6 +9,7 @@ import {
 } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
 import { Download, Calendar, DollarSign } from "lucide-react";
+import NextImage from "next/image";
 import { useAccount } from "../context";
 import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
 
@@ -140,11 +141,20 @@ export default function MyPurchases() {
                     {order.items.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between p-4"
+                        className="flex items-center gap-4 p-4"
                       >
-                        <div className="flex-1">
-                          <h4 className="font-medium">{item.title}</h4>
-                          <p className="text-sm text-muted-foreground">
+                        <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                          <NextImage
+                            src={item.image || "/placeholder.svg"}
+                            alt={item.title || "Product"}
+                            fill
+                            className="object-cover"
+                            sizes="80px"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium truncate">{item.title}</h4>
+                          <p className="text-sm text-muted-foreground truncate">
                             by {item.author}
                           </p>
                         </div>

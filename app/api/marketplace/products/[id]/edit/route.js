@@ -108,6 +108,41 @@ export async function POST(request, { params }) {
       what_included: formData.get("what_included") || "",
     };
 
+    const rawProductStatus = formData.get("product_status");
+    const productStatus = rawProductStatus ? String(rawProductStatus).trim() : "";
+    const resolvedProductStatus = productStatus || "draft";
+    if (!['draft', 'published', 'archived'].includes(resolvedProductStatus)) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Invalid product status",
+        },
+        { status: 400 }
+      );
+    }
+
+    const rawSaleEndDate = formData.get("sale_end_date");
+    const saleEndDateStr = rawSaleEndDate == null ? "" : String(rawSaleEndDate).trim();
+    let sale_end_date = null;
+    if (saleEndDateStr) {
+      const d = new Date(saleEndDateStr);
+      if (Number.isNaN(d.getTime())) {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: "Invalid sale end date",
+          },
+          { status: 400 }
+        );
+      }
+      sale_end_date = d;
+    }
+
+    const hasDiscount =
+      Number.isFinite(productData.price) &&
+      Number.isFinite(productData.originalPrice) &&
+      productData.price < productData.originalPrice;
+
     // Parse stock
     const stockRaw = formData.get("stock");
     const stock =
@@ -356,6 +391,8 @@ export async function POST(request, { params }) {
       price: productData.price,
       currency: "USD",
       originalPrice: productData.originalPrice,
+      product_status: resolvedProductStatus,
+      sale_end_date: hasDiscount ? sale_end_date : null,
       marketplace_category_id: productData.marketplace_category_id,
       marketplace_subcategory_id: productData.marketplace_subcategory_id,
       image: mainImage,

@@ -6,6 +6,16 @@ import { z } from "zod";
 
 const { MarketplaceProduct, MarketplaceCartItems, MarketplaceCart, User } = db;
 
+// Helper to compute effective price respecting discount expiry
+function computeEffectivePrice(product) {
+  const priceNum = Number(product.price);
+  const originalPriceNum = Number(product.originalPrice);
+  const hasDiscount = Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+  const saleEndMs = product.sale_end_date ? new Date(product.sale_end_date).getTime() : null;
+  const isExpired = hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+  return isExpired ? originalPriceNum : priceNum;
+}
+
 // Validation schema
 const updateCartSchema = z.object({
   action: z.enum(['update_quantity', 'remove_item']),
@@ -57,7 +67,7 @@ export async function POST(request, { params }) {
         },
         {
           model: MarketplaceProduct,
-          attributes: ['id', 'title', 'price', 'currency', 'stock', 'inStock']
+          attributes: ['id', 'title', 'price', 'originalPrice', 'sale_end_date', 'currency', 'stock', 'inStock', 'product_status', 'user_id']
         }
       ]
     });
@@ -74,6 +84,16 @@ export async function POST(request, { params }) {
       return NextResponse.json(
         { error: "Access denied" },
         { status: 403 }
+      );
+    }
+
+    // Block updates if product is not published (unless user is owner)
+    const prod = cartItem.MarketplaceProduct;
+    const isOwner = prod?.user_id === session.user.id;
+    if (!isOwner && prod?.product_status !== 'published') {
+      return NextResponse.json(
+        { error: "Product is no longer available" },
+        { status: 400 }
       );
     }
 
@@ -135,8 +155,9 @@ export async function POST(request, { params }) {
         );
       }
 
-      // Update the quantity and price
-      const newPrice = parseFloat(cartItem.MarketplaceProduct.price) * quantity;
+      // Update the quantity and price using effective price
+      const effectivePrice = computeEffectivePrice(prod);
+      const newPrice = effectivePrice * quantity;
       
       updatedItem = await cartItem.update({
         quantity,

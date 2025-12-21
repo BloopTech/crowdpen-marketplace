@@ -3,7 +3,7 @@ import { db } from "../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 
-const { MarketplaceWishlists } = db;
+const { MarketplaceWishlists, MarketplaceProduct } = db;
 
 /**
  * GET handler to check if a product is in user's wishlist
@@ -29,10 +29,18 @@ export async function GET(request) {
       );
     }
 
+    // Count only wishlist items with published products
     const wishlistCount = await MarketplaceWishlists.count({
       where: {
         user_id: userId,
       },
+      include: [
+        {
+          model: MarketplaceProduct,
+          where: { product_status: 'published' },
+          attributes: [],
+        },
+      ],
     });
 
     return NextResponse.json({

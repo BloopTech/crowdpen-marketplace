@@ -83,6 +83,16 @@ function toFiniteNumber(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+// Helper to compute effective price respecting discount expiry
+function computeEffectivePrice(product) {
+  const priceNum = Number(product.price);
+  const originalPriceNum = Number(product.originalPrice);
+  const hasDiscount = Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+  const saleEndMs = product.sale_end_date ? new Date(product.sale_end_date).getTime() : null;
+  const isExpired = hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+  return isExpired ? originalPriceNum : priceNum;
+}
+
 function deriveCurrencyByCountry(countryCode) {
   const c = (countryCode || "").toUpperCase();
 
@@ -234,6 +244,10 @@ export async function beginCheckout(prevState, formData) {
         attributes: [
           "id",
           "title",
+          "price",
+          "originalPrice",
+          "sale_end_date",
+          "product_status",
           "user_id",
           "stock",
           "inStock",
@@ -258,6 +272,22 @@ export async function beginCheckout(prevState, formData) {
       success: false,
       message: "Your cart is empty.",
       errors: { cart: ["No items in cart"] },
+    };
+  }
+
+  // Product status gating: disallow checkout if any product is not published (unless viewer is owner)
+  const statusBlocked = cartItems.filter((ci) => {
+    const p = ci?.MarketplaceProduct;
+    if (!p) return false;
+    const isOwner = p.user_id === userId;
+    return !isOwner && p.product_status !== 'published';
+  });
+  if (statusBlocked.length > 0) {
+    const titles = statusBlocked.map((ci) => ci?.MarketplaceProduct?.title).filter(Boolean);
+    return {
+      success: false,
+      message: `Some items are no longer available: ${titles.join(", ")}`,
+      errors: { cart: ["Contains unavailable products"] },
     };
   }
 
@@ -295,14 +325,28 @@ export async function beginCheckout(prevState, formData) {
     };
   }
 
-  // Compute totals from cart
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + Number(item.price),
-    0
-  );
-  const tax = Number(cart.tax ?? 0);
+  // Compute totals from cart using effective price (respecting discount expiry)
+  let subtotal = 0;
+  for (const ci of cartItems) {
+    const p = ci?.MarketplaceProduct;
+    if (!p) continue;
+    const effectivePrice = computeEffectivePrice(p);
+    const itemTotal = effectivePrice * (ci.quantity || 1);
+    subtotal += itemTotal;
+    // Update stored price if it differs from effective price calculation
+    const storedPrice = Number(ci.price || 0);
+    if (Math.abs(storedPrice - itemTotal) > 0.01) {
+      await ci.update({ price: itemTotal.toFixed(2), subtotal: itemTotal.toFixed(2) });
+    }
+  }
+  const tax = subtotal * 0.1; // 10% tax
   const discount = Number(cart.discount ?? 0);
   const total = subtotal + tax - discount;
+
+  // Update cart totals if they differ
+  if (Math.abs(Number(cart.subtotal) - subtotal) > 0.01 || Math.abs(Number(cart.tax) - tax) > 0.01) {
+    await cart.update({ subtotal: subtotal.toFixed(2), tax: tax.toFixed(2), total: total.toFixed(2) });
+  }
 
   const baseCurrency = "USD";
   const ipCountry = await getHeaderCountry();

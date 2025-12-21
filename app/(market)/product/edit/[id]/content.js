@@ -48,6 +48,8 @@ const initialStateValues = {
     description: [],
     price: [],
     originalPrice: [],
+    sale_end_date: [],
+    product_status: [],
     marketplace_category_id: [],
     marketplace_subcategory_id: [],
     images: [],
@@ -80,6 +82,8 @@ export default function EditProductContent(props) {
   const [subcategoryID, setSubcategoryID] = useState("");
   const [price, setPrice] = useState("");
   const [originalPrice, setOriginalPrice] = useState("");
+  const [saleEndDate, setSaleEndDate] = useState("");
+  const [productStatus, setProductStatus] = useState("draft");
   const [stock, setStock] = useState("");
   const [whatIncluded, setWhatIncluded] = useState("");
   const [priceError, setPriceError] = useState("");
@@ -112,6 +116,18 @@ export default function EditProductContent(props) {
       setTitle(product?.title || "");
       setDescription(product?.description || "");
       setLicense(product?.license || "");
+
+      setProductStatus(product?.product_status || "draft");
+      if (product?.sale_end_date) {
+        const d = new Date(product.sale_end_date);
+        if (!Number.isNaN(d.getTime())) {
+          setSaleEndDate(d.toISOString().slice(0, 10));
+        } else {
+          setSaleEndDate("");
+        }
+      } else {
+        setSaleEndDate("");
+      }
 
       if (categoriesData?.length) {
         setCategoryID(product?.marketplace_category_id || "");
@@ -662,6 +678,35 @@ export default function EditProductContent(props) {
               </div>
 
               <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="product_status">
+                    Product Status <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={productStatus}
+                    onValueChange={setProductStatus}
+                    disabled={isPending}
+                  >
+                    <SelectTrigger id="product_status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <input type="hidden" name="product_status" value={productStatus} />
+                  <span className="text-xs text-red-500">
+                    {Object.keys(state?.errors).length !== 0 &&
+                    state?.errors?.product_status?.length
+                      ? state?.errors?.product_status[0]
+                      : null}
+                  </span>
+                </div>
+
+                <input type="hidden" name="sale_end_date" value={saleEndDate} />
+
                 <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
                   <div className="flex items-center gap-3">
                     <Label htmlFor="hasDiscount">Discount / Sale</Label>
@@ -672,6 +717,7 @@ export default function EditProductContent(props) {
                         setHasDiscount(checked);
                         setPriceError("");
                         if (!checked) {
+                          setSaleEndDate("");
                           setPrice(originalPrice);
                         } else if (price === originalPrice) {
                           setPrice("");
@@ -759,6 +805,29 @@ export default function EditProductContent(props) {
                             ? state?.errors?.price[0]
                             : priceError || null}
                         </span>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="sale_end_date">Sale End Date</Label>
+                          <Input
+                            id="sale_end_date"
+                            type="date"
+                            value={saleEndDate}
+                            onChange={(e) => setSaleEndDate(e.target.value)}
+                            className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
+                              Object.keys(state?.errors).length !== 0 &&
+                              state?.errors?.sale_end_date?.length
+                                ? "border-red-500 focus:ring-red-500"
+                                : "focus:ring-tertiary"
+                            }`}
+                            disabled={isPending}
+                          />
+                          <span className="text-xs text-red-500">
+                            {Object.keys(state?.errors).length !== 0 &&
+                            state?.errors?.sale_end_date?.length
+                              ? state?.errors?.sale_end_date[0]
+                              : null}
+                          </span>
+                        </div>
                       </>
                     )}
 

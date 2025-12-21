@@ -108,6 +108,7 @@ export async function POST(request, { params }) {
       where: {
         [Op.or]: orConditions,
       },
+      attributes: ['id', 'user_id', 'product_status'],
       include: [
         {
           model: User,
@@ -129,6 +130,18 @@ export async function POST(request, { params }) {
           message: "Product not found",
         },
         { status: 404 }
+      );
+    }
+
+    // Block adding non-published products (unless viewer is owner)
+    const isOwnerForStatus = product.user_id === user_id;
+    if (!isOwnerForStatus && product.product_status !== 'published') {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product is not available",
+        },
+        { status: 400 }
       );
     }
 

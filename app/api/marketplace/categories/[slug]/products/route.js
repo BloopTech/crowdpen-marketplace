@@ -116,23 +116,18 @@ export async function GET(request, { params }) {
     }
 
     // Handle price filters with proper Sequelize operators
-    if (minPrice) {
-      where.price = { ...where.price, [Op.gte]: parseFloat(minPrice) };
-    }
-
-    if (maxPrice) {
-      where.price = { ...where.price, [Op.lte]: parseFloat(maxPrice) };
-    }
+    const minPriceValue = minPrice ? Number.parseFloat(minPrice) : null;
+    const maxPriceValue = maxPrice ? Number.parseFloat(maxPrice) : null;
 
     if (rating) {
       where.rating = { [Op.gte]: parseFloat(rating) };
     }
 
     if (search) {
-      // Use proper Sequelize operators for search
+      // Use iLike for case-insensitive search (PostgreSQL)
       where[Op.or] = [
-        { title: { [Op.like]: `%${search}%` } },
-        { description: { [Op.like]: `%${search}%` } },
+        { title: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
@@ -162,13 +157,23 @@ export async function GET(request, { params }) {
       FROM "mv_product_sales" AS s
       WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
     ), 0)`);
+    const effectivePriceLiteral = db.Sequelize.literal(`
+      CASE
+        WHEN "MarketplaceProduct"."sale_end_date" IS NOT NULL
+          AND "MarketplaceProduct"."sale_end_date" < NOW()
+          AND "MarketplaceProduct"."originalPrice" IS NOT NULL
+          AND "MarketplaceProduct"."originalPrice" > "MarketplaceProduct"."price"
+        THEN "MarketplaceProduct"."originalPrice"
+        ELSE "MarketplaceProduct"."price"
+      END
+    `);
     let order = [];
     switch (sort) {
       case "price-low":
-        order.push(["price", "ASC"]);
+        order.push([effectivePriceLiteral, "ASC"]);
         break;
       case "price-high":
-        order.push(["price", "DESC"]);
+        order.push([effectivePriceLiteral, "DESC"]);
         break;
       case "rating":
         order.push(["rating", "DESC"]);
@@ -213,7 +218,30 @@ export async function GET(request, { params }) {
     const flaggedOr = userId
       ? [{ flagged: false }, { user_id: userId }]
       : [{ flagged: false }];
-    const finalWhere = { [Op.and]: [ where, { [Op.or]: visibilityOr }, { [Op.or]: flaggedOr } ] };
+    const statusOr = userId
+      ? [{ product_status: "published" }, { user_id: userId }]
+      : [{ product_status: "published" }];
+
+    const andConditions = [
+      where,
+      { [Op.or]: visibilityOr },
+      { [Op.or]: flaggedOr },
+      { [Op.or]: statusOr },
+    ];
+
+    if (Number.isFinite(minPriceValue)) {
+      andConditions.push(
+        db.Sequelize.where(effectivePriceLiteral, { [Op.gte]: minPriceValue })
+      );
+    }
+
+    if (Number.isFinite(maxPriceValue)) {
+      andConditions.push(
+        db.Sequelize.where(effectivePriceLiteral, { [Op.lte]: maxPriceValue })
+      );
+    }
+
+    const finalWhere = { [Op.and]: andConditions };
 
     const { count, rows: products } = await MarketplaceProduct.findAndCountAll({
       where: finalWhere,
@@ -245,6 +273,8 @@ export async function GET(request, { params }) {
         "title",
         "price",
         "originalPrice",
+        "sale_end_date",
+        "product_status",
         "rating",
         "reviewCount",
         "featured",
@@ -311,6 +341,19 @@ export async function GET(request, { params }) {
     const formattedProducts = products.map((product) => {
       const productJson = product.toJSON();
 
+      const priceNum = Number(productJson.price);
+      const originalPriceNum = Number(productJson.originalPrice);
+      const hasDiscount =
+        Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+      const saleEndMs = productJson.sale_end_date
+        ? new Date(productJson.sale_end_date).getTime()
+        : null;
+      const isExpired =
+        hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+      const effectivePrice = isExpired
+        ? productJson.originalPrice
+        : productJson.price;
+
       const getWishes = wishlists.filter(
         (wishlist) => wishlist.marketplace_product_id === productJson.id
       );
@@ -332,6 +375,7 @@ export async function GET(request, { params }) {
 
       return {
         ...productJson,
+        price: effectivePrice,
         tags,
         productTags: undefined, // Remove the nested structure
         wishlist: getWishes,

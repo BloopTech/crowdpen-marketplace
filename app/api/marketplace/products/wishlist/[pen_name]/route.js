@@ -17,6 +17,16 @@ const {
   MarketplaceOrderItems,
 } = db;
 
+// Helper to compute effective price respecting discount expiry
+function computeEffectivePrice(product) {
+  const priceNum = Number(product.price);
+  const originalPriceNum = Number(product.originalPrice);
+  const hasDiscount = Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+  const saleEndMs = product.sale_end_date ? new Date(product.sale_end_date).getTime() : null;
+  const isExpired = hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+  return isExpired ? originalPriceNum : priceNum;
+}
+
 export async function GET(request, { params }) {
   const getParams = await params;
 
@@ -96,9 +106,10 @@ export async function GET(request, { params }) {
       kycOr.push({ user_id: viewerId });
     }
 
-    // Build final product where
+    // Build final product where - only published products visible
     const productWhere = {
       [Op.and]: [
+        { product_status: 'published' },
         ...(productWhereConditions?.[Op.and] || []),
         { [Op.or]: kycOr },
       ],
@@ -193,7 +204,7 @@ export async function GET(request, { params }) {
     const hasNextPage = page < totalPages;
     const hasPreviousPage = page > 1;
 
-    // Format response data
+    // Format response data with effective pricing
     const products = wishlistItems.map((item) => {
       const getCart = carts.filter((cart) =>
         cart.cartItems?.find(
@@ -202,8 +213,11 @@ export async function GET(request, { params }) {
       );
       const salesCount = salesMap[item.toJSON().marketplace_product_id] || 0;
       const isBestseller = salesCount >= BESTSELLER_MIN_SALES;
+      const productData = item?.MarketplaceProduct?.toJSON() || {};
+      const effectivePrice = computeEffectivePrice(productData);
       return {
-        ...item?.MarketplaceProduct?.toJSON(),
+        ...productData,
+        price: effectivePrice,
         wishlist: [
           {
             id: item.toJSON().id,

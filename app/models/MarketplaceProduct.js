@@ -71,6 +71,15 @@ MarketplaceProduct.init(
     originalPrice: {
       type: DataTypes.DECIMAL(10, 2),
     },
+    sale_end_date: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    product_status: {
+      type: DataTypes.ENUM("draft", "published", "archived"),
+      allowNull: false,
+      defaultValue: "draft",
+    },
     user_id: {
       type: DataTypes.UUID,
       allowNull: false,

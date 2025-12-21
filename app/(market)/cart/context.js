@@ -117,15 +117,16 @@ const CartContextProvider = ({ children }) => {
               ...page,
               data: {
                 ...page.data,
-                items: page.data.items.map(item => 
-                  item.id === itemId 
-                    ? { 
-                        ...item, 
-                        quantity,
-                        price: item.product.price * quantity
-                      }
-                    : item
-                )
+                items: page.data.items.map(item => {
+                  if (item.id !== itemId) return item;
+                  // Use the effective price from product (API returns effective price)
+                  const unitPrice = item.product?.price || 0;
+                  return { 
+                    ...item, 
+                    quantity,
+                    price: unitPrice * quantity
+                  };
+                })
               }
             }))
           };

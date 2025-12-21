@@ -3,7 +3,7 @@ import { db } from "../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 
-const { MarketplaceCart, MarketplaceCartItems } = db;
+const { MarketplaceCart, MarketplaceCartItems, MarketplaceProduct } = db;
 
 /**
  * GET handler to check if a product is in user's cart
@@ -46,10 +46,18 @@ export async function GET(request) {
       );
     }
 
+    // Count only items with published products
     const cartCount = await MarketplaceCartItems.count({
       where: {
         marketplace_cart_id: carts[0].id,
       },
+      include: [
+        {
+          model: MarketplaceProduct,
+          where: { product_status: 'published' },
+          attributes: [],
+        },
+      ],
     });
 
     return NextResponse.json({

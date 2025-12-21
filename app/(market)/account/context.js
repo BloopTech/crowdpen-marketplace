@@ -15,6 +15,7 @@ export function AccountContextProvider({ children }) {
   const myProductsSearch = searchParams?.get("q") || "";
   const myProductsSelectedCategory = searchParams?.get("category") || "all";
   const myProductsSortBy = searchParams?.get("sort") || "newest";
+  const myProductsStatus = searchParams?.get("status") || "all";
 
   const updateMyProductsSearchParams = useCallback(
     (updater) => {
@@ -68,6 +69,19 @@ export function AccountContextProvider({ children }) {
       });
     },
     [updateMyProductsSearchParams, myProductsSortBy]
+  );
+
+  const setMyProductsStatus = useCallback(
+    (next) => {
+      updateMyProductsSearchParams((params) => {
+        const value =
+          typeof next === "function" ? next(myProductsStatus) : (next ?? "all");
+        const v = String(value || "all");
+        if (v && v !== "all") params.set("status", v);
+        else params.delete("status");
+      });
+    },
+    [updateMyProductsSearchParams, myProductsStatus]
   );
 
   const {
@@ -145,6 +159,7 @@ export function AccountContextProvider({ children }) {
       myProductsSearch,
       myProductsSelectedCategory,
       myProductsSortBy,
+      myProductsStatus,
     ],
     enabled: Boolean(value?.profile?.pen_name),
     initialPageParam: 1,
@@ -157,6 +172,9 @@ export function AccountContextProvider({ children }) {
       if (myProductsSearch) params.set("search", myProductsSearch);
       if (myProductsSelectedCategory && myProductsSelectedCategory !== "all") {
         params.set("category", myProductsSelectedCategory);
+      }
+      if (myProductsStatus && myProductsStatus !== "all") {
+        params.set("status", myProductsStatus);
       }
       const pen = value?.profile?.pen_name;
       const res = await fetch(
@@ -227,6 +245,8 @@ export function AccountContextProvider({ children }) {
         setMyProductsSelectedCategory,
         myProductsSortBy,
         setMyProductsSortBy,
+        myProductsStatus,
+        setMyProductsStatus,
         categories,
         categoriesQuery,
         categoriesLoading: categoriesQuery?.isFetching,

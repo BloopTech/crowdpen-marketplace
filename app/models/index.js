@@ -24,6 +24,7 @@ import MarketplaceMerchantBank from "./MarketplaceMerchantBank";
 import MarketplaceCollections from "./MarketplaceCollections";
 import MarketplaceAdminTransactions from "./MarketplaceAdminTransactions";
 import MarketplaceTicket from "./MarketplaceTicket";
+import MarketplaceCoupon from "./MarketplaceCoupon";
 
 // Create models object
 const db = {
@@ -47,7 +48,8 @@ const db = {
   MarketplaceMerchantBank,
   MarketplaceAdminTransactions,
   MarketplaceCollections,
-  MarketplaceTicket
+  MarketplaceTicket,
+  MarketplaceCoupon
 };
 
 // Initialize all associations after all models are loaded

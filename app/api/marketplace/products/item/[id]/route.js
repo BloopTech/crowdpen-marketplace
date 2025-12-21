@@ -94,6 +94,10 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    if (!isOwner && product?.product_status !== "published") {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
     const carts = await MarketplaceCart.findAll({
       where: {
         user_id: userId,
@@ -132,8 +136,21 @@ export async function GET(request, { params }) {
       : 0;
     const isBestseller = salesCount >= BESTSELLER_MIN_SALES;
 
+    const productJson = product?.toJSON();
+    const priceNum = Number(productJson.price);
+    const originalPriceNum = Number(productJson.originalPrice);
+    const hasDiscount =
+      Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+    const saleEndMs = productJson.sale_end_date
+      ? new Date(productJson.sale_end_date).getTime()
+      : null;
+    const isExpired =
+      hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+    const effectivePrice = isExpired ? productJson.originalPrice : productJson.price;
+
     const getProduct = {
-      ...product?.toJSON(),
+      ...productJson,
+      price: effectivePrice,
       Cart: carts,
       wishlist: wishlists,
       salesCount,

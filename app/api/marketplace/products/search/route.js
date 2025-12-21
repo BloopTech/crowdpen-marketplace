@@ -99,6 +99,8 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
 
   const andConditions = [];
 
+  const effectivePriceLiteral = literal(`CASE WHEN "MarketplaceProduct"."sale_end_date" IS NOT NULL AND "MarketplaceProduct"."sale_end_date" < NOW() AND "MarketplaceProduct"."originalPrice" IS NOT NULL AND "MarketplaceProduct"."originalPrice" > "MarketplaceProduct"."price" THEN "MarketplaceProduct"."originalPrice" ELSE "MarketplaceProduct"."price" END`);
+
   // Text search via pg_trgm similarity across key fields
   if (text && text.trim().length > 0) {
     const qText = text.toLowerCase();
@@ -197,9 +199,12 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
 
   if (price) {
     const [op, value] = price;
-    if (op === "<") andConditions.push({ price: { [Op.lt]: value } });
-    if (op === ">") andConditions.push({ price: { [Op.gt]: value } });
-    if (op === "=") andConditions.push({ price: { [Op.eq]: value } });
+    if (op === "<")
+      andConditions.push(db.Sequelize.where(effectivePriceLiteral, { [Op.lt]: value }));
+    if (op === ">")
+      andConditions.push(db.Sequelize.where(effectivePriceLiteral, { [Op.gt]: value }));
+    if (op === "=")
+      andConditions.push(db.Sequelize.where(effectivePriceLiteral, { [Op.eq]: value }));
   }
 
   if (typeof rating === "number") {
@@ -229,6 +234,11 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
   } else {
     andConditions.push({ flagged: false });
   }
+
+  const statusOr = viewerId
+    ? [{ product_status: "published" }, { user_id: viewerId }]
+    : [{ product_status: "published" }];
+  andConditions.push({ [Op.or]: statusOr });
 
   // Explicit filter params
   const {
@@ -377,11 +387,23 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
     const subCategorySlug = json.MarketplaceSubCategory?.slug || "";
     const tags = Array.isArray(json.tags) ? json.tags.map((t) => t.name) : [];
 
+    const priceNum = Number(json.price);
+    const originalPriceNum = Number(json.originalPrice);
+    const saleEndMs = json.sale_end_date
+      ? new Date(json.sale_end_date).getTime()
+      : null;
+    const isExpired =
+      Number.isFinite(originalPriceNum) &&
+      originalPriceNum > priceNum &&
+      Number.isFinite(saleEndMs) &&
+      saleEndMs < Date.now();
+    const effectivePrice = isExpired ? originalPriceNum : priceNum;
+
     return {
       id: json.id,
       title: json.title,
       description: json.description || "",
-      price: Number(json.price),
+      price: effectivePrice,
       category: categoryName,
       categorySlug,
       subcategory: subCategoryName,

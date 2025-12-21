@@ -11,7 +11,18 @@ const {
   MarketplaceSubCategory,
   MarketplaceCart,
   MarketplaceCartItems,
+  MarketplaceKycVerification,
 } = db;
+
+// Helper to compute effective price respecting discount expiry
+function computeEffectivePrice(product) {
+  const priceNum = Number(product.price);
+  const originalPriceNum = Number(product.originalPrice);
+  const hasDiscount = Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+  const saleEndMs = product.sale_end_date ? new Date(product.sale_end_date).getTime() : null;
+  const isExpired = hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+  return isExpired ? originalPriceNum : priceNum;
+}
 
 function readCountryHeader(headers) {
   try {
@@ -108,8 +119,10 @@ export async function GET(request, { params }) {
       await cart.update({ currency: "USD" });
     }
 
-    // Build where conditions for product search
-    const productWhere = {};
+    // Build where conditions for product search - only published products visible
+    const productWhere = {
+      product_status: 'published',
+    };
     if (search) {
       productWhere[Op.or] = [
         { title: { [Op.iLike]: `%${search}%` } },
@@ -130,10 +143,14 @@ export async function GET(request, { params }) {
         {
           model: MarketplaceProduct,
           where: productWhere,
+          attributes: ['id', 'title', 'description', 'price', 'originalPrice', 'sale_end_date', 'currency', 'image', 'fileType', 'fileSize', 'downloads', 'rating', 'user_id'],
           include: [
             {
               model: User,
-              attributes: ['id', 'pen_name', 'name', 'image', "color"]
+              attributes: ['id', 'pen_name', 'name', 'image', "color"],
+              include: [
+                { model: MarketplaceKycVerification, attributes: ['status'], required: false }
+              ]
             },
             {
               model: MarketplaceCategory,
@@ -154,45 +171,63 @@ export async function GET(request, { params }) {
       distinct: true
     });
 
-    // Calculate cart totals
-    const subtotal = cartItems.reduce((sum, item) => {
-      return sum + parseFloat(item.price || 0);
-    }, 0);
+    // Calculate cart totals using effective price (respecting discount expiry)
+    let subtotal = 0;
+    for (const item of cartItems) {
+      const prod = item.MarketplaceProduct;
+      if (!prod) continue;
+      const effectivePrice = computeEffectivePrice(prod);
+      const itemTotal = effectivePrice * (item.quantity || 1);
+      subtotal += itemTotal;
+      // Update stored price if it differs from effective price calculation
+      const storedPrice = parseFloat(item.price || 0);
+      if (Math.abs(storedPrice - itemTotal) > 0.01) {
+        await item.update({ price: itemTotal.toFixed(2), subtotal: itemTotal.toFixed(2) });
+      }
+    }
 
-    const total = subtotal - parseFloat(cart.discount || 0);
+    const tax = subtotal * 0.1; // 10% tax
+    const total = subtotal + tax - parseFloat(cart.discount || 0);
 
     const currency = "USD";
 
     // Update cart totals
     await cart.update({
       subtotal: subtotal.toFixed(2),
+      tax: tax.toFixed(2),
       total: total.toFixed(2),
       currency,
     });
 
-    // Format response data
-    const formattedItems = cartItems.map(item => ({
-      id: item.id,
-      quantity: item.quantity,
-      price: parseFloat(item.price),
-      created_at: item.createdAt,
-      updated_at: item.updatedAt,
-      product: {
-        id: item.MarketplaceProduct.id,
-        title: item.MarketplaceProduct.title,
-        description: item.MarketplaceProduct.description,
-        price: parseFloat(item.MarketplaceProduct.price),
-        currency: item.MarketplaceProduct.currency,
-        image: item.MarketplaceProduct.image,
-        file_type: item.MarketplaceProduct.fileType,
-        file_size: item.MarketplaceProduct.fileSize,
-        download_count: item.MarketplaceProduct.downloads,
-        rating: parseFloat(item.MarketplaceProduct.rating || 0),
-        author: item.MarketplaceProduct.User,
-        category: item.MarketplaceProduct.MarketplaceCategory,
-        subcategory: item.MarketplaceProduct.MarketplaceSubCategory
-      }
-    }));
+    // Format response data with effective pricing
+    const formattedItems = cartItems.map(item => {
+      const prod = item.MarketplaceProduct;
+      const effectivePrice = computeEffectivePrice(prod);
+      return {
+        id: item.id,
+        quantity: item.quantity,
+        price: effectivePrice * (item.quantity || 1),
+        created_at: item.createdAt,
+        updated_at: item.updatedAt,
+        product: {
+          id: prod.id,
+          title: prod.title,
+          description: prod.description,
+          price: effectivePrice,
+          originalPrice: parseFloat(prod.originalPrice) || null,
+          sale_end_date: prod.sale_end_date,
+          currency: prod.currency,
+          image: prod.image,
+          file_type: prod.fileType,
+          file_size: prod.fileSize,
+          download_count: prod.downloads,
+          rating: parseFloat(prod.rating || 0),
+          author: prod.User,
+          category: prod.MarketplaceCategory,
+          subcategory: prod.MarketplaceSubCategory
+        }
+      };
+    });
 
     const totalPages = Math.ceil(count / limit);
     const hasNextPage = page < totalPages;
@@ -205,6 +240,7 @@ export async function GET(request, { params }) {
         cart: {
           id: cart.id,
           subtotal: Number(subtotal.toFixed(2)),
+          tax: Number(tax.toFixed(2)),
           discount: Number(parseFloat(cart.discount || 0).toFixed(2)),
           total: Number(total.toFixed(2)),
           item_count: count,

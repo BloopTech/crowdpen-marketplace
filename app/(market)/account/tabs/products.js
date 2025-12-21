@@ -21,6 +21,9 @@ import {
   Loader2,
   Upload,
   Pencil,
+  FileText,
+  Archive,
+  Globe,
 } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
@@ -46,8 +49,22 @@ export default function MyProducts() {
         setMyProductsSelectedCategory,
         myProductsSortBy,
         setMyProductsSortBy,
+        myProductsStatus,
+        setMyProductsStatus,
         categories,
       } = useAccount();
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'published':
+        return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"><Globe className="h-3 w-3 mr-1" />Published</Badge>;
+      case 'archived':
+        return <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-500/20 dark:text-gray-400"><Archive className="h-3 w-3 mr-1" />Archived</Badge>;
+      case 'draft':
+      default:
+        return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400"><FileText className="h-3 w-3 mr-1" />Draft</Badge>;
+    }
+  };
 
   const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD");
   const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase();
@@ -116,6 +133,20 @@ export default function MyProducts() {
               </SelectContent>
             </Select>
             <Select
+              value={myProductsStatus || 'all'}
+              onValueChange={setMyProductsStatus}
+            >
+              <SelectTrigger className="w-full md:w-36">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
               value={myProductsSortBy}
               onValueChange={setMyProductsSortBy}
             >
@@ -158,8 +189,9 @@ export default function MyProducts() {
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   />
                 </div>
-                <div className="text-xs text-muted-foreground mb-1">
-                  {p.category || ""}
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs text-muted-foreground">{p.category || ""}</span>
+                  {getStatusBadge(p.product_status)}
                 </div>
                 <h3 className="font-semibold text-sm line-clamp-2">
                   {p.title}

@@ -60,6 +60,7 @@ import MyProducts from "./tabs/products";
 import MyBillings from "./tabs/billing";
 import MyVerification from "./tabs/verification";
 import AccountSettings from "./tabs/settings";
+import PayoutsTab from "./tabs/payouts";
 
 const initialStateValues = {
   message: "",
@@ -349,12 +350,13 @@ export default function AccountContentPage() {
         </div>
 
         <Tabs defaultValue="purchases" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="purchases">My Purchases</TabsTrigger>
-            <TabsTrigger value="my-products">My Products</TabsTrigger>
-            <TabsTrigger value="billing">Billing</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-            <TabsTrigger value="verification">Verification</TabsTrigger>
+          <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
+            <TabsTrigger value="purchases" className="flex-1 min-w-[100px] text-xs sm:text-sm">Purchases</TabsTrigger>
+            <TabsTrigger value="my-products" className="flex-1 min-w-[100px] text-xs sm:text-sm">Products</TabsTrigger>
+            <TabsTrigger value="payouts" className="flex-1 min-w-[80px] text-xs sm:text-sm">Payouts</TabsTrigger>
+            <TabsTrigger value="billing" className="flex-1 min-w-[80px] text-xs sm:text-sm">Billing</TabsTrigger>
+            <TabsTrigger value="settings" className="flex-1 min-w-[80px] text-xs sm:text-sm">Settings</TabsTrigger>
+            <TabsTrigger value="verification" className="flex-1 min-w-[100px] text-xs sm:text-sm">Verification</TabsTrigger>
           </TabsList>
 
           <TabsContent value="purchases" className="mt-6">
@@ -363,6 +365,10 @@ export default function AccountContentPage() {
 
           <TabsContent value="my-products" className="mt-6">
             <MyProducts />
+          </TabsContent>
+
+          <TabsContent value="payouts" className="mt-6">
+            <PayoutsTab />
           </TabsContent>
 
           <TabsContent value="billing" className="mt-6">
@@ -389,9 +395,6 @@ export default function AccountContentPage() {
           </TabsContent>
 
           <TabsContent value="settings" className="mt-6">
-            <div className="space-y-6">
-              <BankDetailsCard />
-            </div>
             <AccountSettings />
           </TabsContent>
         </Tabs>

@@ -13,6 +13,16 @@ const {
   MarketplaceKycVerification,
 } = db;
 
+// Helper to compute effective price respecting discount expiry
+function computeEffectivePrice(product) {
+  const priceNum = Number(product.price);
+  const originalPriceNum = Number(product.originalPrice);
+  const hasDiscount = Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+  const saleEndMs = product.sale_end_date ? new Date(product.sale_end_date).getTime() : null;
+  const isExpired = hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+  return isExpired ? originalPriceNum : priceNum;
+}
+
 export async function POST(request, { params }) {
   const getParams = await params;
 
@@ -57,6 +67,7 @@ export async function POST(request, { params }) {
       where: {
         [Op.or]: orConditions,
       },
+      attributes: ['id', 'title', 'price', 'originalPrice', 'sale_end_date', 'currency', 'user_id', 'product_status', 'stock', 'inStock'],
       include: [
         {
           model: User,
@@ -78,13 +89,14 @@ export async function POST(request, { params }) {
       );
     }
 
-    // // Check if product is active
-    // if (!product.active) {
-    //   return NextResponse.json(
-    //     { status: "error", message: "Product is not available" },
-    //     { status: 400 }
-    //   );
-    // }
+    // Block adding non-published products (unless viewer is owner)
+    const isOwnerForStatus = product.user_id === user_id;
+    if (!isOwnerForStatus && product.product_status !== 'published') {
+      return NextResponse.json(
+        { status: "error", message: "Product is not available" },
+        { status: 400 }
+      );
+    }
 
     // KYC gating: only allow if viewer is owner or owner's KYC is approved
     const isOwner = product.user_id === user_id;
@@ -170,6 +182,9 @@ export async function POST(request, { params }) {
       },
     });
 
+    // Compute effective price respecting discount expiry
+    const effectivePrice = computeEffectivePrice(product);
+
     if (cartItem) {
       // Item exists, remove it from cart (toggle off)
       await cartItem.destroy();
@@ -195,9 +210,10 @@ export async function POST(request, { params }) {
           return sum + parseFloat(item.price || 0);
         }, 0);
 
+        const tax = subtotal * 0.1; // 10% tax
         cart.subtotal = subtotal;
-        cart.total =
-          subtotal + parseFloat(cart.tax || 0) - parseFloat(cart.discount || 0);
+        cart.tax = tax;
+        cart.total = subtotal + tax - parseFloat(cart.discount || 0);
         await cart.save();
       }
 
@@ -208,8 +224,8 @@ export async function POST(request, { params }) {
         cartItem: null,
       });
     } else {
-      // Item doesn't exist, add it to cart (toggle on)
-      const itemSubtotal = parseFloat(product.price) * quantity;
+      // Item doesn't exist, add it to cart (toggle on) using effective price
+      const itemSubtotal = effectivePrice * quantity;
       cartItem = await MarketplaceCartItems.create({
         marketplace_cart_id: cart.id,
         marketplace_product_id: product.id,
@@ -219,7 +235,7 @@ export async function POST(request, { params }) {
       });
     }
 
-    // Update cart totals
+    // Update cart totals with tax
     const cartItems = await MarketplaceCartItems.findAll({
       where: {
         marketplace_cart_id: cart.id,
@@ -230,9 +246,10 @@ export async function POST(request, { params }) {
       return sum + parseFloat(item.price || 0);
     }, 0);
 
+    const tax = subtotal * 0.1; // 10% tax
     cart.subtotal = subtotal;
-    cart.total =
-      subtotal + parseFloat(cart.tax || 0) - parseFloat(cart.discount || 0);
+    cart.tax = tax;
+    cart.total = subtotal + tax - parseFloat(cart.discount || 0);
     await cart.save();
 
     // Return success response with cart item data

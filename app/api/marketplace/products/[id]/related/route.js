@@ -37,6 +37,20 @@ export async function GET(request, { params }) {
     // First, get the current product to find its category
     const currentProduct = await MarketplaceProduct.findOne({
       where: { [Op.or]: orConditions },
+      include: [
+        {
+          model: User,
+          attributes: ["id"],
+          required: false,
+          include: [
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
+          ],
+        },
+      ],
     });
     console.log(
       "Current product for related products:",
@@ -45,6 +59,22 @@ export async function GET(request, { params }) {
     );
 
     if (!currentProduct) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    const viewerId = userId;
+    const isOwner = viewerId && currentProduct?.user_id === viewerId;
+    const ownerApproved =
+      currentProduct?.User?.MarketplaceKycVerification?.status === "approved";
+    if (!isOwner && !ownerApproved) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    if (!isOwner && currentProduct?.flagged === true) {
+      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    if (!isOwner && currentProduct?.product_status !== "published") {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
@@ -72,14 +102,29 @@ export async function GET(request, { params }) {
       visibilityOr.push({ user_id: userId });
     }
 
-    const relatedProducts = await MarketplaceProduct.findAll({
-      where: {
-        id: {
-          [Op.ne]: currentProduct.id, // Exclude current product
+    const flaggedOr = userId
+      ? [{ flagged: false }, { user_id: userId }]
+      : [{ flagged: false }];
+    const statusOr = userId
+      ? [{ product_status: "published" }, { user_id: userId }]
+      : [{ product_status: "published" }];
+
+    const finalWhere = {
+      [Op.and]: [
+        {
+          id: {
+            [Op.ne]: currentProduct.id,
+          },
+          marketplace_category_id: currentProduct.marketplace_category_id,
         },
-        marketplace_category_id: currentProduct.marketplace_category_id,
-        [Op.or]: visibilityOr,
-      },
+        { [Op.or]: visibilityOr },
+        { [Op.or]: flaggedOr },
+        { [Op.or]: statusOr },
+      ],
+    };
+
+    const relatedProducts = await MarketplaceProduct.findAll({
+      where: finalWhere,
       include: [
         { model: MarketplaceCategory },
         { model: MarketplaceSubCategory },
@@ -105,6 +150,8 @@ export async function GET(request, { params }) {
         "title",
         "price",
         "originalPrice",
+        "sale_end_date",
+        "product_status",
         "rating",
         "reviewCount",
         "featured",
@@ -182,6 +229,19 @@ export async function GET(request, { params }) {
     const formattedProducts = relatedProducts.map((product) => {
       const productJson = product.toJSON();
 
+      const priceNum = Number(productJson.price);
+      const originalPriceNum = Number(productJson.originalPrice);
+      const hasDiscount =
+        Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+      const saleEndMs = productJson.sale_end_date
+        ? new Date(productJson.sale_end_date).getTime()
+        : null;
+      const isExpired =
+        hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+      const effectivePrice = isExpired
+        ? productJson.originalPrice
+        : productJson.price;
+
       const getWishes = wishlists.filter(
         (wishlist) => wishlist.marketplace_product_id === productJson.id
       );
@@ -203,6 +263,7 @@ export async function GET(request, { params }) {
 
       return {
         ...productJson,
+        price: effectivePrice,
         tags,
         productTags: undefined, // Remove the nested structure
         wishlist: getWishes,

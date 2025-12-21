@@ -73,6 +73,7 @@ import { toast } from "sonner";
 import { useHome } from "../../../context";
 import millify from "millify";
 import MyProductCard from "./product-card";
+import MarketplaceHeader from "../../../components/marketplace-header";
 
 export default function AuthorProfileContent({ author }) {
   const {
@@ -176,6 +177,9 @@ export default function AuthorProfileContent({ author }) {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Navigation Header */}
+      <MarketplaceHeader hideFilters={true} />
+      
       {/* Hero Section */}
       <div className="relative">
         <div
@@ -322,7 +326,7 @@ export default function AuthorProfileContent({ author }) {
       {/* Stats Section */}
       <div className="pt-28 pb-12 px-6">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+          <div className="grid grid-cols-3 gap-4 mb-12">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-500/10 dark:to-blue-500/5 dark:border-blue-500/20">
               <CardContent className="p-6 text-center">
                 <BookOpen className="w-8 h-8 text-blue-600 mx-auto mb-2" />
@@ -332,16 +336,6 @@ export default function AuthorProfileContent({ author }) {
                     : 0}
                 </div>
                 <div className="text-sm text-blue-700">Products</div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200 dark:from-emerald-500/10 dark:to-emerald-500/5 dark:border-emerald-500/20">
-              <CardContent className="p-6 text-center">
-                <DollarSign className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-green-900">
-                  ${author?.stats?.totalSales || 0}
-                </div>
-                <div className="text-sm text-green-700">Revenue</div>
               </CardContent>
             </Card>
 

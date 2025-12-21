@@ -35,6 +35,7 @@ export async function GET(request, { params }) {
   const search = searchParams.get("search") || "";
   const category = searchParams.get("category") || "";
   const sortBy = searchParams.get("sortBy") || "newest";
+  const status = searchParams.get("status") || "";
 
   try {
     // Find author first
@@ -85,13 +86,14 @@ export async function GET(request, { params }) {
       FROM "mv_product_sales" AS s
       WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
     ), 0)`);
+    const effectivePriceLiteral = db.sequelize.literal(`CASE WHEN "MarketplaceProduct"."sale_end_date" IS NOT NULL AND "MarketplaceProduct"."sale_end_date" < NOW() AND "MarketplaceProduct"."originalPrice" IS NOT NULL AND "MarketplaceProduct"."originalPrice" > "MarketplaceProduct"."price" THEN "MarketplaceProduct"."originalPrice" ELSE "MarketplaceProduct"."price" END`);
     let orderClause;
     switch (sortBy) {
       case "price-low":
-        orderClause = [["price", "ASC"]];
+        orderClause = [[effectivePriceLiteral, "ASC"]];
         break;
       case "price-high":
-        orderClause = [["price", "DESC"]];
+        orderClause = [[effectivePriceLiteral, "DESC"]];
         break;
       case "rating":
         orderClause = [
@@ -131,6 +133,13 @@ export async function GET(request, { params }) {
     // Flagged gating: only show non-flagged products to public viewers
     if (!isViewerAuthor) {
       whereConditions.flagged = false;
+    }
+
+    if (!isViewerAuthor) {
+      whereConditions.product_status = "published";
+    } else if (status && status !== "all") {
+      // Owner can filter by status
+      whereConditions.product_status = status;
     }
 
     // Get products with pagination
@@ -195,6 +204,19 @@ export async function GET(request, { params }) {
       products.map(async (product) => {
         const productJson = product.toJSON();
 
+        const priceNum = Number(productJson.price);
+        const originalPriceNum = Number(productJson.originalPrice);
+        const hasDiscount =
+          Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+        const saleEndMs = productJson.sale_end_date
+          ? new Date(productJson.sale_end_date).getTime()
+          : null;
+        const isExpired =
+          hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+        const effectivePrice = isExpired
+          ? productJson.originalPrice
+          : productJson.price;
+
         const reviewStats = await MarketplaceReview.findOne({
           where: { marketplace_product_id: productJson.id },
           attributes: [
@@ -224,7 +246,7 @@ export async function GET(request, { params }) {
           id: productJson.id,
           title: productJson.title,
           description: productJson.description,
-          price: productJson.price,
+          price: effectivePrice,
           originalPrice: productJson.originalPrice,
           stock: productJson.stock,
           inStock: productJson.inStock,

@@ -35,7 +35,7 @@ const initialStateValues = {
 };
 
 export default function ProductCard(props) {
-  const { resource } = props;
+  const { resource, viewMode = "grid" } = props;
   const {
     openLoginDialog,
     refetchWishlistCount,
@@ -244,6 +244,139 @@ export default function ProductCard(props) {
     return cartFormAction(formData);
   };
 
+  // List view layout
+  if (viewMode === "list") {
+    return (
+      <Card className="group hover:shadow-lg transition-all duration-300 shadow-sm">
+        <CardContent className="p-0">
+          <div className="flex flex-col sm:flex-row gap-4 p-4">
+            {/* Image */}
+            <div className="relative w-full sm:w-48 h-48 sm:h-36 flex-shrink-0 overflow-hidden rounded-lg bg-gradient-to-br from-muted to-accent">
+              <Image
+                src={resource.image || "/placeholder.svg"}
+                alt={resource.title}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
+                sizes="(max-width: 640px) 100vw, 192px"
+              />
+              {/* Badges */}
+              <div className="absolute top-2 left-2 flex gap-2">
+                {resource.featured && (
+                  <StatusPill icon={Sparkles} label="Featured" className="bg-purple-500/90 backdrop-blur text-xs" />
+                )}
+                {resource.isBestseller && (
+                  <StatusPill icon={Crown} label="Bestseller" className="bg-amber-500/90 backdrop-blur text-xs" />
+                )}
+                {discountPercentage > 0 && (
+                  <Badge className="!bg-red-500 hover:!bg-red-600 !text-white text-xs">-{discountPercentage}%</Badge>
+                )}
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 flex flex-col justify-between min-w-0">
+              <div>
+                {/* Category */}
+                <div className="text-xs text-muted-foreground mb-1">
+                  <Link href={`/category/${resource.MarketplaceCategory?.slug}`} className="hover:underline">
+                    {resource.MarketplaceCategory?.name} › {resource.MarketplaceSubCategory?.name}
+                  </Link>
+                </div>
+
+                {/* Title */}
+                <Link href={`/product/${resource.product_id || resource.id}`}>
+                  <h3 className="font-semibold text-base mb-2 line-clamp-2 group-hover:text-tertiary cursor-pointer">
+                    {resource.title}
+                  </h3>
+                </Link>
+
+                {/* Description */}
+                <p className="text-sm text-muted-foreground line-clamp-2 mb-2 hidden sm:block">
+                  {resource.description}
+                </p>
+
+                {/* Author & Rating */}
+                <div className="flex items-center gap-3 mb-2">
+                  <Link href={`/author/${resource?.User?.pen_name}`}>
+                    <span className="text-sm text-foreground hover:text-tertiary hover:underline cursor-pointer">
+                      by {resource.User?.name}
+                    </span>
+                  </Link>
+                  <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    <span className="text-sm text-muted-foreground">{resource?.rating} ({resource?.reviewCount})</span>
+                  </div>
+                </div>
+
+                {/* Features */}
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <Download className="h-3 w-3" />
+                    <span>{resource?.deliveryTime}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    <span>{resource?.fileType}</span>
+                  </div>
+                  {isOutOfStock && (
+                    <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Price & Actions */}
+              <div className="flex items-center justify-between mt-3 gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold">{fmt(resource?.price)}</span>
+                  {resource?.originalPrice && discountPercentage > 0 && (
+                    <span className="text-sm text-muted-foreground line-through">{fmt(resource?.originalPrice)}</span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <form action={handleWishlistAction}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="submit"
+                      disabled={isPending || !session?.user || resource?.user_id === session?.user?.id}
+                      className={isPending ? "opacity-50" : ""}
+                    >
+                      <Heart className={`h-4 w-4 ${isWished ? "fill-red-500 text-red-500" : ""}`} />
+                    </Button>
+                    <input type="hidden" name="productId" value={resource.id} />
+                  </form>
+
+                  <form action={handleCartAction} onSubmit={() => {
+                    if (isCarted) {
+                      setLocalCartState(null);
+                      setHasLocalCartOverride(true);
+                    } else {
+                      setLocalCartState({ id: "temp", product_id: resource.id });
+                      setHasLocalCartOverride(true);
+                    }
+                  }}>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={isCartPending || !session || resource.user_id === session?.user?.id}
+                    >
+                      <ShoppingCart className="h-4 w-4 mr-2" />
+                      {isCartPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : isCarted ? "Remove" : "Add to Cart"}
+                    </Button>
+                    <input type="hidden" name="productId" value={resource.id} />
+                    <input type="hidden" name="quantity" value="1" />
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Grid view layout (default)
   return (
     <Card className="group hover:shadow-lg transition-all duration-300 shadow-sm">
       <CardContent className="p-0">

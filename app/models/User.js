@@ -10,28 +10,43 @@ class User extends Model {
    */
   static associate(models) {
     // Define associations
-    User.hasMany(models.MarketplaceProduct, { foreignKey: 'user_id' });
-    User.hasMany(models.MarketplaceAddress, { foreignKey: 'user_id' });
-    User.hasMany(models.MarketplaceCart, { foreignKey: 'user_id' });
-    User.hasMany(models.MarketplaceOrder, { foreignKey: 'user_id' });
-    User.hasMany(models.MarketplaceReview, { foreignKey: 'user_id' });
-    User.belongsToMany(models.MarketplaceProduct, { 
-      through: models.MarketplaceWishlists, 
-      foreignKey: 'user_id', 
-      as: 'wishlistedProducts' 
+    User.hasMany(models.MarketplaceProduct, { foreignKey: "user_id" });
+    User.hasMany(models.MarketplaceAddress, { foreignKey: "user_id" });
+    User.hasMany(models.MarketplaceCart, { foreignKey: "user_id" });
+    User.hasMany(models.MarketplaceOrder, { foreignKey: "user_id" });
+    User.hasMany(models.MarketplaceReview, { foreignKey: "user_id" });
+    User.belongsToMany(models.MarketplaceProduct, {
+      through: models.MarketplaceWishlists,
+      foreignKey: "user_id",
+      as: "wishlistedProducts",
     });
     User.hasOne(models.Session, {
       foreignKey: "user_id",
     });
-    User.hasMany(models.MarketplaceAdminTransactions, { foreignKey: 'recipient_id' });
-    User.hasMany(models.MarketplaceCollections, { foreignKey: 'merchant_id' });
-    User.hasOne(models.MarketplaceKycVerification, { foreignKey: 'user_id' });
-    User.hasMany(models.MarketplaceKycVerification, { foreignKey: 'reviewed_by', as: 'ReviewedKycVerifications' });
-    User.hasOne(models.MarketplaceMerchantBank, { foreignKey: 'user_id' });
+    User.hasMany(models.MarketplaceAdminTransactions, {
+      foreignKey: "recipient_id",
+    });
+    User.hasMany(models.MarketplaceCollections, { foreignKey: "merchant_id" });
+    User.hasOne(models.MarketplaceKycVerification, { foreignKey: "user_id" });
+    User.hasMany(models.MarketplaceKycVerification, {
+      foreignKey: "reviewed_by",
+      as: "ReviewedKycVerifications",
+    });
+    User.hasOne(models.MarketplaceMerchantBank, { foreignKey: "user_id" });
     // Tickets
-    User.hasMany(models.MarketplaceTicket, { foreignKey: 'user_id' }); // requester tickets
-    User.hasMany(models.MarketplaceTicket, { foreignKey: 'assigned_to', as: 'AssignedTickets' });
-    User.hasMany(models.MarketplaceTicket, { foreignKey: 'last_message_by', as: 'LastMessageAuthoredTickets' });
+    User.hasMany(models.MarketplaceTicket, { foreignKey: "user_id" }); // requester tickets
+    User.hasMany(models.MarketplaceTicket, {
+      foreignKey: "assigned_to",
+      as: "AssignedTickets",
+    });
+    User.hasMany(models.MarketplaceTicket, {
+      foreignKey: "last_message_by",
+      as: "LastMessageAuthoredTickets",
+    });
+    User.hasMany(models.MarketplaceCoupon, {
+      foreignKey: "created_by",
+      as: "CreatedCoupons",
+    });
   }
 }
 
@@ -106,6 +121,17 @@ User.init(
     loginStreak: DataTypes.INTEGER,
     totalPoints: DataTypes.FLOAT,
     merchant: DataTypes.BOOLEAN,
+    settings: {
+      type: DataTypes.JSONB,
+      allowNull: true,
+      defaultValue: {
+        newProductNotifications: true,
+        weeklyNewsletter: true,
+        marketingEmails: false,
+        publicPurchases: true,
+        publicWishlist: false,
+      },
+    },
   },
   {
     sequelize,
