@@ -104,6 +104,9 @@ function CategoryContextProvider({ children, slug }) {
   const [deliveryTime, setDeliveryTime] = useQueryState("deliveryTime", {
     defaultValue: "",
   });
+  const [contentLength, setContentLength] = useQueryState("contentLength", {
+    defaultValue: "",
+  });
   const [page, setPage] = useQueryState("page", {
     defaultValue: 1,
     parse: Number,
@@ -125,6 +128,7 @@ function CategoryContextProvider({ children, slug }) {
     search,
     fileType,
     deliveryTime,
+    contentLength,
     page,
     limit,
   };
@@ -261,6 +265,8 @@ function CategoryContextProvider({ children, slug }) {
     if (newFilters.fileType !== undefined) setFileType(newFilters.fileType);
     if (newFilters.deliveryTime !== undefined)
       setDeliveryTime(newFilters.deliveryTime);
+    if (newFilters.contentLength !== undefined)
+      setContentLength(newFilters.contentLength);
     if (newFilters.limit !== undefined) setLimit(newFilters.limit);
 
     // Reset page to 1 when changing other filters unless page is explicitly set
@@ -282,6 +288,7 @@ function CategoryContextProvider({ children, slug }) {
     setSort("all");
     setFileType("");
     setDeliveryTime("");
+    setContentLength("");
     setPage(1);
     // We keep limit as is
   };

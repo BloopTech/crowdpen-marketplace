@@ -136,6 +136,10 @@ MarketplaceProduct.init(
     deliveryTime: {
       type: DataTypes.STRING,
     },
+    content_length: {
+      type: DataTypes.ENUM("quick_read", "medium_read", "long_read", "comprehensive_guide"),
+      allowNull: true,
+    },
     lastUpdated: {
       type: DataTypes.DATE,
     },

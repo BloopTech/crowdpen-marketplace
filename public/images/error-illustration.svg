@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- Background -->
+  <circle cx="200" cy="150" r="120" fill="#F3F4F6" opacity="0.4"/>
+  
+  <!-- Broken shopping cart -->
+  <g transform="translate(120, 70)">
+    <!-- Cart body -->
+    <path d="M40 50 L50 110 Q52 120 62 120 L130 120 Q140 120 142 110 L155 60" fill="none" stroke="#9CA3AF" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- Cart handle -->
+    <path d="M20 50 L40 50" stroke="#9CA3AF" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- Wheels -->
+    <circle cx="70" cy="130" r="10" fill="#D1D5DB" stroke="#9CA3AF" stroke-width="2"/>
+    <circle cx="125" cy="130" r="10" fill="#D1D5DB" stroke="#9CA3AF" stroke-width="2"/>
+    
+    <!-- Broken wheel indicator -->
+    <line x1="118" y1="137" x2="132" y2="123" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Warning sign on cart -->
+    <g transform="translate(95, 75)">
+      <path d="M0 -20 L18 15 L-18 15 Z" fill="#FBBF24" stroke="#F59E0B" stroke-width="2"/>
+      <text x="0" y="8" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#374151" text-anchor="middle">!</text>
+    </g>
+  </g>
+  
+  <!-- Floating elements -->
+  <g transform="translate(70, 90)">
+    <!-- Small box falling -->
+    <rect x="0" y="0" width="25" height="25" rx="3" fill="#E5E7EB" stroke="#D1D5DB" stroke-width="2" transform="rotate(-15)"/>
+  </g>
+  
+  <g transform="translate(290, 110)">
+    <!-- Another small box -->
+    <rect x="0" y="0" width="20" height="20" rx="2" fill="#DBEAFE" stroke="#93C5FD" stroke-width="2" transform="rotate(10)"/>
+  </g>
+  
+  <!-- Decorative circles -->
+  <circle cx="60" cy="180" r="6" fill="#60A5FA" opacity="0.5"/>
+  <circle cx="340" cy="100" r="8" fill="#F472B6" opacity="0.5"/>
+  <circle cx="320" cy="220" r="5" fill="#34D399" opacity="0.5"/>
+  <circle cx="80" cy="120" r="4" fill="#FBBF24" opacity="0.5"/>
+  
+  <!-- Cloud with X -->
+  <g transform="translate(280, 160)">
+    <ellipse cx="30" cy="25" rx="30" ry="20" fill="#E5E7EB"/>
+    <ellipse cx="15" cy="30" rx="18" ry="15" fill="#E5E7EB"/>
+    <ellipse cx="45" cy="30" rx="18" ry="15" fill="#E5E7EB"/>
+    <!-- X mark -->
+    <line x1="22" y1="20" x2="38" y2="35" stroke="#EF4444" stroke-width="3" stroke-linecap="round"/>
+    <line x1="38" y1="20" x2="22" y2="35" stroke="#EF4444" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Broken connection lines -->
+  <path d="M50 150 L70 150" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4"/>
+  <path d="M330 140 L350 140" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 4"/>
+  
+  <!-- Bottom text -->
+  <text x="200" y="270" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#D1D5DB" text-anchor="middle" letter-spacing="6">SOMETHING WENT WRONG</text>
+</svg>

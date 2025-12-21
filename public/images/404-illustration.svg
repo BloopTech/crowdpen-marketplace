@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- Background elements -->
+  <circle cx="200" cy="150" r="120" fill="#F3F4F6" opacity="0.5"/>
+  
+  <!-- Shopping bag with question mark -->
+  <g transform="translate(140, 60)">
+    <!-- Bag body -->
+    <path d="M20 80 L20 160 Q20 170 30 170 L90 170 Q100 170 100 160 L100 80 Z" fill="#E5E7EB" stroke="#9CA3AF" stroke-width="2"/>
+    <!-- Bag top -->
+    <path d="M15 80 L105 80 Q110 80 108 72 L102 55 Q100 50 95 50 L25 50 Q20 50 18 55 L12 72 Q10 80 15 80 Z" fill="#D1D5DB" stroke="#9CA3AF" stroke-width="2"/>
+    <!-- Handle -->
+    <path d="M40 50 Q40 25 60 25 Q80 25 80 50" fill="none" stroke="#9CA3AF" stroke-width="3" stroke-linecap="round"/>
+    
+    <!-- Question mark -->
+    <text x="60" y="135" font-family="Arial, sans-serif" font-size="50" font-weight="bold" fill="#6B7280" text-anchor="middle">?</text>
+  </g>
+  
+  <!-- Floating elements -->
+  <circle cx="80" cy="80" r="8" fill="#60A5FA" opacity="0.6"/>
+  <circle cx="320" cy="100" r="6" fill="#F472B6" opacity="0.6"/>
+  <circle cx="100" cy="220" r="5" fill="#34D399" opacity="0.6"/>
+  <circle cx="300" cy="200" r="7" fill="#FBBF24" opacity="0.6"/>
+  
+  <!-- Decorative lines -->
+  <path d="M50 150 L70 150" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round"/>
+  <path d="M330 140 L350 140" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round"/>
+  <path d="M340 130 L340 150" stroke="#D1D5DB" stroke-width="2" stroke-linecap="round"/>
+  
+  <!-- Search magnifier suggesting "not found" -->
+  <g transform="translate(250, 180)">
+    <circle cx="25" cy="25" r="20" fill="none" stroke="#9CA3AF" stroke-width="3"/>
+    <line x1="40" y1="40" x2="55" y2="55" stroke="#9CA3AF" stroke-width="3" stroke-linecap="round"/>
+    <!-- X inside magnifier -->
+    <line x1="18" y1="18" x2="32" y2="32" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+    <line x1="32" y1="18" x2="18" y2="32" stroke="#EF4444" stroke-width="2" stroke-linecap="round"/>
+  </g>
+  
+  <!-- Text "404" stylized -->
+  <text x="200" y="270" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#D1D5DB" text-anchor="middle" letter-spacing="8">PAGE NOT FOUND</text>
+</svg>

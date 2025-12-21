@@ -42,6 +42,71 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
+/**
+ * Calculate content_length enum based on file type and size
+ * Estimates reading time from file characteristics
+ * @param {string} fileType - The type of file (PDF, DOCX, EPUB, Video, Audio, etc.)
+ * @param {number} fileSizeBytes - The file size in bytes
+ * @returns {string} - One of: quick_read, medium_read, long_read, comprehensive_guide
+ */
+const calculateContentLength = (fileType, fileSizeBytes) => {
+  if (!fileSizeBytes || fileSizeBytes <= 0) {
+    return "quick_read";
+  }
+
+  const fileSizeKB = fileSizeBytes / 1024;
+  const fileSizeMB = fileSizeKB / 1024;
+  const normalizedFileType = (fileType || "").toUpperCase();
+
+  let estimatedMinutes = 0;
+
+  // Text-based documents (PDF, DOCX, EPUB, etc.)
+  if (["PDF", "DOCX", "DOC", "EPUB", "TXT", "RTF", "ODT"].includes(normalizedFileType)) {
+    const estimatedPages = fileSizeKB / 3;
+    const estimatedWords = estimatedPages * 300;
+    estimatedMinutes = estimatedWords / 200;
+  }
+  // Spreadsheets and templates
+  else if (["GOOGLE SHEETS", "XLSX", "XLS", "CSV", "NOTION TEMPLATE"].includes(normalizedFileType)) {
+    if (fileSizeMB < 0.5) estimatedMinutes = 15;
+    else if (fileSizeMB < 2) estimatedMinutes = 45;
+    else if (fileSizeMB < 5) estimatedMinutes = 90;
+    else estimatedMinutes = 180;
+  }
+  // Video content
+  else if (["VIDEO", "MP4", "MOV", "AVI", "MKV", "WEBM"].includes(normalizedFileType)) {
+    estimatedMinutes = fileSizeMB / 10;
+  }
+  // Audio content
+  else if (["AUDIO", "MP3", "WAV", "AAC", "FLAC", "OGG"].includes(normalizedFileType)) {
+    estimatedMinutes = fileSizeMB / 1;
+  }
+  // ZIP/Archive files
+  else if (["ZIP", "RAR", "7Z", "TAR", "GZ"].includes(normalizedFileType)) {
+    if (fileSizeMB < 5) estimatedMinutes = 30;
+    else if (fileSizeMB < 20) estimatedMinutes = 60;
+    else if (fileSizeMB < 50) estimatedMinutes = 120;
+    else estimatedMinutes = 240;
+  }
+  // Default fallback
+  else {
+    if (fileSizeMB < 1) estimatedMinutes = 15;
+    else if (fileSizeMB < 5) estimatedMinutes = 45;
+    else if (fileSizeMB < 20) estimatedMinutes = 90;
+    else estimatedMinutes = 180;
+  }
+
+  if (estimatedMinutes < 30) {
+    return "quick_read";
+  } else if (estimatedMinutes < 60) {
+    return "medium_read";
+  } else if (estimatedMinutes < 180) {
+    return "long_read";
+  } else {
+    return "comprehensive_guide";
+  }
+};
+
 export async function GET(request, { params }) {
   const getParams = await params;
   const { id } = getParams;
@@ -384,6 +449,23 @@ export async function POST(request, { params }) {
       );
     }
 
+    // Calculate content_length based on file type and size
+    // Use new file size if uploaded, otherwise try to estimate from existing file size string
+    let fileSizeBytes = 0;
+    if (newProductFile && newProductFile.size > 0) {
+      fileSizeBytes = newProductFile.size;
+    } else if (finalFileSize) {
+      // Try to parse existing file size string (e.g., "1.5 MB")
+      const match = finalFileSize.match(/^([\d.]+)\s*(Bytes|KB|MB|GB)$/i);
+      if (match) {
+        const value = parseFloat(match[1]);
+        const unit = match[2].toUpperCase();
+        const multipliers = { BYTES: 1, KB: 1024, MB: 1024 * 1024, GB: 1024 * 1024 * 1024 };
+        fileSizeBytes = value * (multipliers[unit] || 1);
+      }
+    }
+    const contentLength = calculateContentLength(finalFileType, fileSizeBytes);
+
     // Update the product in the database
     const updatedProduct = await existingProduct.update({
       title: productData.title,
@@ -405,6 +487,7 @@ export async function POST(request, { params }) {
       what_included: productData.what_included,
       stock: stock,
       inStock: stock === null ? existingProduct.inStock : stock > 0,
+      content_length: contentLength,
     });
 
     return NextResponse.json(

@@ -39,6 +39,7 @@ export async function GET(request) {
     const search = searchParams.get("search");
     const fileType = searchParams.get("fileType");
     const deliveryTime = searchParams.get("deliveryTime");
+    const contentLength = searchParams.get("contentLength");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
@@ -107,6 +108,11 @@ export async function GET(request) {
     // Handle deliveryTime filter
     if (deliveryTime) {
       where.deliveryTime = deliveryTime;
+    }
+
+    // Handle contentLength filter
+    if (contentLength) {
+      where.content_length = contentLength;
     }
 
     // Build sort options with correct column names

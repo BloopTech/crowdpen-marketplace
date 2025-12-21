@@ -187,24 +187,27 @@ export default function FilterCategorySidebar(props) {
           <CardTitle className="text-sm">Content Length</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {["Quick Read (< 30 min)", "Medium Read (30-60 min)", "Long Read (1+ hours)", "Comprehensive Guide"].map(
-            (length) => (
-              <div key={length} className="flex items-center space-x-2">
-                <Checkbox
-                  id={length}
-                  checked={filters.deliveryTime === length}
-                  onCheckedChange={(checked) =>
-                    onFiltersChange({
-                      deliveryTime: checked ? length : "",
-                    })
-                  }
-                />
-                <Label htmlFor={length} className="text-sm font-normal">
-                  {length}
-                </Label>
-              </div>
-            ),
-          )}
+          {[
+            { value: "quick_read", label: "Quick Read (< 30 min)" },
+            { value: "medium_read", label: "Medium Read (30-60 min)" },
+            { value: "long_read", label: "Long Read (1+ hours)" },
+            { value: "comprehensive_guide", label: "Comprehensive Guide" },
+          ].map(({ value, label }) => (
+            <div key={value} className="flex items-center space-x-2">
+              <Checkbox
+                id={`content-length-${value}`}
+                checked={filters.contentLength === value}
+                onCheckedChange={(checked) =>
+                  onFiltersChange({
+                    contentLength: checked ? value : "",
+                  })
+                }
+              />
+              <Label htmlFor={`content-length-${value}`} className="text-sm font-normal">
+                {label}
+              </Label>
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>

@@ -1,6 +1,6 @@
 import nodemailer from "nodemailer";
 
-export async function sendEmail({ to, subject, html, text }) {
+export async function sendEmail({ to, subject, html, text, replyTo }) {
   if (!to) throw new Error("Recipient 'to' is required");
   const host = process.env.EMAIL_SERVER_HOST;
   const port = Number(process.env.EMAIL_SERVER_PORT || 465);
@@ -25,6 +25,7 @@ export async function sendEmail({ to, subject, html, text }) {
     subject,
     html,
     text,
+    ...(replyTo && { replyTo }),
   });
 
   const failed = [...(result.rejected || []), ...(result.pending || [])].filter(Boolean);

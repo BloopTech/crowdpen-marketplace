@@ -106,6 +106,9 @@ const HomeProvider = ({ children }) => {
   const [deliveryTime, setDeliveryTime] = useQueryState("deliveryTime", {
     defaultValue: "",
   });
+  const [contentLength, setContentLength] = useQueryState("contentLength", {
+    defaultValue: "",
+  });
   const [page, setPage] = useQueryState("page", {
     defaultValue: 1,
     parse: Number,
@@ -127,6 +130,7 @@ const HomeProvider = ({ children }) => {
     search,
     fileType,
     deliveryTime,
+    contentLength,
     page,
     limit,
   };
@@ -302,6 +306,8 @@ const HomeProvider = ({ children }) => {
     if (newFilters.fileType !== undefined) setFileType(newFilters.fileType);
     if (newFilters.deliveryTime !== undefined)
       setDeliveryTime(newFilters.deliveryTime);
+    if (newFilters.contentLength !== undefined)
+      setContentLength(newFilters.contentLength);
     if (newFilters.limit !== undefined) setLimit(newFilters.limit);
 
     // Reset page to 1 when changing other filters unless page is explicitly set
@@ -323,6 +329,7 @@ const HomeProvider = ({ children }) => {
     setSort("all");
     setFileType("");
     setDeliveryTime("");
+    setContentLength("");
     setPage(1);
     // We keep limit as is
   };

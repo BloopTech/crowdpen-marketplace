@@ -66,6 +66,79 @@ const formatFileSize = (bytes) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
+/**
+ * Calculate content_length enum based on file type and size
+ * Estimates reading time from file characteristics
+ * @param {string} fileType - The type of file (PDF, DOCX, EPUB, Video, Audio, etc.)
+ * @param {number} fileSizeBytes - The file size in bytes
+ * @returns {string} - One of: quick_read, medium_read, long_read, comprehensive_guide
+ */
+const calculateContentLength = (fileType, fileSizeBytes) => {
+  if (!fileSizeBytes || fileSizeBytes <= 0) {
+    return "quick_read";
+  }
+
+  const fileSizeKB = fileSizeBytes / 1024;
+  const fileSizeMB = fileSizeKB / 1024;
+  const normalizedFileType = (fileType || "").toUpperCase();
+
+  let estimatedMinutes = 0;
+
+  // Text-based documents (PDF, DOCX, EPUB, etc.)
+  if (["PDF", "DOCX", "DOC", "EPUB", "TXT", "RTF", "ODT"].includes(normalizedFileType)) {
+    // Estimate: ~3KB per page for text-heavy PDFs, ~300 words per page, ~200 words per minute reading speed
+    const estimatedPages = fileSizeKB / 3;
+    const estimatedWords = estimatedPages * 300;
+    estimatedMinutes = estimatedWords / 200;
+  }
+  // Spreadsheets and templates
+  else if (["GOOGLE SHEETS", "XLSX", "XLS", "CSV", "NOTION TEMPLATE"].includes(normalizedFileType)) {
+    // Templates are usually quick to set up but may take time to customize
+    // Estimate based on complexity (size as proxy)
+    if (fileSizeMB < 0.5) estimatedMinutes = 15;
+    else if (fileSizeMB < 2) estimatedMinutes = 45;
+    else if (fileSizeMB < 5) estimatedMinutes = 90;
+    else estimatedMinutes = 180;
+  }
+  // Video content
+  else if (["VIDEO", "MP4", "MOV", "AVI", "MKV", "WEBM"].includes(normalizedFileType)) {
+    // Estimate: ~10MB per minute for compressed video
+    estimatedMinutes = fileSizeMB / 10;
+  }
+  // Audio content
+  else if (["AUDIO", "MP3", "WAV", "AAC", "FLAC", "OGG"].includes(normalizedFileType)) {
+    // Estimate: ~1MB per minute for compressed audio
+    estimatedMinutes = fileSizeMB / 1;
+  }
+  // ZIP/Archive files - assume contains documentation
+  else if (["ZIP", "RAR", "7Z", "TAR", "GZ"].includes(normalizedFileType)) {
+    // For archives, estimate based on size - assume mixed content
+    if (fileSizeMB < 5) estimatedMinutes = 30;
+    else if (fileSizeMB < 20) estimatedMinutes = 60;
+    else if (fileSizeMB < 50) estimatedMinutes = 120;
+    else estimatedMinutes = 240;
+  }
+  // Default fallback
+  else {
+    // Use size-based heuristic
+    if (fileSizeMB < 1) estimatedMinutes = 15;
+    else if (fileSizeMB < 5) estimatedMinutes = 45;
+    else if (fileSizeMB < 20) estimatedMinutes = 90;
+    else estimatedMinutes = 180;
+  }
+
+  // Map estimated minutes to content_length enum
+  if (estimatedMinutes < 30) {
+    return "quick_read";
+  } else if (estimatedMinutes < 60) {
+    return "medium_read";
+  } else if (estimatedMinutes < 180) {
+    return "long_read";
+  } else {
+    return "comprehensive_guide";
+  }
+};
+
 export async function POST(request) {
   try {
     // Process form data
@@ -424,6 +497,12 @@ export async function POST(request) {
       }
     }
 
+    // Calculate content_length based on file type and size
+    const contentLength = calculateContentLength(
+      productData.fileType,
+      productFile ? productFile.size : 0
+    );
+
     let createdProduct;
     let lastError;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -443,6 +522,7 @@ export async function POST(request) {
           product_id: productId,
           stock: stock,
           inStock: stock === null ? true : stock > 0,
+          content_length: contentLength,
         });
         lastError = undefined;
         break;
