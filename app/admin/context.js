@@ -149,6 +149,12 @@ export function AdminProvider({ children }) {
     queryFn: () => fetchJson(`/api/admin/users?scope=privileged&limit=200`),
   });
 
+  // Merchant recipients (for payouts)
+  const merchantRecipientsQuery = useQuery({
+    queryKey: ["admin", "users", { scope: "all", purpose: "payout_recipients" }],
+    queryFn: () => fetchJson(`/api/admin/users?scope=all&limit=500`),
+  });
+
   // Tickets
   const [ticketsParams, setTicketsParams] = useState({ page: 1, pageSize: 20, q: "" });
   const ticketsQuery = useQuery({
@@ -194,6 +200,7 @@ export function AdminProvider({ children }) {
     licensesParams,
     setLicensesParams,
     usersQuery,
+    merchantRecipientsQuery,
     ticketsQuery,
     ticketsParams,
     setTicketsParams,
@@ -220,6 +227,7 @@ export function AdminProvider({ children }) {
     licensesQuery,
     licensesParams,
     usersQuery,
+    merchantRecipientsQuery,
     ticketsQuery,
     ticketsParams,
   ]);

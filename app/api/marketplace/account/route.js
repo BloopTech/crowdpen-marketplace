@@ -63,7 +63,11 @@ export async function GET() {
     const orders = await db.MarketplaceOrder.findAll({
       where: {
         user_id: userId,
-        [Op.or]: [{ paymentStatus: "successful" }, { orderStatus: "successful" }],
+        [Op.or]: [
+          { paymentStatus: "successful" },
+          { orderStatus: "successful" },
+          { orderStatus: "processing", paymentStatus: "successful" },
+        ],
       },
       include: [
         {
@@ -74,7 +78,7 @@ export async function GET() {
               include: [
                 {
                   model: db.User,
-                  attributes: ["id", "name", "pen_name"],
+                  attributes: ["id", "name", "email"],
                 },
               ],
             },
@@ -179,12 +183,167 @@ export async function GET() {
         }
       : null;
 
+    // Merchant payouts + earnings (seller-side)
+    const sumMoney = (rows, getter) => {
+      let total = 0;
+      for (const r of rows || []) {
+        const v = getter(r);
+        const n = v != null ? Number(v) : NaN;
+        if (Number.isFinite(n)) total += n;
+      }
+      return total;
+    };
+
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const lastMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
+
+    const merchantSettledItems = await db.MarketplaceOrderItems.findAll({
+      attributes: ["id", "subtotal", "price", "quantity"],
+      include: [
+        {
+          model: db.MarketplaceOrder,
+          attributes: ["id", "createdAt", "order_number", "orderStatus", "paymentStatus"],
+          required: true,
+          where: { orderStatus: "successful" },
+        },
+        {
+          model: db.MarketplaceProduct,
+          attributes: ["id", "user_id"],
+          required: true,
+          where: { user_id: userId },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const merchantPendingSettlementItems = await db.MarketplaceOrderItems.findAll({
+      attributes: ["id", "subtotal", "price", "quantity"],
+      include: [
+        {
+          model: db.MarketplaceOrder,
+          attributes: ["id", "createdAt", "order_number", "orderStatus", "paymentStatus"],
+          required: true,
+          where: {
+            paymentStatus: "successful",
+            orderStatus: { [Op.ne]: "successful" },
+          },
+        },
+        {
+          model: db.MarketplaceProduct,
+          attributes: ["id", "user_id"],
+          required: true,
+          where: { user_id: userId },
+        },
+      ],
+      order: [["createdAt", "DESC"]],
+    });
+
+    const payoutsRows = db?.MarketplaceAdminTransactions
+      ? await db.MarketplaceAdminTransactions.findAll({
+          where: { recipient_id: userId, trans_type: "payout" },
+          attributes: [
+            "id",
+            "amount",
+            "currency",
+            "status",
+            "transaction_reference",
+            "gateway_reference",
+            "createdAt",
+          ],
+          order: [["createdAt", "DESC"]],
+        })
+      : [];
+
+    const payoutMajorAmount = (p) => {
+      const raw = p?.amount;
+      const n = raw != null ? Number(raw) : NaN;
+      if (!Number.isFinite(n)) return 0;
+      return n / 100;
+    };
+
+    const settledEarnings = sumMoney(merchantSettledItems, (r) => r?.subtotal ?? r?.price);
+    const pendingSettlement = sumMoney(
+      merchantPendingSettlementItems,
+      (r) => r?.subtotal ?? r?.price
+    );
+
+    const totalPaidOut = sumMoney(
+      payoutsRows?.filter((p) => String(p?.status || "").toLowerCase() === "completed"),
+      (p) => payoutMajorAmount(p)
+    );
+    const totalPendingPayouts = sumMoney(
+      payoutsRows?.filter((p) => String(p?.status || "").toLowerCase() === "pending"),
+      (p) => payoutMajorAmount(p)
+    );
+
+    const lastCompleted = (payoutsRows || []).find(
+      (p) => String(p?.status || "").toLowerCase() === "completed"
+    );
+
+    const monthEarnings = sumMoney(
+      merchantSettledItems?.filter((it) => {
+        const d = it?.MarketplaceOrder?.createdAt
+          ? new Date(it.MarketplaceOrder.createdAt)
+          : null;
+        return d && d >= monthStart;
+      }),
+      (r) => r?.subtotal ?? r?.price
+    );
+
+    const lastMonthEarnings = sumMoney(
+      merchantSettledItems?.filter((it) => {
+        const d = it?.MarketplaceOrder?.createdAt
+          ? new Date(it.MarketplaceOrder.createdAt)
+          : null;
+        return d && d >= lastMonthStart && d <= lastMonthEnd;
+      }),
+      (r) => r?.subtotal ?? r?.price
+    );
+
+    const growthPercent =
+      lastMonthEarnings > 0
+        ? ((monthEarnings - lastMonthEarnings) / lastMonthEarnings) * 100
+        : monthEarnings > 0
+          ? 100
+          : 0;
+
+    const availableToWithdraw = Math.max(0, settledEarnings - totalPaidOut - totalPendingPayouts);
+
+    const payoutSummary = {
+      currency: "USD",
+      totalEarnings: settledEarnings + pendingSettlement,
+      settledEarnings,
+      pendingSettlement,
+      availableToWithdraw,
+      totalPaidOut,
+      pendingPayouts: totalPendingPayouts,
+      lastPayout: lastCompleted ? payoutMajorAmount(lastCompleted) : 0,
+      lastPayoutDate: lastCompleted?.createdAt || null,
+      thisMonthEarnings: monthEarnings,
+      lastMonthEarnings,
+      growthPercent,
+    };
+
+    const payoutTransactions = (payoutsRows || []).map((p) => ({
+      id: p.id,
+      amount: payoutMajorAmount(p),
+      currency: p.currency,
+      status: p.status,
+      transaction_reference: p.transaction_reference,
+      gateway_reference: p.gateway_reference,
+      createdAt: p.createdAt,
+    }));
+
     return NextResponse.json({
       status: "success",
       profile,
       purchases,
       kyc,
       bank,
+      payoutSummary,
+      payoutTransactions,
     });
   } catch (error) {
     console.error("Error fetching account data:", error);

@@ -37,6 +37,7 @@ export async function GET() {
     for (const p of payouts) {
       if (p?.amount) totalPayoutAmount += Number(p.amount) || 0;
     }
+    totalPayoutAmount = totalPayoutAmount / 100;
 
     // Total sales from orders
     const orders = await db.MarketplaceOrder.findAll({ attributes: ["total", "currency", "paymentStatus"] });

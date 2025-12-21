@@ -15,6 +15,7 @@ const {
   MarketplaceKycVerification,
   MarketplaceOrder,
   MarketplaceOrderItems,
+  MarketplaceSubCategory,
 } = db;
 
 export async function GET(request, { params }) {
@@ -86,7 +87,9 @@ export async function GET(request, { params }) {
       FROM "mv_product_sales" AS s
       WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
     ), 0)`);
-    const effectivePriceLiteral = db.sequelize.literal(`CASE WHEN "MarketplaceProduct"."sale_end_date" IS NOT NULL AND "MarketplaceProduct"."sale_end_date" < NOW() AND "MarketplaceProduct"."originalPrice" IS NOT NULL AND "MarketplaceProduct"."originalPrice" > "MarketplaceProduct"."price" THEN "MarketplaceProduct"."originalPrice" ELSE "MarketplaceProduct"."price" END`);
+    const effectivePriceLiteral = db.sequelize.literal(
+      `CASE WHEN "MarketplaceProduct"."sale_end_date" IS NOT NULL AND "MarketplaceProduct"."sale_end_date" < NOW() AND "MarketplaceProduct"."originalPrice" IS NOT NULL AND "MarketplaceProduct"."originalPrice" > "MarketplaceProduct"."price" THEN "MarketplaceProduct"."originalPrice" ELSE "MarketplaceProduct"."price" END`
+    );
     let orderClause;
     switch (sortBy) {
       case "price-low":
@@ -110,13 +113,20 @@ export async function GET(request, { params }) {
         orderClause = [[salesCountLiteral, "DESC"]];
         break;
       default: // default ranking
-        orderClause = [[rankScoreLiteral, "DESC"], ["createdAt", "DESC"]];
+        orderClause = [
+          [rankScoreLiteral, "DESC"],
+          ["createdAt", "DESC"],
+        ];
     }
 
     // Enforce KYC visibility: if author not approved and viewer is not the author, return empty set
-    const authorKyc = await MarketplaceKycVerification.findOne({ where: { user_id: author.id }, attributes: ['status'], raw: true });
+    const authorKyc = await MarketplaceKycVerification.findOne({
+      where: { user_id: author.id },
+      attributes: ["status"],
+      raw: true,
+    });
     const isViewerAuthor = Boolean(userId && userId === author.id);
-    if (!isViewerAuthor && authorKyc?.status !== 'approved') {
+    if (!isViewerAuthor && authorKyc?.status !== "approved") {
       return NextResponse.json({
         status: "success",
         products: [],
@@ -152,25 +162,31 @@ export async function GET(request, { params }) {
           required: category ? true : false,
           attributes: ["name", "slug"],
         },
+        { model: MarketplaceSubCategory, attributes: ["name", "id"] },
       ],
       order: orderClause,
       limit,
       offset,
       distinct: true,
       attributes: {
-        include: [[rankScoreLiteral, 'rankScore']]
-      }
+        include: [[rankScoreLiteral, "rankScore"]],
+      },
     });
 
     const productIDs = products?.map((product) => product?.id);
 
     // Compute sales count per product from completed orders
-    const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
+    const BESTSELLER_MIN_SALES = Number(
+      process.env.BESTSELLER_MIN_SALES || 100
+    );
     let salesMap = {};
     if (productIDs && productIDs.length) {
       const salesRows = await db.sequelize.query(
         'SELECT "marketplace_product_id", "sales_count" FROM "mv_product_sales" WHERE "marketplace_product_id" IN (:ids)',
-        { replacements: { ids: productIDs }, type: db.Sequelize.QueryTypes.SELECT }
+        {
+          replacements: { ids: productIDs },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }
       );
       salesRows.forEach((row) => {
         salesMap[row.marketplace_product_id] = Number(row.sales_count) || 0;
@@ -254,6 +270,7 @@ export async function GET(request, { params }) {
           featured: productJson.featured,
           image: productJson.image,
           category: productJson.MarketplaceCategory?.name,
+          subCategory: productJson.MarketplaceSubCategory?.name,
           categorySlug: productJson.MarketplaceCategory?.slug,
           rating: reviewStats?.averageRating
             ? parseFloat(reviewStats.averageRating).toFixed(1)
@@ -264,6 +281,7 @@ export async function GET(request, { params }) {
           createdAt: productJson.createdAt,
           wishlist: getWishes,
           Cart: getCart,
+          product_id: productJson?.product_id,
         };
       })
     );

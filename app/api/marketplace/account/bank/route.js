@@ -50,19 +50,19 @@ export async function GET() {
 
 export async function PATCH(request) {
   try {
-    // const session = await getServerSession(authOptions);
-    // if (!session || !session.user?.id) {
-    //   return NextResponse.json(
-    //     { status: "error", message: "Authentication required" },
-    //     { status: 401 }
-    //   );
-    // }
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        { status: "error", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
 
-    // const userId = session.user.id;
+    const userId = session.user.id;
     const body = await request.json();
 
     const payload = {
-      user_id: body.userId,
+      user_id: userId,
       payout_type: body.payout_type || "bank",
       currency: body.currency,
       country_code: body.country_code || null,
@@ -80,7 +80,7 @@ export async function PATCH(request) {
     }
 
     let record = await db.MarketplaceMerchantBank.findOne({
-      where: { user_id: body.userId },
+      where: { user_id: userId },
     });
     if (record) {
       await record.update(payload);

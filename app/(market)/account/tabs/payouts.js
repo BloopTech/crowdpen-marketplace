@@ -29,30 +29,43 @@ import { useAccount } from "../context";
 import BankDetailsCard from "../bank-card";
 
 export default function PayoutsTab() {
-  const { bank, accountQuery } = useAccount();
+  const { payoutSummary, payoutTransactions } = useAccount();
 
-  // Mock data for analytics - in production this would come from API
-  const analytics = useMemo(() => ({
-    totalEarnings: 2450.00,
-    pendingPayout: 350.00,
-    lastPayout: 1200.00,
-    lastPayoutDate: "2024-12-15",
-    thisMonthEarnings: 650.00,
-    lastMonthEarnings: 580.00,
-    growthPercent: 12.07,
-  }), []);
+  const analytics = useMemo(() => {
+    const s = payoutSummary || {};
+    const lastDate = s?.lastPayoutDate ? new Date(s.lastPayoutDate) : null;
+    return {
+      totalEarnings: Number(s.totalEarnings || 0),
+      pendingPayout: Number(s.availableToWithdraw || 0),
+      lastPayout: Number(s.lastPayout || 0),
+      lastPayoutDate: lastDate
+        ? lastDate.toISOString().slice(0, 10)
+        : "-",
+      thisMonthEarnings: Number(s.thisMonthEarnings || 0),
+      lastMonthEarnings: Number(s.lastMonthEarnings || 0),
+      growthPercent: Number(s.growthPercent || 0),
+      pendingSettlement: Number(s.pendingSettlement || 0),
+    };
+  }, [payoutSummary]);
 
-  // Mock payout transactions
-  const transactions = useMemo(() => [
-    { id: 1, date: "2024-12-15", amount: 1200.00, status: "completed", reference: "PO-2024121501" },
-    { id: 2, date: "2024-11-20", amount: 850.00, status: "completed", reference: "PO-2024112001" },
-    { id: 3, date: "2024-10-18", amount: 400.00, status: "completed", reference: "PO-2024101801" },
-  ], []);
+  const transactions = useMemo(() => {
+    const rows = Array.isArray(payoutTransactions) ? payoutTransactions : [];
+    return rows.map((tx) => {
+      const d = tx?.createdAt ? new Date(tx.createdAt) : null;
+      return {
+        id: tx?.id,
+        date: d ? d.toISOString().slice(0, 10) : "-",
+        amount: Number(tx?.amount || 0),
+        status: String(tx?.status || "").toLowerCase() || "pending",
+        reference: tx?.transaction_reference || tx?.id,
+      };
+    });
+  }, [payoutTransactions]);
 
   const fmt = (v) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "USD",
+      currency: (payoutSummary?.currency || "USD").toString().toUpperCase(),
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(Number(v || 0));
@@ -94,11 +107,26 @@ export default function PayoutsTab() {
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-400 font-medium truncate">Pending Payout</p>
+                <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-400 font-medium truncate">Available to Withdraw</p>
                 <p className="text-lg sm:text-2xl font-bold text-amber-900 dark:text-amber-300 mt-1">{fmt(analytics.pendingPayout)}</p>
               </div>
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
                 <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200 dark:from-slate-500/10 dark:to-slate-500/5 dark:border-slate-500/20">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium truncate">Pending Settlement</p>
+                <p className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{fmt(analytics.pendingSettlement)}</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 truncate">Paid, awaiting settlement</p>
+              </div>
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-slate-500/20 flex items-center justify-center flex-shrink-0">
+                <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 text-slate-600" />
               </div>
             </div>
           </CardContent>

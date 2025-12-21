@@ -502,10 +502,26 @@ export async function finalizeOrder(prevState, formData) {
         .trim()
         .toUpperCase();
 
+      const stageParts = [
+        payload?.event,
+        payload?.status,
+        payload?.data?.status,
+        payload?.data?.transaction?.status,
+        payload?.data?.transaction?.transactionStatus,
+      ]
+        .filter(Boolean)
+        .map((v) => String(v))
+        .join(" |")
+        .toLowerCase();
+      const isSettled =
+        stageParts.includes("collection.completed") ||
+        stageParts.includes("completed");
+      const nextOrderStatus = isSettled ? "successful" : "processing";
+
       await order.update(
         {
           paymentStatus: "successful",
-          orderStatus: "successful",
+          orderStatus: nextOrderStatus,
           paystackReferenceId: reference || order.paystackReferenceId,
           notes,
           paid_amount: paid_amount != null ? paid_amount : order.paid_amount,
@@ -602,7 +618,7 @@ export async function finalizeOrder(prevState, formData) {
     await order.update(
       {
         paymentStatus: "failed",
-        orderStatus: "pending",
+        orderStatus: "failed",
         notes,
       },
       { transaction: t }

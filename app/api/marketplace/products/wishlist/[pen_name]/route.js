@@ -55,14 +55,23 @@ export async function GET(request, { params }) {
     const minPrice = parseFloat(searchParams.get("minPrice")) || 0;
     const maxPrice = parseFloat(searchParams.get("maxPrice")) || 10000;
 
+    const session = await getServerSession(authOptions);
+    const viewerId = session?.user?.id || null;
+
     // Find user by pen_name
     const user = await User.findOne({
       where: { pen_name },
-      attributes: ["id", "pen_name", "name"],
+      attributes: ["id", "pen_name", "name", "settings"],
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    const isOwner = Boolean(viewerId && String(viewerId) === String(user.id));
+    const publicWishlist = Boolean(user?.settings?.publicWishlist === true);
+    if (!isOwner && !publicWishlist) {
+      return NextResponse.json({ error: "Wishlist is private" }, { status: 403 });
     }
 
     // Build where conditions for products
@@ -87,10 +96,6 @@ export async function GET(request, { params }) {
         category ? { category } : {},
       ].filter((condition) => Object.keys(condition).length > 0),
     };
-
-    // Determine viewer for KYC gating
-    const session = await getServerSession(authOptions);
-    const viewerId = session?.user?.id || null;
 
     // Build KYC gating condition: approved owners or viewer is the product owner
     const approvedSellerLiteral = db.Sequelize.literal(`
@@ -184,20 +189,22 @@ export async function GET(request, { params }) {
       });
     }
 
-    const carts = await MarketplaceCart.findAll({
-      where: {
-        user_id: user.id,
-      },
-      include: [
-        {
-          model: MarketplaceCartItems,
+    const carts = viewerId
+      ? await MarketplaceCart.findAll({
           where: {
-            marketplace_product_id: { [Op.in]: productIDs },
+            user_id: viewerId,
           },
-          as: "cartItems",
-        },
-      ],
-    });
+          include: [
+            {
+              model: MarketplaceCartItems,
+              where: {
+                marketplace_product_id: { [Op.in]: productIDs },
+              },
+              as: "cartItems",
+            },
+          ],
+        })
+      : [];
 
     // Calculate pagination info
     const totalPages = Math.ceil(count / limit);

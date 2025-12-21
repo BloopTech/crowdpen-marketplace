@@ -126,6 +126,8 @@ export function AccountContextProvider({ children }) {
       purchases: accountQuery?.purchases || [],
       kyc: accountQuery?.kyc || null,
       bank: accountQuery?.bank || null,
+      payoutSummary: accountQuery?.payoutSummary || null,
+      payoutTransactions: accountQuery?.payoutTransactions || [],
       accountQuery,
     }),
     [accountQuery]

@@ -107,6 +107,29 @@ function isPaymentSuccess(payload) {
   ].some((k) => s.includes(k));
 }
 
+function getCollectionStage(payload) {
+  const p = payload || {};
+  const candidates = [
+    p.event,
+    p.type,
+    p.status,
+    p?.data?.status,
+    p?.data?.transaction?.status,
+    p?.data?.transaction?.transactionStatus,
+    p?.data?.transaction_status,
+  ];
+  const joined = candidates.filter(Boolean).map((v) => String(v)).join(" |");
+  const s = joined.toLowerCase();
+
+  if (s.includes("collection.completed") || s.includes("successful") || s.includes("completed")) {
+    return "completed";
+  }
+  if (s.includes("collection.verified") || s.includes("verified")) {
+    return "verified";
+  }
+  return null;
+}
+
 function isPaymentFailed(payload) {
   const p = payload || {};
   const candidates = [
@@ -237,6 +260,7 @@ export async function POST(request) {
 
   const ok = isPaymentSuccess(payload);
   const failed = isPaymentFailed(payload);
+  const stage = getCollectionStage(payload);
 
   // Identify order
   const orderId = extractOrderId(payload);
@@ -287,10 +311,17 @@ export async function POST(request) {
         .trim()
         .toUpperCase();
 
+      const nextOrderStatus =
+        stage === "completed"
+          ? "successful"
+          : String(lockedOrder.orderStatus || "").toLowerCase() === "successful"
+            ? "successful"
+            : "processing";
+
       await lockedOrder.update(
         {
           paymentStatus: "successful",
-          orderStatus: "successful",
+          orderStatus: nextOrderStatus,
           paystackReferenceId:
             gatewayReference ||
             lockedOrder.paystackReferenceId ||
@@ -378,14 +409,17 @@ export async function POST(request) {
         console.error("webhook email error", e);
       }
 
-      return NextResponse.json({ status: "success", message: "Order marked as completed" });
+      return NextResponse.json({
+        status: "success",
+        message: stage === "completed" ? "Order marked as completed" : "Order marked as paid",
+      });
     }
 
     if (failed) {
       await lockedOrder.update(
         {
           paymentStatus: "failed",
-          orderStatus: "pending",
+          orderStatus: "failed",
           notes: mergedNotes,
         },
         { transaction: t }

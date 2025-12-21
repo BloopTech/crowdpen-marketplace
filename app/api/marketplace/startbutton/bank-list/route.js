@@ -15,6 +15,16 @@ const FALLBACK_COUNTRY = (process.env.MARKETPLACE_DEFAULT_COUNTRY || "GH").toUpp
 const GEOLOOKUP_URL_TEMPLATE =
   process.env.GEOLOCATION_LOOKUP_URL || "https://ipwho.is/{ip}";
 
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...(options || {}), signal: controller.signal });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 function readCountryHeader(headers) {
   const vercel = headers.get("x-vercel-ip-country");
   const cf = headers.get("cf-ipcountry");
@@ -92,10 +102,14 @@ async function fetchCountryFromIp(ip) {
   try {
     const url = buildGeoLookupUrl(ip);
     console.log("Geo lookup URL:", url);
-    const res = await fetch(url, {
+    const res = await fetchWithTimeout(
+      url,
+      {
       headers: { Accept: "application/json" },
       cache: "no-store",
-    });
+      },
+      2500
+    );
     console.log("Geo lookup response:", res);
     if (!res.ok) {
       console.log("Geo lookup request failed", res.status, url);
@@ -198,14 +212,18 @@ export async function GET(request) {
 
     const upstreamUrl = `${base}/bank/list/${encodeURIComponent(currency)}${qs.toString() ? `?${qs.toString()}` : ""}`;
 
-    const upstream = await fetch(upstreamUrl, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${secret}`,
+    const upstream = await fetchWithTimeout(
+      upstreamUrl,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+        },
+        cache: "no-store",
       },
-      cache: "no-store",
-    });
+      10000
+    );
 
     const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok || data?.success === false) {
@@ -219,7 +237,32 @@ export async function GET(request) {
     }
 
     // Normalize to simple array
-    const banks = Array.isArray(data?.data) ? data.data : [];
+    const rawBanks = Array.isArray(data?.data) ? data.data : [];
+    const banks = rawBanks
+      .map((b) => {
+        const code =
+          b?.code ??
+          b?.bankCode ??
+          b?.bank_code ??
+          b?.bank_code?.toString?.() ??
+          b?.id ??
+          b?._id ??
+          "";
+        const name =
+          b?.name ??
+          b?.bankName ??
+          b?.bank_name ??
+          b?.title ??
+          "";
+        const id = b?.id ?? b?.bankId ?? b?.bank_id ?? b?._id ?? null;
+        return {
+          ...b,
+          id,
+          code: String(code || ""),
+          name: String(name || ""),
+        };
+      })
+      .filter((b) => b?.code && b?.name);
     return NextResponse.json({ status: "success", banks, currency, countryCode: countryCode || null });
   } catch (error) {
     console.error("bank-list proxy error:", error);

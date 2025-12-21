@@ -2,7 +2,14 @@
 import React, { useState, useEffect, useActionState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Card, CardContent, CardFooter } from "../../../components/ui/card";
-import { Heart, LoaderCircle, ShoppingCart, Star, Sparkles, Crown } from "lucide-react";
+import {
+  Heart,
+  LoaderCircle,
+  ShoppingCart,
+  Star,
+  Sparkles,
+  Crown,
+} from "lucide-react";
 import Image from "next/image";
 import { toast } from "sonner";
 import { addProductToCart, addProductWishlist } from "./action";
@@ -26,8 +33,11 @@ export default function MyProductCard(props) {
   const { data: session } = useSession();
   const baseCurrency = (product?.currency || "USD").toString().toUpperCase();
   const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
-  const displayCurrency = (viewerCurrency || baseCurrency).toString().toUpperCase();
-  const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
+  const displayCurrency = (viewerCurrency || baseCurrency)
+    .toString()
+    .toUpperCase();
+  const displayRate =
+    Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1;
   const fmt = (v) =>
     new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -125,7 +135,7 @@ export default function MyProductCard(props) {
     <Card className="group hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-1">
       <div className="relative overflow-hidden rounded-t-lg">
         <Image
-          src={product.image || "/placeholder-product.png"}
+          src={product.image || "/placeholder.svg"}
           alt={product.title}
           width={300}
           height={200}
@@ -149,13 +159,13 @@ export default function MyProductCard(props) {
             />
           )}
           {discountPercentage > 0 && (
-            <Badge className="bg-red-500 hover:bg-red-600 text-white">
+            <Badge className="bg-red-500! hover:bg-red-600! text-white!">
               -{discountPercentage}%
             </Badge>
           )}
         </div>
 
-        <div className="absolute top-3 right-3">
+        <div className="absolute top-1 right-2">
           <form action={session?.user?.id ? formAction : openLoginDialog}>
             <Button
               variant="ghost"
@@ -190,7 +200,9 @@ export default function MyProductCard(props) {
         </div>
         {/* Quick Actions Overlay */}
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-          <Link href={`/product/${product.product_id ? product.product_id : product.id}`}>
+          <Link
+            href={`/product/${product.product_id ? product.product_id : product.id}`}
+          >
             <Button variant="secondary" size="sm">
               Preview
             </Button>
@@ -204,10 +216,10 @@ export default function MyProductCard(props) {
             href={`/category/${product?.categorySlug}`}
             className="hover:underline"
           >
-            {product.category}
+            {product.category} › {product?.subCategory}
           </Link>
         </div>
-        <h3 className="font-semibold text-slate-900 mb-2 line-clamp-2">
+        <h3 className="font-semibold mb-2 line-clamp-2 text-base group-hover:text-tertiary cursor-pointer">
           {product.title}
         </h3>
         <p className="text-sm text-slate-600 mb-3 line-clamp-2">
@@ -230,8 +242,11 @@ export default function MyProductCard(props) {
         </div>
         <div className="text-xs mb-2">
           {isOutOfStock ? (
-            <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
-          ) : typeof product?.stock !== "undefined" && product?.stock !== null ? (
+            <Badge className="bg-red-800/90 text-white text-xs">
+              Out of stock
+            </Badge>
+          ) : typeof product?.stock !== "undefined" &&
+            product?.stock !== null ? (
             `In stock: ${product?.stock}`
           ) : null}
         </div>
@@ -260,7 +275,10 @@ export default function MyProductCard(props) {
             className="w-full disabled:cursor-not-allowed text-white"
             size="sm"
             disabled={
-              isCartPending || !session || product.user_id === session.user.id || isOutOfStock
+              isCartPending ||
+              !session ||
+              product.user_id === session.user.id ||
+              isOutOfStock
             }
           >
             <ShoppingCart className="h-4 w-4 mr-2" />

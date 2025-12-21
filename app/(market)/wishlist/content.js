@@ -53,6 +53,8 @@ export default function WishlistContent() {
     products,
     totalItems,
     user,
+    wishlistPenName,
+    isOwnerView,
     isLoading,
     isError,
     error,
@@ -110,17 +112,17 @@ export default function WishlistContent() {
     }
   }, [state, refetchCartCount]);
 
-  if (!session) {
+  if (!session && !wishlistPenName) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <MarketplaceHeader />
         <div className="container mx-auto px-4 py-8">
-          <Card className="max-w-md mx-auto">
+          <Card className="max-w-md mx-auto bg-card text-card-foreground border border-border">
             <CardHeader>
               <CardTitle>Login Required</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600 mb-4">
+              <p className="text-muted-foreground mb-4">
                 Please log in to view your wishlist.
               </p>
               <Button onClick={openLoginDialog} className="w-full">
@@ -133,23 +135,26 @@ export default function WishlistContent() {
     );
   }
 
+  const title = isOwnerView
+    ? "My Wishlist"
+    : user?.name
+      ? `${user.name}'s Wishlist`
+      : wishlistPenName
+        ? `${wishlistPenName}'s Wishlist`
+        : "Wishlist";
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <MarketplaceHeader />
 
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Browse
-              </Button>
-            </Link>
+
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">My Wishlist</h1>
-              <p className="text-gray-600">
+              <h1 className="text-2xl font-bold text-foreground">{title}</h1>
+              <p className="text-muted-foreground">
                 {isLoading ? "Loading..." : `${totalItems} items saved`}
               </p>
             </div>
@@ -180,7 +185,7 @@ export default function WishlistContent() {
 
         {/* Filters */}
         {showFilters && (
-          <Card className="mb-6">
+          <Card className="mb-6 bg-card text-card-foreground border border-border">
             <CardHeader>
               <CardTitle className="text-lg">Filter & Sort</CardTitle>
             </CardHeader>
@@ -190,7 +195,7 @@ export default function WishlistContent() {
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Search</label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                     <Input
                       placeholder="Search products..."
                       value={search}
@@ -233,10 +238,10 @@ export default function WishlistContent() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="created_at-desc">
+                      <SelectItem value="createdAt-desc">
                         Newest first
                       </SelectItem>
-                      <SelectItem value="created_at-asc">
+                      <SelectItem value="createdAt-asc">
                         Oldest first
                       </SelectItem>
                       <SelectItem value="price-asc">
@@ -282,7 +287,7 @@ export default function WishlistContent() {
                 <Button variant="outline" onClick={clearFilters}>
                   Clear Filters
                 </Button>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   {products.length} of {totalItems} products shown
                 </div>
               </div>
@@ -291,8 +296,8 @@ export default function WishlistContent() {
         )}
 
         {/* Action Bar */}
-        {products.length > 0 && (
-          <Card className="mb-6">
+        {isOwnerView && products.length > 0 && (
+          <Card className="mb-6 bg-card text-card-foreground border border-border">
             <CardContent className="py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -362,9 +367,9 @@ export default function WishlistContent() {
 
         {/* Error State */}
         {isError && (
-          <Card className="mb-6 border-red-200">
+          <Card className="mb-6 border border-destructive/40 bg-card text-card-foreground">
             <CardContent className="py-4">
-              <div className="flex items-center gap-2 text-red-600">
+              <div className="flex items-center gap-2 text-destructive">
                 <X className="h-4 w-4" />
                 <span>Error loading wishlist: {error?.message}</span>
                 <Button variant="outline" size="sm" onClick={() => refetch()}>
@@ -379,12 +384,12 @@ export default function WishlistContent() {
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {[...Array(8)].map((_, i) => (
-              <Card key={i} className="animate-pulse">
-                <div className="aspect-square bg-gray-200 rounded-t-lg" />
+              <Card key={i} className="animate-pulse bg-card border border-border">
+                <div className="aspect-square bg-muted rounded-t-lg" />
                 <CardContent className="p-4">
-                  <div className="h-4 bg-gray-200 rounded mb-2" />
-                  <div className="h-3 bg-gray-200 rounded w-2/3 mb-2" />
-                  <div className="h-4 bg-gray-200 rounded w-1/3" />
+                  <div className="h-4 bg-muted rounded mb-2" />
+                  <div className="h-3 bg-muted rounded w-2/3 mb-2" />
+                  <div className="h-4 bg-muted rounded w-1/3" />
                 </CardContent>
               </Card>
             ))}
@@ -393,18 +398,22 @@ export default function WishlistContent() {
 
         {/* Empty State */}
         {!isLoading && products.length === 0 && (
-          <Card className="text-center py-12">
+          <Card className="text-center py-12 bg-card text-card-foreground border border-border">
             <CardContent>
-              <Heart className="h-16 w-16 mx-auto text-gray-300 mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <Heart className="h-16 w-16 mx-auto text-muted-foreground/60 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">
                 {search || category
                   ? "No matching items"
-                  : "Your wishlist is empty"}
+                  : isOwnerView
+                    ? "Your wishlist is empty"
+                    : "This wishlist is empty"}
               </h3>
               <p className="text-gray-600 mb-6">
                 {search || category
                   ? "Try adjusting your filters to see more items."
-                  : "Start browsing and add items you love to your wishlist."}
+                  : isOwnerView
+                    ? "Start browsing and add items you love to your wishlist."
+                    : "There are no items in this wishlist yet."}
               </p>
               <div className="flex gap-2 justify-center">
                 {(search || category) && (

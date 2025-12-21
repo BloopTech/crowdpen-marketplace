@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useAdmin } from "../context";
 import { Button } from "../../components/ui/button";
 import {
@@ -25,7 +25,7 @@ import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 
 export default function PayoutsPage() {
-  const { payoutsQuery, usersQuery, payoutsParams, setPayoutsParams } =
+  const { payoutsQuery, merchantRecipientsQuery, payoutsParams, setPayoutsParams } =
     useAdmin();
   const [qs, setQs] = useQueryStates(
     {
@@ -51,12 +51,27 @@ export default function PayoutsPage() {
   }, []);
 
   const list = payoutsQuery?.data?.data || [];
-  const users = usersQuery?.data?.data || [];
+  const recipientsData = merchantRecipientsQuery?.data?.data;
+  const users = useMemo(() => {
+    const arr = Array.isArray(recipientsData) ? recipientsData : [];
+    return arr.filter((u) => u?.merchant === true);
+  }, [recipientsData]);
   const loading = payoutsQuery?.isFetching || payoutsQuery?.isLoading;
   const page = payoutsQuery?.data?.page || payoutsParams.page || 1;
   const pageSize = payoutsQuery?.data?.pageSize || payoutsParams.pageSize || 20;
   const total = payoutsQuery?.data?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const fmt = (v, currency) => {
+    const cur = (currency || "").toString().trim().toUpperCase();
+    const code = /^[A-Z]{3}$/.test(cur) ? cur : "USD";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+  };
 
   return (
     <div className="px-4 space-y-6">
@@ -165,6 +180,19 @@ export default function PayoutsPage() {
               />
             </div>
             <div>
+              <label className="block text-xs mb-1">Status</label>
+              <select
+                name="status"
+                defaultValue="pending"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value={"pending"}>pending</option>
+                <option value={"completed"}>completed</option>
+                <option value={"failed"}>failed</option>
+                <option value={"cancelled"}>cancelled</option>
+              </select>
+            </div>
+            <div>
               <label className="block text-xs mb-1">Reference</label>
               <input
                 name="transaction_reference"
@@ -220,7 +248,7 @@ export default function PayoutsPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{tx.amount}</TableCell>
+                  <TableCell>{fmt(Number(tx.amount || 0), tx.currency)}</TableCell>
                   <TableCell>{tx.currency}</TableCell>
                   <TableCell className="capitalize">{tx.status}</TableCell>
                   <TableCell>{tx.transaction_reference || "-"}</TableCell>

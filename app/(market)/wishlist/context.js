@@ -6,20 +6,24 @@ import { useSession } from "next-auth/react";
 
 const WishlistContext = createContext();
 
-const WishlistContextProvider = ({ children }) => {
+const WishlistContextProvider = ({ children, penName }) => {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
 
   // URL-synchronized state using nuqs
   const [search, setSearch] = useQueryState('search', { defaultValue: '' });
   const [category, setCategory] = useQueryState('category', { defaultValue: '' });
-  const [sortBy, setSortBy] = useQueryState('sort', { defaultValue: 'created_at' });
+  const [sortBy, setSortBy] = useQueryState('sort', { defaultValue: 'createdAt' });
   const [sortOrder, setSortOrder] = useQueryState('order', { defaultValue: 'desc' });
   const [minPrice, setMinPrice] = useQueryState('minPrice', { 
     defaultValue: 0,
     parse: (value) => parseFloat(value) || 0,
     serialize: (value) => value.toString()
   });
+
+  const viewerPenName = session?.user?.pen_name || null;
+  const wishlistPenName = penName || viewerPenName || null;
+  const isOwnerView = Boolean(viewerPenName && wishlistPenName && viewerPenName === wishlistPenName);
   const [maxPrice, setMaxPrice] = useQueryState('maxPrice', { 
     defaultValue: 10000,
     parse: (value) => parseFloat(value) || 10000,
@@ -37,32 +41,31 @@ const WishlistContextProvider = ({ children }) => {
     error,
     refetch
   } = useInfiniteQuery({
-    queryKey: ['wishlist', session?.user?.pen_name, search, category, sortBy, sortOrder, minPrice, maxPrice],
+    queryKey: ['wishlist', wishlistPenName, search, category, sortBy, sortOrder, minPrice, maxPrice],
     queryFn: async ({ pageParam = 1 }) => {
       const params = new URLSearchParams({
         page: pageParam.toString(),
         limit: '20',
         ...(search && { search }),
-        ...(category && { category }),
+        ...(category && category !== 'all' ? { category } : {}),
         sort: sortBy,
         order: sortOrder,
         minPrice: minPrice.toString(),
         maxPrice: maxPrice.toString()
       });
 
-      const response = await fetch(`/api/marketplace/products/wishlist/${session?.user?.pen_name}?${params}`);
-      
+      const response = await fetch(`/api/marketplace/products/wishlist/${wishlistPenName}?${params}`);
+      const json = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error(`Failed to fetch wishlist: ${response.statusText}`);
+        throw new Error(json?.error || json?.message || `Failed to fetch wishlist: ${response.statusText}`);
       }
-      
-      return response.json();
+      return json;
     },
     getNextPageParam: (lastPage) => {
       const { pagination } = lastPage.data;
       return pagination.hasNextPage ? pagination.currentPage + 1 : undefined;
     },
-    enabled: !!session?.user?.pen_name,
+    enabled: !!wishlistPenName,
     refetchOnWindowFocus: false
   });
 
@@ -140,6 +143,10 @@ const WishlistContextProvider = ({ children }) => {
     products: allProducts,
     totalItems,
     user,
+
+    viewerPenName,
+    wishlistPenName,
+    isOwnerView,
     
     // Loading states
     isLoading,

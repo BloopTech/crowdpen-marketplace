@@ -9,6 +9,7 @@ import {
 } from "../../../components/ui/card";
 import { Separator } from "../../../components/ui/separator";
 import { Switch } from "../../../components/ui/switch";
+import { Input } from "../../../components/ui/input";
 import { Settings, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAccount } from "../context";
@@ -26,6 +27,7 @@ export default function AccountSettings() {
   });
   const [saving, setSaving] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [wishlistShareUrl, setWishlistShareUrl] = useState("");
 
   // Initialize settings from profile
   useEffect(() => {
@@ -40,6 +42,17 @@ export default function AccountSettings() {
       setInitialized(true);
     }
   }, [profile?.settings, initialized]);
+
+  useEffect(() => {
+    if (!profile?.pen_name) return;
+    const origin =
+      (typeof window !== "undefined" && window.location?.origin) ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      "";
+    if (!origin) return;
+    setWishlistShareUrl(`${origin}/wishlist/${profile.pen_name}`);
+  }, [profile?.pen_name]);
 
   const handleSettingChange = async (key, value) => {
     const newSettings = { ...settings, [key]: value };
@@ -132,6 +145,31 @@ export default function AccountSettings() {
                   disabled={saving}
                 />
               </div>
+
+              {settings.publicWishlist && wishlistShareUrl ? (
+                <div className="space-y-2">
+                  <div className="text-xs text-muted-foreground">
+                    Share this link:
+                  </div>
+                  <div className="flex gap-2">
+                    <Input value={wishlistShareUrl} readOnly />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(wishlistShareUrl);
+                          toast.success("Wishlist link copied");
+                        } catch (e) {
+                          toast.error("Failed to copy link");
+                        }
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
 

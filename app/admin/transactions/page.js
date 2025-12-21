@@ -55,6 +55,17 @@ export default function TransactionsPage() {
   const total = transactionsQuery?.data?.total || 0;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+  const fmt = (v, currency) => {
+    const cur = (currency || "").toString().trim().toUpperCase();
+    const code = /^[A-Z]{3}$/.test(cur) ? cur : "USD";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+  };
+
   return (
     <div className="px-4 space-y-6">
       <Card>
@@ -180,7 +191,7 @@ export default function TransactionsPage() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{tx.amount}</TableCell>
+                  <TableCell>{fmt(tx.amount, tx.currency)}</TableCell>
                   <TableCell>{tx.currency}</TableCell>
                   <TableCell className="capitalize">{tx.status}</TableCell>
                   <TableCell>{tx.transaction_reference || "-"}</TableCell>

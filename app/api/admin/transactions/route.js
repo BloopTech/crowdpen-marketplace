@@ -39,6 +39,12 @@ export async function GET(request) {
       if (to) where.createdAt[Op.lte] = new Date(to);
     }
 
+    const toMajor = (n) => {
+      const v = n != null ? Number(n) : NaN;
+      if (!Number.isFinite(v)) return 0;
+      return v / 100;
+    };
+
     if (format === "csv") {
       const rows = await db.MarketplaceAdminTransactions.findAll({
         where,
@@ -70,7 +76,7 @@ export async function GET(request) {
           esc(tx.id),
           esc(tx.trans_type),
           esc(recipient),
-          esc(tx.amount),
+          esc(toMajor(tx.amount)),
           esc(tx.currency),
           esc(tx.status),
           esc(tx.transaction_reference || ""),
@@ -96,7 +102,12 @@ export async function GET(request) {
         offset,
       });
 
-      return NextResponse.json({ status: "success", page, pageSize, total: count, data: rows });
+      const data = (rows || []).map((r) => ({
+        ...r.toJSON(),
+        amount: toMajor(r.amount),
+      }));
+
+      return NextResponse.json({ status: "success", page, pageSize, total: count, data });
     }
   } catch (error) {
     console.error("/api/admin/transactions error", error);

@@ -34,19 +34,19 @@ export async function GET() {
 
 export async function PATCH(request) {
   try {
-    // const session = await getServerSession(authOptions);
-    // if (!session || !session.user?.id) {
-    //   return NextResponse.json(
-    //     { status: "error", message: "Authentication required" },
-    //     { status: 401 }
-    //   );
-    // }
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        { status: "error", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
 
-    // const userId = session.user.id;
+    const userId = session.user.id;
     const body = await request.json();
 
     const payload = {
-      user_id: body.userId,
+      user_id: userId,
       status: body.status || "pending",
       level: body.level || "standard",
       first_name: body.first_name,
@@ -73,7 +73,7 @@ export async function PATCH(request) {
     };
 
     const existing = await db.MarketplaceKycVerification.findOne({
-      where: { user_id: body.userId },
+      where: { user_id: userId },
     });
     let record;
     if (existing) {

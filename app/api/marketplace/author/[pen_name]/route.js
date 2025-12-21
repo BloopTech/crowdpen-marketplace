@@ -48,12 +48,12 @@ export async function GET(request, { params }) {
 
     // Calculate author statistics using separate queries for better performance
     const totalProducts = await MarketplaceProduct.count({
-      where: { user_id: author.id }
+      where: { user_id: author.id, product_status: "published" }
     });
     
     // Get total sales from products (using downloads as sales metric)
     const salesResult = await MarketplaceProduct.sum('downloads', {
-      where: { user_id: author.id }
+      where: { user_id: author.id, product_status: "published" }
     });
     const totalSales = salesResult || 0;
     
@@ -65,7 +65,7 @@ export async function GET(request, { params }) {
       ],
       include: [{
         model: MarketplaceProduct,
-        where: { user_id: author.id },
+        where: { user_id: author.id, product_status: "published" },
         attributes: []
       }],
       raw: true
@@ -76,7 +76,7 @@ export async function GET(request, { params }) {
     
     // Get product categories
     const categoryResults = await MarketplaceProduct.findAll({
-      where: { user_id: author.id },
+      where: { user_id: author.id, product_status: "published" },
       include: [{
         model: MarketplaceCategory,
         attributes: ['name']
