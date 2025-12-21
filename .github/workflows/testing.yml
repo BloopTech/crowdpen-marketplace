@@ -1,4 +1,4 @@
-name: Crowdpen Marketplace CI/CD
+2name: Crowdpen Marketplace CI/CD
 
 on: [push]
 
@@ -8,7 +8,7 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [20.x]
+        node-version: [22.x]
 
     steps:
       - uses: actions/checkout@v2

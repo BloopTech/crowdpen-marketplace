@@ -43,6 +43,9 @@ export default async function CreateProductPage({ params }) {
       "price",
       "originalPrice",
       "license",
+      "stock",
+      "product_status",
+      "content_length"
     ],
   });
 
@@ -51,7 +54,6 @@ export default async function CreateProductPage({ params }) {
   }
 
   const product = findProduct.toJSON();
-  console.log("prod data...............................", product);
 
   return (
     <>

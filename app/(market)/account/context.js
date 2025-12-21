@@ -181,7 +181,7 @@ export function AccountContextProvider({ children }) {
         `/api/marketplace/author/${encodeURIComponent(
           pen
         )}/products?${params.toString()}`,
-        { credentials: "include" }
+        { credentials: "include", cache: "no-store" }
       );
       const data = await res.json();
       if (!res.ok || data?.status !== "success") {

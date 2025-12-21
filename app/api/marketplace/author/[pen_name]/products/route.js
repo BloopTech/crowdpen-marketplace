@@ -246,6 +246,7 @@ export async function GET(request, { params }) {
           id: productJson.id,
           title: productJson.title,
           description: productJson.description,
+          product_status: productJson.product_status,
           price: effectivePrice,
           originalPrice: productJson.originalPrice,
           stock: productJson.stock,

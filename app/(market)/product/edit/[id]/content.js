@@ -93,12 +93,24 @@ export default function EditProductContent(props) {
   const [description, setDescription] = useState("");
   const [pricesInitialized, setPricesInitialized] = useState(false);
   const [hasDiscount, setHasDiscount] = useState(false);
+  const [clientErrors, setClientErrors] = useState({
+    productFile: "",
+  });
+
   const [state, formAction, isPending] = useActionState(
     EditProduct,
     initialStateValues
   );
   const formRef = useRef(null);
   const router = useRouter();
+
+  const hasFieldErrors = useMemo(() => {
+    if (!state?.errors) return false;
+    const { credentials, unknown, ...rest } = state.errors;
+    return Object.values(rest).some((val) =>
+      Array.isArray(val) ? val.length > 0 : !!val
+    );
+  }, [state?.errors]);
 
   useEffect(() => {
     if (product) {
@@ -191,6 +203,14 @@ export default function EditProductContent(props) {
       router.push(`/product/${state.data.id}`);
     }
   }, [state?.message, state?.errors, state?.data, router]);
+
+  useEffect(() => {
+    if (state?.success) {
+      setClientErrors({
+        productFile: "",
+      });
+    }
+  }, [state?.success]);
 
   console.log("categories", categoriesData);
 
@@ -453,6 +473,20 @@ export default function EditProductContent(props) {
         <form
           ref={formRef}
           action={(formData) => {
+            const missingProductFile = !productFile && !existingProductFile;
+            if (missingProductFile) {
+              setClientErrors((prev) => ({
+                ...prev,
+                productFile: "Product file is required",
+              }));
+              toast.error("Product file is required");
+              return;
+            } else {
+              setClientErrors((prev) => ({
+                ...prev,
+                productFile: "",
+              }));
+            }
             // Add product ID for editing
             formData.append("productId", product.id);
 
@@ -483,6 +517,11 @@ export default function EditProductContent(props) {
           }}
         >
           <CardContent className="space-y-6">
+            {state?.message && hasFieldErrors && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {state.message}
+              </div>
+            )}
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold">Basic Information</h3>
@@ -707,7 +746,7 @@ export default function EditProductContent(props) {
 
                 <input type="hidden" name="sale_end_date" value={saleEndDate} />
 
-                <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <div className="flex items-center justify-between rounded-md border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/60 px-3 py-2">
                   <div className="flex items-center gap-3">
                     <Label htmlFor="hasDiscount">Discount / Sale</Label>
                     <Switch
@@ -726,7 +765,7 @@ export default function EditProductContent(props) {
                       disabled={isPending}
                     />
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground dark:text-slate-400">
                     {hasDiscount
                       ? "Enter a sale price lower than the original price."
                       : "Off: Sale price equals original price."}
@@ -748,12 +787,12 @@ export default function EditProductContent(props) {
                       value={originalPrice}
                       onChange={handleOriginalPriceChange}
                       required
-                      className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
+                      className={`w-full border border-gray-200 dark:border-slate-700 rounded-md p-2 form-input bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-tertiary dark:focus:ring-slate-500 ${
                         (Object.keys(state?.errors).length !== 0 &&
                           state?.errors?.originalPrice?.length) ||
                         priceError
-                          ? "border-red-500 focus:ring-red-500"
-                          : "focus:ring-tertiary"
+                          ? "border-red-500 dark:border-red-500 focus:ring-red-500 dark:focus:ring-red-500"
+                          : ""
                       }`}
                       disabled={isPending}
                     />
@@ -1095,10 +1134,11 @@ export default function EditProductContent(props) {
                 </div>
               </div>
               <span className="text-xs text-red-500">
-                {Object.keys(state?.errors).length !== 0 &&
+                {clientErrors.productFile ||
+                (Object.keys(state?.errors).length !== 0 &&
                 state?.errors?.productFile?.length
                   ? state?.errors?.productFile[0]
-                  : null}
+                  : null)}
               </span>
             </div>
 
@@ -1109,7 +1149,7 @@ export default function EditProductContent(props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* File Type */}
                 <div className="space-y-2">
-                  <Label htmlFor="fileType">
+                  <Label htmlFor="fileType" className="text-gray-900 dark:text-slate-100">
                     File Type <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -1118,9 +1158,9 @@ export default function EditProductContent(props) {
                     value={fileType}
                     placeholder="Auto-detected from uploaded file"
                     readOnly
-                    className="bg-gray-50"
+                    className="border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-md"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
                     File type is automatically detected from the uploaded file
                   </p>
                   <span className="text-xs text-red-500">
@@ -1133,16 +1173,16 @@ export default function EditProductContent(props) {
 
                 {/* File Size */}
                 <div className="space-y-2">
-                  <Label htmlFor="fileSize">File Size</Label>
+                  <Label htmlFor="fileSize" className="text-gray-900 dark:text-slate-100">File Size</Label>
                   <Input
                     id="fileSize"
                     name="fileSize"
                     value={fileSize}
                     placeholder="Auto-calculated from uploaded file"
                     readOnly
-                    className="bg-gray-50"
+                    className="border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-md"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
                     File size is automatically calculated when you upload a file
                   </p>
                 </div>

@@ -522,7 +522,7 @@ export default function CreateProductContent() {
 
                 <input type="hidden" name="sale_end_date" value={saleEndDate} />
 
-                <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 px-3 py-2">
+                <div className="flex items-center justify-between rounded-md border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/60 px-3 py-2">
                   <div className="flex items-center gap-3">
                     <Label htmlFor="hasDiscount">Discount / Sale</Label>
                     <Switch
@@ -541,7 +541,7 @@ export default function CreateProductContent() {
                       disabled={isPending}
                     />
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground dark:text-slate-400">
                     {hasDiscount
                       ? "Enter a sale price lower than the original price."
                       : "Off: Sale price equals original price."}
@@ -563,12 +563,12 @@ export default function CreateProductContent() {
                       value={originalPrice}
                       onChange={handleOriginalPriceChange}
                       required
-                      className={`w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
+                      className={`w-full border border-gray-200 dark:border-slate-700 rounded-md p-2 form-input bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-tertiary dark:focus:ring-slate-500 ${
                         (Object.keys(state?.errors).length !== 0 &&
                           state?.errors?.originalPrice?.length) ||
                         priceError
-                          ? "border-red-500 focus:ring-red-500"
-                          : "focus:ring-tertiary"
+                          ? "border-red-500 dark:border-red-500 focus:ring-red-500 dark:focus:ring-red-500"
+                          : ""
                       }`}
                       disabled={isPending}
                     />
@@ -858,7 +858,7 @@ export default function CreateProductContent() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* File Type */}
                 <div className="space-y-2">
-                  <Label htmlFor="fileType">
+                  <Label htmlFor="fileType" className="text-gray-900 dark:text-slate-100">
                     File Type <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -867,9 +867,9 @@ export default function CreateProductContent() {
                     value={fileType}
                     placeholder="Auto-detected from uploaded file"
                     readOnly
-                    className="border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
+                    className="border border-gray-200 dark:border-slate-700 rounded-md p-2 form-input bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-tertiary dark:focus:ring-slate-500"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
                     File type is automatically detected from the uploaded file
                   </p>
                   <span className="text-xs text-red-500">
@@ -889,9 +889,9 @@ export default function CreateProductContent() {
                     value={fileSize}
                     placeholder="Auto-calculated from uploaded file"
                     readOnly
-                    className="border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
+                    className="border border-gray-200 dark:border-slate-700 rounded-md p-2 form-input bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-tertiary dark:focus:ring-slate-500"
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 dark:text-slate-400">
                     File size is automatically calculated when you upload a file
                   </p>
                 </div>

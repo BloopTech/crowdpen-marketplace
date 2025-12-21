@@ -55,16 +55,24 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
     return null
   }
 
+  const buttonBase =
+    'p-2 rounded transition-colors hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200'
+  const activeBg = 'bg-gray-200 dark:bg-slate-700'
+
   return (
-    <div className={`bg-white border rounded-md ${error ? 'border-red-500' : 'border-gray-200'} ${disabled ? 'opacity-50' : ''}`}>
+    <div
+      className={`border rounded-md bg-white dark:bg-slate-900 ${
+        error ? 'border-red-500' : 'border-gray-200 dark:border-slate-700'
+      } ${disabled ? 'opacity-50' : ''}`}
+    >
       {/* Toolbar */}
-      <div className="border-b border-gray-200 p-2 flex flex-wrap gap-1">
+      <div className="border-b border-gray-200 dark:border-slate-800 p-2 flex flex-wrap gap-1 bg-gray-50 dark:bg-slate-900/70 rounded-t-md">
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBold().run()}
           disabled={!editor.can().chain().focus().toggleBold().run() || disabled}
-          className={`p-2 rounded hover:bg-gray-100 ${
-            editor.isActive('bold') ? 'bg-gray-200' : ''
+          className={`${buttonBase} ${
+            editor.isActive('bold') ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
           <Bold size={16} />
@@ -74,20 +82,20 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
           type="button"
           onClick={() => editor.chain().focus().toggleItalic().run()}
           disabled={!editor.can().chain().focus().toggleItalic().run() || disabled}
-          className={`p-2 rounded hover:bg-gray-100 ${
-            editor.isActive('italic') ? 'bg-gray-200' : ''
+          className={`${buttonBase} ${
+            editor.isActive('italic') ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
           <Italic size={16} />
         </button>
 
-        <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+        <div className="w-px h-6 bg-gray-300 dark:bg-slate-700 mx-1 self-center" />
 
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleBulletList().run()}
-          className={`p-2 rounded hover:bg-gray-100 ${
-            editor.isActive('bulletList') ? 'bg-gray-200' : ''
+          className={`${buttonBase} ${
+            editor.isActive('bulletList') ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           disabled={disabled}
         >
@@ -97,34 +105,34 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
         <button
           type="button"
           onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          className={`p-2 rounded hover:bg-gray-100 ${
-            editor.isActive('orderedList') ? 'bg-gray-200' : ''
+          className={`${buttonBase} ${
+            editor.isActive('orderedList') ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           disabled={disabled}
         >
           <ListOrdered size={16} />
         </button>
 
-        <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+        <div className="w-px h-6 bg-gray-300 dark:bg-slate-700 mx-1 self-center" />
 
         <button
           type="button"
           onClick={setLink}
-          className={`p-2 rounded hover:bg-gray-100 ${
-            editor.isActive('link') ? 'bg-gray-200' : ''
+          className={`${buttonBase} ${
+            editor.isActive('link') ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           disabled={disabled}
         >
           <LinkIcon size={16} />
         </button>
 
-        <div className="w-px h-6 bg-gray-300 mx-1 self-center" />
+        <div className="w-px h-6 bg-gray-300 dark:bg-slate-700 mx-1 self-center" />
 
         <button
           type="button"
           onClick={() => editor.chain().focus().setTextAlign('left').run()}
-          className={`p-2 rounded hover:bg-gray-100 ${
-            editor.isActive({ textAlign: 'left' }) ? 'bg-gray-200' : ''
+          className={`${buttonBase} ${
+            editor.isActive({ textAlign: 'left' }) ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           disabled={disabled}
         >
@@ -134,8 +142,8 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
         <button
           type="button"
           onClick={() => editor.chain().focus().setTextAlign('center').run()}
-          className={`p-2 rounded hover:bg-gray-100 ${
-            editor.isActive({ textAlign: 'center' }) ? 'bg-gray-200' : ''
+          className={`${buttonBase} ${
+            editor.isActive({ textAlign: 'center' }) ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           disabled={disabled}
         >
@@ -145,8 +153,8 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
         <button
           type="button"
           onClick={() => editor.chain().focus().setTextAlign('right').run()}
-          className={`p-2 rounded hover:bg-gray-100 ${
-            editor.isActive({ textAlign: 'right' }) ? 'bg-gray-200' : ''
+          className={`${buttonBase} ${
+            editor.isActive({ textAlign: 'right' }) ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
           disabled={disabled}
         >
@@ -155,10 +163,10 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
       </div>
 
       {/* Editor Content */}
-      <div className="p-4 min-h-[120px]">
+      <div className="p-4 min-h-[120px] bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-b-md">
         <EditorContent 
           editor={editor} 
-          className="prose prose-sm max-w-none focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:m-0 [&_.ProseMirror]:p-0 [&_.ProseMirror]:border-none [&_.ProseMirror]:min-h-[80px]"
+          className="prose prose-sm max-w-none focus-within:outline-none text-gray-900 dark:text-slate-100 [&_.ProseMirror]:outline-none [&_.ProseMirror]:m-0 [&_.ProseMirror]:p-0 [&_.ProseMirror]:border-none [&_.ProseMirror]:min-h-[80px]"
         />
       </div>
     </div>

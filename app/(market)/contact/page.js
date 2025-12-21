@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { Mail, User, MessageSquare, Send, CheckCircle, AlertCircle, FileText } from "lucide-react";
+import MarketplaceHeader from "@/app/components/marketplace-header";
 import { submitContactForm } from "./actions";
 
 const initialState = {
@@ -15,8 +16,10 @@ export default function ContactPage() {
   const [state, formAction, isPending] = useActionState(submitContactForm, initialState);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
+    <>
+      <MarketplaceHeader />
+      <div className="min-h-[calc(100vh-80px)] bg-gray-50 dark:bg-gray-950 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-tertiary/10 dark:bg-primary/10 rounded-full mb-4">
@@ -205,5 +208,6 @@ export default function ContactPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }

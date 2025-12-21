@@ -16,6 +16,8 @@ const defaultProductValues = {
   marketplace_category_id: [],
   marketplace_subcategory_id: [],
   images: [],
+  productFile: [],
+  existingProductFile: [],
   fileType: [],
   fileSize: [],
   license: [],
@@ -75,6 +77,20 @@ const productSchema = z.object({
   path: ["originalPrice"],
 });
 
+const getZodErrorMessage = (error) => {
+  if (!error) return "Please correct the highlighted fields.";
+  const { formErrors, fieldErrors } = error.flatten?.() || {};
+  const firstFieldError = fieldErrors
+    ? Object.values(fieldErrors).flat().find(Boolean)
+    : null;
+  return (
+    formErrors?.[0] ||
+    error.issues?.[0]?.message ||
+    firstFieldError ||
+    "Please correct the highlighted fields."
+  );
+};
+
 export async function EditProduct(prevState, queryData) {
   // Get current user from session
   const session = await getServerSession(authOptions);
@@ -104,19 +120,21 @@ export async function EditProduct(prevState, queryData) {
     "marketplace_subcategory_id"
   );
 
+  const normalize = (value) => (value === null ? undefined : value);
+
   // Handle images - both new uploads and existing URLs
   const getNewImages = queryData.getAll("images"); // New uploaded images
-  const getExistingImages = queryData.get("existingImages"); // Existing image URLs as JSON
+  const getExistingImages = normalize(queryData.get("existingImages")); // Existing image URLs as JSON
 
   // Handle product file - both new upload and existing URL
-  const getNewProductFile = queryData.get("productFile"); // New uploaded file
-  const getExistingProductFile = queryData.get("existingProductFile"); // Existing file URL
+  const getNewProductFile = normalize(queryData.get("productFile")); // New uploaded file
+  const getExistingProductFile = normalize(queryData.get("existingProductFile")); // Existing file URL
 
-  const getFileType = queryData.get("fileType");
-  const getFileSize = queryData.get("fileSize");
-  const getLicense = queryData.get("license");
-  const getDeliveryTime = queryData.get("deliveryTime");
-  const getWhatIncluded = queryData.get("what_included");
+  const getFileType = normalize(queryData.get("fileType"));
+  const getFileSize = normalize(queryData.get("fileSize"));
+  const getLicense = normalize(queryData.get("license"));
+  const getDeliveryTime = normalize(queryData.get("deliveryTime"));
+  const getWhatIncluded = normalize(queryData.get("what_included"));
 
   // Validate that we have at least one image (either existing or new)
   const hasImages =
@@ -126,38 +144,48 @@ export async function EditProduct(prevState, queryData) {
   // Validate that we have at least one product file (either existing or new)
   const hasProductFile = getExistingProductFile || getNewProductFile;
 
+  const persistedValues = {
+    title: getTitle,
+    description: getDescription,
+    price: getPrice,
+    originalPrice: getOriginalPrice,
+    sale_end_date: getSaleEndDate,
+    product_status: getProductStatus,
+    stock: getStock,
+    marketplace_category_id: getMarketplaceCategoryId,
+    marketplace_subcategory_id: getMarketplaceSubcategoryId,
+    images: getNewImages,
+    existingImages: getExistingImages,
+    productFile: getNewProductFile,
+    existingProductFile: getExistingProductFile,
+    fileType: getFileType,
+    fileSize: getFileSize,
+    license: getLicense,
+    deliveryTime: getDeliveryTime,
+    what_included: getWhatIncluded,
+  };
+
+  const buildErrorState = (message, fieldErrors = {}) => ({
+    success: false,
+    message,
+    errors: {
+      ...defaultProductValues,
+      ...fieldErrors,
+    },
+    values: persistedValues,
+    data: {},
+  });
+
   if (!hasImages) {
-    return {
-      message: "At least one image is required",
-      errors: {
-        images: ["At least one image is required"],
-      },
-      values: {
-        title: getTitle,
-        description: getDescription,
-        price: getPrice,
-        originalPrice: getOriginalPrice,
-        marketplace_category_id: getMarketplaceCategoryId,
-        marketplace_subcategory_id: getMarketplaceSubcategoryId,
-      },
-    };
+    return buildErrorState("At least one image is required", {
+      images: ["At least one image is required"],
+    });
   }
 
   if (!hasProductFile) {
-    return {
-      message: "Product file is required",
-      errors: {
-        productFile: ["Product file is required"],
-      },
-      values: {
-        title: getTitle,
-        description: getDescription,
-        price: getPrice,
-        originalPrice: getOriginalPrice,
-        marketplace_category_id: getMarketplaceCategoryId,
-        marketplace_subcategory_id: getMarketplaceSubcategoryId,
-      },
-    };
+    return buildErrorState("Product file is required", {
+      productFile: ["Product file is required"],
+    });
   }
 
   const validatedFields = productSchema.safeParse({
@@ -181,11 +209,15 @@ export async function EditProduct(prevState, queryData) {
     deliveryTime: getDeliveryTime,
     what_included: getWhatIncluded,
   });
-  //console.log("validatedFields", validatedFields?.error);
   if (!validatedFields.success) {
+    const { fieldErrors } = validatedFields.error.flatten();
     return {
-      message: validatedFields.error[0].message,
-      errors: validatedFields.error.flatten().fieldErrors,
+      success: false,
+      message: getZodErrorMessage(validatedFields.error),
+      errors: {
+        ...defaultProductValues,
+        ...fieldErrors,
+      },
       values: {
         title: getTitle,
         description: getDescription,

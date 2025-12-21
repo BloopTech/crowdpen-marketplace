@@ -75,6 +75,20 @@ const productSchema = z.object({
   path: ["originalPrice"],
 });
 
+const getZodErrorMessage = (error) => {
+  if (!error) return "Please correct the highlighted fields.";
+  const { formErrors, fieldErrors } = error.flatten?.() || {};
+  const firstFieldError = fieldErrors
+    ? Object.values(fieldErrors).flat().find(Boolean)
+    : null;
+  return (
+    formErrors?.[0] ||
+    error.issues?.[0]?.message ||
+    firstFieldError ||
+    "Please correct the highlighted fields."
+  );
+};
+
 export async function createProduct(prevState, queryData) {
   // Get current user from session
   const session = await getServerSession(authOptions);
@@ -128,11 +142,15 @@ export async function createProduct(prevState, queryData) {
     deliveryTime: getDeliveryTime,
     what_included: getWhatIncluded,
   });
-  //console.log("validatedFields", validatedFields?.error);
   if (!validatedFields.success) {
+    const { fieldErrors } = validatedFields.error.flatten();
     return {
-      message: validatedFields.error[0].message,
-      errors: validatedFields.error.flatten().fieldErrors,
+      success: false,
+      message: getZodErrorMessage(validatedFields.error),
+      errors: {
+        ...defaultProductValues,
+        ...fieldErrors,
+      },
       values: {
         title: getTitle,
         description: getDescription,
@@ -191,11 +209,12 @@ export async function createProduct(prevState, queryData) {
     what_included: getWhatIncluded,
   };
 
-  const buildErrorState = (message) => ({
+  const buildErrorState = (message, fieldErrors = {}) => ({
     success: false,
     message: message || "Failed to create product",
     errors: {
       ...defaultProductValues,
+      ...fieldErrors,
       credentials: message,
     },
     values: persistedValues,
@@ -314,9 +333,7 @@ export async function createProduct(prevState, queryData) {
       : undefined);
 
   if (!response.ok || result?.status === "error") {
-    return buildErrorState(
-      responseMessage || "Failed to create product"
-    );
+    return buildErrorState(responseMessage || "Failed to create product");
   }
 
   // Revalidate the products page
