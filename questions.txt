@@ -1,4 +1,4 @@
-. All pages should be responsive
+1. All pages should be responsive
 2. Add the feature to Schedule discounts for specific dates. Go to marketplace - click on "Create" button . There should be a sale end date field in the page that automatically reverts prices to the origianl price after the schedule discount period @app/(market)/product/create @app/(market)/product/edit 
 3. Add product status filter : draft, published, archived. Go to marketplace - click on your avatar - click on "Account" - switch to "My products". Products created should have a status and we should be able to filter the products by status. @app/(market)/account 
 4. On the User account, in the settings tab, the "Allow others to see my wishlist" tick box returns a 500 error page. Go to marketplace - click on your avatar - click on "Account" - switch to settings tab. The "Allow others to see my wishlist" tick box should allow youto share your wishlist. @app/(market)/account 

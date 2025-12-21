@@ -1,4 +1,4 @@
-2name: Crowdpen Marketplace CI/CD
+name: Crowdpen Marketplace CI/CD
 
 on: [push]
 
