@@ -6,6 +6,11 @@ class MarketplaceCart extends Model {
   static associate(models) {
     // Define associations
     MarketplaceCart.belongsTo(models.User, { foreignKey: 'user_id' });
+    MarketplaceCart.hasMany(models.MarketplaceFunnelEvents, {
+      foreignKey: "session_id",
+      sourceKey: "session_id",
+      as: "funnelEvents",
+    });
     MarketplaceCart.belongsToMany(models.MarketplaceProduct, { 
       through: models.MarketplaceCartItems, 
       foreignKey: 'marketplace_cart_id',

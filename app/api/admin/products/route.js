@@ -64,6 +64,8 @@ export async function GET(request) {
     const flaggedParam = searchParams.get("flagged") || ""; // "true" | "false" | ""
     const sort = searchParams.get("sort") || "rank"; // rank | newest | price-low | price-high | rating | downloads
     const categoryId = searchParams.get("categoryId") || "";
+    const fromParam = searchParams.get("from") || "";
+    const toParam = searchParams.get("to") || "";
 
     const page = Math.max(1, pageParam);
     const pageSize = Math.min(Math.max(1, pageSizeParam), 100);
@@ -82,6 +84,15 @@ export async function GET(request) {
     if (flaggedParam === "false") where.flagged = false;
     if (categoryId) where.marketplace_category_id = categoryId;
 
+    const parseDateSafe = (v) => {
+      if (!v) return null;
+      const d = new Date(v);
+      if (!Number.isFinite(d.getTime())) return null;
+      return d;
+    };
+    const fromDate = parseDateSafe(fromParam);
+    const toDate = parseDateSafe(toParam);
+
     const rankScoreLiteral = db.Sequelize.literal(`
       (CASE WHEN "MarketplaceProduct"."featured" = true THEN 10 ELSE 0 END)
       + (1.5 * COALESCE("MarketplaceProduct"."rating", 0))
@@ -96,20 +107,6 @@ export async function GET(request) {
       SELECT s."sales_count"
       FROM "mv_product_sales" AS s
       WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
-    ), 0)`);
-    const unitsSoldLiteral = db.Sequelize.literal(`COALESCE((
-      SELECT SUM(oi."quantity")
-      FROM "marketplace_order_items" AS oi
-      JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-      WHERE oi."marketplace_product_id" = "MarketplaceProduct"."id"
-        AND o."paymentStatus" = 'completed'
-    ), 0)`);
-    const revenueLiteral = db.Sequelize.literal(`COALESCE((
-      SELECT SUM((oi."subtotal")::numeric)
-      FROM "marketplace_order_items" AS oi
-      JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-      WHERE oi."marketplace_product_id" = "MarketplaceProduct"."id"
-        AND o."paymentStatus" = 'completed'
     ), 0)`);
 
     let order = [];
@@ -147,6 +144,7 @@ export async function GET(request) {
       attributes: [
         "id",
         "title",
+        "currency",
         "featured",
         "inStock",
         "stock",
@@ -158,14 +156,53 @@ export async function GET(request) {
         "createdAt",
         [rankScoreLiteral, "rankScore"],
         [salesCountLiteral, "salesCount"],
-        [unitsSoldLiteral, "unitsSold"],
-        [revenueLiteral, "totalRevenue"],
       ],
       order,
       limit: pageSize,
       offset,
       distinct: true,
     });
+
+    const productIds = rows.map((p) => p.id).filter(Boolean);
+    const aggByProductId = new Map();
+    if (productIds.length > 0) {
+      const whereParts = [
+        `oi."marketplace_product_id" IN (:productIds)`,
+        `LOWER(o."paymentStatus"::text) IN ('successful', 'completed')`,
+      ];
+      const replacements = { productIds };
+      if (fromDate) {
+        whereParts.push(`o."createdAt" >= :from`);
+        replacements.from = fromDate;
+      }
+      if (toDate) {
+        whereParts.push(`o."createdAt" <= :to`);
+        replacements.to = toDate;
+      }
+
+      const aggSql = `
+        SELECT
+          oi."marketplace_product_id" AS "marketplace_product_id",
+          COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",
+          COALESCE(SUM((oi."subtotal")::numeric), 0) AS "totalRevenue"
+        FROM "marketplace_order_items" AS oi
+        JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
+        WHERE ${whereParts.join(" AND ")}
+        GROUP BY 1
+      `;
+
+      const aggRows = await db.sequelize.query(aggSql, {
+        replacements,
+        type: db.Sequelize.QueryTypes.SELECT,
+      });
+
+      for (const r of aggRows || []) {
+        aggByProductId.set(String(r.marketplace_product_id), {
+          unitsSold: Number(r.unitsSold || 0) || 0,
+          totalRevenue: Number(r.totalRevenue || 0) || 0,
+        });
+      }
+    }
 
     // Parse optional fee rates from env (% provided as '0.2' or '20')
     const parsePct = (v) => {
@@ -179,13 +216,15 @@ export async function GET(request) {
 
     const data = rows.map((p) => {
       const j = p.toJSON();
-      const revenue = Number(j.totalRevenue || 0) || 0;
+      const agg = aggByProductId.get(String(j.id)) || { unitsSold: 0, totalRevenue: 0 };
+      const revenue = Number(agg.totalRevenue || 0) || 0;
       const crowdpenFee = revenue * (CROWD_PCT || 0);
       const startbuttonFee = revenue * (SB_PCT || 0);
       const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
       return {
         id: j.id,
         title: j.title,
+        currency: j.currency,
         featured: Boolean(j.featured),
         inStock: Boolean(j.inStock),
         stock: j.stock,
@@ -197,7 +236,7 @@ export async function GET(request) {
         createdAt: j.createdAt,
         rankScore: Number(j.rankScore) || 0,
         salesCount: Number(j.salesCount) || 0,
-        unitsSold: Number(j.unitsSold) || 0,
+        unitsSold: Number(agg.unitsSold) || 0,
         totalRevenue: revenue,
         crowdpenFee,
         startbuttonFee,

@@ -50,6 +50,7 @@ MarketplaceAdminTransactions.init(
     amount: DataTypes.INTEGER,
     currency: DataTypes.TEXT,
     authorization_code: DataTypes.TEXT,
+    completedAt: DataTypes.DATE,
   },
   {
     sequelize,

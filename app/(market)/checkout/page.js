@@ -31,6 +31,7 @@ import { useHome } from "../../context";
 import { beginCheckout, finalizeOrder } from "./actions";
 import Image from "next/image";
 import { useViewerCurrency } from "../../hooks/use-viewer-currency";
+import { trackFunnelEvent } from "../../lib/funnelEventsClient";
 
 const beginInitializeState = {
   success: false,
@@ -798,6 +799,17 @@ function CheckoutContent() {
         customer: beginState.customer,
       };
       currentOrderRef.current = order;
+
+      trackFunnelEvent({
+        event_name: "checkout_started",
+        marketplace_order_id: beginState.orderId || null,
+        metadata: {
+          orderNumber: beginState.orderNumber,
+          currency: beginState.currency || "USD",
+          amount: beginState.amount,
+        },
+      });
+
       setProcessing(true);
       openStartButton(order);
     } else if (
@@ -824,6 +836,15 @@ function CheckoutContent() {
       return;
     const order = currentOrderRef.current;
     if (finalState.success) {
+
+      trackFunnelEvent({
+        event_name: "paid",
+        marketplace_order_id: order?.orderId || null,
+        metadata: {
+          orderNumber: finalState?.orderNumber || order?.orderNumber,
+        },
+      });
+
       setResultModal({
         open: true,
         type: "success",

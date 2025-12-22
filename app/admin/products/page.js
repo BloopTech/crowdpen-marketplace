@@ -10,7 +10,6 @@ import { PaginationSmart } from "../../components/ui/pagination";
 import ProductDetailsDialog from "./ProductDetailsDialog";
 import { AdminProductDialogProvider, useAdminProductDialog } from "./details-context";
 import { AdminProductsProvider, useAdminProducts } from "./list-context";
-import { format } from "date-fns";
 
 function AdminProductsInner() {
   const { openDetails } = useAdminProductDialog();
@@ -36,6 +35,17 @@ function AdminProductsInner() {
     toggleFlagged(id, !!flagged);
   };
 
+  const fmtMoney = (v, currency) => {
+    const cur = (currency || "").toString().trim().toUpperCase();
+    const code = /^[A-Z]{3}$/.test(cur) ? cur : "USD";
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+  };
+
   return (
     <div className="px-4 space-y-6">
       <Card>
@@ -59,6 +69,30 @@ function AdminProductsInner() {
                   const v = e.target.value; setQs({ q: v, page: 1 });
                 }}
                 className="min-w-56"
+              />
+            </div>
+            <div>
+              <label className="block text-xs mb-1">From</label>
+              <input
+                type="date"
+                value={qs.from || ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setQs({ from: v, page: 1 });
+                }}
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="block text-xs mb-1">To</label>
+              <input
+                type="date"
+                value={qs.to || ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setQs({ to: v, page: 1 });
+                }}
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
             <div>
@@ -120,6 +154,11 @@ function AdminProductsInner() {
                 <TableHead>Author</TableHead>
                 <TableHead>Featured</TableHead>
                 <TableHead>Flagged</TableHead>
+                <TableHead>Units Sold</TableHead>
+                <TableHead>Revenue</TableHead>
+                <TableHead>Crowdpen</TableHead>
+                <TableHead>Gateway</TableHead>
+                <TableHead>Payout</TableHead>
                 <TableHead>Rating</TableHead>
                 <TableHead>Author Rating</TableHead>
                 <TableHead>Downloads</TableHead>
@@ -156,6 +195,11 @@ function AdminProductsInner() {
                       onKeyDown={(e) => e.stopPropagation()}
                     />
                   </TableCell>
+                  <TableCell>{Number(p.unitsSold || 0).toLocaleString("en-US")}</TableCell>
+                  <TableCell>{fmtMoney(p.totalRevenue, p.currency)}</TableCell>
+                  <TableCell>{fmtMoney(p.crowdpenFee, p.currency)}</TableCell>
+                  <TableCell>{fmtMoney(p.startbuttonFee, p.currency)}</TableCell>
+                  <TableCell>{fmtMoney(p.creatorPayout, p.currency)}</TableCell>
                   <TableCell>{Number(p.rating || 0).toFixed(1)}</TableCell>
                   <TableCell>{Number(p.authorRating || 0).toFixed(1)}</TableCell>
                   <TableCell>{Number(p.downloads || 0)}</TableCell>
@@ -163,12 +207,16 @@ function AdminProductsInner() {
                   <TableCell>{typeof p.stock === "number" ? p.stock : p.stock ?? "-"}</TableCell>
                   <TableCell>{isNaN(Number(p.price)) ? "-" : Number(p.price).toFixed(2)}</TableCell>
                   <TableCell>{Number(p.rankScore || 0).toFixed(2)}</TableCell>
-                  <TableCell>{p.createdAt ? format(new Date(p.createdAt), "dd-MM-yyyy") : "-"}</TableCell>
+                  <TableCell>
+                    {p.createdAt
+                      ? new Date(p.createdAt).toLocaleDateString("en-US", { timeZone: "UTC" })
+                      : "-"}
+                  </TableCell>
                 </TableRow>
               ))}
               {list.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={12} className="text-center text-sm text-muted-foreground">No products found.</TableCell>
+                  <TableCell colSpan={17} className="text-center text-sm text-muted-foreground">No products found.</TableCell>
                 </TableRow>
               )}
             </TableBody>

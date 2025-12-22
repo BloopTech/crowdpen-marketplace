@@ -50,6 +50,7 @@ import {
 import RelatedProducts from "./related";
 import { Badge } from "../../../components/ui/badge";
 import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
+import { trackFunnelEvent } from "../../../lib/funnelEventsClient";
 
 const initialStateValues = {
   message: "",
@@ -80,6 +81,17 @@ export default function ProductDetailContent(props) {
   const [localWishlistState, setLocalWishlistState] = useState(null);
   const [localCartState, setLocalCartState] = useState(null);
   const [hasLocalCartOverride, setHasLocalCartOverride] = useState(false);
+
+  useEffect(() => {
+    if (!productItemData?.id) return;
+    trackFunnelEvent({
+      event_name: "product_view",
+      marketplace_product_id: productItemData.id,
+      metadata: {
+        currency: (productItemData?.currency || "USD").toString().toUpperCase(),
+      },
+    });
+  }, [productItemData?.id, productItemData?.currency]);
 
   const productCurrency = (productItemData?.currency || "USD")
     .toString()
@@ -130,8 +142,16 @@ export default function ProductDetailContent(props) {
         setLocalCartState(cartState.cartItem);
         setHasLocalCartOverride(true);
         toast.success(cartState.message || "Item added to cart successfully");
+
+        trackFunnelEvent({
+          event_name: "add_to_cart",
+          marketplace_product_id: productItemData?.id || null,
+          metadata: {
+            quantity: 1,
+            cartItemId: cartState?.cartItem?.id || null,
+          },
+        });
       } else if (cartState.action === "removed") {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLocalCartState(null);
         setHasLocalCartOverride(true);
         toast.success(
@@ -152,7 +172,7 @@ export default function ProductDetailContent(props) {
       // Reset override on error to fall back to server state
       setHasLocalCartOverride(false);
     }
-  }, [cartState, refetchCartCount]);
+  }, [cartState, refetchCartCount, productItemData?.id]);
 
   // Early returns for loading/error states
   if (!id) {

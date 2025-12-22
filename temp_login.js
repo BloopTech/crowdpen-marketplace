@@ -17,15 +17,15 @@ import { toast } from "sonner";
 export default function Login() {
   // Get context safely with useContext
   const context = useContext(HomeContext);
+
+  // State for Crowdpen SSO login
+  const [isCrowdpenLoading, setIsCrowdpenLoading] = useState(false);
   
   // If context isn't available yet, render nothing
   if (!context) return null;
   
   // Now we can safely use the context
   const { loginDialog, closeLoginDialog } = context;
-  
-  // State for Crowdpen SSO login
-  const [isCrowdpenLoading, setIsCrowdpenLoading] = useState(false);
   
   // Handle SSO login with Crowdpen credentials
   const handleCrowdpenLogin = async () => {

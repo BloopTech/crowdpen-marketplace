@@ -45,6 +45,7 @@ export async function createPayout(prevState, formData) {
     currency,
     transaction_reference,
     gateway_reference: note,
+    completedAt: normalizedStatus === "completed" ? new Date() : null,
   });
 
   revalidatePath("/admin/payouts");

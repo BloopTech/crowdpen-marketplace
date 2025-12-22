@@ -64,7 +64,7 @@ export async function GET(_request, { params }) {
        FROM "marketplace_order_items" AS oi
        JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
        WHERE oi."marketplace_product_id" = :pid
-         AND o."paymentStatus" = 'completed'`,
+         AND LOWER(o."paymentStatus"::text) IN ('successful', 'completed')`,
       { replacements: { pid: j.id }, type: db.Sequelize.QueryTypes.SELECT }
     );
 

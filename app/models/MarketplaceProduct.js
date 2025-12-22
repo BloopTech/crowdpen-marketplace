@@ -41,6 +41,11 @@ class MarketplaceProduct extends Model {
       foreignKey: "marketplace_product_id",
       as: "carts", // Corresponding unique alias for the belongsToMany relationship
     });
+
+    MarketplaceProduct.hasMany(models.MarketplaceFunnelEvents, {
+      foreignKey: "marketplace_product_id",
+      as: "funnelEvents",
+    });
   }
 }
 

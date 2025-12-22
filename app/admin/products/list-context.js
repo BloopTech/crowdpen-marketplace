@@ -4,13 +4,15 @@ import React, { createContext, useContext, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 
-function fetchAdminProducts(qs) {
+async function fetchAdminProducts(qs) {
   const searchParams = new URLSearchParams({
     page: String(qs.page || 1),
     pageSize: String(qs.pageSize || 20),
     sort: qs.sort || "rank",
   });
   if (qs.q) searchParams.set("q", qs.q);
+  if (qs.from) searchParams.set("from", qs.from);
+  if (qs.to) searchParams.set("to", qs.to);
   if (qs.featured && qs.featured !== "all")
     searchParams.set("featured", qs.featured);
   if (qs.flagged && qs.flagged !== "all")
@@ -37,6 +39,8 @@ export function AdminProductsProvider({ children }) {
       page: parseAsInteger.withDefault(1),
       pageSize: parseAsInteger.withDefault(20),
       q: parseAsString.withDefault(""),
+      from: parseAsString.withDefault(""),
+      to: parseAsString.withDefault(""),
       featured: parseAsString.withDefault("all"), // all | true | false
       flagged: parseAsString.withDefault("all"), // all | true | false
       sort: parseAsString.withDefault("rank"), // rank | newest | price-low | price-high | rating | downloads
@@ -48,7 +52,7 @@ export function AdminProductsProvider({ children }) {
 
   const query = useQuery({
     queryKey,
-    queryFn: () => fetchAdminProducts(qs),
+    queryFn: async () => await fetchAdminProducts(qs),
   });
 
   const toggleFeaturedMutation = useMutation({
@@ -138,11 +142,14 @@ export function AdminProductsProvider({ children }) {
       total,
       totalPages,
       refetch: query.refetch,
-      toggleFeatured: (id, featured) => toggleFeaturedMutation.mutate({ id, featured }),
-      toggleFlagged: (id, flagged) => toggleFlaggedMutation.mutate({ id, flagged }),
+      toggleFeatured: (id, featured) =>
+        toggleFeaturedMutation.mutate({ id, featured }),
+      toggleFlagged: (id, flagged) =>
+        toggleFlaggedMutation.mutate({ id, flagged }),
       toggleFeaturedPending: toggleFeaturedMutation.isPending,
       toggleFlaggedPending: toggleFlaggedMutation.isPending,
-      togglePending: toggleFeaturedMutation.isPending || toggleFlaggedMutation.isPending,
+      togglePending:
+        toggleFeaturedMutation.isPending || toggleFlaggedMutation.isPending,
     }),
     [
       qs,

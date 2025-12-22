@@ -12,6 +12,11 @@ class MarketplaceOrder extends Model {
     MarketplaceOrder.belongsTo(models.MarketplaceAddress, {
       foreignKey: "marketplace_address_id",
     });
+
+    MarketplaceOrder.hasMany(models.MarketplaceFunnelEvents, {
+      foreignKey: "marketplace_order_id",
+      as: "funnelEvents",
+    });
   }
 }
 
