@@ -204,7 +204,7 @@ export default function MarketplaceHeader(props) {
               <NavigationMenuItem>
                 <NavigationMenuTrigger>All Categories</NavigationMenuTrigger>
                 <NavigationMenuContent>
-                  <div className="grid w-[calc(100vw-2rem)] sm:w-96 gap-3 p-4 bg-popover text-popover-foreground">
+                  <div className="grid w-[calc(100vw-2rem)] sm:w-96 gap-3 p-4 bg-popover text-popover-foreground h-auto max-h-[30rem] overflow-y-auto">
                     {categories.map((category) => (
                       <div key={category.name}>
                         <h4 className="font-semibold text-sm mb-2">
@@ -226,7 +226,7 @@ export default function MarketplaceHeader(props) {
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              {categories.slice(0, 4).map((category) => {
+              {categories?.map((category) => {
                 const categorySlug = category.name.toLowerCase().replace(/\s+/g, "-");
                 const isActive = pathname === `/category/${categorySlug}`;
                 return (

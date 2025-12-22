@@ -23,6 +23,7 @@ PaginationSmart
 import { createPayout } from "./actions";
 import { Avatar, AvatarFallback } from "../../components/ui/avatar";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
+import { useQuery } from "@tanstack/react-query";
 
 export default function PayoutsPage() {
   const { payoutsQuery, merchantRecipientsQuery, payoutsParams, setPayoutsParams } =
@@ -72,6 +73,53 @@ export default function PayoutsPage() {
       maximumFractionDigits: 2,
     }).format(Number(v || 0));
   };
+
+  const fetchJson = async (url) => {
+    const res = await fetch(url, { credentials: "include", cache: "no-store" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.status !== "success") {
+      throw new Error(data?.message || `Failed to fetch ${url}`);
+    }
+    return data;
+  };
+
+  const merchantPayoutsQuery = useQuery({
+    queryKey: ["admin", "analytics", "merchant-payouts"],
+    queryFn: () => fetchJson("/api/admin/analytics/top-merchants?limit=100"),
+  });
+
+  const eligibleMerchantPayouts = useMemo(() => {
+    if (!users.length || !Array.isArray(merchantPayoutsQuery?.data?.data)) {
+      return [];
+    }
+    const eligibleIds = new Set(users.map((u) => u.id));
+    return merchantPayoutsQuery.data.data
+      .filter((row) => eligibleIds.has(row.merchantId))
+      .map((row) => {
+        const revenue = Number(row.revenue || 0);
+        const crowdpenFee = Number(row.crowdpenFee || 0);
+        const startbuttonFee = Number(row.startbuttonFee || 0);
+        const creatorPayout =
+          row.creatorPayout != null
+            ? Number(row.creatorPayout)
+            : Math.max(0, revenue - crowdpenFee - startbuttonFee);
+        const matchedUser = users.find((u) => u.id === row.merchantId);
+        return {
+          merchantId: row.merchantId,
+          merchantName:
+            matchedUser?.name ||
+            matchedUser?.email ||
+            row.merchantPenName ||
+            row.merchantName ||
+            "Unknown merchant",
+          revenue,
+          crowdpenFee,
+          startbuttonFee,
+          creatorPayout,
+          currency: row.currency || "USD",
+        };
+      });
+  }, [merchantPayoutsQuery?.data?.data, users]);
 
   return (
     <div className="px-4 space-y-6">
@@ -144,6 +192,66 @@ export default function PayoutsPage() {
             >
               Export CSV
             </Button>
+          </div>
+
+          <div className="rounded-md border border-border p-4 mb-6">
+            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+              <h3 className="text-base font-semibold">
+                Merchant earnings after platform fees
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => merchantPayoutsQuery.refetch()}
+                disabled={merchantPayoutsQuery.isFetching}
+              >
+                {merchantPayoutsQuery.isFetching ? "Updating…" : "Refresh"}
+              </Button>
+            </div>
+            {merchantPayoutsQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading merchant payout data…</p>
+            ) : merchantPayoutsQuery.error ? (
+              <p className="text-sm text-red-500">
+                {merchantPayoutsQuery.error?.message || "Failed to load merchant payouts"}
+              </p>
+            ) : eligibleMerchantPayouts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No eligible merchants found for the selected period.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Merchant</TableHead>
+                      <TableHead className="text-right">Gross Sales</TableHead>
+                      <TableHead className="text-right">Crowdpen Share (15%)</TableHead>
+                      <TableHead className="text-right">Startbutton Share (5%)</TableHead>
+                      <TableHead className="text-right">Net Payout</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {eligibleMerchantPayouts.map((merchant) => (
+                      <TableRow key={merchant.merchantId}>
+                        <TableCell>{merchant.merchantName}</TableCell>
+                        <TableCell className="text-right">
+                          {fmt(merchant.revenue, merchant.currency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {fmt(merchant.crowdpenFee, merchant.currency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {fmt(merchant.startbuttonFee, merchant.currency)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {fmt(merchant.creatorPayout, merchant.currency)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
 
           <form

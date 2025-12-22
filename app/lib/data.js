@@ -7,7 +7,7 @@ export const trendingSearches = [
   "Author Tools",
   "Publishing Guides",
   "Reader Resources",
-]
+];
 
 export const searchOperators = [
   {
@@ -30,30 +30,70 @@ export const searchOperators = [
     example: "rating:4.5",
     description: "Filter by customer rating",
   },
-]
+];
 
 export const categories = [
   {
     name: "Writing Resources",
-    subcategories: ["Writing Guides", "Grammar Tools", "Style Guides", "Writing Prompts", "Character Development"],
+    subcategories: [
+      "Writing Guides",
+      "Grammar Tools",
+      "Style Guides",
+      "Writing Prompts",
+      "Character Development",
+    ],
   },
   {
     name: "Ebooks & Guides",
-    subcategories: ["How-to Guides", "Industry Reports", "Educational Content", "Self-Help", "Business Guides"],
+    subcategories: [
+      "How-to Guides",
+      "Industry Reports",
+      "Educational Content",
+      "Self-Help",
+      "Business Guides",
+    ],
   },
   {
     name: "Templates & Tools",
-    subcategories: ["Book Templates", "Content Planners", "Editorial Calendars", "Worksheets", "Checklists"],
+    subcategories: [
+      "Book Templates",
+      "Content Planners",
+      "Editorial Calendars",
+      "Worksheets",
+      "Checklists",
+    ],
   },
   {
     name: "Publishing & Marketing",
-    subcategories: ["Book Marketing", "Social Media Templates", "Email Templates", "Launch Strategies", "Cover Design"],
+    subcategories: [
+      "Book Marketing",
+      "Social Media Templates",
+      "Email Templates",
+      "Launch Strategies",
+      "Cover Design",
+    ],
   },
   {
     name: "Reader Resources",
-    subcategories: ["Book Lists", "Reading Guides", "Book Club Materials", "Discussion Questions", "Reading Trackers"],
+    subcategories: [
+      "Book Lists",
+      "Reading Guides",
+      "Book Club Materials",
+      "Discussion Questions",
+      "Reading Trackers",
+    ],
   },
-]
+  {
+    name: "Fiction",
+    subcategories: [
+      "Fantasy",
+      "Mystery & Thriller",
+      "Science Fiction",
+      "Historical Fiction",
+      "Romance",
+    ],
+  },
+];
 
 export const mockResources = [
   {
@@ -65,7 +105,13 @@ export const mockResources = [
     originalPrice: 59.99,
     category: "Publishing & Marketing",
     subcategory: "Launch Strategies",
-    tags: ["self-publishing", "book marketing", "author guide", "publishing", "bestseller"],
+    tags: [
+      "self-publishing",
+      "book marketing",
+      "author guide",
+      "publishing",
+      "bestseller",
+    ],
     images: [
       "/placeholder.svg?height=400&width=300",
       "/placeholder.svg?height=400&width=300",
@@ -85,8 +131,18 @@ export const mockResources = [
     lastUpdated: "2024-01-15",
     inStock: true,
     variations: [
-      { id: "1a", name: "Standard Edition", price: 39.99, description: "PDF guide only" },
-      { id: "1b", name: "Premium Bundle", price: 79.99, description: "Guide + Templates + Video Course" },
+      {
+        id: "1a",
+        name: "Standard Edition",
+        price: 39.99,
+        description: "PDF guide only",
+      },
+      {
+        id: "1b",
+        name: "Premium Bundle",
+        price: 79.99,
+        description: "Guide + Templates + Video Course",
+      },
     ],
   },
   {
@@ -97,8 +153,17 @@ export const mockResources = [
     price: 19.99,
     category: "Templates & Tools",
     subcategory: "Content Planners",
-    tags: ["content planning", "social media", "blog writing", "content calendar", "productivity"],
-    images: ["/placeholder.svg?height=400&width=300", "/placeholder.svg?height=400&width=300"],
+    tags: [
+      "content planning",
+      "social media",
+      "blog writing",
+      "content calendar",
+      "productivity",
+    ],
+    images: [
+      "/placeholder.svg?height=400&width=300",
+      "/placeholder.svg?height=400&width=300",
+    ],
     author: "Content Creator Hub",
     authorRating: 4.7,
     authorSales: 12930,
@@ -122,7 +187,13 @@ export const mockResources = [
     originalPrice: 24.99,
     category: "Writing Resources",
     subcategory: "Writing Prompts",
-    tags: ["writing prompts", "creative writing", "story ideas", "writer's block", "inspiration"],
+    tags: [
+      "writing prompts",
+      "creative writing",
+      "story ideas",
+      "writer's block",
+      "inspiration",
+    ],
     images: ["/placeholder.svg?height=400&width=300"],
     author: "Creative Writer's Guild",
     authorRating: 4.8,
@@ -146,7 +217,13 @@ export const mockResources = [
     price: 49.99,
     category: "Publishing & Marketing",
     subcategory: "Book Marketing",
-    tags: ["book marketing", "book launch", "social media", "email marketing", "bestseller"],
+    tags: [
+      "book marketing",
+      "book launch",
+      "social media",
+      "email marketing",
+      "bestseller",
+    ],
     images: ["/placeholder.svg?height=400&width=300"],
     author: "Bestseller Academy",
     authorRating: 4.9,
@@ -170,7 +247,13 @@ export const mockResources = [
     price: 12.99,
     category: "Reader Resources",
     subcategory: "Reading Trackers",
-    tags: ["reading tracker", "book journal", "reading goals", "book lover", "printable"],
+    tags: [
+      "reading tracker",
+      "book journal",
+      "reading goals",
+      "book lover",
+      "printable",
+    ],
     images: ["/placeholder.svg?height=400&width=300"],
     author: "Book Lover's Paradise",
     authorRating: 4.6,
@@ -194,7 +277,13 @@ export const mockResources = [
     price: 29.99,
     category: "Writing Resources",
     subcategory: "Character Development",
-    tags: ["character development", "novel writing", "fiction writing", "storytelling", "creative writing"],
+    tags: [
+      "character development",
+      "novel writing",
+      "fiction writing",
+      "storytelling",
+      "creative writing",
+    ],
     images: ["/placeholder.svg?height=400&width=300"],
     author: "Fiction Master Class",
     authorRating: 4.8,
@@ -218,7 +307,13 @@ export const mockResources = [
     price: 24.99,
     category: "Publishing & Marketing",
     subcategory: "Email Templates",
-    tags: ["email marketing", "newsletter", "author marketing", "email templates", "reader engagement"],
+    tags: [
+      "email marketing",
+      "newsletter",
+      "author marketing",
+      "email templates",
+      "reader engagement",
+    ],
     images: ["/placeholder.svg?height=400&width=300"],
     author: "Author Marketing Pro",
     authorRating: 4.7,
@@ -242,7 +337,13 @@ export const mockResources = [
     price: 16.99,
     category: "Reader Resources",
     subcategory: "Book Club Materials",
-    tags: ["book club", "discussion questions", "reading group", "book discussion", "literature"],
+    tags: [
+      "book club",
+      "discussion questions",
+      "reading group",
+      "book discussion",
+      "literature",
+    ],
     images: ["/placeholder.svg?height=400&width=300"],
     author: "Reading Community Hub",
     authorRating: 4.5,
@@ -258,4 +359,4 @@ export const mockResources = [
     lastUpdated: "2024-01-09",
     inStock: true,
   },
-]
+];
