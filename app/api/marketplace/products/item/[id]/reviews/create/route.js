@@ -16,6 +16,14 @@ const { MarketplaceReview, User, MarketplaceProduct } = db;
 export async function POST(request, { params }) {
   const getParams = await params;
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { status: "error", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
     const productId = getParams.id;
 
     if (!productId) {
@@ -30,7 +38,16 @@ export async function POST(request, { params }) {
 
     // Parse request body
     const body = await request.json();
-    const { rating, title, content, userId } = body;
+    const { rating, title, content, userId: userIdFromBody } = body;
+
+    if (userIdFromBody && String(userIdFromBody) !== String(session.user.id)) {
+      return NextResponse.json(
+        { status: "error", message: "Invalid user authentication" },
+        { status: 403 }
+      );
+    }
+
+    const userId = session.user.id;
 
     // Validate required fields
     if (!rating || rating < 1 || rating > 5) {
@@ -63,7 +80,7 @@ export async function POST(request, { params }) {
       where: {
         [Op.or]: orConditions,
       },
-      attributes: ["id", "product_id"],
+      attributes: ["id", "product_id", "user_id"],
     });
 
     if (!product) {
@@ -73,6 +90,16 @@ export async function POST(request, { params }) {
           message: "Product does not exist",
         },
         { status: 400 }
+      );
+    }
+
+    if (String(product.user_id) === String(userId)) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "You can't review your own product",
+        },
+        { status: 403 }
       );
     }
 

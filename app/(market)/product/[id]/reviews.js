@@ -1,6 +1,7 @@
 "use client";
 import React from "react";
 import { useProductItemContext } from "./context";
+import { useSession } from "next-auth/react";
 import { Card, CardContent } from "../../../components/ui/card";
 import { Avatar, AvatarFallback } from "../../../components/ui/avatar";
 import { Badge } from "../../../components/ui/badge";
@@ -21,7 +22,12 @@ export default function ProductReviews() {
     hasNextPage,
     isFetching,
     isFetchingNextPage,
+    productItemData,
   } = useProductItemContext();
+
+  const { data: session } = useSession();
+  const productOwnerId = productItemData?.user_id || productItemData?.User?.id || null;
+  const isOwner = Boolean(session?.user?.id && productOwnerId && String(session.user.id) === String(productOwnerId));
 
   // Infinite scroll hook
   const [sentryRef] = useInfiniteScroll({
@@ -125,9 +131,11 @@ export default function ProductReviews() {
       )}
 
       {/* Write Review Section */}
-      <div className="flex justify-center">
-        <ReviewBox />
-      </div>
+      {!isOwner && (
+        <div className="flex justify-center">
+          <ReviewBox />
+        </div>
+      )}
 
       {/* Reviews List */}
       <div className="space-y-4">

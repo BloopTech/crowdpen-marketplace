@@ -55,6 +55,16 @@ export async function GET(request, { params }) {
       );
     }
 
+    if (String(product.user_id) === String(userId)) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "You can't review your own product",
+        },
+        { status: 403 }
+      );
+    }
+
     // Fetch written reviews (with non-empty content) for the product with user information and pagination
     const { count, rows: reviews } = await MarketplaceReview.findAndCountAll({
       where: {
@@ -232,7 +242,7 @@ export async function PUT(request, { params }) {
       where: {
         [Op.or]: orConditions,
       },
-      attributes: ["id", "product_id"],
+      attributes: ["id", "product_id", "user_id"],
     });
 
     if (!product) {
@@ -242,6 +252,16 @@ export async function PUT(request, { params }) {
           message: "Product does not exist",
         },
         { status: 400 }
+      );
+    }
+
+    if (String(product.user_id) === String(userId)) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "You can't review your own product",
+        },
+        { status: 403 }
       );
     }
 

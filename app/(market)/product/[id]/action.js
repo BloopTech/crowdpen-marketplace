@@ -6,6 +6,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { sanitizeHtmlServer } from "../../../lib/sanitizeHtmlServer";
+import { db } from "../../../models/index";
+import { Op } from "sequelize";
+import { validate as isUUID } from "uuid";
+
+const { MarketplaceProduct } = db;
 
  async function getServerActionHeaders() {
    try {
@@ -106,6 +111,35 @@ export async function upsertProductReview(prevState, queryData) {
 
   const userId = session.user.id;
   const productId = queryData.get("productId");
+  if (!productId) {
+    return {
+      success: false,
+      message: "Product ID is required",
+      errors: {
+        productId: ["Product ID is required"],
+      },
+    };
+  }
+
+  const idParam = String(productId);
+  const orConditions = [{ product_id: idParam }];
+  if (isUUID(idParam)) {
+    orConditions.unshift({ id: idParam });
+  }
+  const product = await MarketplaceProduct.findOne({
+    where: { [Op.or]: orConditions },
+    attributes: ["id", "user_id"],
+  });
+  if (product && String(product.user_id) === String(userId)) {
+    return {
+      success: false,
+      message: "You can't review your own product",
+      errors: {
+        general: ["You can't review your own product"],
+      },
+    };
+  }
+
   const rating = parseInt(queryData.get("rating"));
   const title = queryData.get("title");
   const content = queryData.get("content");
@@ -282,6 +316,35 @@ export async function createProductReview(prevState, queryData) {
 
   const userId = session.user.id;
   const productId = queryData.get("productId");
+  if (!productId) {
+    return {
+      success: false,
+      message: "Product ID is required",
+      errors: {
+        productId: ["Product ID is required"],
+      },
+    };
+  }
+
+  const idParam = String(productId);
+  const orConditions = [{ product_id: idParam }];
+  if (isUUID(idParam)) {
+    orConditions.unshift({ id: idParam });
+  }
+  const product = await MarketplaceProduct.findOne({
+    where: { [Op.or]: orConditions },
+    attributes: ["id", "user_id"],
+  });
+  if (product && String(product.user_id) === String(userId)) {
+    return {
+      success: false,
+      message: "You can't review your own product",
+      errors: {
+        general: ["You can't review your own product"],
+      },
+    };
+  }
+
   const rating = parseInt(queryData.get("rating"));
   const title = queryData.get("title");
   const content = queryData.get("content");

@@ -41,7 +41,7 @@ import parser from "html-react-parser";
 import { sanitizeHtml } from "../../../lib/sanitizeHtml";
 
 export default function ReviewBox() {
-  const { reviewsData, refetchReviews, refetchProductItem } = useProductItemContext();
+  const { reviewsData, refetchReviews, refetchProductItem, productItemData } = useProductItemContext();
   const { openLoginDialog } = useHome();
   const { data: session } = useSession();
   const params = useParams();
@@ -111,6 +111,9 @@ export default function ReviewBox() {
 
   // Current user's review from API (returned on first page)
   const currentUserReview = reviewsData?.pages?.[0]?.data?.currentUserReview || null;
+
+  const productOwnerId = productItemData?.user_id || productItemData?.User?.id || null;
+  const isOwner = Boolean(session?.user?.id && productOwnerId && String(session.user.id) === String(productOwnerId));
 
   // Seed form/editor from existing review so user can edit
   useEffect(() => {
@@ -256,6 +259,10 @@ export default function ReviewBox() {
         </Button>
       </div>
     );
+  }
+
+  if (isOwner) {
+    return null;
   }
 
   if (!editor) {
