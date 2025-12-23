@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Search,
   ShoppingCart,
@@ -29,6 +29,7 @@ import { UserId } from "./ui/userId";
 import { useHome } from "../context";
 import { useRouter, usePathname } from "next/navigation";
 import { useCrowdpenSSO } from "../hooks/useCrowdpenSSO";
+import { useDebounce } from "../hooks/use-debounce";
 import millify from "millify";
 
 export default function MarketplaceHeader(props) {
@@ -39,8 +40,127 @@ export default function MarketplaceHeader(props) {
   const pathname = usePathname();
   const { isCheckingSSO, ssoAvailable, attemptSSOLogin } = useCrowdpenSSO();
 
+  const searchQueryTrimmed = (searchQuery || "").trim();
+
+  const searchBoxRef = useRef(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const debouncedQuery = useDebounce(searchQuery, 250);
+
   const [loading, setLoading] = useState(false);
   console.log("cartCountData", cartCountData);
+
+  useEffect(() => {
+    const q = (debouncedQuery || "").trim();
+    if (q.length < 2) {
+      setSuggestions([]);
+      setIsSuggestionsLoading(false);
+      setActiveSuggestionIndex(-1);
+      return;
+    }
+
+    const controller = new AbortController();
+    let isActive = true;
+    setIsSuggestionsLoading(true);
+
+    (async () => {
+      try {
+        const qp = new URLSearchParams();
+        qp.set("q", q);
+        qp.set("limit", "8");
+        const res = await fetch(`/api/marketplace/products/search?${qp.toString()}`,
+          {
+            signal: controller.signal,
+          }
+        );
+        if (!res.ok) {
+          throw new Error(res.statusText || "Failed to fetch suggestions");
+        }
+        const data = await res.json();
+        if (!isActive) return;
+        setSuggestions(Array.isArray(data?.results) ? data.results : []);
+      } catch (err) {
+        if (!isActive || err?.name === "AbortError") return;
+        setSuggestions([]);
+      } finally {
+        if (isActive) setIsSuggestionsLoading(false);
+      }
+    })();
+
+    return () => {
+      isActive = false;
+      controller.abort();
+    };
+  }, [debouncedQuery]);
+
+  useEffect(() => {
+    const onDocMouseDown = (e) => {
+      const el = searchBoxRef.current;
+      if (!el) return;
+      if (el.contains(e.target)) return;
+      setShowSuggestions(false);
+      setActiveSuggestionIndex(-1);
+    };
+
+    document.addEventListener("mousedown", onDocMouseDown);
+    return () => document.removeEventListener("mousedown", onDocMouseDown);
+  }, []);
+
+  const handleSearch = () => {
+    setShowSuggestions(false);
+    setActiveSuggestionIndex(-1);
+    if (typeof onSearch === "function") onSearch();
+  };
+
+  const handleInputChange = (value) => {
+    onSearchChange(value);
+    setShowSuggestions(true);
+    setActiveSuggestionIndex(-1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setActiveSuggestionIndex(-1);
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setShowSuggestions(true);
+      setActiveSuggestionIndex((prev) => {
+        const next = prev + 1;
+        return next >= suggestions.length ? 0 : next;
+      });
+      return;
+    }
+
+    if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setShowSuggestions(true);
+      setActiveSuggestionIndex((prev) => {
+        const next = prev - 1;
+        return next < 0 ? Math.max(suggestions.length - 1, 0) : next;
+      });
+      return;
+    }
+
+    if (e.key === "Enter") {
+      if (showSuggestions && activeSuggestionIndex >= 0) {
+        e.preventDefault();
+        const s = suggestions[activeSuggestionIndex];
+        if (s?.id) {
+          setShowSuggestions(false);
+          setActiveSuggestionIndex(-1);
+          router.push(`/product/${s.id}`);
+          return;
+        }
+      }
+      handleSearch();
+    }
+  };
 
   const handleCreateClick = () => {
     router.push("/product/create");
@@ -98,22 +218,75 @@ export default function MarketplaceHeader(props) {
 
           {/* Search Bar */}
           <div className="order-3 w-full md:order-none md:flex-1 min-w-0">
-            <div className="relative flex">
+            <div ref={searchBoxRef} className="relative flex">
               <Input
                 type="text"
                 placeholder="Search for ebooks, guides, templates, and more..."
                 value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
+                onChange={(e) => handleInputChange(e.target.value)}
                 className="pr-12 h-10"
-                onKeyDown={(e) => e.key === "Enter" && onSearch()}
+                onKeyDown={handleKeyDown}
+                onFocus={() => setShowSuggestions(true)}
               />
               <Button
-                onClick={onSearch}
+                onClick={handleSearch}
                 size="sm"
                 className="absolute right-1 top-1 h-8"
               >
                 <Search className="h-4 w-4" />
               </Button>
+
+              {showSuggestions && (searchQueryTrimmed || isSuggestionsLoading) && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-50 max-h-80 overflow-auto">
+                  {isSuggestionsLoading ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
+                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                      <span>Searching...</span>
+                    </div>
+                  ) : null}
+
+                  {!isSuggestionsLoading && suggestions.length === 0 && searchQueryTrimmed.length >= 2 ? (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">No matches</div>
+                  ) : null}
+
+                  {suggestions.map((s, idx) => (
+                    <button
+                      key={s.id || idx}
+                      type="button"
+                      className={`w-full text-left px-3 py-2 hover:bg-muted flex items-start justify-between gap-3 ${
+                        idx === activeSuggestionIndex ? "bg-muted" : ""
+                      }`}
+                      onMouseEnter={() => setActiveSuggestionIndex(idx)}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        if (!s?.id) return;
+                        setShowSuggestions(false);
+                        setActiveSuggestionIndex(-1);
+                        router.push(`/product/${s.id}`);
+                      }}
+                    >
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{s.title}</div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {(s.author ? `by ${s.author}` : "")}
+                          {s.category ? `${s.author ? " · " : ""}${s.category}` : ""}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+
+                  {searchQueryTrimmed.length > 0 ? (
+                    <button
+                      type="button"
+                      className="w-full text-left px-3 py-2 border-t hover:bg-muted text-sm"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={handleSearch}
+                    >
+                      Search for &quot;{searchQueryTrimmed}&quot;
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </div>
           </div>
 

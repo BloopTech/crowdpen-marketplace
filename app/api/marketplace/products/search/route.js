@@ -306,6 +306,8 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
 
   const rows = await MarketplaceProduct.findAll({
     where,
+    subQuery: false,
+    distinct: true,
     attributes: hasText
       ? {
           include: [
@@ -360,6 +362,7 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
         as: "tags",
         attributes: ["name"],
         through: { attributes: [] },
+        duplicating: false,
         required: false,
       },
     ],

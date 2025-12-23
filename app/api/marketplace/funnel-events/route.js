@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
-import { z } from "zod";
 import { v4 as uuidv4 } from "uuid";
 
 export const dynamic = "force-dynamic";
@@ -25,31 +24,114 @@ function normalizeSessionId(v) {
   return s;
 }
 
-const funnelEventSchema = z.object({
-  event_name: z.enum([
-    "visit",
-    "product_view",
-    "add_to_cart",
-    "checkout_started",
-    "paid",
-  ]),
-  occurred_at: z.string().datetime().optional(),
-  session_id: z.string().trim().min(8).max(128).optional().nullable(),
-  marketplace_product_id: z.string().uuid().optional().nullable(),
-  marketplace_order_id: z.string().uuid().optional().nullable(),
-  metadata: z.record(z.any()).optional().nullable(),
-});
+function isLocalhostRequest(request) {
+  const host = (request?.headers?.get("host") || "").toLowerCase();
+  if (!host) return false;
+  const directLocal =
+    host.startsWith("localhost") ||
+    host.startsWith("127.0.0.1") ||
+    host.startsWith("[::1]");
+  const isLocalEnv = process.env.NODE_ENV !== "production";
+  return isLocalEnv && directLocal;
+}
+
+const ALLOWED_EVENTS = new Set([
+  "visit",
+  "product_view",
+  "add_to_cart",
+  "checkout_started",
+  "paid",
+]);
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function validateEventPayload(body) {
+  const data = body && typeof body === "object" ? body : {};
+  const errors = [];
+  const safe = {};
+
+  if (!ALLOWED_EVENTS.has(data.event_name)) {
+    errors.push({
+      path: ["event_name"],
+      message: "event_name must be one of visit, product_view, add_to_cart, checkout_started, paid",
+    });
+  } else {
+    safe.event_name = data.event_name;
+  }
+
+  if (data.occurred_at != null) {
+    const str = String(data.occurred_at);
+    const date = new Date(str);
+    if (!Number.isFinite(date.getTime())) {
+      errors.push({ path: ["occurred_at"], message: "occurred_at must be an ISO date string" });
+    } else {
+      safe.occurred_at = str;
+    }
+  }
+
+  const sessionId = data.session_id == null ? null : normalizeSessionId(data.session_id);
+  if (sessionId === null && data.session_id != null) {
+    errors.push({
+      path: ["session_id"],
+      message: "session_id must be 8-128 chars",
+    });
+  } else {
+    safe.session_id = sessionId;
+  }
+
+  const mpId = data.marketplace_product_id == null ? null : String(data.marketplace_product_id).trim();
+  if (mpId && !UUID_REGEX.test(mpId)) {
+    errors.push({
+      path: ["marketplace_product_id"],
+      message: "marketplace_product_id must be a valid UUID",
+    });
+  } else {
+    safe.marketplace_product_id = mpId;
+  }
+
+  const orderId = data.marketplace_order_id == null ? null : String(data.marketplace_order_id).trim();
+  if (orderId && !UUID_REGEX.test(orderId)) {
+    errors.push({
+      path: ["marketplace_order_id"],
+      message: "marketplace_order_id must be a valid UUID",
+    });
+  } else {
+    safe.marketplace_order_id = orderId;
+  }
+
+  const metadata = data.metadata ?? null;
+  if (
+    metadata !== null &&
+    (typeof metadata !== "object" || Array.isArray(metadata))
+  ) {
+    errors.push({
+      path: ["metadata"],
+      message: "metadata must be an object",
+    });
+  } else {
+    safe.metadata = metadata;
+  }
+
+  return errors.length
+    ? { success: false, errors }
+    : { success: true, data: safe };
+}
 
 export async function POST(request) {
   try {
+    if (isLocalhostRequest(request)) {
+      return new NextResponse(null, { status: 204 });
+    }
+
     const body = await request.json().catch(() => ({}));
-    const parsed = funnelEventSchema.safeParse(body);
+    const parsed = validateEventPayload(body);
     if (!parsed.success) {
       return NextResponse.json(
         {
           status: "error",
           message: "Invalid request",
-          details: parsed.error.errors,
+          details: parsed.errors,
         },
         { status: 400 }
       );
@@ -57,7 +139,7 @@ export async function POST(request) {
 
     const session = await getServerSession(authOptions).catch(() => null);
 
-    const occurredAt = parsed.data.occurred_at
+    const occurredAt = parsed.data?.occurred_at
       ? new Date(parsed.data.occurred_at)
       : new Date();
     if (!Number.isFinite(occurredAt.getTime())) {
