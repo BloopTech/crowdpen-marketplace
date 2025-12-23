@@ -109,17 +109,21 @@ MarketplaceProduct.init(
     },
     authorRating: {
       type: DataTypes.FLOAT,
+      // Denormalized/optional metric for the author (across their products). Not the same as product `rating`.
     },
     authorSales: {
       type: DataTypes.INTEGER,
+      // Denormalized/optional metric for the author (across their products). Not the same as product salesCount.
     },
     rating: {
       type: DataTypes.FLOAT,
       defaultValue: 0,
+      // Denormalized/optional aggregate rating for THIS product (derived from MarketplaceReview ratings).
     },
     reviewCount: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
+      // Denormalized/optional total rating count for THIS product (derived from MarketplaceReview rows).
     },
     downloads: {
       type: DataTypes.INTEGER,

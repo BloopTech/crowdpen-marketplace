@@ -17,6 +17,7 @@ const {
   MarketplaceKycVerification,
   MarketplaceOrder,
   MarketplaceOrderItems,
+  MarketplaceReview,
 } = db;
 
 export async function GET(request, { params }) {
@@ -120,6 +121,21 @@ export async function GET(request, { params }) {
       },
     });
 
+    const reviewAggRows = await MarketplaceReview.findAll({
+      where: {
+        marketplace_product_id: product?.id,
+        visible: true,
+      },
+      attributes: [
+        [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "count"],
+        [db.Sequelize.fn("AVG", db.Sequelize.col("rating")), "avg"],
+      ],
+      raw: true,
+    });
+    const totalReviews = Number(reviewAggRows?.[0]?.count || 0) || 0;
+    const averageRatingRaw = Number(reviewAggRows?.[0]?.avg || 0) || 0;
+    const averageRating = Math.round(averageRatingRaw * 10) / 10;
+
     // Compute sales count using materialized view
     const BESTSELLER_MIN_SALES = Number(
       process.env.BESTSELLER_MIN_SALES || 100
@@ -151,6 +167,8 @@ export async function GET(request, { params }) {
     const getProduct = {
       ...productJson,
       price: effectivePrice,
+      rating: averageRating,
+      reviewCount: totalReviews,
       Cart: carts,
       wishlist: wishlists,
       salesCount,

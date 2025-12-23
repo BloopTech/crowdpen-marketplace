@@ -12,6 +12,7 @@ const {
   MarketplaceCart,
   MarketplaceCartItems,
   MarketplaceKycVerification,
+  MarketplaceReview,
 } = db;
 
 // Helper to compute effective price respecting discount expiry
@@ -171,6 +172,35 @@ export async function GET(request, { params }) {
       distinct: true
     });
 
+    const productIds = cartItems
+      .map((item) => item?.MarketplaceProduct?.id)
+      .filter(Boolean);
+
+    let reviewAggMap = {};
+    if (productIds.length > 0) {
+      const reviewAggRows = await MarketplaceReview.findAll({
+        where: {
+          marketplace_product_id: { [Op.in]: productIds },
+          visible: true,
+        },
+        attributes: [
+          "marketplace_product_id",
+          [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "count"],
+          [db.Sequelize.fn("AVG", db.Sequelize.col("rating")), "avg"],
+        ],
+        group: ["marketplace_product_id"],
+        raw: true,
+      });
+
+      reviewAggRows.forEach((row) => {
+        const pid = row.marketplace_product_id;
+        const count = Number(row.count || 0) || 0;
+        const avgRaw = Number(row.avg || 0) || 0;
+        const avg = Math.round(avgRaw * 10) / 10;
+        reviewAggMap[pid] = { count, avg };
+      });
+    }
+
     // Calculate cart totals using effective price (respecting discount expiry)
     let subtotal = 0;
     for (const item of cartItems) {
@@ -203,6 +233,9 @@ export async function GET(request, { params }) {
     const formattedItems = cartItems.map(item => {
       const prod = item.MarketplaceProduct;
       const effectivePrice = computeEffectivePrice(prod);
+      const reviewAgg = reviewAggMap[prod?.id];
+      const rating = Number.isFinite(reviewAgg?.avg) ? reviewAgg.avg : 0;
+      const reviewCount = Number(reviewAgg?.count || 0) || 0;
       return {
         id: item.id,
         quantity: item.quantity,
@@ -221,7 +254,8 @@ export async function GET(request, { params }) {
           file_type: prod.fileType,
           file_size: prod.fileSize,
           download_count: prod.downloads,
-          rating: parseFloat(prod.rating || 0),
+          rating,
+          review_count: reviewCount,
           author: prod.User,
           category: prod.MarketplaceCategory,
           subcategory: prod.MarketplaceSubCategory

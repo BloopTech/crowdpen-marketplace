@@ -19,6 +19,7 @@ const {
   MarketplaceKycVerification,
   MarketplaceOrder,
   MarketplaceOrderItems,
+  MarketplaceReview,
 } = db;
 
 export async function GET(request, { params }) {
@@ -300,6 +301,31 @@ export async function GET(request, { params }) {
 
     const productIDs = products?.map((product) => product?.id);
 
+    let reviewAggMap = {};
+    if (productIDs && productIDs.length) {
+      const reviewAggRows = await MarketplaceReview.findAll({
+        where: {
+          marketplace_product_id: { [Op.in]: productIDs },
+          visible: true,
+        },
+        attributes: [
+          "marketplace_product_id",
+          [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "count"],
+          [db.Sequelize.fn("AVG", db.Sequelize.col("rating")), "avg"],
+        ],
+        group: ["marketplace_product_id"],
+        raw: true,
+      });
+
+      reviewAggRows.forEach((row) => {
+        const pid = row.marketplace_product_id;
+        const count = Number(row.count || 0) || 0;
+        const avgRaw = Number(row.avg || 0) || 0;
+        const avg = Math.round(avgRaw * 10) / 10;
+        reviewAggMap[pid] = { count, avg };
+      });
+    }
+
     const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
     let salesMap = {};
     if (productIDs && productIDs.length) {
@@ -379,9 +405,15 @@ export async function GET(request, { params }) {
       const salesCount = salesMap[productJson.id] || 0;
       const isBestseller = salesCount >= BESTSELLER_MIN_SALES;
 
+      const reviewAgg = reviewAggMap[productJson.id];
+      const reviewCount = Number(reviewAgg?.count || 0) || 0;
+      const rating = Number.isFinite(reviewAgg?.avg) ? reviewAgg.avg : 0;
+
       return {
         ...productJson,
         price: effectivePrice,
+        rating,
+        reviewCount,
         tags,
         productTags: undefined, // Remove the nested structure
         wishlist: getWishes,

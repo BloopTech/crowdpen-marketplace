@@ -109,6 +109,13 @@ export async function GET(request) {
       WHERE s."marketplace_product_id" = "MarketplaceProduct"."id"
     ), 0)`);
 
+    const ratingAvgLiteral = db.Sequelize.literal(`COALESCE((
+      SELECT AVG(r."rating")
+      FROM "marketplace_reviews" AS r
+      WHERE r."marketplace_product_id" = "MarketplaceProduct"."id"
+        AND r."visible" = true
+    ), 0)`);
+
     let order = [];
     switch (sort) {
       case "price-low":
@@ -118,7 +125,7 @@ export async function GET(request) {
         order = [["price", "DESC"]];
         break;
       case "rating":
-        order = [["rating", "DESC"]];
+        order = [[ratingAvgLiteral, "DESC"]];
         break;
       case "downloads":
         order = [["downloads", "DESC"]];
@@ -151,6 +158,7 @@ export async function GET(request) {
         "flagged",
         "rating",
         "authorRating",
+        "reviewCount",
         "price",
         "downloads",
         "createdAt",
@@ -164,6 +172,31 @@ export async function GET(request) {
     });
 
     const productIds = rows.map((p) => p.id).filter(Boolean);
+
+    const reviewAggByProductId = new Map();
+    if (productIds.length > 0) {
+      const reviewAggRows = await db.MarketplaceReview.findAll({
+        where: {
+          marketplace_product_id: { [Op.in]: productIds },
+          visible: true,
+        },
+        attributes: [
+          "marketplace_product_id",
+          [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "count"],
+          [db.Sequelize.fn("AVG", db.Sequelize.col("rating")), "avg"],
+        ],
+        group: ["marketplace_product_id"],
+        raw: true,
+      });
+      for (const row of reviewAggRows || []) {
+        const pid = String(row.marketplace_product_id);
+        const count = Number(row.count || 0) || 0;
+        const avgRaw = Number(row.avg || 0) || 0;
+        const avg = Math.round(avgRaw * 10) / 10;
+        reviewAggByProductId.set(pid, { count, avg });
+      }
+    }
+
     const aggByProductId = new Map();
     if (productIds.length > 0) {
       const whereParts = [
@@ -221,6 +254,10 @@ export async function GET(request) {
       const crowdpenFee = revenue * (CROWD_PCT || 0);
       const startbuttonFee = revenue * (SB_PCT || 0);
       const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
+
+      const reviewAgg = reviewAggByProductId.get(String(j.id));
+      const rating = Number.isFinite(reviewAgg?.avg) ? reviewAgg.avg : 0;
+      const reviewCount = Number(reviewAgg?.count || 0) || 0;
       return {
         id: j.id,
         title: j.title,
@@ -229,8 +266,9 @@ export async function GET(request) {
         inStock: Boolean(j.inStock),
         stock: j.stock,
         flagged: Boolean(j.flagged),
-        rating: Number(j.rating) || 0,
+        rating,
         authorRating: Number(j.authorRating) || 0,
+        reviewCount,
         price: Number(j.price),
         downloads: Number(j.downloads) || 0,
         createdAt: j.createdAt,

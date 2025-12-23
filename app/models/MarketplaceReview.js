@@ -37,16 +37,19 @@ MarketplaceReview.init(
     rating: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      // Per-product rating value (1-5). This is what contributes to MarketplaceProduct `rating`/`reviewCount`.
       validate: {
         min: 1,
         max: 5
       }
     },
     title: {
-      type: DataTypes.STRING
+      type: DataTypes.STRING,
+      // Optional title for written reviews.
     },
     content: {
-      type: DataTypes.TEXT
+      type: DataTypes.TEXT,
+      // Optional content/body. Can be empty for rating-only flow.
     },
     verifiedPurchase: {
       type: DataTypes.BOOLEAN,

@@ -41,7 +41,7 @@ import parser from "html-react-parser";
 import { sanitizeHtml } from "../../../lib/sanitizeHtml";
 
 export default function ReviewBox() {
-  const { reviewsData, refetchReviews } = useProductItemContext();
+  const { reviewsData, refetchReviews, refetchProductItem } = useProductItemContext();
   const { openLoginDialog } = useHome();
   const { data: session } = useSession();
   const params = useParams();
@@ -212,6 +212,7 @@ export default function ReviewBox() {
       toast.success(state.message || (isEditing ? "Review updated successfully!" : "Review submitted successfully!"));
       // Refresh reviews to update statistics and user review state
       refetchReviews();
+      refetchProductItem?.();
 
       if (lastIntent === 'rating_only') {
         // Keep dialog open and prompt to write a full review
@@ -230,7 +231,7 @@ export default function ReviewBox() {
     } else if (state.message && !state.success) {
       toast.error(state.message);
     }
-  }, [state, editor, refetchReviews, lastIntent, isEditing]);
+  }, [state, editor, refetchReviews, refetchProductItem, lastIntent, isEditing]);
 
   const handleCancel = () => {
     setShowEditor(false);

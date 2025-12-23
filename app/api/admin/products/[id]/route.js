@@ -56,6 +56,22 @@ export async function GET(_request, { params }) {
     }
 
     const j = product.toJSON();
+
+    const reviewAggRows = await db.MarketplaceReview.findAll({
+      where: {
+        marketplace_product_id: j.id,
+        visible: true,
+      },
+      attributes: [
+        [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "count"],
+        [db.Sequelize.fn("AVG", db.Sequelize.col("rating")), "avg"],
+      ],
+      raw: true,
+    });
+    const reviewCountAgg = Number(reviewAggRows?.[0]?.count || 0) || 0;
+    const ratingAggRaw = Number(reviewAggRows?.[0]?.avg || 0) || 0;
+    const ratingAgg = Math.round(ratingAggRaw * 10) / 10;
+
     // Aggregate units sold and total revenue from completed orders
     const [agg] = await db.sequelize.query(
       `SELECT
@@ -118,9 +134,9 @@ export async function GET(_request, { params }) {
       flagged: Boolean(j.flagged),
       price: j.price != null ? Number(j.price) : null,
       originalPrice: j.originalPrice != null ? Number(j.originalPrice) : null,
-      rating: Number(j.rating) || 0,
+      rating: ratingAgg,
       authorRating: Number(j.authorRating) || 0,
-      reviewCount: Number(j.reviewCount) || 0,
+      reviewCount: reviewCountAgg,
       downloads: Number(j.downloads) || 0,
       inStock: Boolean(j.inStock),
       unitsSold: Number(agg?.unitsSold || 0) || 0,

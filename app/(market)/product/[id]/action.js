@@ -7,6 +7,17 @@ import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { sanitizeHtmlServer } from "../../../lib/sanitizeHtmlServer";
 
+ async function getServerActionHeaders() {
+   try {
+     if (typeof headers !== "function") return null;
+     const h = await headers();
+     if (h && typeof h.get === "function") return h;
+   } catch {
+     return null;
+   }
+   return null;
+ }
+
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session
   const session = await getServerSession(authOptions);
@@ -28,7 +39,7 @@ export async function addProductWishlist(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const hdrs = typeof headers === 'function' ? headers() : null;
+  const hdrs = await getServerActionHeaders();
   const proto = hdrs?.get("x-forwarded-proto") || "http";
   const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
   const dynamicOrigin = host ? `${proto}://${host}` : null;
@@ -120,7 +131,7 @@ export async function upsertProductReview(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const hdrs = typeof headers === 'function' ? headers() : null;
+  const hdrs = await getServerActionHeaders();
   const proto = hdrs?.get("x-forwarded-proto") || "http";
   const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
   const dynamicOrigin = host ? `${proto}://${host}` : null;
@@ -197,7 +208,7 @@ export async function addProductToCart(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const hdrs = typeof headers === 'function' ? headers() : null;
+  const hdrs = await getServerActionHeaders();
   const proto = hdrs?.get("x-forwarded-proto") || "http";
   const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
   const dynamicOrigin = host ? `${proto}://${host}` : null;
@@ -298,7 +309,7 @@ export async function createProductReview(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const hdrs = typeof headers === 'function' ? headers() : null;
+  const hdrs = await getServerActionHeaders();
   const proto = hdrs?.get("x-forwarded-proto") || "http";
   const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
   const dynamicOrigin = host ? `${proto}://${host}` : null;

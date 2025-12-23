@@ -15,6 +15,7 @@ const {
   MarketplaceKycVerification,
   MarketplaceOrder,
   MarketplaceOrderItems,
+  MarketplaceReview,
 } = db;
 
 // Helper to compute effective price respecting discount expiry
@@ -176,6 +177,31 @@ export async function GET(request, { params }) {
 
     const productIDs = wishlistItems?.map((item) => item?.marketplace_product_id);
 
+    let reviewAggMap = {};
+    if (productIDs && productIDs.length) {
+      const reviewAggRows = await MarketplaceReview.findAll({
+        where: {
+          marketplace_product_id: { [Op.in]: productIDs },
+          visible: true,
+        },
+        attributes: [
+          "marketplace_product_id",
+          [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "count"],
+          [db.Sequelize.fn("AVG", db.Sequelize.col("rating")), "avg"],
+        ],
+        group: ["marketplace_product_id"],
+        raw: true,
+      });
+
+      reviewAggRows.forEach((row) => {
+        const pid = row.marketplace_product_id;
+        const count = Number(row.count || 0) || 0;
+        const avgRaw = Number(row.avg || 0) || 0;
+        const avg = Math.round(avgRaw * 10) / 10;
+        reviewAggMap[pid] = { count, avg };
+      });
+    }
+
     // Compute sales count per product
     const BESTSELLER_MIN_SALES = Number(process.env.BESTSELLER_MIN_SALES || 100);
     let salesMap = {};
@@ -222,9 +248,15 @@ export async function GET(request, { params }) {
       const isBestseller = salesCount >= BESTSELLER_MIN_SALES;
       const productData = item?.MarketplaceProduct?.toJSON() || {};
       const effectivePrice = computeEffectivePrice(productData);
+
+      const reviewAgg = reviewAggMap[item.toJSON().marketplace_product_id];
+      const reviewCount = Number(reviewAgg?.count || 0) || 0;
+      const rating = Number.isFinite(reviewAgg?.avg) ? reviewAgg.avg : 0;
       return {
         ...productData,
         price: effectivePrice,
+        rating,
+        reviewCount,
         wishlist: [
           {
             id: item.toJSON().id,
