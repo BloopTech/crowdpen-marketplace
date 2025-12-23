@@ -351,8 +351,74 @@ function CheckoutContent() {
     let moShadow;
     let detachClickFixDoc;
     let detachClickFixShadow;
+    let detachPhoneFixDoc;
+    let detachPhoneFixShadow;
     const buttonSize = 36; // px
     const margin = 8; // px
+    const setNativeInputValue = (input, value) => {
+      try {
+        const proto = input?.ownerDocument?.defaultView?.HTMLInputElement
+          ?.prototype;
+        const desc = proto
+          ? Object.getOwnPropertyDescriptor(proto, "value")
+          : null;
+        if (desc?.set) desc.set.call(input, value);
+        else input.value = value;
+      } catch {
+        try {
+          input.value = value;
+        } catch {}
+      }
+      try {
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      } catch {}
+      try {
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      } catch {}
+    };
+    const attachPhoneNormalize = (root) => {
+      const handler = (ev) => {
+        try {
+          const btn = ev?.target?.closest?.("button");
+          if (!btn) return;
+          const label = (btn.textContent || "").trim().toLowerCase();
+          if (!label.includes("verify")) return;
+          if (!(label.includes("number") || label.includes("phone"))) return;
+
+          const rootNode = btn.getRootNode ? btn.getRootNode() : null;
+          const scope =
+            btn.closest("form") ||
+            btn.closest("dialog") ||
+            btn.closest(".cdk-overlay-pane") ||
+            btn.closest("sb-init") ||
+            (rootNode && typeof rootNode.querySelectorAll === "function"
+              ? rootNode
+              : null) ||
+            document;
+
+          const candidates = Array.from(
+            scope.querySelectorAll(
+              'input[type="tel"], input[name*="phone" i], input[formcontrolname*="phone" i], input[placeholder*="phone" i], input[aria-label*="phone" i], input[aria-label*="number" i]'
+            )
+          );
+          const input = candidates.find((it) => {
+            if (!it) return false;
+            if (typeof it.value !== "string") return false;
+            if (it.disabled) return false;
+            if (it.offsetParent === null) return false;
+            return it.value.trim().startsWith("0");
+          });
+          if (!input) return;
+          const current = (input.value || "").trim();
+          if (!current.startsWith("0") || current.length < 2) return;
+          setNativeInputValue(input, current.slice(1));
+        } catch {}
+      };
+      root.addEventListener("click", handler, true);
+      return () => {
+        root.removeEventListener("click", handler, true);
+      };
+    };
     const styleSbLightDom = () => {
       try {
         const targets = document.querySelectorAll(
@@ -641,6 +707,9 @@ function CheckoutContent() {
         };
         detachClickFixDoc = fix(document);
       } catch {}
+      try {
+        detachPhoneFixDoc = attachPhoneNormalize(document);
+      } catch {}
       const host = document.querySelector('sb-init');
       if (host && host.shadowRoot) {
         moShadow = new MutationObserver(onMut);
@@ -664,6 +733,9 @@ function CheckoutContent() {
             };
           };
           detachClickFixShadow = fix(host.shadowRoot);
+        } catch {}
+        try {
+          detachPhoneFixShadow = attachPhoneNormalize(host.shadowRoot);
         } catch {}
       }
     } catch {}
@@ -765,6 +837,8 @@ function CheckoutContent() {
       try { mo && mo.disconnect(); moShadow && moShadow.disconnect(); } catch {}
       try { detachClickFixDoc && detachClickFixDoc(); } catch {}
       try { detachClickFixShadow && detachClickFixShadow(); } catch {}
+      try { detachPhoneFixDoc && detachPhoneFixDoc(); } catch {}
+      try { detachPhoneFixShadow && detachPhoneFixShadow(); } catch {}
     };
   }, [processing]);
 
