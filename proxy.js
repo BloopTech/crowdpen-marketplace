@@ -105,10 +105,17 @@ export async function proxy(request) {
   const isAdminRoute = pathname.startsWith("/admin");
   const isAuthRoute = authRoutes.includes(pathname);
 
+  const shouldCheckAuth = isDashboardRoute || isAdminRoute || isAuthRoute;
+
   try {
-    // Check authentication using session cookies
-    const { isAuthenticated, user } =
-      await isAuthenticatedInMiddleware(request);
+    let isAuthenticated = false;
+    let user = null;
+    if (shouldCheckAuth) {
+      // Check authentication using session cookies
+      const result = await isAuthenticatedInMiddleware(request);
+      isAuthenticated = !!result?.isAuthenticated;
+      user = result?.user || null;
+    }
 
     const isCheckoutPath =
       pathname === "/checkout" ||
@@ -116,7 +123,7 @@ export async function proxy(request) {
       pathname.includes("/checkout");
 
     // Redirect unauthenticated users from protected routes
-    if (!isAuthenticated && (isDashboardRoute || isAdminRoute)) {
+    if (shouldCheckAuth && !isAuthenticated && (isDashboardRoute || isAdminRoute)) {
       const loginUrl = new URL("/", request.url);
       // Add redirect parameter to return user to original page after login
       loginUrl.searchParams.set("redirect", pathname);
@@ -130,6 +137,7 @@ export async function proxy(request) {
 
     // Restrict admin routes to authorized roles
     if (
+      shouldCheckAuth &&
       isAdminRoute &&
       !(
         user?.crowdpen_staff === true ||
@@ -146,7 +154,7 @@ export async function proxy(request) {
     }
 
     // Redirect authenticated users from auth-only routes (like login pages)
-    if (isAuthenticated && isAuthRoute) {
+    if (shouldCheckAuth && isAuthenticated && isAuthRoute) {
       const referer = request.headers.get("referer");
       let redirectUrl = "/";
 

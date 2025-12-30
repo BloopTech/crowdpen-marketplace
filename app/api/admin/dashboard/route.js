@@ -62,6 +62,10 @@ export async function GET() {
     });
   } catch (error) {
     console.error("/api/admin/dashboard error", error);
-    return NextResponse.json({ status: "error", message: error?.message || "Failed" }, { status: 500 });
+    const isProd = process.env.NODE_ENV === "production";
+    return NextResponse.json(
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
+      { status: 500 }
+    );
   }
 }

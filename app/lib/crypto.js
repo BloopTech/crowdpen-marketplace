@@ -2,9 +2,12 @@
 // Utility for encrypting/decrypting sensitive strings at rest using AES-256-GCM
 // Do NOT log decrypted values.
 
+import "server-only";
 import crypto from "crypto";
+import { assertAnyEnvInProduction } from "./env";
 
 const getSecret = () => {
+  assertAnyEnvInProduction(["BANK_ENCRYPTION_SECRET", "ENCRYPTION_KEY"]);
   const secret = process.env.BANK_ENCRYPTION_SECRET || process.env.ENCRYPTION_KEY;
   if (!secret) {
     // In production, this MUST be set. We avoid throwing to keep dev smooth,

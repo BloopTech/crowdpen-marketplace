@@ -193,14 +193,15 @@ export default function ProductCard(props) {
       }
 
       refetchCartCount();
-    } else if (
+    }
+    if (
       !isCartPending &&
       cartState?.success === false &&
       cartState?.message
     ) {
       // Show error message
-      console.error("Failed to update cart:", cartState.message);
-      toast.error(cartState.message);
+      console.error("Failed to update cart:", cartState?.message);
+      toast.error(cartState?.message);
     }
   }, [cartState, isCartPending, refetchCartCount]);
 
@@ -633,7 +634,8 @@ export default function ProductCard(props) {
               disabled={
                 isCartPending ||
                 !session ||
-                resource.user_id === session.user.id
+                resource.user_id === session.user.id ||
+                isOutOfStock  
               }
             >
               <ShoppingCart className="h-4 w-4 mr-2" />

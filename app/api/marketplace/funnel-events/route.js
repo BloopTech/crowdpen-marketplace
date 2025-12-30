@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { v4 as uuidv4 } from "uuid";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -124,6 +125,15 @@ export async function POST(request) {
       return new NextResponse(null, { status: 204 });
     }
 
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const rl = rateLimit({ key: `funnel-events:${ip}`, limit: 600, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
     const parsed = validateEventPayload(body);
     if (!parsed.success) {
@@ -226,8 +236,9 @@ export async function POST(request) {
     return NextResponse.json({ status: "success", id });
   } catch (error) {
     console.error("/api/marketplace/funnel-events error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
+import { validate as isUUID } from "uuid";
 
 function assertAdmin(user) {
   return (
@@ -41,10 +42,12 @@ export async function GET(request) {
       ? intervalRaw
       : "day";
 
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
-    const merchantId = String(searchParams.get("merchantId") || "").trim() || null;
-    const productId = String(searchParams.get("productId") || "").trim() || null;
+    const fromParam = (searchParams.get("from") || "").slice(0, 100);
+    const toParam = (searchParams.get("to") || "").slice(0, 100);
+    const merchantIdRaw = String(searchParams.get("merchantId") || "").trim().slice(0, 128);
+    const productIdRaw = String(searchParams.get("productId") || "").trim().slice(0, 128);
+    const merchantId = merchantIdRaw && isUUID(merchantIdRaw) ? merchantIdRaw : null;
+    const productId = productIdRaw && isUUID(productIdRaw) ? productIdRaw : null;
 
     const now = new Date();
     const fromDate = parseDateSafe(fromParam) || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -59,6 +62,7 @@ export async function GET(request) {
     const replacements = {
       from: fromDate,
       to: toDate,
+      interval,
     };
 
     if (merchantId) {
@@ -71,18 +75,18 @@ export async function GET(request) {
       replacements.productId = productId;
     }
 
-    const sql = `
-      SELECT
-        date_trunc('${interval}', o."createdAt") AS period,
-        COALESCE(SUM((oi."subtotal")::numeric), 0) AS revenue,
-        COALESCE(SUM(oi."quantity"), 0) AS "unitsSold"
-      FROM "marketplace_order_items" AS oi
-      JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-      JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
-      WHERE ${whereParts.join(" AND ")}
-      GROUP BY 1
-      ORDER BY 1 ASC
-    `;
+    const whereSql = whereParts.join(" AND ");
+    const sql =
+      'SELECT\n'
+      + '  date_trunc(:interval, o."createdAt") AS period,\n'
+      + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS revenue,\n'
+      + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold"\n'
+      + 'FROM "marketplace_order_items" AS oi\n'
+      + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
+      + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
+      + 'WHERE ' + whereSql + '\n'
+      + 'GROUP BY 1\n'
+      + 'ORDER BY 1 ASC\n';
 
     const rows = await db.sequelize.query(sql, {
       replacements,
@@ -146,8 +150,12 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/analytics/revenue error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      {
+        status: "error",
+        message: isProd ? "Failed" : (error?.message || "Failed"),
+      },
       { status: 500 }
     );
   }

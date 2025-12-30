@@ -29,11 +29,13 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limitParam = Number(searchParams.get("limit") || 10);
-    const limit = Math.min(Math.max(limitParam, 1), 100);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "10", 10);
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 100)
+      : 10;
 
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
+    const fromParam = (searchParams.get("from") || "").slice(0, 100);
+    const toParam = (searchParams.get("to") || "").slice(0, 100);
 
     const now = new Date();
     const fromDate =
@@ -79,8 +81,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/analytics/category-breakdown error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

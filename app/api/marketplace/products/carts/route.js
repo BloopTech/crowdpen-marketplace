@@ -15,9 +15,6 @@ export async function GET(request) {
   try {
     // Get current user from session
     const session = await getServerSession(authOptions);
-
-    const userId = session?.user?.id || null;
-
     if (!session || !session.user) {
       return NextResponse.json(
         {
@@ -28,6 +25,8 @@ export async function GET(request) {
         { status: 401 }
       );
     }
+
+    const userId = session.user.id;
 
     const carts = await MarketplaceCart.findAll({
       where: {
@@ -66,10 +65,13 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("Error checking cart status:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to check cart status",
+        message: isProd
+          ? "Failed to check cart status"
+          : (error?.message || "Failed to check cart status"),
         count: 0,
       },
       { status: 500 }

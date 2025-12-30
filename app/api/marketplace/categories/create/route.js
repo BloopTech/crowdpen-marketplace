@@ -7,6 +7,14 @@ import slugify from "slugify";
 
 const { MarketplaceCategory, MarketplaceSubCategory } = db;
 
+function assertAdmin(user) {
+  return (
+    user?.crowdpen_staff === true ||
+    user?.role === "admin" ||
+    user?.role === "senior_admin"
+  );
+}
+
 // Helper function to create a slug
 const createSlug = (name) => {
   return slugify(name, {
@@ -20,8 +28,7 @@ export async function POST(request) {
   try {
     // Check for admin authentication
     const session = await getServerSession(authOptions);
-    console.log("session.....................", session);
-    if (!session) {
+    if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { message: "Unauthorized. Admin access required." },
         { status: 401 }
@@ -72,6 +79,7 @@ export async function POST(request) {
     
   } catch (error) {
     console.error("Error creating categories:", error);
+    const isProd = process.env.NODE_ENV === "production";
     
     // Check if error is a duplicate entry
     if (error.name === 'SequelizeUniqueConstraintError') {
@@ -82,7 +90,10 @@ export async function POST(request) {
     }
     
     return NextResponse.json(
-      { message: "An error occurred while creating categories", error: error.message },
+      {
+        message: "An error occurred while creating categories",
+        ...(isProd ? {} : { error: error?.message }),
+      },
       { status: 500 }
     );
   }

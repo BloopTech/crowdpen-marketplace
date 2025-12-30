@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
 
 function normalizeCurrency(code) {
   if (!code) return null;
@@ -8,6 +9,15 @@ function normalizeCurrency(code) {
 
 export async function GET(request) {
   try {
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const rl = rateLimit({ key: `fx:${ip}`, limit: 120, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const from = normalizeCurrency(searchParams.get("from"));
     const to = normalizeCurrency(searchParams.get("to"));
@@ -47,8 +57,9 @@ export async function GET(request) {
 
     return NextResponse.json({ from, to, rate });
   } catch (error) {
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { error: error?.message || "Failed" },
+      { error: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

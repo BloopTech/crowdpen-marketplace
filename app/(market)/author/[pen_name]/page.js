@@ -4,6 +4,7 @@ import React from "react";
 import AuthorProfileContent from "./content";
 import ErrorPage from "../../../components/ErrorPage";
 import { AuthorProfileContextProvider } from "./context";
+import { headers } from "next/headers";
 
 export default async function AuthorProfilePage({ params }) {
   const { pen_name } = await params;
@@ -19,7 +20,14 @@ export default async function AuthorProfilePage({ params }) {
     );
   }
 
-  const origin = process.env.NEXTAUTH_URL;
+  const h = await headers();
+  const proto = h.get("x-forwarded-proto") || "http";
+  const host = h.get("x-forwarded-host") || h.get("host");
+  const origin =
+    (host ? `${proto}://${host}` : null) ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
   const url = new URL(`/api/marketplace/author/${pen_name}`, origin).toString();
 
   const author = await fetch(url, {

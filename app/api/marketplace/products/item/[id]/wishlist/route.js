@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../auth/[...nextauth]/route";
 import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../lib/security/rateLimit";
 
 const {
   MarketplaceWishlists,
@@ -22,9 +23,6 @@ export async function GET(request) {
   try {
     // Get current user from session
     const session = await getServerSession(authOptions);
-
-    const userId = session.user.id;
-
     if (!session || !session.user) {
       return NextResponse.json(
         {
@@ -35,6 +33,8 @@ export async function GET(request) {
         { status: 401 }
       );
     }
+
+    const userId = session.user.id;
 
     const wishlistCount = await MarketplaceWishlists.count({
       where: {
@@ -48,10 +48,13 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("Error checking wishlist status:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to check wishlist status",
+        message: isProd
+          ? "Failed to check wishlist status"
+          : (error?.message || "Failed to check wishlist status"),
         count: 0,
       },
       { status: 500 }
@@ -69,8 +72,41 @@ export async function POST(request, { params }) {
   const getParams = await params;
 
   try {
-    const body = await request.json();
-    const { user_id } = body;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Authentication required",
+        },
+        { status: 401 }
+      );
+    }
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `wishlist-toggle:${userIdForRl}:${ip}`, limit: 60, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const bodyUserId = body?.user_id;
+    const sessionUserId = session.user.id;
+    if (bodyUserId != null && String(bodyUserId).slice(0, 128) !== String(sessionUserId)) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Invalid user authentication",
+        },
+        { status: 403 }
+      );
+    }
+
+    const user_id = sessionUserId;
 
     // Require a valid session and ensure it matches the provided user_id
     // Verify the user_id matches the session user
@@ -84,9 +120,8 @@ export async function POST(request, { params }) {
       );
     }
 
-    const productId = getParams.id;
-
-    if (!productId) {
+    const productIdRaw = getParams?.id == null ? "" : String(getParams.id).trim();
+    if (!productIdRaw || productIdRaw.length > 128) {
       return NextResponse.json(
         {
           status: "error",
@@ -96,7 +131,7 @@ export async function POST(request, { params }) {
       );
     }
 
-    const idParam = String(productId);
+    const idParam = String(productIdRaw);
     const orConditions = [{ product_id: idParam }];
     if (isUUID(idParam)) {
       orConditions.unshift({ id: idParam });
@@ -195,10 +230,13 @@ export async function POST(request, { params }) {
     }
   } catch (error) {
     console.error("Error managing wishlist:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to update wishlist",
+        message: isProd
+          ? "Failed to update wishlist"
+          : (error?.message || "Failed to update wishlist"),
       },
       { status: 500 }
     );

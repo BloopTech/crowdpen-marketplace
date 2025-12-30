@@ -6,12 +6,7 @@ import axios from "axios";
 // Client-side fetcher function
 const fetcher = async (url) => {
   try {
-    const res = await axios.get(url, {
-      headers: {
-        // Only use NEXT_PUBLIC_ prefixed env variables on the client
-        "x-api-key": process.env.NEXT_PUBLIC_API_ACCESS_KEY || "",
-      },
-    });
+    const res = await axios.get(url);
     return res.data;
   } catch (error) {
     console.error("SWR fetcher error:", error);

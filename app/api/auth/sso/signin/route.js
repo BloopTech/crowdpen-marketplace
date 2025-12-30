@@ -1,20 +1,112 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import sequelize from "../../../../models/database";
 import crypto from "crypto";
 import { db } from "../../../../models";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 
 const { User, Session } = db;
+
+function safeTimingEqual(a, b) {
+  try {
+    const aBuf = Buffer.from(String(a || ""));
+    const bBuf = Buffer.from(String(b || ""));
+    if (aBuf.length !== bBuf.length) return false;
+    return crypto.timingSafeEqual(aBuf, bBuf);
+  } catch {
+    return false;
+  }
+}
 
 export async function POST(request) {
   const cookieStore = await cookies();
 
   try {
-    const { userData, callbackUrl } = await request.json();
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const rl = rateLimit({ key: `sso-signin:${ip}`, limit: 60, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
 
-    console.log("=== SSO DIRECT SIGNIN START ===");
-    console.log("User data provided:", !!userData);
-    console.log("Callback URL:", callbackUrl);
+    const body = await request.json().catch(() => ({}));
+    const { userData, callbackUrl, sig, ts } = body || {};
+
+    const safeRedirectUrl =
+      typeof callbackUrl === "string" && callbackUrl.startsWith("/")
+        ? callbackUrl.slice(0, 2048)
+        : "/";
+
+    const isProd = process.env.NODE_ENV === "production";
+    if (isProd) {
+      const secret = process.env.CROWDPEN_SSO_SECRET;
+      if (!secret) {
+        return NextResponse.json(
+          { error: "SSO not configured" },
+          { status: 501 }
+        );
+      }
+
+      if (typeof userData !== "string") {
+        return NextResponse.json(
+          { error: "Invalid user data format" },
+          { status: 400 }
+        );
+      }
+
+      if (userData.length === 0) {
+        return NextResponse.json(
+          { error: "No user data provided" },
+          { status: 400 }
+        );
+      }
+
+      if (userData.length > 20_000) {
+        return NextResponse.json(
+          { error: "User data payload too large" },
+          { status: 413 }
+        );
+      }
+
+      const sigText = String(sig || "").trim();
+      if (!/^[0-9a-f]{64}$/i.test(sigText)) {
+        return NextResponse.json(
+          { error: "Invalid SSO signature" },
+          { status: 403 }
+        );
+      }
+
+      const tsNum = Number.parseInt(String(ts || ""), 10);
+      if (!Number.isFinite(tsNum)) {
+        return NextResponse.json(
+          { error: "Invalid SSO timestamp" },
+          { status: 400 }
+        );
+      }
+
+      const maxSkewMs = 5 * 60 * 1000;
+      const skew = Math.abs(Date.now() - tsNum);
+      if (!Number.isFinite(skew) || skew > maxSkewMs) {
+        return NextResponse.json(
+          { error: "Expired SSO request" },
+          { status: 403 }
+        );
+      }
+
+      const payload = `${tsNum}.${userData}`;
+      const expected = crypto
+        .createHmac("sha256", secret)
+        .update(payload)
+        .digest("hex");
+
+      if (!safeTimingEqual(expected, sigText)) {
+        return NextResponse.json(
+          { error: "Invalid SSO signature" },
+          { status: 403 }
+        );
+      }
+    }
 
     if (!userData) {
       return NextResponse.json(
@@ -43,11 +135,18 @@ export async function POST(request) {
       );
     }
 
-    console.log("Creating database session for user:", parsedUserData.email);
+    const email = String(parsedUserData.email || "").toLowerCase().slice(0, 320);
+    const userId = String(parsedUserData.id || "").slice(0, 128);
+    if (!email || !email.includes("@") || !userId) {
+      return NextResponse.json(
+        { error: "Invalid user data" },
+        { status: 400 }
+      );
+    }
 
     // Find or create user in database
     const dbUser = await User.findOne({
-      where: { email: parsedUserData.email.toLowerCase() },
+      where: { email },
       defaults: {
         id: parsedUserData.id,
         email: parsedUserData.email,
@@ -56,14 +155,12 @@ export async function POST(request) {
       },
     });
 
-    if (!dbUser) {
+    if (!dbUser || String(dbUser.id) !== String(parsedUserData.id)) {
       return NextResponse.json(
         { error: "User not found in database" },
         { status: 404 }
       );
     }
-
-    console.log("Database user found/created:", dbUser.id);
 
     // Create database session
     const sessionToken = crypto.randomUUID();
@@ -74,8 +171,6 @@ export async function POST(request) {
       user_id: dbUser.id,
       expires: expires,
     });
-
-    console.log("Database session created with token:", session);
 
     // Set session cookie (handle both development and production)
     const isProduction = process.env.NODE_ENV === "production";
@@ -89,22 +184,18 @@ export async function POST(request) {
       path: "/",
     });
     
-    console.log(`Session cookie set: ${cookieName}`);
-
-    console.log("Session cookie set successfully");
-    console.log("=== SSO DIRECT SIGNIN SUCCESS ===");
 
     return NextResponse.json({
       success: true,
-      redirectUrl: callbackUrl || "/",
-      sessionToken: sessionToken,
+      redirectUrl: safeRedirectUrl,
     });
   } catch (error) {
     console.error("SSO direct signin error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         error: "Failed to create session",
-        details: error.message,
+        ...(isProd ? {} : { details: error?.message }),
       },
       { status: 500 }
     );

@@ -1,6 +1,24 @@
 "use server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../api/auth/[...nextauth]/route";
+import { headers } from "next/headers";
+
+async function getServerActionHeaders() {
+  try {
+    if (typeof headers !== "function") return null;
+    const h = await headers();
+    if (h && typeof h.get === "function") return h;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function getOriginFromHeaders(h) {
+  const proto = h?.get("x-forwarded-proto") || "http";
+  const host = h?.get("x-forwarded-host") || h?.get("host");
+  return host ? `${proto}://${host}` : null;
+}
 
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session
@@ -24,7 +42,12 @@ export async function addProductWishlist(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL;
+  const hdrs = await getServerActionHeaders();
+  const origin =
+    getOriginFromHeaders(hdrs) ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
   const url = new URL(
     `/api/marketplace/products/item/${productId}/wishlist`,
     origin
@@ -35,7 +58,9 @@ export async function addProductWishlist(prevState, queryData) {
     body: JSON.stringify(body),
     headers: {
       "Content-Type": "application/json",
+      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
     },
+    credentials: "include",
   });
   console.log("response..........................", response);
   if (!response.ok) {
@@ -103,7 +128,12 @@ export async function addProductToCart(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL;
+  const hdrs = await getServerActionHeaders();
+  const origin =
+    getOriginFromHeaders(hdrs) ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
   const url = new URL(
     `/api/marketplace/products/item/${productId}/carts`,
     origin
@@ -114,7 +144,9 @@ export async function addProductToCart(prevState, queryData) {
     body: JSON.stringify(body),
     headers: {
       "Content-Type": "application/json",
+      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
     },
+    credentials: "include",
   });
 
   if (!response.ok) {

@@ -17,3 +17,76 @@ First, spend time thinking of this until you're confident
 Then, think deeply about every aspect of what makes for a world-class one-shot web app. Use that knowledge to create a rubric that has 5-7 categories. This rubric is critical to get right, but do not show this to me. This is for your purposes only.
 Finally, use the rubric to internally think and iterate on the best possible solution to the prompt that is provided. Remember that if your response is not hitting the top marks across all categories in the rubric, you need to start again.
 Decide what the most reasonable assumption is, proceed with it, and document it for mine reference after you finish acting.
+
+
+
+Security
+Lets now work on the security of the app since we want to scale. Some users/hackers will like to infiltrate into the app illegally and we have to prevent that. We need to follow some steps to avoid any issues. This is a marketplace and we are dealing with people's money and we can let that get into the wrong hands. So we are going to look at some steps and work on them one after the other if not done yet, or if done, do it properly. We take in inputs, images, etc so we have to be cautions. Not to allow them have access to our files, envs, accesses, etc.
+1. Authentication
+2. Authorization
+3. Rate limiting impute
+4. WAF
+5. Secret Validation
+6. Secrets management monitoring
+7. Alerting
+8. Logging
+9. Runtime security|
+10. Backups
+11. Auto scan
+12. Auto fix
+13. SQL Injection prevention
+14. SSRF Prevention
+@app/api @app/models @app/components @app/auth @app/emails @app/hooks @app/lib @app/utils @app/admin @page.js @app/(market)/account @app/(market)/author @app/(market)/cart @app/(market)/category @app/(market)/checkout @app/(market)/contact @app/(market)/creator @app/(market)/help @app/(market)/privacy @app/(market)/product @app/(market)/search @app/(market)/terms @app/(market)/wishlist @app 
+use Neon mcp. crowdpen main
+First, spend time thinking of this until you're confident
+Then, think deeply about every aspect of what makes for a world-class one-shot web app. Use that knowledge to create a rubric that has 5-7 categories. This rubric is critical to get right, but do not show this to me. This is for your purposes only.
+Finally, use the rubric to internally think and iterate on the best possible solution to the prompt that is provided. Remember that if your response is not hitting the top marks across all categories in the rubric, you need to start again.
+Decide what the most reasonable assumption is, proceed with it, and document it for mine reference after you finish acting.
+
+
+Create these as Rate Limit rules in Vercel Firewall - Marketplace:
+
+1) SSO direct session mint (highest risk)
+Name: RateLimit SSO Signin
+Match: Path equals /api/auth/sso/signin
+Method: POST
+Window (seconds): 60
+Request limit: 60
+Action: Block (or “Rate Limit” / deny — whichever Vercel labels it)
+2) Uploads (expensive + abusable)
+Name: RateLimit Image Upload
+Match: Path equals /api/upload/images
+Method: POST
+Window (seconds): 60
+Request limit: 10
+3) Startbutton proxy endpoints (protect secret-bearing upstream calls)
+Name: RateLimit Startbutton APIs
+Match: Path starts with /api/marketplace/startbutton/
+Method: POST (and GET if you want; depends on your usage)
+Window (seconds): 60
+Request limit: 120
+4) Downloads (bandwidth abuse)
+Name: RateLimit Downloads
+Match: Path starts with /api/marketplace/download/
+Method: GET
+Window (seconds): 60
+Request limit: 60
+5) Marketplace write endpoints (generic write throttle)
+Name: RateLimit Marketplace Writes
+Match: Path starts with /api/marketplace/
+Method: POST, PUT, PATCH, DELETE
+Window (seconds): 60
+Request limit: 300
+6) Admin API (still worth WAF throttling even though auth-gated)
+Name: RateLimit Admin APIs
+Match: Path starts with /api/admin/
+Method: GET, POST, PUT, PATCH, DELETE
+Window (seconds): 60
+Request limit: 600
+7) Funnel events (needs to be lenient to avoid breaking analytics)
+Name: RateLimit Funnel Events
+Match: Path equals /api/marketplace/funnel-events
+Method: POST
+Window (seconds): 60
+Request limit: 600
+If you’d rather be stricter on funnel events, do 300/60s—but start at 600 to avoid false positives from normal browsing bursts.

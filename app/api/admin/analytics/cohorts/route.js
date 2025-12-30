@@ -34,11 +34,13 @@ export async function GET(request) {
       ? cohortParam
       : "week";
 
-    const lookbackDaysParam = Number(searchParams.get("lookbackDays") || 90);
-    const lookbackDays = Math.min(Math.max(lookbackDaysParam, 7), 365);
+    const lookbackDaysParam = Number.parseInt(searchParams.get("lookbackDays") || "90", 10);
+    const lookbackDays = Number.isFinite(lookbackDaysParam)
+      ? Math.min(Math.max(lookbackDaysParam, 7), 365)
+      : 90;
 
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
+    const fromParam = (searchParams.get("from") || "").slice(0, 100);
+    const toParam = (searchParams.get("to") || "").slice(0, 100);
 
     const now = new Date();
     const fromDate =
@@ -69,7 +71,7 @@ export async function GET(request) {
         SELECT
           cb.user_id,
           cb.first_paid_at,
-          date_trunc('${cohort}', cb.first_paid_at) AS cohort_period
+          date_trunc(:cohort, cb.first_paid_at) AS cohort_period
         FROM cohort_base cb
       ),
       flags AS (
@@ -117,7 +119,7 @@ export async function GET(request) {
     `;
 
     const rows = await db.sequelize.query(sql, {
-      replacements: { from: fromDate, to: toDate },
+      replacements: { from: fromDate, to: toDate, cohort },
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
@@ -150,8 +152,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/analytics/cohorts error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

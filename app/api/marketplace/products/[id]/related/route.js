@@ -26,10 +26,27 @@ export async function GET(request, { params }) {
   const userId = session?.user?.id || null;
   try {
     const { id } = getParams;
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get("limit")) || 5;
+    const idRaw = id == null ? "" : String(id).trim();
+    if (!idRaw) {
+      return NextResponse.json(
+        { error: "Product ID is required" },
+        { status: 400 }
+      );
+    }
+    if (idRaw.length > 128) {
+      return NextResponse.json(
+        { error: "Product ID is required" },
+        { status: 400 }
+      );
+    }
 
-    const idParam = String(id);
+    const { searchParams } = new URL(request.url);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "5", 10);
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 20)
+      : 5;
+
+    const idParam = idRaw;
     const orConditions = [{ product_id: idParam }];
     if (isUUID(idParam)) {
       orConditions.unshift({ id: idParam });
@@ -53,11 +70,6 @@ export async function GET(request, { params }) {
         },
       ],
     });
-    console.log(
-      "Current product for related products:",
-      currentProduct?.id,
-      currentProduct?.category
-    );
 
     if (!currentProduct) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });

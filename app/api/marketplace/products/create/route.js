@@ -5,6 +5,16 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 import sharp from "sharp";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { assertRequiredEnvInProduction } from "../../../../lib/env";
+
+assertRequiredEnvInProduction([
+  "CLOUDFLARE_R2_ENDPOINT",
+  "CLOUDFLARE_R2_ACCESS_KEY_ID",
+  "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
+  "CLOUDFLARE_R2_BUCKET_NAME",
+  "CLOUDFLARE_R2_PUBLIC_URL",
+]);
 
 // Configure S3 client for Cloudflare R2
 const s3Client = new S3Client({
@@ -144,13 +154,37 @@ export async function POST(request) {
     // Process form data
     const formData = await request.formData();
 
-    // Get user ID from form data
-    const userId = formData.get("user_id");
-    if (!userId) {
-      return NextResponse.json({ 
-        status: "error",
-        message: "User ID is required" 
-      }, { status: 400 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Authentication required",
+        },
+        { status: 401 }
+      );
+    }
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userId = String(session.user.id);
+    const rl = rateLimit({ key: `product-create:${userId}:${ip}`, limit: 10, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
+    // userId already derived from session
+    const userIdFromForm = formData.get("user_id");
+    if (userIdFromForm && String(userIdFromForm) !== userId) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Unauthorized",
+        },
+        { status: 403 }
+      );
     }
 
     const resolvedCurrency = "USD";
@@ -555,10 +589,13 @@ export async function POST(request) {
   } catch (error) {
     console.error("Error creating product:", error);
 
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to create product",
+        message: isProd
+          ? "Failed to create product"
+          : (error?.message || "Failed to create product"),
       },
       { status: 500 }
     );

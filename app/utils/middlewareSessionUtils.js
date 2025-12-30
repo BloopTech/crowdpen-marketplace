@@ -10,20 +10,20 @@ export async function isAuthenticatedInMiddleware(request) {
     const sessionToken =
       request.cookies.get("next-auth.session-token")?.value ||
       request.cookies.get("__Secure-next-auth.session-token")?.value;
-    console.log("token........................", sessionToken);
     if (!sessionToken) {
       return { isAuthenticated: false, user: null };
     }
 
     // For Edge Runtime compatibility, we'll make an internal API call
     // to verify the session instead of direct database access
-    const baseUrl = process.env.NEXTAUTH_URL;
+    const baseUrl = process.env.NEXTAUTH_URL || request?.nextUrl?.origin;
     const verifyUrl = new URL("/api/auth/verify-session", baseUrl).toString();
 
     const response = await fetch(verifyUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-cp-internal-proxy": "1",
         Cookie: request.headers.get("cookie") || "",
       },
       body: JSON.stringify({ sessionToken }),

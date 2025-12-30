@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../auth/[...nextauth]/route";
 import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../lib/security/rateLimit";
 
 const { MarketplaceReview, User, MarketplaceProduct } = db;
 
@@ -16,13 +17,17 @@ const { MarketplaceReview, User, MarketplaceProduct } = db;
 export async function GET(request, { params }) {
   const getParams = await params;
   try {
-    const productId = getParams.id;
+    const productIdRaw = getParams?.id == null ? "" : String(getParams.id).trim();
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get("page")) || 1;
-    const limit = parseInt(searchParams.get("limit")) || 10;
+    const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "10", 10);
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 50)
+      : 10;
     const offset = (page - 1) * limit;
 
-    if (!productId) {
+    if (!productIdRaw || productIdRaw.length > 128) {
       return NextResponse.json(
         {
           status: "error",
@@ -32,7 +37,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    const idParam = String(productId);
+    const idParam = String(productIdRaw);
     const orConditions = [{ product_id: idParam }];
     if (isUUID(idParam)) {
       orConditions.unshift({ id: idParam });
@@ -52,16 +57,6 @@ export async function GET(request, { params }) {
           message: "Product does not exist",
         },
         { status: 400 }
-      );
-    }
-
-    if (String(product.user_id) === String(userId)) {
-      return NextResponse.json(
-        {
-          status: "error",
-          message: "You can't review your own product",
-        },
-        { status: 403 }
       );
     }
 
@@ -186,10 +181,13 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error("Error fetching reviews:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to fetch reviews",
+        message: isProd
+          ? "Failed to fetch reviews"
+          : (error?.message || "Failed to fetch reviews"),
       },
       { status: 500 }
     );
@@ -210,31 +208,57 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const userId = session.user.id;
-    const productId = getParams.id;
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `review-upsert:${userIdForRl}:${ip}`, limit: 20, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
 
-    if (!productId) {
+    const userId = session.user.id;
+    const productIdRaw = getParams?.id == null ? "" : String(getParams.id).trim();
+
+    if (!productIdRaw || productIdRaw.length > 128) {
       return NextResponse.json(
         { status: "error", message: "Product ID is required" },
         { status: 400 }
       );
     }
 
-    const idParam = String(productId);
+    const idParam = String(productIdRaw);
     const orConditions = [{ product_id: idParam }];
     if (isUUID(idParam)) {
       orConditions.unshift({ id: idParam });
     }
 
-    const body = await request.json();
-    const rating = parseInt(body.rating, 10);
-    const title = body.title ?? null;
-    const content = body.content ?? undefined; // undefined means do not change on update
+    const body = await request.json().catch(() => ({}));
+    const rating = Number.parseInt(String(body?.rating), 10);
+    const title = body?.title ?? null;
+    const content = body?.content ?? undefined; // undefined means do not change on update
 
-    if (!rating || rating < 1 || rating > 5) {
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
       return NextResponse.json(
         { status: "error", message: "Rating must be between 1 and 5" },
         { status: 400 }
+      );
+    }
+
+    const titleText = title == null ? null : String(title);
+    if (titleText && titleText.length > 200) {
+      return NextResponse.json(
+        { status: "error", message: "Title is too long" },
+        { status: 413 }
+      );
+    }
+
+    const contentText = content === undefined ? undefined : String(content ?? "");
+    if (typeof contentText === "string" && contentText.length > 10_000) {
+      return NextResponse.json(
+        { status: "error", message: "Review content is too long" },
+        { status: 413 }
       );
     }
 
@@ -277,11 +301,11 @@ export async function PUT(request, { params }) {
       // Update existing review
       review.rating = rating;
       if (title !== undefined) {
-        review.title = title && String(title).trim().length > 0 ? title : null;
+        review.title = titleText && titleText.trim().length > 0 ? titleText : null;
       }
       if (content !== undefined) {
         // Allow empty string to represent rating-only
-        review.content = content ?? "";
+        review.content = contentText ?? "";
       }
       await review.save();
     } else {
@@ -290,8 +314,8 @@ export async function PUT(request, { params }) {
         marketplace_product_id: product.id,
         user_id: userId,
         rating,
-        title: title && String(title).trim().length > 0 ? title : null,
-        content: content ?? "",
+        title: titleText && titleText.trim().length > 0 ? titleText : null,
+        content: contentText ?? "",
         verifiedPurchase: false,
         visible: true,
       });
@@ -330,8 +354,14 @@ export async function PUT(request, { params }) {
     });
   } catch (error) {
     console.error("Error upserting review:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error.message || "Failed to save review" },
+      {
+        status: "error",
+        message: isProd
+          ? "Failed to save review"
+          : (error?.message || "Failed to save review"),
+      },
       { status: 500 }
     );
   }

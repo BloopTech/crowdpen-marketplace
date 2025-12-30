@@ -4,6 +4,34 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { headers } from "next/headers";
+
+async function getServerActionHeaders() {
+  try {
+    if (typeof headers !== "function") return null;
+    const h = await headers();
+    if (h && typeof h.get === "function") return h;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function getOriginFromHeaders(h) {
+  const proto = h?.get("x-forwarded-proto") || "http";
+  const host = h?.get("x-forwarded-host") || h?.get("host");
+  return host ? `${proto}://${host}` : null;
+}
+
+function buildCookieHeader() {
+  try {
+    const all = cookies().getAll();
+    return all.map((c) => `${c.name}=${c.value}`).join("; ");
+  } catch {
+    return "";
+  }
+}
 
 // Validation schemas
 const updateCartItemSchema = z.object({
@@ -49,19 +77,27 @@ export async function updateCartItemQuantity(prevState, formData) {
 
   try {
     // Call the API endpoint to update cart item
-    const origin = process.env.NEXTAUTH_URL;
+    const hdrs = await getServerActionHeaders();
+    const origin =
+      getOriginFromHeaders(hdrs) ||
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
     const url = new URL(`/api/marketplace/products/item/${itemId}/carts/update`, origin).toString();
+
+    const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': `next-auth.session-token=${session.sessionToken}` // Pass session for auth
+        ...(cookieHeader ? { cookie: cookieHeader } : {})
       },
       body: JSON.stringify({
         action: 'update_quantity',
         quantity
-      })
+      }),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -124,18 +160,26 @@ export async function removeCartItem(prevState, formData) {
 
   try {
     // Call the API endpoint to remove cart item
-    const origin = process.env.NEXTAUTH_URL;
+    const hdrs = await getServerActionHeaders();
+    const origin =
+      getOriginFromHeaders(hdrs) ||
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
     const url = new URL(`/api/marketplace/products/item/${itemId}/carts/update`, origin).toString();
+
+    const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': `next-auth.session-token=${session.sessionToken}` // Pass session for auth
+        ...(cookieHeader ? { cookie: cookieHeader } : {})
       },
       body: JSON.stringify({
         action: 'remove_item'
-      })
+      }),
+      credentials: "include",
     });
 
     if (!response.ok) {
@@ -207,18 +251,26 @@ export async function clearCart(prevState, formData) {
 
   try {
     // Call the API endpoint to clear cart
-    const origin = process.env.NEXTAUTH_URL;
+    const hdrs = await getServerActionHeaders();
+    const origin =
+      getOriginFromHeaders(hdrs) ||
+      process.env.NEXTAUTH_URL ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
     const url = new URL('/api/marketplace/products/carts/clear', origin).toString();
+
+    const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': `next-auth.session-token=${session.sessionToken}` // Pass session for auth
+        ...(cookieHeader ? { cookie: cookieHeader } : {})
       },
       body: JSON.stringify({
         penName
-      })
+      }),
+      credentials: "include",
     });
 
     if (!response.ok) {

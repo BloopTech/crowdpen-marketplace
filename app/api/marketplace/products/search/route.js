@@ -38,13 +38,19 @@ function parseOperators(q = "") {
 
   const priceMatch = text.match(/price:([<>=])(\d+(?:\.\d+)?)/i);
   if (priceMatch) {
-    price = [priceMatch[1], Number.parseFloat(priceMatch[2])];
+    const v = Number.parseFloat(priceMatch[2]);
+    if (Number.isFinite(v)) {
+      price = [priceMatch[1], v];
+    }
     text = text.replace(/price:[<>=]\d+(?:\.\d+)?/i, "").trim();
   }
 
   const ratingMatch = text.match(/rating:(\d+(?:\.\d+)?)/i);
   if (ratingMatch) {
-    rating = Number.parseFloat(ratingMatch[1]);
+    const v = Number.parseFloat(ratingMatch[1]);
+    if (Number.isFinite(v)) {
+      rating = v;
+    }
     text = text.replace(/rating:\d+(?:\.\d+)?/i, "").trim();
   }
 
@@ -95,8 +101,13 @@ function calculateRelevance(resource, searchTerms) {
 }
 
 async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
-  const { text, type, author, price, rating, categoryTerm, subcategoryTerm } =
+  const { text: rawText, type, author, price, rating, categoryTerm, subcategoryTerm } =
     parseOperators(q);
+
+  const text = (rawText || "").slice(0, 200);
+  const safeLimit = Number.isFinite(limit)
+    ? Math.min(Math.max(Number(limit), 1), 50)
+    : 50;
 
   const andConditions = [];
 
@@ -383,7 +394,7 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
           [rankScoreLiteral, "DESC"],
           ["createdAt", "DESC"],
         ],
-    limit,
+    limit: safeLimit,
   });
 
   const productIds = rows.map((p) => p.id).filter(Boolean);
@@ -474,16 +485,26 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
-  const q = searchParams.get("q") || "";
-  const limit = parseInt(searchParams.get("limit") || "50", 10);
+  const q = (searchParams.get("q") || "").slice(0, 200);
+  const limitParam = Number.parseInt(searchParams.get("limit") || "50", 10);
+  const limit = Number.isFinite(limitParam)
+    ? Math.min(Math.max(limitParam, 1), 50)
+    : 50;
 
-  const parseCsv = (v) =>
-    v
-      ? v
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)
-      : [];
+  const parseCsv = (v) => {
+    const raw =
+      v
+        ? v
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+
+    return raw
+      .slice(0, 50)
+      .map((s) => String(s).slice(0, 100))
+      .filter(Boolean);
+  };
   const categoryIds = parseCsv(searchParams.get("categoryId"));
   const categorySlugs = parseCsv(searchParams.get("categorySlug"));
   const categoryNames = parseCsv(searchParams.get("category"));
@@ -519,12 +540,13 @@ export async function GET(request) {
   } catch (err) {
     console.error("/api/marketplace/products/search error:", err);
     const ended = Date.now();
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         results: [],
         source: "db",
         searchTime: ended - started,
-        error: err?.message || "Search failed",
+        ...(isProd ? {} : { error: err?.message || "Search failed" }),
       },
       { status: 500 }
     );

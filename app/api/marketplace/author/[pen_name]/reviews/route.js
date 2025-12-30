@@ -7,21 +7,36 @@ const { User, MarketplaceProduct, MarketplaceReview } = db;
 export async function GET(request, { params }) {
   const getParams = await params;
   const { pen_name } = getParams;
+  const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
   const { searchParams } = new URL(request.url);
-  
+
   // Pagination parameters
-  const page = parseInt(searchParams.get('page')) || 1;
-  const limit = parseInt(searchParams.get('limit')) || 10;
+  const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+  const limitParam = Number.parseInt(searchParams.get("limit") || "10", 10);
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+  const limit = Number.isFinite(limitParam)
+    ? Math.min(Math.max(limitParam, 1), 50)
+    : 10;
   const offset = (page - 1) * limit;
-  
+
   // Filter parameters
-  const rating = searchParams.get('rating'); // Filter by specific rating
-  const sortBy = searchParams.get('sortBy') || 'newest'; // newest, oldest, rating-high, rating-low
+  const rating = (searchParams.get('rating') || "").slice(0, 10); // Filter by specific rating
+  const sortBy = (searchParams.get('sortBy') || 'newest').slice(0, 50); // newest, oldest, rating-high, rating-low
 
   try {
+    if (!penNameRaw || penNameRaw.length > 80) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Author not found",
+        },
+        { status: 404 }
+      );
+    }
+
     // Find author first
     const author = await User.findOne({
-      where: { pen_name },
+      where: { pen_name: penNameRaw },
       attributes: ['id']
     });
 
@@ -36,9 +51,12 @@ export async function GET(request, { params }) {
     }
 
     // Build where conditions for reviews
-    const reviewWhere = {};
+    const reviewWhere = { visible: true };
     if (rating) {
-      reviewWhere.rating = parseInt(rating);
+      const ratingValue = Number.parseInt(String(rating), 10);
+      if (Number.isFinite(ratingValue) && ratingValue >= 1 && ratingValue <= 5) {
+        reviewWhere.rating = ratingValue;
+      }
     }
 
     // Build order clause
@@ -134,10 +152,13 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error("Error fetching author reviews:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to fetch reviews",
+        message: isProd
+          ? "Failed to fetch reviews"
+          : (error?.message || "Failed to fetch reviews"),
       },
       { status: 500 }
     );

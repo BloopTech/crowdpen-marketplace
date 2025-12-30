@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op } from "sequelize";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
 
 function assertAdmin(user) {
   return (
@@ -22,8 +23,18 @@ export async function PATCH(request) {
       );
     }
 
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `admin-products:patch:${userIdForRl}:${ip}`, limit: 120, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
-    const id = String(body?.id || "").trim();
+    const id = String(body?.id || "").trim().slice(0, 128);
     const featured = Boolean(body?.featured);
     const flagged = typeof body?.flagged !== "undefined" ? Boolean(body.flagged) : undefined;
     if (!id) {
@@ -42,7 +53,11 @@ export async function PATCH(request) {
     return NextResponse.json({ status: "success", data: { id, ...patch } });
   } catch (error) {
     console.error("/api/admin/products PATCH error", error);
-    return NextResponse.json({ status: "error", message: error?.message || "Failed" }, { status: 500 });
+    const isProd = process.env.NODE_ENV === "production";
+    return NextResponse.json(
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
+      { status: 500 }
+    );
   }
 }
 
@@ -56,10 +71,20 @@ export async function GET(request) {
       );
     }
 
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `admin-products:list:${userIdForRl}:${ip}`, limit: 240, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const pageParam = Number(searchParams.get("page") || 1);
     const pageSizeParam = Number(searchParams.get("pageSize") || 20);
-    const q = (searchParams.get("q") || "").trim();
+    const q = (searchParams.get("q") || "").trim().slice(0, 200);
     const featured = searchParams.get("featured") || ""; // "true" | "false" | ""
     const flaggedParam = searchParams.get("flagged") || ""; // "true" | "false" | ""
     const sort = searchParams.get("sort") || "rank"; // rank | newest | price-low | price-high | rating | downloads
@@ -213,16 +238,16 @@ export async function GET(request) {
         replacements.to = toDate;
       }
 
-      const aggSql = `
-        SELECT
-          oi."marketplace_product_id" AS "marketplace_product_id",
-          COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",
-          COALESCE(SUM((oi."subtotal")::numeric), 0) AS "totalRevenue"
-        FROM "marketplace_order_items" AS oi
-        JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-        WHERE ${whereParts.join(" AND ")}
-        GROUP BY 1
-      `;
+      const whereSql = whereParts.join(" AND ");
+      const aggSql =
+        'SELECT\n'
+        + '  oi."marketplace_product_id" AS "marketplace_product_id",\n'
+        + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",\n'
+        + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "totalRevenue"\n'
+        + 'FROM "marketplace_order_items" AS oi\n'
+        + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
+        + 'WHERE ' + whereSql + '\n'
+        + 'GROUP BY 1\n';
 
       const aggRows = await db.sequelize.query(aggSql, {
         replacements,
@@ -287,6 +312,13 @@ export async function GET(request) {
     return NextResponse.json({ status: "success", page, pageSize, total: count, data });
   } catch (error) {
     console.error("/api/admin/products error", error);
-    return NextResponse.json({ status: "error", message: error?.message || "Failed" }, { status: 500 });
+    const isProd = process.env.NODE_ENV === "production";
+    return NextResponse.json(
+      {
+        status: "error",
+        message: isProd ? "Failed" : error?.message || "Failed",
+      },
+      { status: 500 }
+    );
   }
 }

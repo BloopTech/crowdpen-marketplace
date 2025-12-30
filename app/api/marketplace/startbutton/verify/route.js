@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { assertSafeExternalUrl } from "../../../../lib/security/ssrf";
+import { assertAnyEnvInProduction } from "../../../../lib/env";
+
+assertAnyEnvInProduction([
+  "STARTBUTTON_SECRET_KEY",
+  "STARTBUTTON_SECRET",
+  "STARTBUTTON_API_KEY",
+]);
 
 const getBaseUrl = () =>
   process.env.STARTBUTTON_BASE_URL ||
@@ -8,6 +17,11 @@ const getBaseUrl = () =>
     ? "https://api.startbutton.tech"
     //: "https://api-dev.startbutton.tech");
     : "https://api.startbutton.tech");
+
+const ALLOWED_STARTBUTTON_HOSTS = new Set([
+  "api.startbutton.tech",
+  "api-dev.startbutton.tech",
+]);
 
 const getSecret = () =>
   process.env.STARTBUTTON_SECRET_KEY ||
@@ -55,6 +69,16 @@ export async function GET(request) {
       );
     }
 
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userId = String(session.user.id);
+    const rl = rateLimit({ key: `sb-verify:${userId}:${ip}`, limit: 30, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const bankCode = searchParams.get("bankCode");
     const accountNumber = searchParams.get("accountNumber");
@@ -92,7 +116,21 @@ export async function GET(request) {
 
     const upstreamUrl = `${base}/bank/verify?${qs.toString()}`;
 
-    const upstream = await fetch(upstreamUrl, {
+    let safeUpstream;
+    try {
+      const baseHost = new URL(base).hostname.toLowerCase();
+      if (!ALLOWED_STARTBUTTON_HOSTS.has(baseHost)) {
+        throw new Error("Invalid upstream");
+      }
+      safeUpstream = await assertSafeExternalUrl(upstreamUrl, { allowedHosts: [baseHost] });
+    } catch {
+      return NextResponse.json(
+        { status: "error", message: "Upstream not available" },
+        { status: 502 }
+      );
+    }
+
+    const upstream = await fetch(safeUpstream.toString(), {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${secret}`,
@@ -111,8 +149,9 @@ export async function GET(request) {
     return NextResponse.json({ status: "success", data: data?.data || null });
   } catch (error) {
     console.error("verify proxy error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Server error" },
+      { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },
       { status: 500 }
     );
   }

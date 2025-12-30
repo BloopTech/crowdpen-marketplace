@@ -40,9 +40,6 @@ export default async function RootLayout({ children }) {
   const fetcher = async (url) => {
     "use server";
     const response = await fetch(url, {
-      headers: {
-        "x-api-key": process.env.API_ACCESS_KEY,
-      },
       method: "GET",
     });
     return response.json();

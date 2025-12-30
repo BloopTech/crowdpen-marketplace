@@ -5,6 +5,24 @@ import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
+
+async function getServerActionHeaders() {
+  try {
+    if (typeof headers !== "function") return null;
+    const h = await headers();
+    if (h && typeof h.get === "function") return h;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function getOriginFromHeaders(h) {
+  const proto = h?.get("x-forwarded-proto") || "http";
+  const host = h?.get("x-forwarded-host") || h?.get("host");
+  return host ? `${proto}://${host}` : null;
+}
 
 export async function addAccountUpdate(prevState, queryData) {}
 
@@ -37,7 +55,9 @@ export async function upsertBank(prevState, formData) {
       userId: session.user.id
     };
 
+    const hdrs = await getServerActionHeaders();
     const origin =
+      getOriginFromHeaders(hdrs) ||
       process.env.NEXTAUTH_URL ||
       process.env.NEXT_PUBLIC_APP_URL ||
       "http://localhost:3000";
@@ -53,9 +73,10 @@ export async function upsertBank(prevState, formData) {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
       },
       body: JSON.stringify(payload),
+      credentials: "include",
     });
 
     const result = await response.json().catch(() => ({}));
@@ -165,7 +186,9 @@ export async function upsertKyc(prevState, formData) {
       userId: session.user.id
     };
 
+    const hdrs = await getServerActionHeaders();
     const origin =
+      getOriginFromHeaders(hdrs) ||
       process.env.NEXTAUTH_URL ||
       process.env.NEXT_PUBLIC_APP_URL ||
       "http://localhost:3000";
@@ -181,9 +204,10 @@ export async function upsertKyc(prevState, formData) {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        ...(cookieHeader ? { Cookie: cookieHeader } : {}),
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
       },
       body: JSON.stringify(payload),
+      credentials: "include",
     });
 
     const result = await response.json().catch(() => ({}));

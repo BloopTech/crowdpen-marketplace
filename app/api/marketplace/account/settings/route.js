@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 
 // PATCH /api/marketplace/account/settings
 // Updates user account settings
@@ -17,6 +18,16 @@ export async function PATCH(request) {
     }
 
     const userId = session.user.id;
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const rl = rateLimit({ key: `account-settings:${String(userId)}:${ip}`, limit: 60, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const body = await request.json();
 
     // Valid setting keys

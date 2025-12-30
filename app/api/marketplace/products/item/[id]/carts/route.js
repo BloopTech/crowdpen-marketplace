@@ -4,6 +4,7 @@ import { authOptions } from "../../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../../models/index";
 import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../lib/security/rateLimit";
 
 const {
   MarketplaceProduct,
@@ -27,8 +28,37 @@ export async function POST(request, { params }) {
   const getParams = await params;
 
   try {
-    const body = await request.json();
-    const { quantity = 1, user_id } = body;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { status: "error", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `cart-toggle:${userIdForRl}:${ip}`, limit: 60, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const { quantity = 1, user_id: userIdFromBody } = body;
+    if (
+      userIdFromBody &&
+      String(userIdFromBody).slice(0, 128) !== String(session.user.id)
+    ) {
+      return NextResponse.json(
+        { status: "error", message: "Invalid user authentication" },
+        { status: 403 }
+      );
+    }
+
+    const userId = session.user.id;
 
     const productId = getParams.id;
 
@@ -48,13 +78,6 @@ export async function POST(request, { params }) {
     }
 
     // Require session and verify user_id matches
-
-    if (!user_id) {
-      return NextResponse.json(
-        { status: "error", message: "Invalid user authentication" },
-        { status: 403 }
-      );
-    }
 
     // Check if product exists and load owner's KYC status
     const idParam = String(productId);
@@ -90,7 +113,7 @@ export async function POST(request, { params }) {
     }
 
     // Block adding non-published products (unless viewer is owner)
-    const isOwnerForStatus = product.user_id === user_id;
+    const isOwnerForStatus = product.user_id === userId;
     if (!isOwnerForStatus && product.product_status !== 'published') {
       return NextResponse.json(
         { status: "error", message: "Product is not available" },
@@ -99,7 +122,7 @@ export async function POST(request, { params }) {
     }
 
     // KYC gating: only allow if viewer is owner or owner's KYC is approved
-    const isOwner = product.user_id === user_id;
+    const isOwner = product.user_id === userId;
     const ownerApproved =
       product?.User?.MarketplaceKycVerification?.status === "approved";
     if (!isOwner && !ownerApproved) {
@@ -141,14 +164,14 @@ export async function POST(request, { params }) {
     // Find or create user's active cart
     let cart = await MarketplaceCart.findOne({
       where: {
-        user_id,
+        user_id: userId,
         active: true,
       },
     });
 
     if (!cart) {
       cart = await MarketplaceCart.create({
-        user_id,
+        user_id: userId,
         active: true,
         subtotal: 0.0,
         discount: 0.0,

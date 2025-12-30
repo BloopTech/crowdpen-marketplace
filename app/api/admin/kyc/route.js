@@ -12,6 +12,11 @@ function assertAdmin(user) {
   );
 }
 
+function isUUID(v) {
+  const s = String(v || "");
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
+}
+
 export async function GET(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -23,8 +28,8 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status"); // pending | approved | rejected | unverified
-    const level = searchParams.get("level"); // basic | standard | enhanced
+    const statusRaw = searchParams.get("status"); // pending | approved | rejected | unverified
+    const levelRaw = searchParams.get("level"); // basic | standard | enhanced
     const reviewer = searchParams.get("reviewer"); // reviewer user id (UUID)
     const limitParam = Number(searchParams.get("pageSize") || 20);
     const pageParam = Number(searchParams.get("page") || 1);
@@ -33,9 +38,35 @@ export async function GET(request) {
     const offset = (page - 1) * pageSize;
 
     const where = {};
-    if (status) where.status = status;
-    if (level) where.level = level;
-    if (reviewer) where.reviewed_by = reviewer;
+    if (statusRaw) {
+      const s = String(statusRaw).toLowerCase();
+      if (!["pending", "approved", "rejected", "unverified"].includes(s)) {
+        return NextResponse.json(
+          { status: "error", message: "Invalid status" },
+          { status: 400 }
+        );
+      }
+      where.status = s;
+    }
+    if (levelRaw) {
+      const l = String(levelRaw).toLowerCase();
+      if (!["basic", "standard", "enhanced"].includes(l)) {
+        return NextResponse.json(
+          { status: "error", message: "Invalid level" },
+          { status: 400 }
+        );
+      }
+      where.level = l;
+    }
+    if (reviewer) {
+      if (!isUUID(reviewer)) {
+        return NextResponse.json(
+          { status: "error", message: "Invalid reviewer" },
+          { status: 400 }
+        );
+      }
+      where.reviewed_by = reviewer;
+    }
 
     const { rows, count } = await db.MarketplaceKycVerification.findAndCountAll({
       where,
@@ -73,8 +104,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/kyc error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

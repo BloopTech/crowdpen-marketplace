@@ -3,8 +3,17 @@ import { NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import sharp from "sharp";
 import { authOptions } from "../../auth/[...nextauth]/route";
-import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
+import { assertRequiredEnvInProduction } from "../../../lib/env";
+
+assertRequiredEnvInProduction([
+  "CLOUDFLARE_R2_ENDPOINT",
+  "CLOUDFLARE_R2_ACCESS_KEY_ID",
+  "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
+  "CLOUDFLARE_R2_BUCKET_NAME",
+  "CLOUDFLARE_R2_PUBLIC_URL",
+]);
 
 // Configure S3 client for Cloudflare R2
 const s3Client = new S3Client({
@@ -36,10 +45,21 @@ export async function POST(request) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userId = session?.user?.id ? String(session.user.id) : "anon";
+    const rl = rateLimit({ key: `upload-images:${userId}:${ip}`, limit: 30, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     // Get form data with files
     const formData = await request.formData();
     // Allow callers to specify a target folder (e.g., 'products' or 'kyc')
-    const folder = (formData.get("folder") || "products").toString();
+    const folderRaw = (formData.get("folder") || "products").toString().trim().toLowerCase();
+    const folder = folderRaw === "kyc" ? "kyc" : "products";
     const files = [];
 
     // Collect all files from the form data
@@ -56,6 +76,19 @@ export async function POST(request) {
       );
     }
 
+    const MAX_FILES = 10;
+    const MAX_BYTES_PER_FILE = 5 * 1024 * 1024;
+    const MAX_TOTAL_BYTES = 10 * 1024 * 1024;
+
+    if (files.length > MAX_FILES) {
+      return NextResponse.json({ message: "Too many files" }, { status: 413 });
+    }
+
+    const totalBytes = files.reduce((sum, f) => sum + (typeof f?.size === "number" ? f.size : 0), 0);
+    if (totalBytes > MAX_TOTAL_BYTES) {
+      return NextResponse.json({ message: "Files too large" }, { status: 413 });
+    }
+
     // Process and upload each file
     const uploadedUrls = [];
     const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
@@ -63,6 +96,10 @@ export async function POST(request) {
 
     for (const file of files) {
       try {
+        if (typeof file?.size === "number" && file.size > MAX_BYTES_PER_FILE) {
+          continue;
+        }
+
         const imagecode = randomImageName();
 
         // Files from formData() are instances of File (subclass of Blob) and have a `name` property
@@ -127,8 +164,13 @@ export async function POST(request) {
     });
   } catch (error) {
     console.error("Image upload error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { message: "Error uploading images: " + error.message },
+      {
+        message: isProd
+          ? "Error uploading images"
+          : "Error uploading images: " + (error?.message || "Unknown error"),
+      },
       { status: 500 }
     );
   }

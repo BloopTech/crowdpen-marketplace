@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
+import { validate as isUUID } from "uuid";
 
 function assertAdmin(user) {
   return (
@@ -36,12 +37,15 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limitParam = Number(searchParams.get("limit") || 10);
-    const limit = Math.min(Math.max(limitParam, 1), 100);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "10", 10);
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 100)
+      : 10;
 
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
-    const merchantId = String(searchParams.get("merchantId") || "").trim() || null;
+    const fromParam = (searchParams.get("from") || "").slice(0, 100);
+    const toParam = (searchParams.get("to") || "").slice(0, 100);
+    const merchantIdRaw = String(searchParams.get("merchantId") || "").trim().slice(0, 128);
+    const merchantId = merchantIdRaw && isUUID(merchantIdRaw) ? merchantIdRaw : null;
 
     const now = new Date();
     const fromDate = parseDateSafe(fromParam) || new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -64,26 +68,26 @@ export async function GET(request) {
       replacements.merchantId = merchantId;
     }
 
-    const sql = `
-      SELECT
-        p."id" AS "id",
-        p."product_id" AS "productId",
-        p."title" AS "title",
-        p."currency" AS "currency",
-        p."user_id" AS "merchantId",
-        u."pen_name" AS "merchantPenName",
-        u."name" AS "merchantName",
-        COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",
-        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue"
-      FROM "marketplace_order_items" AS oi
-      JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-      JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
-      LEFT JOIN "users" AS u ON u."id" = p."user_id"
-      WHERE ${whereParts.join(" AND ")}
-      GROUP BY p."id", u."id"
-      ORDER BY "revenue" DESC
-      LIMIT :limit
-    `;
+    const whereSql = whereParts.join(" AND ");
+    const sql =
+      'SELECT\n'
+      + '  p."id" AS "id",\n'
+      + '  p."product_id" AS "productId",\n'
+      + '  p."title" AS "title",\n'
+      + '  p."currency" AS "currency",\n'
+      + '  p."user_id" AS "merchantId",\n'
+      + '  u."pen_name" AS "merchantPenName",\n'
+      + '  u."name" AS "merchantName",\n'
+      + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",\n'
+      + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue"\n'
+      + 'FROM "marketplace_order_items" AS oi\n'
+      + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
+      + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
+      + 'LEFT JOIN "users" AS u ON u."id" = p."user_id"\n'
+      + 'WHERE ' + whereSql + '\n'
+      + 'GROUP BY p."id", u."id"\n'
+      + 'ORDER BY "revenue" DESC\n'
+      + 'LIMIT :limit\n';
 
     const rows = await db.sequelize.query(sql, {
       replacements,
@@ -133,8 +137,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/analytics/top-products error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

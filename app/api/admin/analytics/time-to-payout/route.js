@@ -29,15 +29,17 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
-    const limitParam = Number(searchParams.get("limit") || 10);
+    const fromParam = (searchParams.get("from") || "").slice(0, 100);
+    const toParam = (searchParams.get("to") || "").slice(0, 100);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "10", 10);
 
     const now = new Date();
     const fromDate =
       parseDateSafe(fromParam) || new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
     const toDate = parseDateSafe(toParam) || now;
-    const limit = Math.min(Math.max(limitParam, 1), 50);
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 50)
+      : 10;
 
     const base = `
       WITH rows AS (
@@ -118,8 +120,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/analytics/time-to-payout error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

@@ -14,18 +14,42 @@ export default function SSOSignInPage() {
     const processSSO = async () => {
       try {
         const userData = searchParams.get('userData');
-        const callbackUrl = searchParams.get('callbackUrl') || '/';
+        const callbackUrlRaw = searchParams.get('callbackUrl') || '/';
+        const callbackUrl = typeof callbackUrlRaw === 'string' ? callbackUrlRaw.slice(0, 2048) : '/';
+        const ts = searchParams.get('ts');
+        const sig = searchParams.get('sig');
         
         if (!userData) {
           setError('No user data provided');
           setStatus('error');
           return;
         }
-        
-        console.log('Processing SSO sign-in with user data:', userData.substring(0, 100) + '...');
-        
-        // Use direct database session creation for email authentication
-        console.log('Creating direct database session for email authentication');
+
+        if (typeof userData === 'string' && userData.length > 20_000) {
+          setError('User data payload too large');
+          setStatus('error');
+          return;
+        }
+
+        const isProd = process.env.NODE_ENV === 'production';
+        if (isProd) {
+          const tsNum = Number.parseInt(String(ts || ''), 10);
+          if (!Number.isFinite(tsNum)) {
+            setError('Missing or invalid SSO timestamp');
+            setStatus('error');
+            return;
+          }
+          const sigText = String(sig || '').trim();
+          if (!/^[0-9a-f]{64}$/i.test(sigText)) {
+            setError('Missing or invalid SSO signature');
+            setStatus('error');
+            return;
+          }
+        }
+
+        if (!isProd) {
+          console.log('Processing SSO sign-in (dev)');
+        }
         
         const response = await fetch('/api/auth/sso/signin', {
           method: 'POST',
@@ -34,16 +58,22 @@ export default function SSOSignInPage() {
           },
           body: JSON.stringify({
             userData,
-            callbackUrl
+            callbackUrl,
+            ...(ts ? { ts } : {}),
+            ...(sig ? { sig } : {}),
           })
         });
         
         const result = await response.json();
-        console.log('Direct session creation result:', JSON.stringify(result, null, 2));
+        if (!isProd) {
+          console.log('Direct session creation result:', JSON.stringify(result, null, 2));
+        }
         
         if (result.success) {
           setStatus('success');
-          console.log('SSO sign-in successful, redirecting to:', result.redirectUrl);
+          if (!isProd) {
+            console.log('SSO sign-in successful, redirecting to:', result.redirectUrl);
+          }
           // Use window.location.href to ensure session is established
           window.location.href = result.redirectUrl;
         } else {

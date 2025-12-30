@@ -1,5 +1,5 @@
+import "server-only";
 import React from "react";
-import nodemailer from "nodemailer";
 import { Html } from "@react-email/html";
 import { Body } from "@react-email/body";
 import { Container } from "@react-email/container";
@@ -14,29 +14,27 @@ import { Section } from "@react-email/section";
 import { Tailwind } from "@react-email/tailwind";
 import { render } from "@react-email/render";
 import { Button } from "@react-email/button";
+import { sendEmail } from "./sendEmail";
+import { assertRequiredEnvInProduction } from "./env";
 
 
 export default async function sendVerificationRequest(params) {
   const { identifier, url, provider, theme } = params;
 
-  const transport = nodemailer.createTransport({
-    auth: {
-      user: process.env.EMAIL_SERVER_USER,
-      pass: process.env.EMAIL_SERVER_PASSWORD,
-    },
-    host: process.env.EMAIL_SERVER_HOST,
-    port: process.env.EMAIL_SERVER_PORT,
-    secure: true,
-  });
+  assertRequiredEnvInProduction([
+    "EMAIL_SERVER_HOST",
+    "EMAIL_SERVER_USER",
+    "EMAIL_SERVER_PASSWORD",
+  ]);
 
   // const transport = nodemailer.createTransport(
   //   smtpTransport({
   //     auth: {
   //       user: "techsupport@crowdpen.xyz",
-  //       pass: "BloCodet150584%",
-  //       //pass: "Qov86682",
+  //       pass: "<redacted>",
+  //       //pass: "<redacted>",
   //       // user: "godsonaddy@yahoo.co.uk",
-  //       // pass: "tbwbcsgyknshgnty",
+  //       // pass: "<redacted>",
   //     },
   //     //service: "Yahoo",
   //     host: "mail.crowdpen.xyz",
@@ -62,19 +60,13 @@ export default async function sendVerificationRequest(params) {
     }
   );
 
-  const result = await transport.sendMail({
+
+  await sendEmail({
     to: identifier,
-    from: `"Crowdpen" <${process.env.EMAIL_FROM}>`,
     subject: `Verify your Email`,
     text: text(),
     html,
   });
-
-  const failed = result.rejected.concat(result.pending).filter(Boolean);
-
-  if (failed.length) {
-    throw new Error(`Email(s) (${failed.join(", ")}) could not be sent`);
-  }
 
   //await ses.sendEmail(transport);
 }

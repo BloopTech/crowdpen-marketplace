@@ -25,23 +25,38 @@ export async function GET(request, { params }) {
 
   const getParams = await params;
   const { pen_name } = getParams;
+  const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
   const { searchParams } = new URL(request.url);
 
   // Pagination parameters
-  const page = parseInt(searchParams.get("page")) || 1;
-  const limit = parseInt(searchParams.get("limit")) || 20;
+  const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+  const limitParam = Number.parseInt(searchParams.get("limit") || "20", 10);
+  const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+  const limit = Number.isFinite(limitParam)
+    ? Math.min(Math.max(limitParam, 1), 50)
+    : 20;
   const offset = (page - 1) * limit;
 
   // Filter parameters
-  const search = searchParams.get("search") || "";
-  const category = searchParams.get("category") || "";
-  const sortBy = searchParams.get("sortBy") || "newest";
-  const status = searchParams.get("status") || "";
+  const search = (searchParams.get("search") || "").slice(0, 200);
+  const category = (searchParams.get("category") || "").slice(0, 100);
+  const sortBy = (searchParams.get("sortBy") || "newest").slice(0, 50);
+  const status = (searchParams.get("status") || "").slice(0, 20);
 
   try {
+    if (!penNameRaw || penNameRaw.length > 80) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Author not found",
+        },
+        { status: 404 }
+      );
+    }
+
     // Find author first
     const author = await User.findOne({
-      where: { pen_name },
+      where: { pen_name: penNameRaw },
       attributes: ["id"],
     });
 
@@ -315,10 +330,13 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error("Error fetching author products:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to fetch products",
+        message: isProd
+          ? "Failed to fetch products"
+          : (error?.message || "Failed to fetch products"),
       },
       { status: 500 }
     );

@@ -36,8 +36,8 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const fromParam = searchParams.get("from");
-    const toParam = searchParams.get("to");
+    const fromParam = (searchParams.get("from") || "").slice(0, 100);
+    const toParam = (searchParams.get("to") || "").slice(0, 100);
 
     const now = new Date();
     const fromDate =
@@ -182,8 +182,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/analytics/summary error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

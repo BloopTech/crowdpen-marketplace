@@ -30,16 +30,22 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
 
-    const limitParam = Number(searchParams.get("limit") || 50);
-    const limit = Math.min(Math.max(limitParam, 1), 200);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "50", 10);
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 200)
+      : 50;
 
-    const stockThresholdParam = Number(searchParams.get("stockThreshold") || 5);
-    const stockThreshold = Math.min(Math.max(stockThresholdParam, 0), 100000);
+    const stockThresholdParam = Number.parseInt(searchParams.get("stockThreshold") || "5", 10);
+    const stockThreshold = Number.isFinite(stockThresholdParam)
+      ? Math.min(Math.max(stockThresholdParam, 0), 100000)
+      : 5;
 
-    const velocityWindowDaysParam = Number(searchParams.get("velocityWindowDays") || 30);
-    const velocityWindowDays = Math.min(Math.max(velocityWindowDaysParam, 1), 365);
+    const velocityWindowDaysParam = Number.parseInt(searchParams.get("velocityWindowDays") || "30", 10);
+    const velocityWindowDays = Number.isFinite(velocityWindowDaysParam)
+      ? Math.min(Math.max(velocityWindowDaysParam, 1), 365)
+      : 30;
 
-    const toParam = searchParams.get("to");
+    const toParam = (searchParams.get("to") || "").slice(0, 100);
     const toDate = parseDateSafe(toParam) || new Date();
     const fromDate = new Date(toDate.getTime() - velocityWindowDays * 24 * 60 * 60 * 1000);
 
@@ -136,8 +142,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/analytics/inventory-risk error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

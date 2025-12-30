@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 
 export async function GET() {
   try {
@@ -41,8 +42,12 @@ export async function GET() {
     return NextResponse.json({ status: "success", bank });
   } catch (error) {
     console.error("Bank GET error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed to fetch bank" },
+      {
+        status: "error",
+        message: isProd ? "Failed to fetch bank" : (error?.message || "Failed to fetch bank"),
+      },
       { status: 500 }
     );
   }
@@ -59,29 +64,40 @@ export async function PATCH(request) {
     }
 
     const userId = session.user.id;
-    const body = await request.json();
 
-    const payload = {
-      user_id: userId,
-      payout_type: body.payout_type || "bank",
-      currency: body.currency,
-      country_code: body.country_code || null,
-      bank_code: body.bank_code || null,
-      bank_name: body.bank_name || null,
-      bank_id: body.bank_id || null,
-      account_name: body.account_name || null,
-      msisdn: body.msisdn || null,
-      verified: !!body.verified,
-    };
-
-    // account_number is virtual setter to encrypt
-    if (body.account_number) {
-      payload.account_number = String(body.account_number);
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const rl = rateLimit({ key: `account-bank:${String(userId)}:${ip}`, limit: 20, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
     }
+
+    const body = await request.json().catch(() => ({}));
 
     let record = await db.MarketplaceMerchantBank.findOne({
       where: { user_id: userId },
     });
+
+    const payload = {
+      user_id: userId,
+      payout_type: String(body.payout_type || "bank").slice(0, 40),
+      currency: body.currency == null ? null : String(body.currency).slice(0, 10),
+      country_code: body.country_code == null ? null : String(body.country_code).slice(0, 10),
+      bank_code: body.bank_code == null ? null : String(body.bank_code).slice(0, 100),
+      bank_name: body.bank_name == null ? null : String(body.bank_name).slice(0, 200),
+      bank_id: body.bank_id == null ? null : String(body.bank_id).slice(0, 100),
+      account_name: body.account_name == null ? null : String(body.account_name).slice(0, 200),
+      msisdn: body.msisdn == null ? null : String(body.msisdn).slice(0, 40),
+      verified: record ? !!record.verified : false,
+    };
+
+    // account_number is virtual setter to encrypt
+    if (body.account_number) {
+      payload.account_number = String(body.account_number).slice(0, 128);
+    }
+
     if (record) {
       await record.update(payload);
     } else {
@@ -91,8 +107,12 @@ export async function PATCH(request) {
     return NextResponse.json({ status: "success", id: record.id });
   } catch (error) {
     console.error("Bank PATCH error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed to upsert bank" },
+      {
+        status: "error",
+        message: isProd ? "Failed to upsert bank" : (error?.message || "Failed to upsert bank"),
+      },
       { status: 500 }
     );
   }

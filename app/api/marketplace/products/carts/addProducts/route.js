@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
 
 const { MarketplaceCart, MarketplaceCartItems, MarketplaceProduct, User, MarketplaceKycVerification } = db;
 
@@ -17,11 +18,34 @@ function computeEffectivePrice(product) {
 
 export async function POST(request) {
   try {
-    const { productIds, userId } = await request.json();
+    const body = await request.json().catch(() => ({}));
+    const productIdsRaw = body?.productIds;
+    const bodyUserId = body?.userId;
 
-    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+    const productIds = Array.isArray(productIdsRaw)
+      ? productIdsRaw
+          .map((v) => (v == null ? "" : String(v).trim()))
+          .filter((v) => v)
+          .slice(0, 50)
+      : null;
+
+    if (productIds && productIds.some((id) => id.length > 128)) {
+      return NextResponse.json(
+        { error: "Invalid product IDs" },
+        { status: 400 }
+      );
+    }
+
+    if (!productIds || productIds.length === 0) {
       return NextResponse.json(
         { error: "Product IDs array is required" },
+        { status: 400 }
+      );
+    }
+
+    if (productIds.length > 50) {
+      return NextResponse.json(
+        { error: "Too many product IDs" },
         { status: 400 }
       );
     }
@@ -31,9 +55,25 @@ export async function POST(request) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-    if (session.user.id !== userId) {
-      return NextResponse.json({ error: "Invalid user authentication" }, { status: 403 });
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `cart-add-products:${userIdForRl}:${ip}`, limit: 20, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
     }
+
+    if (bodyUserId != null && String(bodyUserId).slice(0, 128) !== String(session.user.id)) {
+      return NextResponse.json(
+        { error: "Invalid user authentication" },
+        { status: 403 }
+      );
+    }
+
+    const userId = session.user.id;
 
     // Find user
     const user = await User.findOne({
@@ -200,8 +240,9 @@ export async function POST(request) {
 
   } catch (error) {
     console.error('Add products to cart API error:', error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },
       { status: 500 }
     );
   }

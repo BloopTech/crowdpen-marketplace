@@ -23,12 +23,14 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limitParam = Number(searchParams.get("pageSize") || 20);
-    const pageParam = Number(searchParams.get("page") || 1);
-    const pageSize = Math.min(Math.max(limitParam, 1), 100);
-    const page = Math.max(pageParam, 1);
+    const limitParam = Number.parseInt(searchParams.get("pageSize") || "20", 10);
+    const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+    const pageSize = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 100)
+      : 20;
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
     const offset = (page - 1) * pageSize;
-    const q = searchParams.get("q") || "";
+    const q = (searchParams.get("q") || "").slice(0, 200);
     const requestedApplicantStatus =
       searchParams.get("applicantStatus") || "pending";
     const applicantStatus = ["pending", "rejected"].includes(
@@ -99,8 +101,9 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("/api/admin/merchants error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Failed" },
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
       { status: 500 }
     );
   }

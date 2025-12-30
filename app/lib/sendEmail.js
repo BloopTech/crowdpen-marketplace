@@ -1,3 +1,4 @@
+import "server-only";
 import nodemailer from "nodemailer";
 
 export async function sendEmail({ to, subject, html, text, replyTo }) {

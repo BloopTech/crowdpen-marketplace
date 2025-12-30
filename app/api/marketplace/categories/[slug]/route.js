@@ -6,7 +6,8 @@ const { MarketplaceCategory, MarketplaceSubCategory } = db;
 
 export async function GET(request, { params }) {
   const { slug } = await params;
-  const normalizedSlug = String(slug).replace(/&/g, "and");
+  const slugRaw = slug == null ? "" : String(slug).trim();
+  const normalizedSlug = slugRaw.replace(/&/g, "and").slice(0, 100);
 
   try {
     if (!normalizedSlug) {
@@ -42,12 +43,12 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(category);
   } catch (error) {
-    console.error("Error:", error.message);
-    console.error("Error stack:", error.stack);
+    console.error("Error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
-        error: error.message,
-        stack: error.stack,
+        error: "Failed to fetch category",
+        ...(isProd ? {} : { message: error?.message }),
       },
       { status: 500 }
     );

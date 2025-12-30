@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
+import { assertSafeExternalUrl } from "../../../../lib/security/ssrf";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 
 const { MarketplaceOrderItems, MarketplaceOrder, MarketplaceProduct } = db;
 
@@ -95,6 +97,16 @@ export async function GET(request, { params }) {
       );
     }
 
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userId = String(session.user.id);
+    const rl = rateLimit({ key: `download:${userId}:${ip}`, limit: 60, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const { orderItemId } = await params;
     const itemId = (orderItemId || "").toString().trim();
     if (!itemId) {
@@ -157,7 +169,20 @@ export async function GET(request, { params }) {
       );
     }
 
-    const upstream = await fetch(fileUrl);
+    let safeUrl;
+    try {
+      safeUrl = await assertSafeExternalUrl(fileUrl);
+    } catch {
+      return NextResponse.json(
+        { status: "error", message: "Download not available" },
+        { status: 404 }
+      );
+    }
+
+    const upstream = await fetch(safeUrl.toString(), {
+      redirect: "follow",
+      cache: "no-store",
+    });
     if (!upstream.ok) {
       return NextResponse.json(
         { status: "error", message: "File not found" },
@@ -191,8 +216,12 @@ export async function GET(request, { params }) {
     return new Response(upstream.body, { status: 200, headers });
   } catch (error) {
     console.error("/api/marketplace/download/[orderItemId] error", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Server error" },
+      {
+        status: "error",
+        message: isProd ? "Server error" : (error?.message || "Server error"),
+      },
       { status: 500 }
     );
   }

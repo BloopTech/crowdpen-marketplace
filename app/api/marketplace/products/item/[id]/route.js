@@ -25,7 +25,15 @@ export async function GET(request, { params }) {
 
   const { id } = await params;
 
-  if (!id) {
+  const idRaw = id == null ? "" : String(id).trim();
+  if (!idRaw) {
+    return NextResponse.json(
+      { error: "Product ID is required" },
+      { status: 400 }
+    );
+  }
+
+  if (idRaw.length > 128) {
     return NextResponse.json(
       { error: "Product ID is required" },
       { status: 400 }
@@ -35,7 +43,7 @@ export async function GET(request, { params }) {
   const userId = session?.user?.id || null;
 
   try {
-    const idParam = String(id);
+    const idParam = idRaw;
     const orConditions = [{ product_id: idParam }];
     if (isUUID(idParam)) {
       orConditions.unshift({ id: idParam });

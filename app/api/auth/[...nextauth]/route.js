@@ -9,10 +9,13 @@ import Google from "next-auth/providers/google";
 import sendVerificationRequest from "../../../lib/EmailVerification";
 import axios from "axios";
 import { cookies } from "next/headers";
+import { assertRequiredEnvInProduction } from "../../../lib/env";
+import crypto from "crypto";
 
 // Determine the absolute URL for the app
 const absoluteUrl = process.env.NEXTAUTH_URL;
-console.log("NextAuth using absolute URL:", absoluteUrl);
+
+assertRequiredEnvInProduction(["NEXTAUTH_URL", "NEXTAUTH_SECRET", "DB_URL"]);
 
 // Helper function for SSO user data authentication
 export async function handleUserData(userData) {
@@ -35,7 +38,6 @@ export async function handleUserData(userData) {
         parsedUserData = JSON.parse(decodedData);
       } catch (parseError) {
         console.error("Failed to parse user data:", parseError);
-        console.error("Raw user data:", userData);
         return null;
       }
     } else {
@@ -73,6 +75,17 @@ export async function handleUserData(userData) {
   }
 }
 
+function safeTimingEqual(a, b) {
+  try {
+    const aBuf = Buffer.from(String(a || ""));
+    const bBuf = Buffer.from(String(b || ""));
+    if (aBuf.length !== bBuf.length) return false;
+    return crypto.timingSafeEqual(aBuf, bBuf);
+  } catch {
+    return false;
+  }
+}
+
 // handleEmailAuth function removed - now using built-in NextAuth Email provider
 
 export const authOptions = {
@@ -102,12 +115,45 @@ export const authOptions = {
       name: "Crowdpen SSO",
       credentials: {
         userData: { label: "User Data", type: "text" },
+        ts: { label: "Timestamp", type: "text" },
+        sig: { label: "Signature", type: "text" },
       },
       async authorize(credentials) {
         console.log("=== CROWDPEN SSO AUTHORIZE START ===");
 
         if (credentials?.userData) {
           console.log("Processing SSO user data authentication");
+
+          const isProd = process.env.NODE_ENV === "production";
+          if (isProd) {
+            const secret = process.env.CROWDPEN_SSO_SECRET;
+            if (!secret) {
+              return null;
+            }
+
+            const tsNum = Number.parseInt(String(credentials?.ts || ""), 10);
+            if (!Number.isFinite(tsNum)) {
+              return null;
+            }
+
+            const maxSkewMs = 5 * 60 * 1000;
+            const skew = Math.abs(Date.now() - tsNum);
+            if (!Number.isFinite(skew) || skew > maxSkewMs) {
+              return null;
+            }
+
+            const userDataText = String(credentials.userData || "");
+            const payload = `${tsNum}.${userDataText}`;
+            const expected = crypto
+              .createHmac("sha256", secret)
+              .update(payload)
+              .digest("hex");
+
+            if (!safeTimingEqual(expected, String(credentials?.sig || ""))) {
+              return null;
+            }
+          }
+
           const result = await handleUserData(credentials.userData);
           return result;
         }

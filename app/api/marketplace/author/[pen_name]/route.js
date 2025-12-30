@@ -7,12 +7,23 @@ const { User, MarketplaceProduct, MarketplaceReview, MarketplaceCategory } = db;
 export async function GET(request, { params }) {
   const getParams = await params;
   const { pen_name } = getParams;
+  const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
+
+  if (!penNameRaw || penNameRaw.length > 80) {
+    return NextResponse.json(
+      {
+        status: "error",
+        message: "Author not found",
+      },
+      { status: 404 }
+    );
+  }
 
   try {
     // Find author with comprehensive data
     const author = await User.findOne({
       where: {
-        pen_name,
+        pen_name: penNameRaw,
       },
       attributes: [
         "id",
@@ -130,10 +141,13 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error("Error fetching author:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to fetch author",
+        message: isProd
+          ? "Failed to fetch author"
+          : (error?.message || "Failed to fetch author"),
       },
       { status: 500 }
     );

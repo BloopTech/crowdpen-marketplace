@@ -2,6 +2,34 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "./api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
+import { headers } from "next/headers";
+
+async function getServerActionHeaders() {
+  try {
+    if (typeof headers !== "function") return null;
+    const h = await headers();
+    if (h && typeof h.get === "function") return h;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function getOriginFromHeaders(h) {
+  const proto = h?.get("x-forwarded-proto") || "http";
+  const host = h?.get("x-forwarded-host") || h?.get("host");
+  return host ? `${proto}://${host}` : null;
+}
+
+function buildCookieHeader() {
+  try {
+    const all = cookies().getAll();
+    return all.map((c) => `${c.name}=${c.value}`).join("; ");
+  } catch {
+    return "";
+  }
+}
 
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session
@@ -17,7 +45,6 @@ export async function addProductWishlist(prevState, queryData) {
   }
 
   const userId = session.user.id;
-console.log("query...................", queryData, prevState)
   const productId = queryData.get("productId");
 
   const body = {
@@ -25,20 +52,28 @@ console.log("query...................", queryData, prevState)
   };
 
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL;
+  const hdrs = await getServerActionHeaders();
+  const origin =
+    getOriginFromHeaders(hdrs) ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
   const url = new URL(
     `/api/marketplace/products/item/${productId}/wishlist`,
     origin
   ).toString();
+
+  const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
   const response = await fetch(url, {
     method: "POST",
     body: JSON.stringify(body),
     headers: {
       "Content-Type": "application/json",
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
     },
+    credentials: "include",
   });
-  console.log("response..........................", response);
   if (!response.ok) {
     const errorResult = await response.json();
     return {
@@ -106,18 +141,27 @@ export async function addProductToCart(prevState, queryData) {
   };
 
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL;
+  const hdrs = await getServerActionHeaders();
+  const origin =
+    getOriginFromHeaders(hdrs) ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
   const url = new URL(
     `/api/marketplace/products/item/${productId}/carts`,
     origin
   ).toString();
+
+  const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
   const response = await fetch(url, {
     method: "POST",
     body: JSON.stringify(body),
     headers: {
       "Content-Type": "application/json",
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
     },
+    credentials: "include",
   });
 
   if (!response.ok) {

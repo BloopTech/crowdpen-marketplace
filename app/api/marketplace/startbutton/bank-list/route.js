@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { assertAnyEnvInProduction } from "../../../../lib/env";
+import { assertSafeExternalUrl } from "../../../../lib/security/ssrf";
+import { isIP } from "net";
+
+assertAnyEnvInProduction([
+  "STARTBUTTON_SECRET_KEY",
+  "STARTBUTTON_SECRET",
+  "STARTBUTTON_API_KEY",
+]);
 
 const getBaseUrl = () =>
   process.env.STARTBUTTON_BASE_URL ||
@@ -9,11 +19,29 @@ const getBaseUrl = () =>
      //: "https://api-dev.startbutton.tech");
     : "https://api.startbutton.tech");
 
-const getSecret = () => process.env.STARTBUTTON_SECRET_KEY;
+const ALLOWED_STARTBUTTON_HOSTS = new Set([
+  "api.startbutton.tech",
+  "api-dev.startbutton.tech",
+]);
+
+const getSecret = () =>
+  process.env.STARTBUTTON_SECRET_KEY ||
+  process.env.STARTBUTTON_SECRET ||
+  process.env.STARTBUTTON_API_KEY ||
+  "";
 
 const FALLBACK_COUNTRY = (process.env.MARKETPLACE_DEFAULT_COUNTRY || "GH").toUpperCase();
 const GEOLOOKUP_URL_TEMPLATE =
   process.env.GEOLOCATION_LOOKUP_URL || "https://ipwho.is/{ip}";
+
+function getGeoLookupAllowedHost() {
+  try {
+    const sample = GEOLOOKUP_URL_TEMPLATE.replace("{ip}", "1.1.1.1");
+    return new URL(sample).hostname.toLowerCase();
+  } catch {
+    return "ipwho.is";
+  }
+}
 
 async function fetchWithTimeout(url, options, timeoutMs) {
   const controller = new AbortController();
@@ -31,7 +59,6 @@ function readCountryHeader(headers) {
   const generic = headers.get("x-country-code");
   const codeFromHeader = (vercel || cf || generic || "").toUpperCase();
   if (codeFromHeader) {
-    console.log("Header country code:", codeFromHeader, vercel, cf, generic);
     return codeFromHeader;
   }
   return null;
@@ -48,7 +75,6 @@ function sanitizeIp(raw) {
   if (ip.startsWith("::ffff:")) {
     ip = ip.substring(7);
   }
-  console.log("Sanitized IP:", ip, "(raw:", raw, ")");
   return ip;
 }
 
@@ -58,14 +84,12 @@ function getClientIp(headers) {
     const candidates = forwarded.split(",").map((part) => sanitizeIp(part || ""));
     for (const candidate of candidates) {
       if (!candidate) continue;
-      console.log("Forwarded IP candidate:", candidate, "isPrivate:", isPrivateIp(candidate));
       if (!isPrivateIp(candidate)) {
         return candidate;
       }
     }
     const first = candidates.find(Boolean);
     if (first) {
-      console.log("Using first forwarded IP (all private):", first);
       return first;
     }
   }
@@ -74,13 +98,13 @@ function getClientIp(headers) {
     sanitizeIp(headers.get("cf-connecting-ip")) ||
     sanitizeIp(headers.get("fastly-client-ip")) ||
     sanitizeIp(headers.get("true-client-ip"));
-  console.log("Fallback IP:", fallback);
   return fallback || null;
 }
 
 function isPrivateIp(ip) {
   if (!ip) return true;
   const normalized = ip.trim().toLowerCase();
+  if (isIP(normalized) === 0) return true;
   if (normalized === "127.0.0.1" || normalized === "::1") return true;
   if (normalized.startsWith("10.")) return true;
   if (normalized.startsWith("192.168.")) return true;
@@ -101,18 +125,23 @@ function buildGeoLookupUrl(ip) {
 async function fetchCountryFromIp(ip) {
   try {
     const url = buildGeoLookupUrl(ip);
-    console.log("Geo lookup URL:", url);
+
+    let safeUrl;
+    try {
+      safeUrl = await assertSafeExternalUrl(url, { allowedHosts: [getGeoLookupAllowedHost()] });
+    } catch {
+      return null;
+    }
+
     const res = await fetchWithTimeout(
-      url,
+      safeUrl.toString(),
       {
       headers: { Accept: "application/json" },
       cache: "no-store",
       },
       2500
     );
-    console.log("Geo lookup response:", res);
     if (!res.ok) {
-      console.log("Geo lookup request failed", res.status, url);
       return null;
     }
     const data = await res.json().catch(() => null);
@@ -127,7 +156,6 @@ async function fetchCountryFromIp(ip) {
       return codeRaw.slice(0, 2).toUpperCase();
     }
   } catch (error) {
-    console.log("Geo lookup error for IP", ip, error);
   }
   return null;
 }
@@ -135,17 +163,13 @@ async function fetchCountryFromIp(ip) {
 async function resolveCountry(request) {
   const headers = request.headers;
   const headerCountry = readCountryHeader(headers);
-  console.log("Header country:", headerCountry);
   if (headerCountry) return headerCountry;
 
   const ip = getClientIp(headers);
-  console.log("Client IP:", ip);
   if (ip && !isPrivateIp(ip)) {
     const lookupCountry = await fetchCountryFromIp(ip);
-    console.log("Lookup country:", lookupCountry);
     if (lookupCountry) return lookupCountry;
   }
-console.log("Fallback country:", FALLBACK_COUNTRY);
   return FALLBACK_COUNTRY;
 }
 
@@ -182,6 +206,16 @@ export async function GET(request) {
       );
     }
 
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userId = String(session.user.id);
+    const rl = rateLimit({ key: `sb-bank-list:${userId}:${ip}`, limit: 20, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "bank"; // bank | mobile_money
     let currency = searchParams.get("currency");
@@ -212,8 +246,22 @@ export async function GET(request) {
 
     const upstreamUrl = `${base}/bank/list/${encodeURIComponent(currency)}${qs.toString() ? `?${qs.toString()}` : ""}`;
 
+    let safeUpstream;
+    try {
+      const baseHost = new URL(base).hostname.toLowerCase();
+      if (!ALLOWED_STARTBUTTON_HOSTS.has(baseHost)) {
+        throw new Error("Invalid upstream");
+      }
+      safeUpstream = await assertSafeExternalUrl(upstreamUrl, { allowedHosts: [baseHost] });
+    } catch {
+      return NextResponse.json(
+        { status: "error", message: "Upstream not available" },
+        { status: 502 }
+      );
+    }
+
     const upstream = await fetchWithTimeout(
-      upstreamUrl,
+      safeUpstream.toString(),
       {
         method: "GET",
         headers: {
@@ -266,8 +314,9 @@ export async function GET(request) {
     return NextResponse.json({ status: "success", banks, currency, countryCode: countryCode || null });
   } catch (error) {
     console.error("bank-list proxy error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: error?.message || "Server error" },
+      { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },
       { status: 500 }
     );
   }

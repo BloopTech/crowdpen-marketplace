@@ -20,12 +20,12 @@ export async function GET(request) {
       return NextResponse.json(categories);
     //});
   } catch (error) {
-    console.error("Error:", error.message);
-    console.error("Error stack:", error.stack);
+    console.error("Error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
-        error: error.message,
-        stack: error.stack,
+        error: "Failed to fetch categories",
+        ...(isProd ? {} : { message: error?.message }),
       },
       { status: 500 }
     );

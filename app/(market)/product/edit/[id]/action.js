@@ -4,6 +4,34 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { headers } from "next/headers";
+
+async function getServerActionHeaders() {
+  try {
+    if (typeof headers !== "function") return null;
+    const h = await headers();
+    if (h && typeof h.get === "function") return h;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function getOriginFromHeaders(h) {
+  const proto = h?.get("x-forwarded-proto") || "http";
+  const host = h?.get("x-forwarded-host") || h?.get("host");
+  return host ? `${proto}://${host}` : null;
+}
+
+function buildCookieHeader() {
+  try {
+    const all = cookies().getAll();
+    return all.map((c) => `${c.name}=${c.value}`).join("; ");
+  } catch {
+    return "";
+  }
+}
 
 const defaultProductValues = {
   title: [],
@@ -311,17 +339,28 @@ export async function EditProduct(prevState, queryData) {
   }
 
   // For server actions, we need to use an absolute URL
-  const origin = process.env.NEXTAUTH_URL;
+  const hdrs = await getServerActionHeaders();
+  const origin =
+    getOriginFromHeaders(hdrs) ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
   const url = new URL(
     `/api/marketplace/products/${productId}/edit`,
     origin
   ).toString();
+
+  const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
   const response = await fetch(url, {
     method: "POST",
     // Do not set Content-Type header for multipart/form-data
     // The browser will set it automatically with the boundary
     body: formData,
+    headers: {
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
+    },
+    credentials: "include",
   });
   const result = await response.json();
 

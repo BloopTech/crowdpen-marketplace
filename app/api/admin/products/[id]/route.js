@@ -23,7 +23,7 @@ export async function GET(_request, { params }) {
     }
 
     const { id } = await params || {};
-    const pid = String(id || "").trim();
+    const pid = String(id || "").trim().slice(0, 128);
     if (!pid) {
       return NextResponse.json({ status: "error", message: "Missing id" }, { status: 400 });
     }
@@ -176,6 +176,10 @@ export async function GET(_request, { params }) {
     return NextResponse.json({ status: "success", data });
   } catch (error) {
     console.error("/api/admin/products/[id] GET error", error);
-    return NextResponse.json({ status: "error", message: error?.message || "Failed" }, { status: 500 });
+    const isProd = process.env.NODE_ENV === "production";
+    return NextResponse.json(
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
+      { status: 500 }
+    );
   }
 }

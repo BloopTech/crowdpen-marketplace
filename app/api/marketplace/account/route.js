@@ -347,10 +347,13 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Error fetching account data:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error?.message || "Failed to fetch account data",
+        message: isProd
+          ? "Failed to fetch account data"
+          : (error?.message || "Failed to fetch account data"),
       },
       { status: 500 }
     );

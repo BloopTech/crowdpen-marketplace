@@ -23,39 +23,45 @@ export default function NotificationLayout(props) {
     topstory,
   } = props;
 
+  const origin =
+    (typeof window !== "undefined" && window.location?.origin) ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_NEXTAUTH_URL ||
+    "";
+
   const followingUrl = following?.urlPenName
-    ? `${process.env.NEXTAUTH_URL}/${following?.urlPenName?.pen_name}`
-    : `${process.env.NEXTAUTH_URL}/${url}`;
+    ? `${origin}/${following?.urlPenName?.pen_name}`
+    : `${origin}/${url}`;
 
   const subscribeUrl = subscribe?.urlPenName
-    ? `${process.env.NEXTAUTH_URL}/${subscribe?.urlPenName?.pen_name}`
-    : `${process.env.NEXTAUTH_URL}/${url}`;
+    ? `${origin}/${subscribe?.urlPenName?.pen_name}`
+    : `${origin}/${url}`;
 
   const storiesUrl = subscribeStories?.urlPenName
-    ? `${process.env.NEXTAUTH_URL}/${subscribeStories?.urlPenName?.pen_name}/${newUrl}`
-    : `${process.env.NEXTAUTH_URL}/${url}`;
+    ? `${origin}/${subscribeStories?.urlPenName?.pen_name}/${newUrl}`
+    : `${origin}/${url}`;
 
   const pensUrl = pens?.urlPenName
-    ? `${process.env.NEXTAUTH_URL}/${pens?.urlPenName?.pen_name}/${newUrl}`
-    : `${process.env.NEXTAUTH_URL}/${url}`;
+    ? `${origin}/${pens?.urlPenName?.pen_name}/${newUrl}`
+    : `${origin}/${url}`;
 
   const repenUrl = repen?.urlPenName
-    ? `${process.env.NEXTAUTH_URL}/${repen?.urlPenName?.pen_name}/${newUrl}`
-    : `${process.env.NEXTAUTH_URL}/${url}`;
+    ? `${origin}/${repen?.urlPenName?.pen_name}/${newUrl}`
+    : `${origin}/${url}`;
 
   const commentsUrl = comments?.urlPenName
-    ? `${process.env.NEXTAUTH_URL}/${comments?.urlPenName?.pen_name}/${newUrl}`
-    : `${process.env.NEXTAUTH_URL}/${url}`;
+    ? `${origin}/${comments?.urlPenName?.pen_name}/${newUrl}`
+    : `${origin}/${url}`;
 
   const challengesUrl = challenges?.urlPenName
-    ? `${process.env.NEXTAUTH_URL}/${challenges?.urlPenName?.pen_name}/${newUrl}`
-    : `${process.env.NEXTAUTH_URL}/${url}`;
+    ? `${origin}/${challenges?.urlPenName?.pen_name}/${newUrl}`
+    : `${origin}/${url}`;
 
   const transactionsUrl = transactions?.urlPenName
-    ? `${process.env.NEXTAUTH_URL}/${transactions?.urlPenName?.pen_name}/${newUrl}`
-    : `${process.env.NEXTAUTH_URL}/${url}`;
+    ? `${origin}/${transactions?.urlPenName?.pen_name}/${newUrl}`
+    : `${origin}/${url}`;
 
-  const topstoryUrl = `${process.env.NEXTAUTH_URL}/${topstory?.urlPenName?.pen_name}/${url}`;
+  const topstoryUrl = `${origin}/${topstory?.urlPenName?.pen_name}/${url}`;
   return (
     <>
       {following ? (

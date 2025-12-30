@@ -5,6 +5,16 @@ import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 import sharp from "sharp";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
+import { assertRequiredEnvInProduction } from "../../../../../lib/env";
+
+assertRequiredEnvInProduction([
+  "CLOUDFLARE_R2_ENDPOINT",
+  "CLOUDFLARE_R2_ACCESS_KEY_ID",
+  "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
+  "CLOUDFLARE_R2_BUCKET_NAME",
+  "CLOUDFLARE_R2_PUBLIC_URL",
+]);
 
 const { MarketplaceProduct } = db;
 
@@ -124,6 +134,27 @@ export async function POST(request, { params }) {
     // Process form data
     const formData = await request.formData();
 
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Authentication required",
+        },
+        { status: 401 }
+      );
+    }
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `product-edit:${userIdForRl}:${ip}`, limit: 20, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     // Get product ID from form data
     const productId = formData.get("productId");
     if (!productId || productId !== id) {
@@ -136,7 +167,17 @@ export async function POST(request, { params }) {
       );
     }
 
-    const user_id = formData.get("user_id");
+    const user_id = String(session.user.id);
+    const userIdFromForm = formData.get("user_id");
+    if (userIdFromForm && String(userIdFromForm) !== user_id) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Unauthorized",
+        },
+        { status: 403 }
+      );
+    }
 
     // Verify product ownership
     const existingProduct = await MarketplaceProduct.findOne({

@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../../auth/[...nextauth]/route";
 import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../../lib/security/rateLimit";
 
 const { MarketplaceReview, User, MarketplaceProduct } = db;
 
@@ -24,9 +25,19 @@ export async function POST(request, { params }) {
       );
     }
 
-    const productId = getParams.id;
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `review-create:${userIdForRl}:${ip}`, limit: 20, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
 
-    if (!productId) {
+    const productIdRaw = getParams?.id == null ? "" : String(getParams.id).trim();
+
+    if (!productIdRaw || productIdRaw.length > 128) {
       return NextResponse.json(
         {
           status: "error",
@@ -37,10 +48,13 @@ export async function POST(request, { params }) {
     }
 
     // Parse request body
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { rating, title, content, userId: userIdFromBody } = body;
 
-    if (userIdFromBody && String(userIdFromBody) !== String(session.user.id)) {
+    if (
+      userIdFromBody &&
+      String(userIdFromBody).slice(0, 128) !== String(session.user.id)
+    ) {
       return NextResponse.json(
         { status: "error", message: "Invalid user authentication" },
         { status: 403 }
@@ -49,8 +63,9 @@ export async function POST(request, { params }) {
 
     const userId = session.user.id;
 
+    const ratingValue = Number.parseInt(String(rating), 10);
     // Validate required fields
-    if (!rating || rating < 1 || rating > 5) {
+    if (!Number.isFinite(ratingValue) || ratingValue < 1 || ratingValue > 5) {
       return NextResponse.json(
         {
           status: "error",
@@ -60,7 +75,8 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (!content || content.trim().length === 0) {
+    const contentText = typeof content === "string" ? content : "";
+    if (!contentText || contentText.trim().length === 0) {
       return NextResponse.json(
         {
           status: "error",
@@ -70,7 +86,17 @@ export async function POST(request, { params }) {
       );
     }
 
-    const idParam = String(productId);
+    if (contentText.length > 10_000) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Review content is too long",
+        },
+        { status: 413 }
+      );
+    }
+
+    const idParam = String(productIdRaw);
     const orConditions = [{ product_id: idParam }];
     if (isUUID(idParam)) {
       orConditions.unshift({ id: idParam });
@@ -125,9 +151,9 @@ export async function POST(request, { params }) {
     const newReview = await MarketplaceReview.create({
       marketplace_product_id: product.id,
       user_id: userId,
-      rating: parseInt(rating),
+      rating: ratingValue,
       title: title?.trim() || null,
-      content: content,
+      content: contentText,
       verifiedPurchase: false, // TODO: Check if user actually purchased the product
       visible: true,
     });
@@ -168,10 +194,13 @@ export async function POST(request, { params }) {
     });
   } catch (error) {
     console.error("Error creating review:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to create review",
+        message: isProd
+          ? "Failed to create review"
+          : (error?.message || "Failed to create review"),
       },
       { status: 500 }
     );

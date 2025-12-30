@@ -30,19 +30,23 @@ export async function GET(request) {
   try {
     //await sequelize.transaction(async (t) => {
     const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category");
-    const subcategory = searchParams.get("subcategory");
-    const tag = searchParams.get("tag");
-    const minPrice = searchParams.get("minPrice");
-    const maxPrice = searchParams.get("maxPrice");
-    const rating = searchParams.get("rating");
-    const sort = searchParams.get("sort");
-    const search = searchParams.get("search");
-    const fileType = searchParams.get("fileType");
-    const deliveryTime = searchParams.get("deliveryTime");
-    const contentLength = searchParams.get("contentLength");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const category = (searchParams.get("category") || "").slice(0, 100);
+    const subcategory = (searchParams.get("subcategory") || "").slice(0, 100);
+    const tag = (searchParams.get("tag") || "").slice(0, 100);
+    const minPrice = (searchParams.get("minPrice") || "").slice(0, 32);
+    const maxPrice = (searchParams.get("maxPrice") || "").slice(0, 32);
+    const rating = (searchParams.get("rating") || "").slice(0, 32);
+    const sort = (searchParams.get("sort") || "").slice(0, 50);
+    const search = (searchParams.get("search") || "").slice(0, 200);
+    const fileType = (searchParams.get("fileType") || "").slice(0, 50);
+    const deliveryTime = (searchParams.get("deliveryTime") || "").slice(0, 50);
+    const contentLength = (searchParams.get("contentLength") || "").slice(0, 50);
+    const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "20", 10);
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 50)
+      : 20;
 
     // Build query conditions
     let where = {};
@@ -90,7 +94,10 @@ export async function GET(request) {
     const maxPriceValue = maxPrice ? Number.parseFloat(maxPrice) : null;
 
     if (rating) {
-      where.rating = { [Op.gte]: parseFloat(rating) };
+      const ratingValue = Number.parseFloat(rating);
+      if (Number.isFinite(ratingValue)) {
+        where.rating = { [Op.gte]: ratingValue };
+      }
     }
 
     if (search) {
@@ -403,16 +410,14 @@ export async function GET(request) {
     //});
   } catch (error) {
     console.error("====== ERROR FETCHING PRODUCTS ======");
-    console.error("Error:", error.message);
-    console.error("Error stack:", error.stack);
-    console.error("Error name:", error.name);
-    console.error("Error details:", JSON.stringify(error, null, 2));
+    console.error("Error:", error);
+    console.error("Error name:", error?.name);
 
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         error: "Failed to fetch products",
-        message: error.message,
-        stack: error.stack,
+        ...(isProd ? {} : { message: error?.message }),
       },
       { status: 500 }
     );

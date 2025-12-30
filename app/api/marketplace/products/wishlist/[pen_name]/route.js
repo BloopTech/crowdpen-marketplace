@@ -33,8 +33,9 @@ export async function GET(request, { params }) {
 
   try {
     const { pen_name } = getParams;
+    const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
 
-    if (!pen_name) {
+    if (!penNameRaw || penNameRaw.length > 80) {
       return NextResponse.json(
         { error: "Pen name is required" },
         { status: 400 }
@@ -44,24 +45,34 @@ export async function GET(request, { params }) {
     const { searchParams } = new URL(request.url);
 
     // Pagination parameters
-    const page = parseInt(searchParams.get("page")) || 1;
-    const limit = parseInt(searchParams.get("limit")) || 20;
+    const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "20", 10);
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 50)
+      : 20;
     const offset = (page - 1) * limit;
 
     // Filter parameters
-    const search = searchParams.get("search") || "";
+    const search = (searchParams.get("search") || "").slice(0, 200);
     const category = searchParams.get("category") || "";
     const sortBy = searchParams.get("sort") || "createdAt";
     const sortOrder = searchParams.get("order") || "desc";
-    const minPrice = parseFloat(searchParams.get("minPrice")) || 0;
-    const maxPrice = parseFloat(searchParams.get("maxPrice")) || 10000;
+    const sortOrderUpper = String(sortOrder).toLowerCase() === "asc" ? "ASC" : "DESC";
+
+    const minPriceRaw = Number.parseFloat(searchParams.get("minPrice") || "");
+    const maxPriceRaw = Number.parseFloat(searchParams.get("maxPrice") || "");
+    const minPrice = Number.isFinite(minPriceRaw) && minPriceRaw > 0 ? minPriceRaw : 0;
+    const maxPrice = Number.isFinite(maxPriceRaw) && maxPriceRaw > 0 ? maxPriceRaw : 10000;
+    const normalizedMin = Math.min(minPrice, maxPrice);
+    const normalizedMax = Math.max(minPrice, maxPrice);
 
     const session = await getServerSession(authOptions);
     const viewerId = session?.user?.id || null;
 
     // Find user by pen_name
     const user = await User.findOne({
-      where: { pen_name },
+      where: { pen_name: penNameRaw },
       attributes: ["id", "pen_name", "name", "settings"],
     });
 
@@ -78,10 +89,10 @@ export async function GET(request, { params }) {
     // Build where conditions for products
     const productWhereConditions = {
       [Op.and]: [
-        minPrice > 0 || maxPrice < 10000
+        normalizedMin > 0 || normalizedMax < 10000
           ? {
               price: {
-                [Op.between]: [minPrice, maxPrice],
+                [Op.between]: [normalizedMin, normalizedMax],
               },
             }
           : {},
@@ -142,10 +153,10 @@ export async function GET(request, { params }) {
     const orderClause = (
       sortBy === "price" || sortBy === "title"
     )
-      ? [["MarketplaceProduct", sortBy === "price" ? "price" : "title", sortOrder.toUpperCase()]]
+      ? [["MarketplaceProduct", sortBy === "price" ? "price" : "title", sortOrderUpper]]
       : (sortBy === "bestsellers" || sortBy === "sales")
-        ? [[salesCountLiteral, sortOrder.toUpperCase()]]
-        : [[rankScoreLiteral, "DESC"], ["MarketplaceProduct", "createdAt", sortOrder.toUpperCase()]];
+        ? [[salesCountLiteral, sortOrderUpper]]
+        : [[rankScoreLiteral, "DESC"], ["MarketplaceProduct", "createdAt", sortOrderUpper]];
 
     const { count, rows: wishlistItems } = await MarketplaceWishlists.findAndCountAll({
       where: { user_id: user.id },
@@ -287,8 +298,8 @@ export async function GET(request, { params }) {
           category,
           sortBy,
           sortOrder,
-          minPrice,
-          maxPrice,
+          minPrice: normalizedMin,
+          maxPrice: normalizedMax,
         },
         user: {
           id: user.id,
@@ -299,8 +310,9 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error("Wishlist API Error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },
       { status: 500 }
     );
   }

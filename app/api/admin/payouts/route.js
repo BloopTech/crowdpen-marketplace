@@ -23,20 +23,32 @@ export async function GET(request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const limitParam = Number(searchParams.get("pageSize") || 20);
-    const pageParam = Number(searchParams.get("page") || 1);
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
-    const format = searchParams.get("format") || "json";
-    const pageSize = Math.min(Math.max(limitParam, 1), 100);
-    const page = Math.max(pageParam, 1);
+    const limitParam = Number.parseInt(searchParams.get("pageSize") || "20", 10);
+    const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+    const fromParam = (searchParams.get("from") || "").slice(0, 100);
+    const toParam = (searchParams.get("to") || "").slice(0, 100);
+    const formatParam = (searchParams.get("format") || "json").toLowerCase();
+    const format = formatParam === "csv" ? "csv" : "json";
+    const pageSize = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 100)
+      : 20;
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
     const offset = (page - 1) * pageSize;
 
+    const parseDateSafe = (v) => {
+      if (!v) return null;
+      const d = new Date(v);
+      if (!Number.isFinite(d.getTime())) return null;
+      return d;
+    };
+    const fromDate = parseDateSafe(fromParam);
+    const toDate = parseDateSafe(toParam);
+
     const where = { trans_type: "payout" };
-    if (from || to) {
+    if (fromDate || toDate) {
       where.createdAt = {};
-      if (from) where.createdAt[Op.gte] = new Date(from);
-      if (to) where.createdAt[Op.lte] = new Date(to);
+      if (fromDate) where.createdAt[Op.gte] = fromDate;
+      if (toDate) where.createdAt[Op.lte] = toDate;
     }
 
     const toMajor = (n) => {
@@ -109,6 +121,10 @@ export async function GET(request) {
     }
   } catch (error) {
     console.error("/api/admin/payouts error", error);
-    return NextResponse.json({ status: "error", message: error?.message || "Failed" }, { status: 500 });
+    const isProd = process.env.NODE_ENV === "production";
+    return NextResponse.json(
+      { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
+      { status: 500 }
+    );
   }
 }

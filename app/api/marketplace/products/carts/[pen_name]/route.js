@@ -63,30 +63,43 @@ export async function GET(request, { params }) {
 
   try {
     const { pen_name } = getParams;
-    const { searchParams } = new URL(request.url);
-    
-    // Get pagination parameters
-    const page = parseInt(searchParams.get('page')) || 1;
-    const limit = parseInt(searchParams.get('limit')) || 10;
-    const offset = (page - 1) * limit;
-    
-    // Get filter parameters
-    const search = searchParams.get('search') || '';
-    const category = searchParams.get('category') || '';
-    const sort = searchParams.get('sort') || 'createdAt';
-    const order = searchParams.get('order') || 'desc';
-
-    if (!pen_name) {
+    const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
+    if (!penNameRaw || penNameRaw.length > 80) {
       return NextResponse.json(
         { error: "Pen name is required" },
         { status: 400 }
       );
     }
 
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    
+    // Get pagination parameters
+    const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
+    const limitParam = Number.parseInt(searchParams.get("limit") || "10", 10);
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? pageParam : 1;
+    const limit = Number.isFinite(limitParam)
+      ? Math.min(Math.max(limitParam, 1), 50)
+      : 10;
+    const offset = (page - 1) * limit;
+    
+    // Get filter parameters
+    const search = (searchParams.get('search') || '').slice(0, 200);
+    const category = (searchParams.get('category') || '').slice(0, 100);
+    const sort = (searchParams.get('sort') || 'createdAt').slice(0, 50);
+    const order = searchParams.get('order') || 'desc';
+    const orderDir = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
     // Find the user by pen_name
     const user = await User.findOne({
-      where: { pen_name },
+      where: { pen_name: penNameRaw },
       attributes: ['id', 'pen_name', 'name']
     });
 
@@ -94,6 +107,13 @@ export async function GET(request, { params }) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
+      );
+    }
+
+    if (String(user.id) !== String(session.user.id)) {
+      return NextResponse.json(
+        { error: "Access denied" },
+        { status: 403 }
       );
     }
 
@@ -166,7 +186,7 @@ export async function GET(request, { params }) {
           ]
         }
       ],
-      order: [['createdAt', order.toUpperCase()]],
+      order: [['createdAt', orderDir]],
       limit,
       offset,
       distinct: true
@@ -293,8 +313,9 @@ export async function GET(request, { params }) {
     
   } catch (error) {
     console.error("Cart API Error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },
       { status: 500 }
     );
   }

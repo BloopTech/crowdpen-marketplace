@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "../../../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../../../models/index";
 import { z } from "zod";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../../lib/security/rateLimit";
 
 const { MarketplaceProduct, MarketplaceCartItems, MarketplaceCart, User } = db;
 
@@ -27,7 +28,14 @@ export async function POST(request, { params }) {
   
   try {
     const { id } = getParams; // This is the cart item ID
-    const body = await request.json();
+    const cartItemId = id == null ? "" : String(id).trim().slice(0, 128);
+    if (!cartItemId) {
+      return NextResponse.json(
+        { error: "Cart item not found" },
+        { status: 404 }
+      );
+    }
+    const body = await request.json().catch(() => ({}));
     
     // Validate request body
     const validationResult = updateCartSchema.safeParse(body);
@@ -51,10 +59,20 @@ export async function POST(request, { params }) {
         { status: 401 }
       );
     }
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `cart-item-update:${userIdForRl}:${ip}`, limit: 60, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
     
     // Find the cart item with cart and user verification
     const cartItem = await MarketplaceCartItems.findOne({
-      where: { id },
+      where: { id: cartItemId },
       include: [
         {
           model: MarketplaceCart,
@@ -124,7 +142,7 @@ export async function POST(request, { params }) {
         success: true,
         message: "Item removed from cart",
         data: {
-          removed_item_id: id,
+          removed_item_id: cartItemId,
           cart_id: cartItem.MarketplaceCart.id
         }
       });
@@ -185,8 +203,9 @@ export async function POST(request, { params }) {
     
   } catch (error) {
     console.error("Cart Update API Error:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },
       { status: 500 }
     );
   }

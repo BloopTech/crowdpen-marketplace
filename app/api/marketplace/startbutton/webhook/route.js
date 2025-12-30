@@ -4,6 +4,15 @@ import { db } from "../../../../models";
 import { render } from "@react-email/render";
 import { sendEmail } from "../../../../lib/sendEmail";
 import { OrderConfirmationEmail } from "../../../../lib/emails/OrderConfirmation";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { assertAnyEnvInProduction } from "../../../../lib/env";
+
+assertAnyEnvInProduction([
+  "STARTBUTTON_WEBHOOK_SECRET",
+  "STARTBUTTON_SECRET_KEY",
+  "STARTBUTTON_SECRET",
+  "STARTBUTTON_API_KEY",
+]);
 
 const {
   MarketplaceOrder,
@@ -240,6 +249,15 @@ export async function POST(request) {
     return NextResponse.json({ status: "error", message: "Webhook secret not configured" }, { status: 500 });
   }
 
+  const ip = getClientIpFromHeaders(request.headers) || "unknown";
+  const rl = rateLimit({ key: `sb-webhook:${ip}`, limit: 600, windowMs: 60_000 });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { status: "error", message: "Too many requests" },
+      { status: 429, headers: rateLimitResponseHeaders(rl) }
+    );
+  }
+
   // Read raw body for signature verification
   const raw = await request.text();
   const payload = safeJsonParse(raw) || {};
@@ -289,7 +307,7 @@ export async function POST(request) {
       throw new Error("Order not found");
     }
 
-    const notesPart = raw ? `Webhook: ${raw}` : null;
+    const notesPart = `Webhook received: ${new Date().toISOString()}${orderReference ? ` orderRef=${orderReference}` : ""}${gatewayReference ? ` gatewayRef=${gatewayReference}` : ""}${stage ? ` stage=${stage}` : ""}${ok ? " paid" : failed ? " failed" : ""}`;
     const mergedNotes = notesPart
       ? lockedOrder.notes
         ? lockedOrder.notes.includes(notesPart)
@@ -440,6 +458,10 @@ export async function POST(request) {
   } catch (error) {
     await t.rollback();
     console.error("startbutton webhook error:", error);
-    return NextResponse.json({ status: "error", message: error?.message || "Server error" }, { status: 500 });
+    const isProd = process.env.NODE_ENV === "production";
+    return NextResponse.json(
+      { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },
+      { status: 500 }
+    );
   }
 }

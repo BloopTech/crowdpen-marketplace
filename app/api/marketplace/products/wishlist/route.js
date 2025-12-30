@@ -15,9 +15,6 @@ export async function GET(request) {
   try {
     // Get current user from session
     const session = await getServerSession(authOptions);
-
-    const userId = session?.user?.id || null;
-
     if (!session || !session.user) {
       return NextResponse.json(
         {
@@ -28,6 +25,8 @@ export async function GET(request) {
         { status: 401 }
       );
     }
+
+    const userId = session.user.id;
 
     // Count only wishlist items with published products
     const wishlistCount = await MarketplaceWishlists.count({
@@ -49,10 +48,13 @@ export async function GET(request) {
     });
   } catch (error) {
     console.error("Error checking wishlist status:", error);
+    const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
         status: "error",
-        message: error.message || "Failed to check wishlist status",
+        message: isProd
+          ? "Failed to check wishlist status"
+          : (error?.message || "Failed to check wishlist status"),
         count: 0,
       },
       { status: 500 }
