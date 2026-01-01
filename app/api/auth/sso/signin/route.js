@@ -17,6 +17,48 @@ function safeTimingEqual(a, b) {
   }
 }
 
+function normalizeSha256SignatureToHex(sig) {
+  const sigText = String(sig || "").trim();
+  if (!sigText) return null;
+
+  const hexMatch = sigText.match(/^(?:sha256=)?([0-9a-f]{64})$/i);
+  if (hexMatch && hexMatch[1]) return String(hexMatch[1]).toLowerCase();
+
+  const rawText = sigText.startsWith("sha256=") ? sigText.slice("sha256=".length) : sigText;
+  const raw = rawText.replace(/ /g, "+");
+  const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+
+  try {
+    const buf = Buffer.from(padded, "base64");
+    if (buf.length !== 32) return null;
+    return buf.toString("hex");
+  } catch {
+    return null;
+  }
+}
+
+function getSecretKeyCandidates(secret) {
+  const candidates = [];
+  const raw = String(secret || "");
+  if (raw) candidates.push(raw);
+
+  const trimmed = raw.trim();
+  if (trimmed) {
+    try {
+      const buf = Buffer.from(trimmed, "base64");
+      const reEncoded = buf.toString("base64");
+      const normA = trimmed.replace(/=+$/g, "");
+      const normB = reEncoded.replace(/=+$/g, "");
+      if (buf.length >= 16 && normA && normA === normB) {
+        candidates.push(buf);
+      }
+    } catch {}
+  }
+
+  return candidates;
+}
+
 export async function POST(request) {
   const cookieStore = await cookies();
 
@@ -69,8 +111,8 @@ export async function POST(request) {
         );
       }
 
-      const sigText = String(sig || "").trim();
-      if (!/^[0-9a-f]{64}$/i.test(sigText)) {
+      const sigHex = normalizeSha256SignatureToHex(sig);
+      if (!sigHex) {
         return NextResponse.json(
           { error: "Invalid SSO signature" },
           { status: 403 }
@@ -86,7 +128,8 @@ export async function POST(request) {
       }
 
       const maxSkewMs = 5 * 60 * 1000;
-      const skew = Math.abs(Date.now() - tsNum);
+      const tsMs = tsNum < 1_000_000_000_000 ? tsNum * 1000 : tsNum;
+      const skew = Math.abs(Date.now() - tsMs);
       if (!Number.isFinite(skew) || skew > maxSkewMs) {
         return NextResponse.json(
           { error: "Expired SSO request" },
@@ -95,12 +138,16 @@ export async function POST(request) {
       }
 
       const payload = `${tsNum}.${userData}`;
-      const expected = crypto
-        .createHmac("sha256", secret)
-        .update(payload)
-        .digest("hex");
+      const secretCandidates = getSecretKeyCandidates(secret);
+      const ok = secretCandidates.some((key) => {
+        const expected = crypto
+          .createHmac("sha256", key)
+          .update(payload)
+          .digest("hex");
+        return safeTimingEqual(expected, sigHex);
+      });
 
-      if (!safeTimingEqual(expected, sigText)) {
+      if (!ok) {
         return NextResponse.json(
           { error: "Invalid SSO signature" },
           { status: 403 }

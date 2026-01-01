@@ -1,6 +1,27 @@
 import { NextResponse } from 'next/server';
 import { handleUserData } from '../../[...nextauth]/route';
 
+function normalizeSha256SignatureToHex(sig) {
+  const sigText = String(sig || "").trim();
+  if (!sigText) return null;
+
+  const hexMatch = sigText.match(/^(?:sha256=)?([0-9a-f]{64})$/i);
+  if (hexMatch && hexMatch[1]) return String(hexMatch[1]).toLowerCase();
+
+  const rawText = sigText.startsWith("sha256=") ? sigText.slice("sha256=".length) : sigText;
+  const raw = rawText.replace(/ /g, "+");
+  const b64 = raw.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+
+  try {
+    const buf = Buffer.from(padded, "base64");
+    if (buf.length !== 32) return null;
+    return buf.toString("hex");
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -15,6 +36,13 @@ export async function GET(request) {
     const sig = searchParams.get('sig');
 
     const isProd = process.env.NODE_ENV === "production";
+
+    const invalidSsoRedirect = (reason) => {
+      const errUrl = new URL('/auth/error', request.url);
+      errUrl.searchParams.set('error', 'InvalidSSO');
+      if (reason) errUrl.searchParams.set('reason', String(reason).slice(0, 64));
+      return NextResponse.redirect(errUrl);
+    };
 
     if (!isProd) {
       console.log('=== SSO CALLBACK RECEIVED ===');
@@ -66,13 +94,23 @@ export async function GET(request) {
         // Handle different providers differently
         if (providerNormalized === 'email') {
           if (isProd) {
-            const tsNum = Number.parseInt(String(ts || ""), 10);
-            if (!Number.isFinite(tsNum)) {
-              return NextResponse.redirect(new URL('/auth/error?error=InvalidSSO', request.url));
+            const tsText = String(ts || "").trim();
+            if (!tsText) {
+              return invalidSsoRedirect('missing_ts');
             }
-            const sigText = String(sig || "").trim();
-            if (!/^[0-9a-f]{64}$/i.test(sigText)) {
-              return NextResponse.redirect(new URL('/auth/error?error=InvalidSSO', request.url));
+            const tsNum = Number.parseInt(tsText, 10);
+            if (!Number.isFinite(tsNum)) {
+              return invalidSsoRedirect('invalid_ts');
+            }
+
+            const sigTextRaw = String(sig || "").trim();
+            if (!sigTextRaw) {
+              return invalidSsoRedirect('missing_sig');
+            }
+
+            const sigHex = normalizeSha256SignatureToHex(sigTextRaw);
+            if (!sigHex) {
+              return invalidSsoRedirect('invalid_sig');
             }
           }
 
@@ -84,7 +122,10 @@ export async function GET(request) {
           signInUrl.searchParams.set('userData', decodedUserText);
           signInUrl.searchParams.set('callbackUrl', callbackUrl);
           if (ts) signInUrl.searchParams.set('ts', String(ts).slice(0, 30));
-          if (sig) signInUrl.searchParams.set('sig', String(sig).slice(0, 256));
+          if (sig) {
+            const sigHex = normalizeSha256SignatureToHex(sig);
+            signInUrl.searchParams.set('sig', String(sigHex || sig).slice(0, 256));
+          }
           return NextResponse.redirect(signInUrl);
         } else {
           // For OAuth providers (GitHub, Google), redirect to provider-specific sign-in page
