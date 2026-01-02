@@ -32,8 +32,8 @@ export async function GET(request) {
       ? callbackUrlRaw
       : '/';
 
-    const ts = searchParams.get('ts');
-    const sig = searchParams.get('sig');
+    const ts = searchParams.get('ts') || searchParams.get('timestamp') || searchParams.get('t');
+    const sig = searchParams.get('sig') || searchParams.get('signature');
 
     const isProd = process.env.NODE_ENV === "production";
 

@@ -16,8 +16,8 @@ export default function SSOSignInPage() {
         const userData = searchParams.get('userData');
         const callbackUrlRaw = searchParams.get('callbackUrl') || '/';
         const callbackUrl = typeof callbackUrlRaw === 'string' ? callbackUrlRaw.slice(0, 2048) : '/';
-        const ts = searchParams.get('ts');
-        const sig = searchParams.get('sig');
+        const ts = searchParams.get('ts') || searchParams.get('timestamp') || searchParams.get('t');
+        const sig = searchParams.get('sig') || searchParams.get('signature');
         
         if (!userData) {
           setError('No user data provided');
