@@ -147,7 +147,7 @@ export async function POST(request, { params }) {
       include: [
         {
           model: User,
-          attributes: ["id"],
+          attributes: ["id", "role", "crowdpen_staff"],
           include: [
             {
               model: MarketplaceKycVerification,
@@ -183,7 +183,8 @@ export async function POST(request, { params }) {
     // KYC gating: if viewer is not the owner and owner's KYC not approved, block
     const isOwner = product.user_id === user_id;
     const ownerApproved =
-      product?.User?.MarketplaceKycVerification?.status === "approved";
+      product?.User?.MarketplaceKycVerification?.status === "approved" ||
+      User.isKycExempt(product?.User);
     if (!isOwner && !ownerApproved) {
       return NextResponse.json(
         {

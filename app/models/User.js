@@ -3,6 +3,15 @@ import { Model, DataTypes } from "sequelize";
 import sequelize from "./database";
 
 class User extends Model {
+  static isKycExempt(user) {
+    const role = user?.role;
+    return (
+      user?.crowdpen_staff === true ||
+      role === "admin" ||
+      role === "senior_admin"
+    );
+  }
+
   /**
    * Helper method for defining associations.
    * This method is not a part of Sequelize lifecycle.

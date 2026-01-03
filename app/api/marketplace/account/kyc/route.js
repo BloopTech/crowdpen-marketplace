@@ -16,6 +16,13 @@ export async function GET() {
 
     const userId = session.user.id;
 
+    const user = await db.User.findOne({
+      where: { id: userId },
+      attributes: ["id", "role", "crowdpen_staff"],
+      raw: true,
+    });
+    const kycExempt = db.User.isKycExempt(user);
+
     const kyc = await db.MarketplaceKycVerification.findOne({
       where: { user_id: userId },
     });
@@ -23,6 +30,7 @@ export async function GET() {
     return NextResponse.json({
       status: "success",
       kyc: kyc ? kyc : null,
+      kycExempt,
     });
   } catch (error) {
     console.error("KYC GET error:", error);
@@ -48,6 +56,19 @@ export async function PATCH(request) {
     }
 
     const userId = session.user.id;
+
+    const user = await db.User.findOne({
+      where: { id: userId },
+      attributes: ["id", "role", "crowdpen_staff"],
+      raw: true,
+    });
+    if (db.User.isKycExempt(user)) {
+      return NextResponse.json({
+        status: "success",
+        message: "KYC not required",
+        kycId: null,
+      });
+    }
 
     const ip = getClientIpFromHeaders(request.headers) || "unknown";
     const rl = rateLimit({ key: `account-kyc:${String(userId)}:${ip}`, limit: 10, windowMs: 60_000 });

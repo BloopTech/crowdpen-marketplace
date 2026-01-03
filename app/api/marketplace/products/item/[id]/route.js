@@ -65,6 +65,7 @@ export async function GET(request, { params }) {
             "email",
             "image",
             "role",
+            "crowdpen_staff",
             "description_other",
             "description",
             "color",
@@ -93,7 +94,8 @@ export async function GET(request, { params }) {
     const viewerId = userId;
     const isOwner = viewerId && product?.user_id === viewerId;
     const ownerApproved =
-      product?.User?.MarketplaceKycVerification?.status === "approved";
+      product?.User?.MarketplaceKycVerification?.status === "approved" ||
+      User.isKycExempt(product?.User);
     if (!isOwner && !ownerApproved) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }

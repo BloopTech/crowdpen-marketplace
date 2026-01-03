@@ -111,7 +111,7 @@ export async function POST(request) {
       include: [
         {
           model: User,
-          attributes: ['id'],
+          attributes: ['id', 'role', 'crowdpen_staff'],
           include: [
             { model: MarketplaceKycVerification, attributes: ['status'], required: false },
           ],
@@ -159,7 +159,9 @@ export async function POST(request) {
 
       // Per-product KYC gating
       const isOwner = product.user_id === session.user.id;
-      const ownerApproved = product?.User?.MarketplaceKycVerification?.status === 'approved';
+      const ownerApproved =
+        product?.User?.MarketplaceKycVerification?.status === 'approved' ||
+        User.isKycExempt(product?.User);
       if (!isOwner && !ownerApproved) {
         skippedProducts.push({
           id: product.id,

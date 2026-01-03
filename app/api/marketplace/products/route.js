@@ -185,11 +185,22 @@ export async function GET(request) {
 
     // Apply KYC visibility: show only products where owner's KYC is approved, unless viewer is the owner
     const approvedSellerLiteral = db.Sequelize.literal(`
-      EXISTS (
-        SELECT 1
-        FROM "marketplace_kyc_verifications" AS mkv
-        WHERE mkv.user_id = "MarketplaceProduct"."user_id"
-          AND mkv.status = 'approved'
+      (
+        EXISTS (
+          SELECT 1
+          FROM "marketplace_kyc_verifications" AS mkv
+          WHERE mkv.user_id = "MarketplaceProduct"."user_id"
+            AND mkv.status = 'approved'
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM "users" AS u
+          WHERE u.id = "MarketplaceProduct"."user_id"
+            AND (
+              u.crowdpen_staff = true
+              OR u.role IN ('admin', 'senior_admin')
+            )
+        )
       )
     `);
 

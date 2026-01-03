@@ -57,7 +57,7 @@ export async function GET(request, { params }) {
     // Find author first
     const author = await User.findOne({
       where: { pen_name: penNameRaw },
-      attributes: ["id"],
+      attributes: ["id", "role", "crowdpen_staff"],
     });
 
     if (!author) {
@@ -141,7 +141,11 @@ export async function GET(request, { params }) {
       raw: true,
     });
     const isViewerAuthor = Boolean(userId && userId === author.id);
-    if (!isViewerAuthor && authorKyc?.status !== "approved") {
+    if (
+      !isViewerAuthor &&
+      authorKyc?.status !== "approved" &&
+      !User.isKycExempt(author)
+    ) {
       return NextResponse.json({
         status: "success",
         products: [],

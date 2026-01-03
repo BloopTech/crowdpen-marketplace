@@ -111,11 +111,22 @@ export async function GET(request, { params }) {
 
     // Build KYC gating condition: approved owners or viewer is the product owner
     const approvedSellerLiteral = db.Sequelize.literal(`
-      EXISTS (
-        SELECT 1
-        FROM "marketplace_kyc_verifications" AS mkv
-        WHERE mkv.user_id = "MarketplaceProduct"."user_id"
-          AND mkv.status = 'approved'
+      (
+        EXISTS (
+          SELECT 1
+          FROM "marketplace_kyc_verifications" AS mkv
+          WHERE mkv.user_id = "MarketplaceProduct"."user_id"
+            AND mkv.status = 'approved'
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM "users" AS u
+          WHERE u.id = "MarketplaceProduct"."user_id"
+            AND (
+              u.crowdpen_staff = true
+              OR u.role IN ('admin', 'senior_admin')
+            )
+        )
       )
     `);
     const kycOr = [approvedSellerLiteral];

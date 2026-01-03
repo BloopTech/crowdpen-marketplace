@@ -29,6 +29,8 @@ export async function GET() {
         "image",
         "description",
         "pen_name",
+        "role",
+        "crowdpen_staff",
         "createdAt",
       ],
     });
@@ -48,6 +50,8 @@ export async function GET() {
       bio: user?.description || "",
       image: user?.image || null,
       pen_name: user?.pen_name || null,
+      role: user?.role || null,
+      crowdpen_staff: user?.crowdpen_staff === true,
       memberSince: user?.createdAt || null,
       settings: {
         newProductNotifications: true,

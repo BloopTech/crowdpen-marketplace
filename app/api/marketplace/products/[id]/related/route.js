@@ -58,7 +58,7 @@ export async function GET(request, { params }) {
       include: [
         {
           model: User,
-          attributes: ["id"],
+          attributes: ["id", "role", "crowdpen_staff"],
           required: false,
           include: [
             {
@@ -78,7 +78,8 @@ export async function GET(request, { params }) {
     const viewerId = userId;
     const isOwner = viewerId && currentProduct?.user_id === viewerId;
     const ownerApproved =
-      currentProduct?.User?.MarketplaceKycVerification?.status === "approved";
+      currentProduct?.User?.MarketplaceKycVerification?.status === "approved" ||
+      User.isKycExempt(currentProduct?.User);
     if (!isOwner && !ownerApproved) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
@@ -103,11 +104,22 @@ export async function GET(request, { params }) {
         ), 0) + 1))
     `);
     const approvedSellerLiteral = db.Sequelize.literal(`
-      EXISTS (
-        SELECT 1
-        FROM "marketplace_kyc_verifications" AS mkv
-        WHERE mkv.user_id = "MarketplaceProduct"."user_id"
-          AND mkv.status = 'approved'
+      (
+        EXISTS (
+          SELECT 1
+          FROM "marketplace_kyc_verifications" AS mkv
+          WHERE mkv.user_id = "MarketplaceProduct"."user_id"
+            AND mkv.status = 'approved'
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM "users" AS u
+          WHERE u.id = "MarketplaceProduct"."user_id"
+            AND (
+              u.crowdpen_staff = true
+              OR u.role IN ('admin', 'senior_admin')
+            )
+        )
       )
     `);
     const visibilityOr = [approvedSellerLiteral];

@@ -94,7 +94,7 @@ export async function POST(request, { params }) {
       include: [
         {
           model: User,
-          attributes: ["id"],
+          attributes: ["id", "role", "crowdpen_staff"],
           include: [
             {
               model: MarketplaceKycVerification,
@@ -124,7 +124,8 @@ export async function POST(request, { params }) {
     // KYC gating: only allow if viewer is owner or owner's KYC is approved
     const isOwner = product.user_id === userId;
     const ownerApproved =
-      product?.User?.MarketplaceKycVerification?.status === "approved";
+      product?.User?.MarketplaceKycVerification?.status === "approved" ||
+      User.isKycExempt(product?.User);
     if (!isOwner && !ownerApproved) {
       return NextResponse.json(
         { status: "error", message: "Product is not available" },

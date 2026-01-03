@@ -258,7 +258,7 @@ export async function beginCheckout(prevState, formData) {
         include: [
           {
             model: db.User,
-            attributes: ["id"],
+            attributes: ["id", "role", "crowdpen_staff"],
             include: [
               { model: db.MarketplaceKycVerification, attributes: ["status"], required: false },
             ],
@@ -296,7 +296,9 @@ export async function beginCheckout(prevState, formData) {
     const p = ci?.MarketplaceProduct;
     if (!p) return false;
     const isOwner = p.user_id === userId;
-    const ownerApproved = p?.User?.MarketplaceKycVerification?.status === 'approved';
+    const ownerApproved =
+      p?.User?.MarketplaceKycVerification?.status === 'approved' ||
+      User.isKycExempt(p?.User);
     return !isOwner && !ownerApproved;
   });
   if (kycBlocked.length > 0) {

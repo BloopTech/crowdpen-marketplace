@@ -231,11 +231,22 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
 
   // KYC visibility: owner's KYC must be approved unless the viewer is the owner
   const approvedSellerLiteral = literal(`
-    EXISTS (
-      SELECT 1
-      FROM "marketplace_kyc_verifications" AS mkv
-      WHERE mkv.user_id = "MarketplaceProduct"."user_id"
-        AND mkv.status = 'approved'
+    (
+      EXISTS (
+        SELECT 1
+        FROM "marketplace_kyc_verifications" AS mkv
+        WHERE mkv.user_id = "MarketplaceProduct"."user_id"
+          AND mkv.status = 'approved'
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM "users" AS u
+        WHERE u.id = "MarketplaceProduct"."user_id"
+          AND (
+            u.crowdpen_staff = true
+            OR u.role IN ('admin', 'senior_admin')
+          )
+      )
     )
   `);
   const visibilityOr = [approvedSellerLiteral];

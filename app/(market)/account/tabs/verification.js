@@ -33,7 +33,12 @@ import {
 import { useAccount } from "../context";
 
 export default function MyVerification(props) {
-  const { kyc } = useAccount();
+  const { kyc, profile } = useAccount();
+  const isKycExempt = Boolean(
+    profile?.crowdpen_staff === true ||
+      profile?.role === "admin" ||
+      profile?.role === "senior_admin"
+  );
 
   const {
     kycFormAction,
@@ -62,7 +67,20 @@ export default function MyVerification(props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <form action={kycFormAction} className="space-y-6">
+          {isKycExempt ? (
+            <div className="p-4 rounded-md border border-border bg-muted/50 text-muted-foreground flex items-start gap-3">
+              <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5" />
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary">Status: EXEMPT</Badge>
+                </div>
+                <p className="text-sm mt-1">
+                  KYC is not required for your account.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <form action={kycFormAction} className="space-y-6">
             {/* Hidden fields for status, level, select value and uploaded URLs */}
             <input type="hidden" name="status" value="pending" />
             <input
@@ -653,7 +671,8 @@ export default function MyVerification(props) {
                 </div>
               </>
             )}
-          </form>
+            </form>
+          )}
         </CardContent>
       </Card>
     </>
