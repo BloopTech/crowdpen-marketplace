@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useActionState } from "react";
+import React, { useEffect, useMemo, useState, useActionState, useCallback } from "react";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -102,6 +102,7 @@ export default function AccountContentPage() {
   } = useAccount();
 
   const [kycStep, setKycStep] = useState(0);
+  const [isSavingKycDraft, setIsSavingKycDraft] = useState(false);
 
   // Server Action wiring
   const [kycState, kycFormAction, kycIsPending] = useActionState(
@@ -182,6 +183,96 @@ export default function AccountContentPage() {
     uploading: false,
     size: 0,
   });
+
+  const hasKycInputData = useMemo(() => {
+    const fieldsToCheck = [
+      "first_name",
+      "last_name",
+      "middle_name",
+      "phone_number",
+      "dob",
+      "nationality",
+      "address_line1",
+      "address_line2",
+      "city",
+      "state",
+      "postal_code",
+      "country",
+      "id_number",
+      "id_country",
+      "id_expiry",
+    ];
+    const hasTypedValues = fieldsToCheck.some((field) => {
+      const value = kycForm[field];
+      return typeof value === "string" ? value.trim() !== "" : Boolean(value);
+    });
+    const docTypeChanged =
+      typeof kycForm.id_type === "string" &&
+      kycForm.id_type.trim() !== "" &&
+      kycForm.id_type !== (kyc?.id_type || "passport");
+    const hasFiles =
+      Boolean(idFront.file || idFront.uploadedUrl) ||
+      Boolean(idBack.file || idBack.uploadedUrl) ||
+      Boolean(selfie.file || selfie.uploadedUrl);
+    return hasTypedValues || docTypeChanged || hasFiles;
+  }, [kycForm, kyc?.id_type, idFront.file, idFront.uploadedUrl, idBack.file, idBack.uploadedUrl, selfie.file, selfie.uploadedUrl]);
+
+  const saveKycDraft = useCallback(async () => {
+    if (!hasKycInputData || isSavingKycDraft) {
+      return true;
+    }
+    setIsSavingKycDraft(true);
+    const sanitize = (value) => {
+      if (value == null) return null;
+      const str = typeof value === "string" ? value.trim() : String(value);
+      return str === "" ? null : str;
+    };
+    const level = (kyc?.level || "standard").toLowerCase();
+    const payload = {
+      status: "pending",
+      level,
+      first_name: sanitize(kycForm.first_name),
+      last_name: sanitize(kycForm.last_name),
+      middle_name: sanitize(kycForm.middle_name),
+      phone_number: sanitize(kycForm.phone_number),
+      dob: sanitize(kycForm.dob),
+      nationality: sanitize(kycForm.nationality),
+      address_line1: sanitize(kycForm.address_line1),
+      address_line2: sanitize(kycForm.address_line2),
+      city: sanitize(kycForm.city),
+      state: sanitize(kycForm.state),
+      postal_code: sanitize(kycForm.postal_code),
+      country: sanitize(kycForm.country),
+      id_type: sanitize(kycForm.id_type) || "passport",
+      id_number: sanitize(kycForm.id_number),
+      id_country: sanitize(kycForm.id_country),
+      id_expiry: sanitize(kycForm.id_expiry),
+      id_front_url: sanitize(idFront.uploadedUrl),
+      id_back_url: sanitize(idBack.uploadedUrl),
+      selfie_url: sanitize(selfie.uploadedUrl),
+    };
+    try {
+      const response = await fetch("/api/marketplace/account/kyc", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result?.status !== "success") {
+        toast.error(result?.message || "Failed to save verification progress");
+        return false;
+      }
+      return true;
+    } catch (error) {
+      toast.error(error?.message || "Failed to save verification progress");
+      return false;
+    } finally {
+      setIsSavingKycDraft(false);
+    }
+  }, [hasKycInputData, isSavingKycDraft, kyc, kycForm, idFront, idBack, selfie]);
 
   useEffect(() => {
     if (kyc) {
@@ -391,6 +482,9 @@ export default function AccountContentPage() {
               formatMB={formatMB}
               setIdFront={setIdFront}
               setIdBack={setIdBack}
+              onAutoSaveDraft={saveKycDraft}
+              isSavingKycDraft={isSavingKycDraft}
+              setSelfie={setSelfie}
             />
           </TabsContent>
 

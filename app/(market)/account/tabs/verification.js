@@ -31,6 +31,9 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useAccount } from "../context";
+import PhoneInput from "react-phone-number-input";
+import "react-phone-number-input/style.css";
+import { CountrySelect } from "../../../components/country-select";
 
 export default function MyVerification(props) {
   const { kyc, profile } = useAccount();
@@ -54,8 +57,21 @@ export default function MyVerification(props) {
     setKycStep,
     formatMB,
     setIdFront,
-    setIdBack
+    setIdBack,
+    setSelfie,
+    onAutoSaveDraft,
+    isSavingKycDraft,
   } = props;
+
+  const handleNextStep = async () => {
+    if (kycStep >= 4 || kycIsPending || isSavingKycDraft) {
+      return;
+    }
+    const saved = (await onAutoSaveDraft?.()) !== false;
+    if (saved) {
+      setKycStep((s) => Math.min(4, s + 1));
+    }
+  };
 
   return (
     <>
@@ -296,13 +312,16 @@ export default function MyVerification(props) {
                     </div>
                     <div>
                       <Label>Phone Number</Label>
-                      <Input
-                        name="phone_number"
-                        value={kycForm.phone_number}
-                        onChange={(e) =>
-                          setField("phone_number", e.target.value)
-                        }
-                      />
+                      <div className="phone-input-container">
+                        <PhoneInput
+                          placeholder="Enter phone number"
+                          value={kycForm.phone_number}
+                          onChange={(v) => setField("phone_number", v)}
+                          international={false}
+                          defaultCountry="US"
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>.PhoneInputCountry]:mr-2 [&>input]:bg-transparent [&>input]:outline-none [&>input]:border-none [&>input]:h-full [&>input]:w-full [&>input]:placeholder:text-muted-foreground"
+                        />
+                      </div>
                     </div>
                     <div>
                       <Label>Date of Birth</Label>
@@ -316,12 +335,10 @@ export default function MyVerification(props) {
                     </div>
                     <div>
                       <Label>Nationality</Label>
-                      <Input
-                        name="nationality"
+                      <CountrySelect
                         value={kycForm.nationality}
-                        onChange={(e) =>
-                          setField("nationality", e.target.value)
-                        }
+                        onChange={(v) => setField("nationality", v)}
+                        placeholder="Select nationality..."
                       />
                     </div>
                   </div>
@@ -377,10 +394,10 @@ export default function MyVerification(props) {
                     </div>
                     <div>
                       <Label>Country</Label>
-                      <Input
-                        name="country"
+                      <CountrySelect
                         value={kycForm.country}
-                        onChange={(e) => setField("country", e.target.value)}
+                        onChange={(v) => setField("country", v)}
+                        placeholder="Select country..."
                       />
                     </div>
                   </div>
@@ -419,10 +436,10 @@ export default function MyVerification(props) {
                     </div>
                     <div>
                       <Label>Issuing Country</Label>
-                      <Input
-                        name="id_country"
+                      <CountrySelect
                         value={kycForm.id_country}
-                        onChange={(e) => setField("id_country", e.target.value)}
+                        onChange={(v) => setField("id_country", v)}
+                        placeholder="Select issuing country..."
                       />
                     </div>
                     <div>
@@ -638,10 +655,19 @@ export default function MyVerification(props) {
                       <Button
                         type="button"
                         size="sm"
-                        onClick={() => setKycStep((s) => Math.min(4, s + 1))}
-                        disabled={kycIsPending}
+                        onClick={handleNextStep}
+                        disabled={kycIsPending || isSavingKycDraft}
                       >
-                        Next <ChevronRight className="h-4 w-4 ml-1" />
+                        {isSavingKycDraft ? (
+                          <span className="inline-flex items-center">
+                            <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                            Saving...
+                          </span>
+                        ) : (
+                          <>
+                            Next <ChevronRight className="h-4 w-4 ml-1" />
+                          </>
+                        )}
                       </Button>
                     ) : (
                       <Button
