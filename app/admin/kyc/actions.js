@@ -56,7 +56,13 @@ export async function approveKyc(prevState, formData) {
 
   // Auto-promote user to merchant upon KYC approval
   if (record?.user_id) {
-    await db.User.update({ merchant: true }, { where: { id: record.user_id } });
+    const user = await db.User.findOne({
+      where: { id: record.user_id },
+      attributes: ["id", "role", "crowdpen_staff"],
+    });
+    if (user && !isAdminOrSenior(user)) {
+      await db.User.update({ merchant: true }, { where: { id: record.user_id } });
+    }
   }
 
   // Send approval email (best-effort)
@@ -79,8 +85,8 @@ export async function approveKyc(prevState, formData) {
           accountUrl,
           level: record?.level || "standard",
         });
-        const html = String(await render(component));
-        const text = String(await render(component, { plainText: true }));
+        const html = String(await render(component, { pretty: true }));
+        const text = `Hi ${user?.name || "there"},\n\nYour KYC has been approved. Your verification level is ${String(record?.level || "standard").toUpperCase()}.\n\nGo to your account: ${accountUrl}\n`;
         await sendEmail({ to, subject: "Your KYC has been approved", html, text });
         emailInfo.sent = true;
       }
@@ -174,8 +180,8 @@ export async function rejectKyc(prevState, formData) {
           accountUrl,
           reason: reason || record?.rejection_reason || "",
         });
-        const html = String(await render(component));
-        const text = String(await render(component, { plainText: true }));
+        const html = String(await render(component, { pretty: true }));
+        const text = `Hi ${user?.name || "there"},\n\nWe couldn\'t approve your KYC at this time.${reason ? `\n\nReason: ${reason}` : ""}\n\nReview and resubmit here: ${accountUrl}\n`;
         await sendEmail({ to, subject: "Update on your KYC verification", html, text });
         emailInfo.sent = true;
       }

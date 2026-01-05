@@ -143,7 +143,7 @@ export async function createProduct(prevState, queryData) {
   const getMarketplaceSubcategoryId = queryData.get(
     "marketplace_subcategory_id"
   );
-  const getImages = queryData.get("images");
+  const getImages = queryData.getAll("images");
   const getProductFile = queryData.get("productFile");
   const getFileType = queryData.get("fileType");
   const getFileSize = queryData.get("fileSize");

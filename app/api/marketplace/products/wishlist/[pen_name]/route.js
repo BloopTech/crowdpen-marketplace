@@ -125,6 +125,7 @@ export async function GET(request, { params }) {
             AND (
               u.crowdpen_staff = true
               OR u.role IN ('admin', 'senior_admin')
+              OR u.merchant = true
             )
         )
       )

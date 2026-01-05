@@ -240,21 +240,15 @@ export async function GET(request, { params }) {
             AND (
               u.crowdpen_staff = true
               OR u.role IN ('admin', 'senior_admin')
+              OR u.merchant = true
             )
         )
       )
     `);
 
     const visibilityOr = [approvedSellerLiteral];
-    if (userId) {
-      visibilityOr.push({ user_id: userId });
-    }
-    const flaggedOr = userId
-      ? [{ flagged: false }, { user_id: userId }]
-      : [{ flagged: false }];
-    const statusOr = userId
-      ? [{ product_status: "published" }, { user_id: userId }]
-      : [{ product_status: "published" }];
+    const flaggedOr = [{ flagged: false }];
+    const statusOr = [{ product_status: "published" }];
 
     const andConditions = [
       where,

@@ -258,7 +258,7 @@ export async function beginCheckout(prevState, formData) {
         include: [
           {
             model: db.User,
-            attributes: ["id", "role", "crowdpen_staff"],
+            attributes: ["id", "role", "crowdpen_staff", "merchant"],
             include: [
               { model: db.MarketplaceKycVerification, attributes: ["status"], required: false },
             ],
@@ -284,9 +284,48 @@ export async function beginCheckout(prevState, formData) {
   });
   if (statusBlocked.length > 0) {
     const titles = statusBlocked.map((ci) => ci?.MarketplaceProduct?.title).filter(Boolean);
+    const idsToRemove = statusBlocked.map((ci) => ci?.id).filter(Boolean);
+    try {
+      if (idsToRemove.length) {
+        await MarketplaceCartItems.destroy({
+          where: {
+            id: idsToRemove,
+            marketplace_cart_id: cart.id,
+          },
+        });
+      }
+      const remaining = cartItems.filter((ci) => !idsToRemove.includes(ci?.id));
+      if (remaining.length === 0) {
+        await cart.destroy();
+        return {
+          success: false,
+          message: "Your cart is empty.",
+          errors: { cart: ["No available items"] },
+        };
+      }
+
+      let subtotal = 0;
+      for (const ci of remaining) {
+        const p = ci?.MarketplaceProduct;
+        if (!p) continue;
+        const effectivePrice = computeEffectivePrice(p);
+        const itemTotal = effectivePrice * (ci.quantity || 1);
+        subtotal += itemTotal;
+      }
+      const tax = subtotal * 0.1;
+      const discount = Number(cart.discount ?? 0);
+      const total = subtotal + tax - discount;
+      await cart.update({
+        subtotal: subtotal.toFixed(2),
+        tax: tax.toFixed(2),
+        total: total.toFixed(2),
+      });
+    } catch (cleanupError) {
+      console.error("checkout status cleanup error", cleanupError);
+    }
     return {
       success: false,
-      message: `Some items are no longer available: ${titles.join(", ")}`,
+      message: `Some items are no longer available and were removed from your cart: ${titles.join(", ")}`,
       errors: { cart: ["Contains unavailable products"] },
     };
   }
@@ -298,7 +337,8 @@ export async function beginCheckout(prevState, formData) {
     const isOwner = p.user_id === userId;
     const ownerApproved =
       p?.User?.MarketplaceKycVerification?.status === 'approved' ||
-      User.isKycExempt(p?.User);
+      User.isKycExempt(p?.User) ||
+      p?.User?.merchant === true;
     return !isOwner && !ownerApproved;
   });
   if (kycBlocked.length > 0) {

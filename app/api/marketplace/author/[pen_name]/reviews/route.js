@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../models/index";
 import { Op } from "sequelize";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../../../auth/[...nextauth]/route";
 
-const { User, MarketplaceProduct, MarketplaceReview } = db;
+const { User, MarketplaceProduct, MarketplaceReview, MarketplaceKycVerification } = db;
 
 export async function GET(request, { params }) {
   const getParams = await params;
@@ -24,6 +26,9 @@ export async function GET(request, { params }) {
   const sortBy = (searchParams.get('sortBy') || 'newest').slice(0, 50); // newest, oldest, rating-high, rating-low
 
   try {
+    const session = await getServerSession(authOptions);
+    const viewerId = session?.user?.id || null;
+
     if (!penNameRaw || penNameRaw.length > 80) {
       return NextResponse.json(
         {
@@ -37,7 +42,7 @@ export async function GET(request, { params }) {
     // Find author first
     const author = await User.findOne({
       where: { pen_name: penNameRaw },
-      attributes: ['id']
+      attributes: ["id", "role", "crowdpen_staff", "merchant"],
     });
 
     if (!author) {
@@ -48,6 +53,33 @@ export async function GET(request, { params }) {
         },
         { status: 404 }
       );
+    }
+
+    const isViewerAuthor = Boolean(viewerId && String(viewerId) === String(author.id));
+    if (!isViewerAuthor) {
+      const authorKyc = await MarketplaceKycVerification.findOne({
+        where: { user_id: author.id },
+        attributes: ["status"],
+        raw: true,
+      });
+      const ownerApproved =
+        authorKyc?.status === "approved" ||
+        User.isKycExempt(author) ||
+        author?.merchant === true;
+      if (!ownerApproved) {
+        return NextResponse.json({
+          status: "success",
+          reviews: [],
+          pagination: {
+            page,
+            limit,
+            total: 0,
+            totalPages: 0,
+            hasMore: false,
+          },
+          ratingDistribution: {},
+        });
+      }
     }
 
     // Build where conditions for reviews
@@ -81,7 +113,9 @@ export async function GET(request, { params }) {
       include: [
         {
           model: MarketplaceProduct,
-          where: { user_id: author.id },
+          where: isViewerAuthor
+            ? { user_id: author.id }
+            : { user_id: author.id, product_status: "published", flagged: false },
           attributes: ['id', 'title', 'image'],
           required: true
         },
@@ -127,7 +161,9 @@ export async function GET(request, { params }) {
       ],
       include: [{
         model: MarketplaceProduct,
-        where: { user_id: author.id },
+        where: isViewerAuthor
+          ? { user_id: author.id }
+          : { user_id: author.id, product_status: "published", flagged: false },
         attributes: []
       }],
       group: [db.sequelize.col('MarketplaceReview.rating')],

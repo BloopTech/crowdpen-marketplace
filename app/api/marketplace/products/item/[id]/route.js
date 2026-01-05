@@ -18,6 +18,8 @@ const {
   MarketplaceOrder,
   MarketplaceOrderItems,
   MarketplaceReview,
+  MarketplaceProductVariation,
+  MarketplaceFunnelEvents,
 } = db;
 
 export async function GET(request, { params }) {
@@ -66,6 +68,7 @@ export async function GET(request, { params }) {
             "image",
             "role",
             "crowdpen_staff",
+            "merchant",
             "description_other",
             "description",
             "color",
@@ -95,7 +98,8 @@ export async function GET(request, { params }) {
     const isOwner = viewerId && product?.user_id === viewerId;
     const ownerApproved =
       product?.User?.MarketplaceKycVerification?.status === "approved" ||
-      User.isKycExempt(product?.User);
+      User.isKycExempt(product?.User) ||
+      product?.User?.merchant === true;
     if (!isOwner && !ownerApproved) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
@@ -107,6 +111,19 @@ export async function GET(request, { params }) {
 
     if (!isOwner && product?.product_status !== "published") {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    }
+
+    let canDelete = false;
+    if (isOwner) {
+      const [orderItemsCount, reviewsCount] = await Promise.all([
+        MarketplaceOrderItems.count({
+          where: { marketplace_product_id: product?.id },
+        }),
+        MarketplaceReview.count({
+          where: { marketplace_product_id: product?.id },
+        }),
+      ]);
+      canDelete = Number(orderItemsCount || 0) === 0 && Number(reviewsCount || 0) === 0;
     }
 
     const carts = await MarketplaceCart.findAll({
@@ -183,6 +200,7 @@ export async function GET(request, { params }) {
       wishlist: wishlists,
       salesCount,
       isBestseller,
+      canDelete,
     };
 
     return NextResponse.json(getProduct);
@@ -190,6 +208,188 @@ export async function GET(request, { params }) {
     console.error("Error fetching product:", error);
     return NextResponse.json(
       { error: "Failed to fetch product" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request, { params }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      {
+        status: "error",
+        message: "Authentication required",
+      },
+      { status: 401 }
+    );
+  }
+
+  const { id } = await params;
+  const idRaw = id == null ? "" : String(id).trim();
+  if (!idRaw || idRaw.length > 128) {
+    return NextResponse.json(
+      {
+        status: "error",
+        message: "Product ID is required",
+      },
+      { status: 400 }
+    );
+  }
+
+  const sessionUserId = String(session.user.id);
+
+  try {
+    const idParam = idRaw;
+    const orConditions = [{ product_id: idParam }];
+    if (isUUID(idParam)) {
+      orConditions.unshift({ id: idParam });
+    }
+
+    const product = await MarketplaceProduct.findOne({
+      where: { [Op.or]: orConditions },
+      attributes: ["id", "user_id", "product_status"],
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Product not found",
+        },
+        { status: 404 }
+      );
+    }
+
+    if (String(product.user_id) !== sessionUserId) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Unauthorized",
+        },
+        { status: 403 }
+      );
+    }
+
+    const productId = product.id;
+
+    const [orderItemsCount, reviewsCount] = await Promise.all([
+      MarketplaceOrderItems.count({
+        where: { marketplace_product_id: productId },
+      }),
+      MarketplaceReview.count({
+        where: { marketplace_product_id: productId },
+      }),
+    ]);
+
+    const eligibleToDelete =
+      Number(orderItemsCount || 0) === 0 && Number(reviewsCount || 0) === 0;
+
+    const archiveProduct = async () => {
+      await db.sequelize.transaction(async (t) => {
+        await Promise.all([
+          MarketplaceCartItems.destroy({
+            where: { marketplace_product_id: productId },
+            transaction: t,
+          }),
+          MarketplaceWishlists.destroy({
+            where: { marketplace_product_id: productId },
+            transaction: t,
+          }),
+        ]);
+
+        const fresh = await MarketplaceProduct.findOne({
+          where: { id: productId },
+          transaction: t,
+        });
+        if (fresh && fresh.product_status !== "archived") {
+          await fresh.update({ product_status: "archived" }, { transaction: t });
+        }
+      });
+    };
+
+    if (!eligibleToDelete) {
+      await archiveProduct();
+      return NextResponse.json(
+        {
+          status: "success",
+          action: "archived",
+          message:
+            "Product archived. Products with reviews or orders can’t be deleted.",
+        },
+        { status: 200 }
+      );
+    }
+
+    try {
+      await db.sequelize.transaction(async (t) => {
+        await Promise.all([
+          MarketplaceCartItems.destroy({
+            where: { marketplace_product_id: productId },
+            transaction: t,
+          }),
+          MarketplaceWishlists.destroy({
+            where: { marketplace_product_id: productId },
+            transaction: t,
+          }),
+          MarketplaceProductTags.destroy({
+            where: { marketplace_product_id: productId },
+            transaction: t,
+          }),
+          MarketplaceProductVariation.destroy({
+            where: { marketplace_product_id: productId },
+            transaction: t,
+          }),
+          MarketplaceFunnelEvents.update(
+            { marketplace_product_id: null },
+            { where: { marketplace_product_id: productId }, transaction: t }
+          ),
+        ]);
+
+        const fresh = await MarketplaceProduct.findOne({
+          where: { id: productId },
+          transaction: t,
+        });
+        if (!fresh) return;
+        await fresh.destroy({ transaction: t });
+      });
+    } catch (error) {
+      if (
+        error?.name === "SequelizeForeignKeyConstraintError" ||
+        error?.parent?.code === "23503"
+      ) {
+        await archiveProduct();
+        return NextResponse.json(
+          {
+            status: "success",
+            action: "archived",
+            message:
+              "Product archived. Products with reviews or orders can’t be deleted.",
+          },
+          { status: 200 }
+        );
+      }
+      throw error;
+    }
+
+    return NextResponse.json(
+      {
+        status: "success",
+        action: "deleted",
+        message: "Product deleted",
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error deleting/archiving product:", error);
+    const isProd = process.env.NODE_ENV === "production";
+    return NextResponse.json(
+      {
+        status: "error",
+        message: isProd
+          ? "Failed to update product"
+          : (error?.message || "Failed to update product"),
+      },
       { status: 500 }
     );
   }

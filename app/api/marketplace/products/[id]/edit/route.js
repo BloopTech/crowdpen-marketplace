@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 import sharp from "sharp";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
@@ -42,6 +42,37 @@ const sanitizeFilename = (filename) => {
 
 const sanitizeProductFilename = (filename) => {
   return filename.replace(/\s+/g, "_").replace(/[^a-zA-Z0-9._-]/g, "");
+};
+
+const getR2KeyFromPublicUrl = (url) => {
+  const base = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+  if (!base || !url) return null;
+  const normalizedBase = String(base).replace(/\/+$/, "");
+  const normalizedUrl = String(url);
+  if (!normalizedUrl.startsWith(`${normalizedBase}/`)) return null;
+  return normalizedUrl.slice(normalizedBase.length + 1);
+};
+
+const deleteR2ObjectByKey = async (key) => {
+  if (!key) return;
+  await s3Client.send(
+    new DeleteObjectCommand({
+      Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+      Key: key,
+    })
+  );
+};
+
+const uniqueStrings = (arr) => {
+  const out = [];
+  const seen = new Set();
+  for (const val of arr || []) {
+    if (typeof val !== "string") continue;
+    if (seen.has(val)) continue;
+    seen.add(val);
+    out.push(val);
+  }
+  return out;
 };
 
 const formatFileSize = (bytes) => {
@@ -302,6 +333,24 @@ export async function POST(request, { params }) {
     let finalImages = [];
     let mainImage = null;
 
+    const previousImages = (() => {
+      const imgs = [];
+      if (existingProduct?.image) imgs.push(existingProduct.image);
+      if (existingProduct?.images) {
+        if (Array.isArray(existingProduct.images)) {
+          imgs.push(...existingProduct.images);
+        } else if (typeof existingProduct.images === "string") {
+          try {
+            const parsed = JSON.parse(existingProduct.images);
+            if (Array.isArray(parsed)) imgs.push(...parsed);
+          } catch {
+            // ignore
+          }
+        }
+      }
+      return uniqueStrings(imgs);
+    })();
+
     // Get existing images
     const existingImagesJson = formData.get("existingImages");
     if (existingImagesJson) {
@@ -320,6 +369,7 @@ export async function POST(request, { params }) {
 
     // Process new images if any
     if (newImageFiles && newImageFiles.length > 0) {
+      const maxSingleImageSize = 3 * 1024 * 1024;
       const maxTotalImageSize = 3 * 1024 * 1024; // 3MB total across all images
       const totalNewImageSize = newImageFiles.reduce((sum, file) => {
         if (file && typeof file.size === "number") {
@@ -333,6 +383,19 @@ export async function POST(request, { params }) {
           {
             status: "error",
             message: "Total images size must be less than 3MB",
+          },
+          { status: 413 }
+        );
+      }
+
+      const oversize = newImageFiles.find(
+        (file) => file && typeof file.size === "number" && file.size > maxSingleImageSize
+      );
+      if (oversize) {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: `Image ${oversize.name} must be 3MB or less`,
           },
           { status: 413 }
         );
@@ -399,6 +462,11 @@ export async function POST(request, { params }) {
     mainImage = finalImages[0];
     const additionalImages = finalImages.slice(1);
 
+    const imagesToDelete = (() => {
+      const keep = new Set(finalImages);
+      return previousImages.filter((url) => !keep.has(url));
+    })();
+
     // Handle product file - both existing and new
     let finalProductFile = null;
     let finalFileSize = productData.fileSize;
@@ -412,6 +480,7 @@ export async function POST(request, { params }) {
 
     // Check for new product file (overrides existing)
     const newProductFile = formData.get("productFile");
+    const previousProductFileUrl = existingProduct?.file ? String(existingProduct.file) : null;
     if (newProductFile && newProductFile.size > 0) {
       try {
         // Validate file size (max 25MB)
@@ -530,6 +599,26 @@ export async function POST(request, { params }) {
       inStock: stock === null ? existingProduct.inStock : stock > 0,
       content_length: contentLength,
     });
+
+    try {
+      const keys = imagesToDelete
+        .map((url) => getR2KeyFromPublicUrl(url))
+        .filter(Boolean);
+      if (keys.length) {
+        await Promise.all(keys.map((key) => deleteR2ObjectByKey(key)));
+      }
+    } catch (cleanupError) {
+      console.error("Error deleting removed images:", cleanupError);
+    }
+
+    if (newProductFile && newProductFile.size > 0 && previousProductFileUrl) {
+      try {
+        const oldKey = getR2KeyFromPublicUrl(previousProductFileUrl);
+        if (oldKey) await deleteR2ObjectByKey(oldKey);
+      } catch (cleanupError) {
+        console.error("Error deleting replaced product file:", cleanupError);
+      }
+    }
 
     return NextResponse.json(
       {

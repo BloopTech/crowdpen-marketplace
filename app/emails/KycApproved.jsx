@@ -31,7 +31,7 @@ export default function KycApproved({
         <div className="mt-6">
           <Button
             href={accountUrl}
-            className="bg-primary-600 hover:bg-primary-700 text-white px-5 py-3 rounded-md font-medium"
+            className="bg-primary-600 text-white px-5 py-3 rounded-md font-medium"
           >
             Go to your account
           </Button>

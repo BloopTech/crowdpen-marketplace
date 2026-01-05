@@ -147,7 +147,7 @@ export async function POST(request, { params }) {
       include: [
         {
           model: User,
-          attributes: ["id", "role", "crowdpen_staff"],
+          attributes: ["id", "role", "crowdpen_staff", "merchant"],
           include: [
             {
               model: MarketplaceKycVerification,
@@ -184,7 +184,8 @@ export async function POST(request, { params }) {
     const isOwner = product.user_id === user_id;
     const ownerApproved =
       product?.User?.MarketplaceKycVerification?.status === "approved" ||
-      User.isKycExempt(product?.User);
+      User.isKycExempt(product?.User) ||
+      product?.User?.merchant === true;
     if (!isOwner && !ownerApproved) {
       return NextResponse.json(
         {

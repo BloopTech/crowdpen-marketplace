@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useCallback, useMemo } from "react";
 import { Button } from "../../../components/ui/button";
 import {
   Card,
@@ -34,15 +34,68 @@ import { useAccount } from "../context";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import { CountrySelect } from "../../../components/country-select";
+import { toast } from "sonner";
+import { cn } from "../../../lib/utils";
+
+const REQUIRED_FIELD_LABELS = {
+  first_name: "First name",
+  last_name: "Last name",
+  middle_name: "Middle name",
+  phone_number: "Phone number",
+  dob: "Date of birth",
+  nationality: "Nationality",
+  address_line1: "Address line 1",
+  address_line2: "Address line 2",
+  city: "City",
+  state: "State/Province",
+  postal_code: "Postal code",
+  country: "Country",
+  id_type: "Document type",
+  id_number: "Document number",
+  id_country: "Issuing country",
+  id_expiry: "Expiry date",
+  id_front_url: "ID front",
+  id_back_url: "ID back",
+  selfie_url: "Selfie",
+};
+
+const REQUIRED_FIELDS_BY_STEP = {
+  0: ["first_name", "last_name", "phone_number", "dob", "nationality"],
+  1: [
+    "address_line1",
+    "address_line2",
+    "city",
+    "state",
+    "postal_code",
+    "country",
+  ],
+  2: [
+    "id_type",
+    "id_number",
+    "id_country",
+    "id_expiry",
+    "id_front_url",
+    "id_back_url",
+  ],
+  3: ["selfie_url"],
+};
+
+const FieldLabel = ({ label, required = false, htmlFor }) => (
+  <Label htmlFor={htmlFor} className="flex items-center gap-1">
+    {label}
+    {required ? (
+      <span className="text-red-500 font-semibold" aria-hidden="true">
+        *
+      </span>
+    ) : (
+      <span className="text-xs text-muted-foreground">(optional)</span>
+    )}
+  </Label>
+);
+
+const isFieldRequired = (field) => field !== "middle_name";
 
 export default function MyVerification(props) {
-  const { kyc, profile } = useAccount();
-  const isKycExempt = Boolean(
-    profile?.crowdpen_staff === true ||
-      profile?.role === "admin" ||
-      profile?.role === "senior_admin"
-  );
-
   const {
     kycFormAction,
     kycForm,
@@ -63,15 +116,102 @@ export default function MyVerification(props) {
     isSavingKycDraft,
   } = props;
 
-  const handleNextStep = async () => {
-    if (kycStep >= 4 || kycIsPending || isSavingKycDraft) {
+  const { kyc, profile } = useAccount();
+  const isKycExempt = Boolean(
+    profile?.crowdpen_staff === true ||
+      profile?.role === "admin" ||
+      profile?.role === "senior_admin"
+  );
+
+  const formatMissingFields = useCallback((fields) => {
+    return fields
+      .map((field) => REQUIRED_FIELD_LABELS[field] || field)
+      .filter(Boolean)
+      .join(", ");
+  }, []);
+
+  const missingByStep = useMemo(() => {
+    const getFieldValue = (field) => {
+      switch (field) {
+        case "id_front_url":
+          return idFront?.uploadedUrl;
+        case "id_back_url":
+          return idBack?.uploadedUrl;
+        case "selfie_url":
+          return selfie?.uploadedUrl;
+        default:
+          return typeof kycForm?.[field] === "string"
+            ? kycForm[field]?.trim()
+            : kycForm?.[field];
+      }
+    };
+
+    return Object.entries(REQUIRED_FIELDS_BY_STEP).reduce(
+      (acc, [step, fields]) => {
+        acc[Number(step)] = fields.filter((field) => {
+          const value = getFieldValue(field);
+          if (typeof value === "string") {
+            return value.length === 0;
+          }
+          return !value;
+        });
+        return acc;
+      },
+      {}
+    );
+  }, [kycForm, idFront, idBack, selfie]);
+
+  const allMissingRequiredFields = useMemo(() => {
+    return Array.from(new Set(Object.values(missingByStep).flat()));
+  }, [missingByStep]);
+
+  const currentStepMissing = useMemo(
+    () => missingByStep[kycStep] || [],
+    [missingByStep, kycStep]
+  );
+
+  const uploadsInProgress =
+    (kycStep === 2 && (idFront?.uploading || idBack?.uploading)) ||
+    (kycStep === 3 && selfie?.uploading);
+
+  const nextDisabled =
+    kycIsPending ||
+    isSavingKycDraft ||
+    uploadsInProgress ||
+    currentStepMissing.length > 0;
+
+  const handleNextStep = useCallback(async () => {
+    if (kycStep >= 4 || nextDisabled) {
+      if (currentStepMissing.length > 0) {
+        toast.error(
+          `Please complete the following before continuing: ${formatMissingFields(currentStepMissing)}`
+        );
+      }
       return;
     }
+
     const saved = (await onAutoSaveDraft?.()) !== false;
     if (saved) {
       setKycStep((s) => Math.min(4, s + 1));
     }
-  };
+  }, [
+    currentStepMissing,
+    formatMissingFields,
+    kycStep,
+    nextDisabled,
+    onAutoSaveDraft,
+    setKycStep,
+  ]);
+
+  const submitDisabled =
+    kycIsPending ||
+    idFront.uploading ||
+    idBack.uploading ||
+    selfie.uploading ||
+    idFront.size > MAX_BYTES ||
+    idBack.size > MAX_BYTES ||
+    selfie.size > MAX_BYTES ||
+    allMissingRequiredFields.length > 0;
 
   return (
     <>
@@ -656,7 +796,7 @@ export default function MyVerification(props) {
                         type="button"
                         size="sm"
                         onClick={handleNextStep}
-                        disabled={kycIsPending || isSavingKycDraft}
+                        disabled={nextDisabled}
                       >
                         {isSavingKycDraft ? (
                           <span className="inline-flex items-center">
@@ -673,15 +813,7 @@ export default function MyVerification(props) {
                       <Button
                         type="submit"
                         size="sm"
-                        disabled={
-                          kycIsPending ||
-                          idFront.uploading ||
-                          idBack.uploading ||
-                          selfie.uploading ||
-                          idFront.size > MAX_BYTES ||
-                          idBack.size > MAX_BYTES ||
-                          selfie.size > MAX_BYTES
-                        }
+                        disabled={submitDisabled}
                       >
                         {kycIsPending ? (
                           <span className="inline-flex items-center">

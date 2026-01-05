@@ -12,16 +12,79 @@ import { validate as isUUID } from "uuid";
 
 const { MarketplaceProduct } = db;
 
- async function getServerActionHeaders() {
-   try {
-     if (typeof headers !== "function") return null;
-     const h = await headers();
-     if (h && typeof h.get === "function") return h;
-   } catch {
-     return null;
-   }
-   return null;
- }
+async function getServerActionHeaders() {
+  try {
+    if (typeof headers !== "function") return null;
+    const h = await headers();
+    if (h && typeof h.get === "function") return h;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export async function deleteOrArchiveProductItem(prevState, formData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return {
+      success: false,
+      message: "You must be logged in",
+      errors: { credentials: ["Not authenticated"] },
+    };
+  }
+
+  const productIdRaw = formData?.get("productId");
+  const productId = productIdRaw == null ? "" : String(productIdRaw).trim();
+  if (!productId) {
+    return {
+      success: false,
+      message: "Product ID is required",
+      errors: { productId: ["Product ID is required"] },
+    };
+  }
+
+  const hdrs = await getServerActionHeaders();
+  const proto = hdrs?.get("x-forwarded-proto") || "http";
+  const host = hdrs?.get("x-forwarded-host") || hdrs?.get("host");
+  const dynamicOrigin = host ? `${proto}://${host}` : null;
+  const origin =
+    dynamicOrigin ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const url = new URL(
+    `/api/marketplace/products/item/${encodeURIComponent(productId)}`,
+    origin
+  ).toString();
+
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
+    },
+    credentials: "include",
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result?.status !== "success") {
+    return {
+      success: false,
+      message: result?.message || "Failed to update product",
+      errors: result?.errors || {},
+    };
+  }
+
+  revalidatePath("/account");
+  revalidatePath(`/product/${productId}`);
+
+  return {
+    success: true,
+    message: result?.message || "Product updated",
+    action: result?.action,
+    errors: {},
+  };
+}
 
 export async function addProductWishlist(prevState, queryData) {
   // Get current user from session

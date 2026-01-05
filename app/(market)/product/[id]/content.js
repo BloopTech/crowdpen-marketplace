@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useActionState } from "react";
-import { notFound, useParams } from "next/navigation";
+import React, { useState, useEffect, useActionState, useMemo } from "react";
+import { notFound } from "next/navigation";
 import Image from "next/image";
 import { Button } from "../../../components/ui/button";
-import { Card, CardContent } from "../../../components/ui/card";
 import {
   Tooltip,
   TooltipContent,
@@ -27,7 +26,6 @@ import {
   Share2,
   CheckCircle,
   Users,
-  Award,
   LoaderCircle,
   Ellipsis,
   Info,
@@ -36,7 +34,7 @@ import MarketplaceHeader from "../../../components/marketplace-header";
 import ImageGalleryModal from "../../../components/ui/image-gallery-modal";
 import Link from "next/link";
 import { useProductItemContext } from "./context";
-import { addProductWishlist, addProductToCart } from "./action";
+import { addProductWishlist, addProductToCart, deleteOrArchiveProductItem } from "./action";
 import ProductDetails from "./details";
 import { useHome } from "../../../context";
 import { useSession } from "next-auth/react";
@@ -51,6 +49,17 @@ import RelatedProducts from "./related";
 import { Badge } from "../../../components/ui/badge";
 import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
 import { trackFunnelEvent } from "../../../lib/funnelEventsClient";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../components/ui/alert-dialog";
+import { useRouter } from "next/navigation";
 
 const initialStateValues = {
   message: "",
@@ -63,12 +72,14 @@ export default function ProductDetailContent(props) {
   const { productItemData, productItemLoading, shareProduct, isCopied } =
     useProductItemContext();
   const { openLoginDialog, refetchWishlistCount, refetchCartCount } = useHome();
+  const router = useRouter();
   const { id } = props;
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedVariation, setSelectedVariation] = useState(0);
   const [cartItems, setCartItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { data: session } = useSession();
   const [state, formAction, isPending] = useActionState(
     addProductWishlist,
@@ -77,6 +88,14 @@ export default function ProductDetailContent(props) {
   const [cartState, cartFormAction, isCartPending] = useActionState(
     addProductToCart,
     initialStateValues
+  );
+  const deleteInitialState = useMemo(
+    () => ({ success: false, message: "", errors: {}, action: null }),
+    []
+  );
+  const [deleteState, deleteFormAction, isDeletePending] = useActionState(
+    deleteOrArchiveProductItem,
+    deleteInitialState
   );
   const [localWishlistState, setLocalWishlistState] = useState(null);
   const [localCartState, setLocalCartState] = useState(null);
@@ -174,6 +193,26 @@ export default function ProductDetailContent(props) {
     }
   }, [cartState, refetchCartCount, productItemData?.id]);
 
+  useEffect(() => {
+    if (!deleteState?.message) return;
+    if (deleteState?.success) {
+      toast.success(deleteState.message);
+      const tid = setTimeout(() => {
+        setIsDeleteDialogOpen(false);
+      }, 0);
+
+      if (deleteState?.action === "deleted") {
+        router.push("/account?tab=my-products");
+      } else {
+        router.refresh();
+      }
+
+      return () => clearTimeout(tid);
+    }
+
+    toast.error(deleteState.message);
+  }, [deleteState, router]);
+
   // Early returns for loading/error states
   if (!id) {
     return notFound();
@@ -190,6 +229,13 @@ export default function ProductDetailContent(props) {
   if (!productItemData && !productItemLoading) {
     return notFound();
   }
+
+  const ownerCanDelete = Boolean(productItemData?.canDelete);
+  const deleteDialogTitle = ownerCanDelete ? "Delete product?" : "Archive product?";
+  const deleteDialogDescription = ownerCanDelete
+    ? "This will permanently delete this product. This action cannot be undone."
+    : "This product can’t be deleted because it has reviews or orders. Archiving will remove it from the marketplace, but keep it available for tracking.";
+  const deleteDialogActionLabel = ownerCanDelete ? "Delete" : "Archive";
 
   const priceNum = Number(productItemData?.price ?? 0);
   const originalPriceNum = Number(productItemData?.originalPrice ?? 0);
@@ -329,7 +375,13 @@ export default function ProductDetailContent(props) {
                               </div>
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault();
+                              setIsDeleteDialogOpen(true);
+                            }}
+                            disabled={isDeletePending}
+                          >
                             <div
                               className={`flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
                             >
@@ -619,6 +671,32 @@ export default function ProductDetailContent(props) {
           initialIndex={selectedImage}
           productTitle={productItemData?.title || ""}
         />
+
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{deleteDialogTitle}</AlertDialogTitle>
+              <AlertDialogDescription>{deleteDialogDescription}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeletePending}>Cancel</AlertDialogCancel>
+              <form action={deleteFormAction}>
+                <input type="hidden" name="productId" value={productItemData?.id || ""} />
+                <AlertDialogAction
+                  type="submit"
+                  disabled={isDeletePending || !productItemData?.id}
+                  className={
+                    ownerCanDelete
+                      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      : undefined
+                  }
+                >
+                  {isDeletePending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : deleteDialogActionLabel}
+                </AlertDialogAction>
+              </form>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </TooltipProvider>
   );

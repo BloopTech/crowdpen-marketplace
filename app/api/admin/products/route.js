@@ -13,6 +13,21 @@ function assertAdmin(user) {
   );
 }
 
+function parseOptionalBoolean(v) {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "number") {
+    if (v === 1) return true;
+    if (v === 0) return false;
+    return undefined;
+  }
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "true" || s === "1") return true;
+    if (s === "false" || s === "0") return false;
+  }
+  return undefined;
+}
+
 export async function PATCH(request) {
   try {
     const session = await getServerSession(authOptions);
@@ -35,8 +50,8 @@ export async function PATCH(request) {
 
     const body = await request.json().catch(() => ({}));
     const id = String(body?.id || "").trim().slice(0, 128);
-    const featured = Boolean(body?.featured);
-    const flagged = typeof body?.flagged !== "undefined" ? Boolean(body.flagged) : undefined;
+    const featured = parseOptionalBoolean(body?.featured);
+    const flagged = parseOptionalBoolean(body?.flagged);
     if (!id) {
       return NextResponse.json({ status: "error", message: "Missing id" }, { status: 400 });
     }
@@ -47,8 +62,12 @@ export async function PATCH(request) {
     }
 
     const patch = {};
-    if (typeof body?.featured !== "undefined") patch.featured = featured;
-    if (typeof flagged !== "undefined") patch.flagged = flagged;
+    if (typeof body?.featured !== "undefined" && typeof featured !== "undefined") {
+      patch.featured = featured;
+    }
+    if (typeof body?.flagged !== "undefined" && typeof flagged !== "undefined") {
+      patch.flagged = flagged;
+    }
     await product.update(patch);
     return NextResponse.json({ status: "success", data: { id, ...patch } });
   } catch (error) {

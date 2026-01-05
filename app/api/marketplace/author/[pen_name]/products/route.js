@@ -57,7 +57,7 @@ export async function GET(request, { params }) {
     // Find author first
     const author = await User.findOne({
       where: { pen_name: penNameRaw },
-      attributes: ["id", "role", "crowdpen_staff"],
+      attributes: ["id", "role", "crowdpen_staff", "merchant"],
     });
 
     if (!author) {
@@ -144,7 +144,8 @@ export async function GET(request, { params }) {
     if (
       !isViewerAuthor &&
       authorKyc?.status !== "approved" &&
-      !User.isKycExempt(author)
+      !User.isKycExempt(author) &&
+      author?.merchant !== true
     ) {
       return NextResponse.json({
         status: "success",
@@ -259,6 +260,46 @@ export async function GET(request, { params }) {
       });
     }
 
+    let reviewTotalMap = {};
+    if (productIDs && productIDs.length) {
+      const reviewTotalRows = await MarketplaceReview.findAll({
+        where: {
+          marketplace_product_id: { [Op.in]: productIDs },
+        },
+        attributes: [
+          "marketplace_product_id",
+          [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "count"],
+        ],
+        group: ["marketplace_product_id"],
+        raw: true,
+      });
+
+      reviewTotalRows.forEach((row) => {
+        const pid = row.marketplace_product_id;
+        reviewTotalMap[pid] = Number(row.count || 0) || 0;
+      });
+    }
+
+    let orderItemMap = {};
+    if (productIDs && productIDs.length) {
+      const orderItemRows = await MarketplaceOrderItems.findAll({
+        where: {
+          marketplace_product_id: { [Op.in]: productIDs },
+        },
+        attributes: [
+          "marketplace_product_id",
+          [db.Sequelize.fn("COUNT", db.Sequelize.col("id")), "count"],
+        ],
+        group: ["marketplace_product_id"],
+        raw: true,
+      });
+
+      orderItemRows.forEach((row) => {
+        const pid = row.marketplace_product_id;
+        orderItemMap[pid] = Number(row.count || 0) || 0;
+      });
+    }
+
     const productsWithStats = products.map((product) => {
       const productJson = product.toJSON();
 
@@ -292,11 +333,16 @@ export async function GET(request, { params }) {
       const reviewCount = Number(reviewAgg?.count || 0) || 0;
       const rating = Number.isFinite(reviewAgg?.avg) ? reviewAgg.avg : 0;
 
+      const totalReviews = reviewTotalMap[productJson.id] || 0;
+      const totalOrderItems = orderItemMap[productJson.id] || 0;
+      const canDelete = Boolean(isViewerAuthor && totalReviews === 0 && totalOrderItems === 0);
+
       return {
         id: productJson.id,
         title: productJson.title,
         description: productJson.description,
         product_status: productJson.product_status,
+        flagged: productJson.flagged,
         price: effectivePrice,
         originalPrice: productJson.originalPrice,
         stock: productJson.stock,
@@ -310,6 +356,7 @@ export async function GET(request, { params }) {
         reviewCount,
         salesCount,
         isBestseller,
+        canDelete,
         createdAt: productJson.createdAt,
         wishlist: getWishes,
         Cart: getCart,

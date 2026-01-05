@@ -31,6 +31,7 @@ export async function GET() {
         "pen_name",
         "role",
         "crowdpen_staff",
+        "merchant",
         "createdAt",
       ],
     });
@@ -52,6 +53,7 @@ export async function GET() {
       pen_name: user?.pen_name || null,
       role: user?.role || null,
       crowdpen_staff: user?.crowdpen_staff === true,
+      merchant: user?.merchant === true,
       memberSince: user?.createdAt || null,
       settings: {
         newProductNotifications: true,

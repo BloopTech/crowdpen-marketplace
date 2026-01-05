@@ -61,6 +61,7 @@ import MyBillings from "./tabs/billing";
 import MyVerification from "./tabs/verification";
 import AccountSettings from "./tabs/settings";
 import PayoutsTab from "./tabs/payouts";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 const initialStateValues = {
   message: "",
@@ -76,6 +77,20 @@ const initialStateValues = {
 
 export default function AccountContentPage() {
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tabParamRaw = (searchParams?.get("tab") || "purchases").slice(0, 50);
+  const tabParam =
+    tabParamRaw === "purchases" ||
+    tabParamRaw === "my-products" ||
+    tabParamRaw === "payouts" ||
+    tabParamRaw === "billing" ||
+    tabParamRaw === "settings" ||
+    tabParamRaw === "verification"
+      ? tabParamRaw
+      : "purchases";
+  const [activeTab, setActiveTab] = useState(tabParam);
   const {
     profile,
     purchases = [],
@@ -122,6 +137,27 @@ export default function AccountContentPage() {
       toast.error(kycState.message);
     }
   }, [kycState, refetchAccountQuery]);
+
+  useEffect(() => {
+    if (tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [tabParam, activeTab]);
+
+  const handleTabChange = useCallback(
+    (next) => {
+      const v = String(next || "purchases");
+      setActiveTab(v);
+      const params = new URLSearchParams(searchParams?.toString() || "");
+      if (v && v !== "purchases") params.set("tab", v);
+      else params.delete("tab");
+      const nextUrl = params.toString()
+        ? `${pathname}?${params.toString()}`
+        : pathname;
+      router.replace(nextUrl);
+    },
+    [router, pathname, searchParams]
+  );
 
   // Local editable draft for the Profile tab
   const [draftProfile, setDraftProfile] = useState(null);
@@ -440,7 +476,7 @@ export default function AccountContentPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="purchases" className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
             <TabsTrigger value="purchases" className="flex-1 min-w-[100px] text-xs sm:text-sm">Purchases</TabsTrigger>
             <TabsTrigger value="my-products" className="flex-1 min-w-[100px] text-xs sm:text-sm">Products</TabsTrigger>

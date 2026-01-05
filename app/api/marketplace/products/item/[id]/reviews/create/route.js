@@ -6,7 +6,7 @@ import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../../lib/security/rateLimit";
 
-const { MarketplaceReview, User, MarketplaceProduct } = db;
+const { MarketplaceReview, User, MarketplaceProduct, MarketplaceKycVerification } = db;
 
 /**
  * POST handler to create a new review for a product
@@ -106,7 +106,21 @@ export async function POST(request, { params }) {
       where: {
         [Op.or]: orConditions,
       },
-      attributes: ["id", "product_id", "user_id"],
+      attributes: ["id", "product_id", "user_id", "product_status", "flagged"],
+      include: [
+        {
+          model: User,
+          attributes: ["id", "role", "crowdpen_staff", "merchant"],
+          required: false,
+          include: [
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
+          ],
+        },
+      ],
     });
 
     if (!product) {
@@ -117,6 +131,23 @@ export async function POST(request, { params }) {
         },
         { status: 400 }
       );
+    }
+
+    const isOwnerForVisibility = String(product.user_id) === String(userId);
+    const ownerApproved =
+      product?.User?.MarketplaceKycVerification?.status === "approved" ||
+      User.isKycExempt(product?.User) ||
+      product?.User?.merchant === true;
+    if (!isOwnerForVisibility) {
+      if (!ownerApproved || product?.flagged === true || product?.product_status !== "published") {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: "Product is not available",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     if (String(product.user_id) === String(userId)) {

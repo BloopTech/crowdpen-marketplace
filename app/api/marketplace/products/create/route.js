@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import crypto from "crypto";
 import sharp from "sharp";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
@@ -42,6 +42,16 @@ const sanitizeProductFilename = (filename) => {
   return filename
     .replace(/\s+/g, "_")
     .replace(/[^a-zA-Z0-9._-]/g, "");
+};
+
+const deleteR2ObjectByKey = async (key) => {
+  if (!key) return;
+  await s3Client.send(
+    new DeleteObjectCommand({
+      Bucket: process.env.CLOUDFLARE_R2_BUCKET_NAME,
+      Key: key,
+    })
+  );
 };
 
 const PRODUCT_ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -150,9 +160,18 @@ const calculateContentLength = (fileType, fileSizeBytes) => {
 };
 
 export async function POST(request) {
+  let uploadedKeys = [];
+  let uploadedProductKey = null;
+
   try {
     // Process form data
     const formData = await request.formData();
+
+    const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
+    const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+
+    uploadedKeys = [];
+    uploadedProductKey = null;
 
     const session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -317,9 +336,40 @@ export async function POST(request) {
     });
     
     let imageUrls = [];
-    
-    // Check if we have actual file objects or just strings
+
+    const maxTotalImageSize = 3 * 1024 * 1024;
+    const maxSingleImageSize = 3 * 1024 * 1024;
+
     const hasFileObjects = imageFiles.length > 0 && imageFiles[0] instanceof File;
+    if (hasFileObjects) {
+      const totalImageSize = imageFiles.reduce((sum, file) => {
+        if (file && typeof file.size === "number") return sum + file.size;
+        return sum;
+      }, 0);
+
+      if (totalImageSize > maxTotalImageSize) {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: "Total images size must be less than 3MB",
+          },
+          { status: 413 }
+        );
+      }
+
+      const oversize = imageFiles.find(
+        (file) => file && typeof file.size === "number" && file.size > maxSingleImageSize
+      );
+      if (oversize) {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: `Image ${oversize.name} must be 3MB or less`,
+          },
+          { status: 413 }
+        );
+      }
+    }
     
     if (!hasFileObjects) {
       // If no actual file objects, check for image URLs as JSON string
@@ -349,9 +399,6 @@ export async function POST(request) {
     let calculatedFileSize = "";
     
     if (productFile && productFile.size > 0) {
-      const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-      const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
-
       try {
         // Validate file size (max 25MB)
         const maxSize = 25 * 1024 * 1024; // 25MB
@@ -372,6 +419,7 @@ export async function POST(request) {
         const fileCode = randomImageName();
         const sanitizedName = sanitizeProductFilename(productFile.name);
         const fileName = `marketplace/files/${fileCode}_${sanitizedName}`;
+        uploadedProductKey = fileName;
         
         // Convert file to buffer
         let buffer;
@@ -404,6 +452,11 @@ export async function POST(request) {
         
       } catch (error) {
         console.error("Error uploading product file:", error);
+        try {
+          if (uploadedProductKey) await deleteR2ObjectByKey(uploadedProductKey);
+        } catch (cleanupError) {
+          console.error("Error cleaning up product file:", cleanupError);
+        }
         return NextResponse.json(
           {
             status: "error",
@@ -427,27 +480,6 @@ export async function POST(request) {
     console.log("Before image upload check:", { hasFiles: imageFiles && imageFiles.length > 0, hasValidSize: imageFiles && imageFiles.length > 0 && imageFiles[0].size > 0 });
 
     if (imageFiles && imageFiles.length > 0 && imageFiles[0].size > 0) {
-      const bucketName = process.env.CLOUDFLARE_R2_BUCKET_NAME;
-      const publicUrlBase = process.env.CLOUDFLARE_R2_PUBLIC_URL;
-
-      const maxTotalImageSize = 3 * 1024 * 1024; // 3MB total across all images
-      const totalImageSize = imageFiles.reduce((sum, file) => {
-        if (file && typeof file.size === "number") {
-          return sum + file.size;
-        }
-        return sum;
-      }, 0);
-
-      if (totalImageSize > maxTotalImageSize) {
-        return NextResponse.json(
-          {
-            status: "error",
-            message: "Total images size must be less than 3MB",
-          },
-          { status: 413 }
-        );
-      }
-
       // Process each image file
       for (const file of imageFiles) {
         try {
@@ -496,6 +528,7 @@ export async function POST(request) {
 
           // Generate unique filename
           const fileName = `marketplace/${imagecode}.${originalname}`;
+          uploadedKeys.push(fileName);
 
           // Upload to Cloudflare R2
           const s3Params = {
@@ -524,11 +557,34 @@ export async function POST(request) {
 
       // If no images were successfully uploaded, return error
       if (imageUrls.length === 0) {
+        try {
+          if (uploadedProductKey) await deleteR2ObjectByKey(uploadedProductKey);
+          if (uploadedKeys.length) {
+            await Promise.all(uploadedKeys.map((key) => deleteR2ObjectByKey(key)));
+          }
+        } catch (cleanupError) {
+          console.error("Error cleaning up failed upload:", cleanupError);
+        }
         return NextResponse.json(
           { message: "Failed to upload images", status: "error" },
           { status: 500 }
         );
       }
+    }
+
+    if (imageUrls.length === 0) {
+      try {
+        if (uploadedProductKey) await deleteR2ObjectByKey(uploadedProductKey);
+      } catch (cleanupError) {
+        console.error("Error cleaning up product file:", cleanupError);
+      }
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "At least one image is required",
+        },
+        { status: 400 }
+      );
     }
 
     // Calculate content_length based on file type and size
@@ -569,6 +625,14 @@ export async function POST(request) {
       }
     }
     if (!createdProduct) {
+      try {
+        if (uploadedProductKey) await deleteR2ObjectByKey(uploadedProductKey);
+        if (uploadedKeys.length) {
+          await Promise.all(uploadedKeys.map((key) => deleteR2ObjectByKey(key)));
+        }
+      } catch (cleanupError) {
+        console.error("Error cleaning up failed product create:", cleanupError);
+      }
       throw lastError || new Error("Failed to create product with unique product_id");
     }
 
@@ -588,6 +652,15 @@ export async function POST(request) {
     );
   } catch (error) {
     console.error("Error creating product:", error);
+
+    try {
+      if (uploadedProductKey) await deleteR2ObjectByKey(uploadedProductKey);
+      if (uploadedKeys.length) {
+        await Promise.all(uploadedKeys.map((key) => deleteR2ObjectByKey(key)));
+      }
+    } catch (cleanupError) {
+      console.error("Error cleaning up after create failure:", cleanupError);
+    }
 
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(

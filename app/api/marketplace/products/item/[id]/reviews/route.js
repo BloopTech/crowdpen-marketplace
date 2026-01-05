@@ -6,7 +6,7 @@ import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../lib/security/rateLimit";
 
-const { MarketplaceReview, User, MarketplaceProduct } = db;
+const { MarketplaceReview, User, MarketplaceProduct, MarketplaceKycVerification } = db;
 
 /**
  * GET handler to fetch reviews for a product
@@ -17,6 +17,9 @@ const { MarketplaceReview, User, MarketplaceProduct } = db;
 export async function GET(request, { params }) {
   const getParams = await params;
   try {
+    const session = await getServerSession(authOptions);
+    const viewerId = session?.user?.id || null;
+
     const productIdRaw = getParams?.id == null ? "" : String(getParams.id).trim();
     const { searchParams } = new URL(request.url);
     const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
@@ -47,17 +50,58 @@ export async function GET(request, { params }) {
       where: {
         [Op.or]: orConditions,
       },
-      attributes: ["id", "product_id"],
+      attributes: ["id", "product_id", "user_id", "product_status", "flagged"],
+      include: [
+        {
+          model: User,
+          attributes: ["id", "role", "crowdpen_staff", "merchant"],
+          required: false,
+          include: [
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
+          ],
+        },
+      ],
     });
 
     if (!product) {
       return NextResponse.json(
         {
           status: "error",
-          message: "Product does not exist",
+          message: "Product not found",
         },
-        { status: 400 }
+        { status: 404 }
       );
+    }
+
+    const isOwner = viewerId && String(product.user_id) === String(viewerId);
+    const ownerApproved =
+      product?.User?.MarketplaceKycVerification?.status === "approved" ||
+      User.isKycExempt(product?.User) ||
+      product?.User?.merchant === true;
+
+    if (!isOwner) {
+      if (!ownerApproved) {
+        return NextResponse.json(
+          { status: "error", message: "Product not found" },
+          { status: 404 }
+        );
+      }
+      if (product?.flagged === true) {
+        return NextResponse.json(
+          { status: "error", message: "Product not found" },
+          { status: 404 }
+        );
+      }
+      if (product?.product_status !== "published") {
+        return NextResponse.json(
+          { status: "error", message: "Product not found" },
+          { status: 404 }
+        );
+      }
     }
 
     // Fetch written reviews (with non-empty content) for the product with user information and pagination
@@ -120,13 +164,12 @@ export async function GET(request, { params }) {
     };
 
     // Get current user's review if logged in
-    const session = await getServerSession(authOptions);
     let currentUserReview = null;
-    if (session?.user?.id) {
+    if (viewerId) {
       const myReview = await MarketplaceReview.findOne({
         where: {
           marketplace_product_id: product.id,
-          user_id: session.user.id,
+          user_id: viewerId,
         },
         include: [
           {
@@ -266,7 +309,21 @@ export async function PUT(request, { params }) {
       where: {
         [Op.or]: orConditions,
       },
-      attributes: ["id", "product_id", "user_id"],
+      attributes: ["id", "product_id", "user_id", "product_status", "flagged"],
+      include: [
+        {
+          model: User,
+          attributes: ["id", "role", "crowdpen_staff", "merchant"],
+          required: false,
+          include: [
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
+          ],
+        },
+      ],
     });
 
     if (!product) {
@@ -277,6 +334,23 @@ export async function PUT(request, { params }) {
         },
         { status: 400 }
       );
+    }
+
+    const isOwnerForVisibility = String(product.user_id) === String(userId);
+    const ownerApproved =
+      product?.User?.MarketplaceKycVerification?.status === "approved" ||
+      User.isKycExempt(product?.User) ||
+      product?.User?.merchant === true;
+    if (!isOwnerForVisibility) {
+      if (!ownerApproved || product?.flagged === true || product?.product_status !== "published") {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: "Product is not available",
+          },
+          { status: 400 }
+        );
+      }
     }
 
     if (String(product.user_id) === String(userId)) {

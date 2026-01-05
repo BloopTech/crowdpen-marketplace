@@ -26,6 +26,71 @@ function getOriginFromHeaders(h) {
 
 export async function addAccountUpdate(prevState, queryData) {}
 
+export async function deleteOrArchiveProduct(prevState, formData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return {
+      success: false,
+      message: "You must be logged in",
+      errors: { credentials: ["Not authenticated"] },
+    };
+  }
+
+  const productIdRaw = formData?.get("productId");
+  const productId = productIdRaw == null ? "" : String(productIdRaw).trim();
+  if (!productId) {
+    return {
+      success: false,
+      message: "Product ID is required",
+      errors: { productId: ["Product ID is required"] },
+    };
+  }
+
+  const hdrs = await getServerActionHeaders();
+  const origin =
+    getOriginFromHeaders(hdrs) ||
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    "http://localhost:3000";
+  const url = new URL(
+    `/api/marketplace/products/item/${encodeURIComponent(productId)}`,
+    origin
+  ).toString();
+
+  const cookieStore = await cookies();
+  const cookieHeader = cookieStore
+    .getAll()
+    .map((c) => `${c.name}=${c.value}`)
+    .join("; ");
+
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      ...(cookieHeader ? { cookie: cookieHeader } : {}),
+    },
+    credentials: "include",
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || result?.status !== "success") {
+    return {
+      success: false,
+      message: result?.message || "Failed to update product",
+      errors: result?.errors || {},
+    };
+  }
+
+  revalidatePath("/account");
+
+  return {
+    success: true,
+    message: result?.message || "Product updated",
+    action: result?.action,
+    errors: {},
+  };
+}
+
 export async function upsertBank(prevState, formData) {
 
     const session = await getServerSession(authOptions);

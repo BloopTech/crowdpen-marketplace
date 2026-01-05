@@ -184,48 +184,84 @@ export default function CreateProductContent() {
 
   // Handle image upload
   const handleImageUpload = async (e) => {
-    const files = e.target.files;
+    const inputEl = e.target;
+    const files = inputEl.files;
     if (!files || files.length === 0) return;
 
     setUploadingImage(true);
 
     try {
+      const maxTotalSize = 3 * 1024 * 1024;
       const maxCombinedSize = 3 * 1024 * 1024; // 3MB total
       const incomingFiles = Array.from(files);
 
-      const existingTotal = images.reduce(
-        (acc, imageObj) => acc + (imageObj.file?.size || 0),
-        0
-      );
-      const incomingTotal = incomingFiles.reduce(
-        (acc, file) => acc + file.size,
-        0
-      );
+      const validIncoming = incomingFiles.filter((file) => {
+        if (!file?.type?.startsWith?.("image/")) {
+          toast.error(`${file?.name || "File"} is not a valid image file`);
+          return false;
+        }
+        if (typeof file.size === "number" && file.size > maxTotalSize) {
+          toast.error(`${file.name} must be 3MB or less.`);
+          return false;
+        }
+        return true;
+      });
 
-      if (existingTotal + incomingTotal > maxCombinedSize) {
+      if (validIncoming.length === 0) {
+        return;
+      }
+      const incomingNames = new Set(validIncoming.map((file) => file.name));
+      const existingAdjustedTotal = images.reduce((acc, imageObj) => {
+        const name = imageObj?.file?.name;
+        if (name && incomingNames.has(name)) {
+          return acc;
+        }
+        return acc + (imageObj.file?.size || 0);
+      }, 0);
+
+      const incomingTotal = validIncoming.reduce((acc, file) => acc + file.size, 0);
+
+      if (existingAdjustedTotal + incomingTotal > maxCombinedSize) {
         toast.error("Total images size must not exceed 3MB.");
         return;
       }
 
-      const validImages = incomingFiles.map((file) => ({
-        file,
-        previewUrl: URL.createObjectURL(file),
-      }));
+      setImages((prev) => {
+        const next = [...prev];
 
-      if (validImages.length) {
-        setImages((prev) => [...prev, ...validImages]);
-      }
+        for (const file of validIncoming) {
+          const existingIndex = next.findIndex(
+            (img) => img?.file?.name && img.file.name === file.name
+          );
+          const nextObj = { file, previewUrl: URL.createObjectURL(file) };
+
+          if (existingIndex >= 0) {
+            const prevUrl = next[existingIndex]?.previewUrl;
+            if (prevUrl) URL.revokeObjectURL(prevUrl);
+            next[existingIndex] = nextObj;
+          } else {
+            next.push(nextObj);
+          }
+        }
+
+        return next;
+      });
     } catch (error) {
       console.error("Error handling image:", error);
       toast.error("Failed to process image");
     } finally {
       setUploadingImage(false);
+      if (inputEl) inputEl.value = "";
     }
   };
 
   // Remove an image
   const removeImage = (index) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImages((prev) => {
+      const url = prev?.[index]?.previewUrl;
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   // Handle product file upload
@@ -323,6 +359,8 @@ export default function CreateProductContent() {
         <form
           ref={formRef}
           action={(formData) => {
+            formData.delete("images");
+            formData.delete("productFile");
             // Add product file to form data if it exists
             if (productFile) {
               formData.append("productFile", productFile);

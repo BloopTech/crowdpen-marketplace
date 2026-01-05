@@ -294,15 +294,22 @@ export default function EditProductContent(props) {
 
   // Handle multiple image uploads
   const handleImageUpload = async (e) => {
-    const files = e.target.files;
+    const inputEl = e.target;
+    const files = inputEl.files;
     if (!files || files.length === 0) return;
 
     setUploadingImage(true);
 
     try {
+      const maxPerImageSize = 3 * 1024 * 1024;
+
       const incomingFiles = Array.from(files).filter((file) => {
-        if (!file.type?.startsWith("image/")) {
-          toast.error(`${file.name} is not a valid image file`);
+        if (!file?.type?.startsWith?.("image/")) {
+          toast.error(`${file?.name || "File"} is not a valid image file`);
+          return false;
+        }
+        if (typeof file.size === "number" && file.size > maxPerImageSize) {
+          toast.error(`${file.name} must be 3MB or less.`);
           return false;
         }
         return true;
@@ -313,40 +320,60 @@ export default function EditProductContent(props) {
       }
 
       const maxCombinedSize = 3 * 1024 * 1024; // 3MB total
-      const existingTotal = images.reduce(
-        (acc, imageObj) => acc + (imageObj.file?.size || 0),
-        0
-      );
-      const incomingTotal = incomingFiles.reduce(
-        (acc, file) => acc + (file.size || 0),
-        0
-      );
+      const incomingNames = new Set(incomingFiles.map((file) => file.name));
+      const existingAdjustedTotal = images.reduce((acc, imageObj) => {
+        const name = imageObj?.file?.name;
+        if (name && incomingNames.has(name)) {
+          return acc;
+        }
+        return acc + (imageObj.file?.size || 0);
+      }, 0);
 
-      if (existingTotal + incomingTotal > maxCombinedSize) {
+      const incomingTotal = incomingFiles.reduce((acc, file) => acc + (file.size || 0), 0);
+
+      if (existingAdjustedTotal + incomingTotal > maxCombinedSize) {
         toast.error("Total images size must not exceed 3MB.");
         return;
       }
 
-      const newImages = incomingFiles.map((file) => ({
-        file,
-        previewUrl: URL.createObjectURL(file),
-      }));
+      setImages((prev) => {
+        const next = [...prev];
 
-      if (newImages.length > 0) {
-        setImages((prev) => [...prev, ...newImages]);
-        toast.success(`${newImages.length} image(s) added successfully`);
-      }
+        for (const file of incomingFiles) {
+          const existingIndex = next.findIndex(
+            (img) => img?.file?.name && img.file.name === file.name
+          );
+          const nextObj = { file, previewUrl: URL.createObjectURL(file) };
+
+          if (existingIndex >= 0) {
+            const prevUrl = next[existingIndex]?.previewUrl;
+            if (prevUrl) URL.revokeObjectURL(prevUrl);
+            next[existingIndex] = nextObj;
+          } else {
+            next.push(nextObj);
+          }
+        }
+
+        return next;
+      });
+
+      toast.success(`${incomingFiles.length} image(s) added successfully`);
     } catch (error) {
       console.error("Error handling images:", error);
       toast.error("Failed to process images");
     } finally {
       setUploadingImage(false);
+      if (inputEl) inputEl.value = "";
     }
   };
 
   // Remove a new uploaded image
   const removeImage = (index) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImages((prev) => {
+      const url = prev?.[index]?.previewUrl;
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   // Remove an existing image
@@ -473,6 +500,8 @@ export default function EditProductContent(props) {
         <form
           ref={formRef}
           action={(formData) => {
+            formData.delete("images");
+            formData.delete("productFile");
             const missingProductFile = !productFile && !existingProductFile;
             if (missingProductFile) {
               setClientErrors((prev) => ({

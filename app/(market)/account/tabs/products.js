@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useActionState, useEffect, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import {
   Card,
@@ -24,15 +24,38 @@ import {
   FileText,
   Archive,
   Globe,
+  AlertCircle,
+  Flag,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { useAccount } from "../context";
 import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
+import { deleteOrArchiveProduct } from "../action";
+import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../../../components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../../components/ui/alert-dialog";
+import { useQueryClient } from "@tanstack/react-query";
 
 
 
 export default function MyProducts() {
+  const queryClient = useQueryClient();
       const {
         // My Products from context (tanstack query)
         myProducts,
@@ -52,9 +75,69 @@ export default function MyProducts() {
         myProductsStatus,
         setMyProductsStatus,
         categories,
+        profile,
+        kyc,
       } = useAccount();
 
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  const initialDeleteState = useMemo(
+    () => ({ success: false, message: "", errors: {}, action: null }),
+    []
+  );
+  const [deleteState, deleteFormAction, isDeletePending] = useActionState(
+    deleteOrArchiveProduct,
+    initialDeleteState
+  );
+
+  useEffect(() => {
+    if (!deleteState?.message) return;
+    if (deleteState?.success) {
+      toast.success(deleteState.message);
+      queryClient.invalidateQueries({ queryKey: ["account", "my-products"], exact: false });
+      const tid = setTimeout(() => {
+        setIsConfirmOpen(false);
+        setSelectedProduct(null);
+      }, 0);
+      return () => clearTimeout(tid);
+    }
+
+    toast.error(deleteState.message);
+  }, [deleteState, queryClient]);
+
+  const isKycExempt = Boolean(
+    profile?.crowdpen_staff === true ||
+      profile?.role === "admin" ||
+      profile?.role === "senior_admin"
+  );
+  const hasApprovedKyc =
+    isKycExempt ||
+    profile?.merchant === true ||
+    kyc?.status === "approved";
+
   const getStatusBadge = (status) => {
+    if (status === "published" && !hasApprovedKyc) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 cursor-help">
+                <AlertCircle className="h-3 w-3 mr-1" />Pending KYC
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              <div className="space-y-1">
+                <div>Complete verification to make this product visible on the marketplace.</div>
+                <Link href="/account?tab=verification" className="underline">
+                  Go to Verification
+                </Link>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
     switch (status) {
       case 'published':
         return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400"><Globe className="h-3 w-3 mr-1" />Published</Badge>;
@@ -89,6 +172,15 @@ export default function MyProducts() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(Number(v || 0) * displayRate);
+
+  const selectedIsDeletable = Boolean(selectedProduct?.canDelete);
+  const confirmTitle = selectedIsDeletable
+    ? "Delete product?"
+    : "Archive product?";
+  const confirmDescription = selectedIsDeletable
+    ? "This will permanently delete this product. This action cannot be undone."
+    : "This product can’t be deleted because it has reviews or orders. Archiving will remove it from the marketplace, but keep it available for tracking.";
+  const confirmActionLabel = selectedIsDeletable ? "Delete" : "Archive";
 
 
   return (
@@ -180,7 +272,7 @@ export default function MyProducts() {
                 key={p.id}
                 className="flex flex-col border border-border rounded-lg p-3"
               >
-                <div className="relative aspect-[3/2] bg-muted rounded overflow-hidden mb-3">
+                <div className="relative aspect-3/2 bg-muted rounded overflow-hidden mb-3">
                   <NextImage
                     src={p.image || "/placeholder.svg"}
                     alt={p.title}
@@ -188,10 +280,20 @@ export default function MyProducts() {
                     className="object-cover"
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                   />
+                  {p?.flagged ? (
+                    <div className="absolute top-2 left-2 flex flex-col gap-2">
+                      <Badge className="bg-red-600/95 text-white shadow-lg flex items-center gap-1 text-xs">
+                        <Flag className="h-3 w-3" />
+                        Flagged
+                      </Badge>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center justify-between mb-1 gap-2">
                   <span className="text-xs text-muted-foreground">{p.category || ""}</span>
-                  {getStatusBadge(p.product_status)}
+                  <div className="flex items-center gap-1">
+                    {getStatusBadge(p.product_status)}
+                  </div>
                 </div>
                 <h3 className="font-semibold text-sm line-clamp-2">
                   {p.title}
@@ -231,6 +333,17 @@ export default function MyProducts() {
                       <Pencil className="h-4 w-4 mr-2" /> Edit
                     </Button>
                   </Link>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    type="button"
+                    onClick={() => {
+                      setSelectedProduct(p);
+                      setIsConfirmOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </Button>
                 </div>
               </div>
             ))}
@@ -267,6 +380,42 @@ export default function MyProducts() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={isConfirmOpen}
+        onOpenChange={(open) => {
+          setIsConfirmOpen(open);
+          if (!open) setSelectedProduct(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmDescription}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletePending}>Cancel</AlertDialogCancel>
+            <form action={deleteFormAction}>
+              <input
+                type="hidden"
+                name="productId"
+                value={selectedProduct?.product_id || selectedProduct?.id || ""}
+              />
+              <AlertDialogAction
+                type="submit"
+                disabled={isDeletePending || !selectedProduct?.id}
+                className={
+                  selectedIsDeletable
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : undefined
+                }
+              >
+                {confirmActionLabel}
+              </AlertDialogAction>
+            </form>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

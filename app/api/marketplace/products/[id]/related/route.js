@@ -58,7 +58,7 @@ export async function GET(request, { params }) {
       include: [
         {
           model: User,
-          attributes: ["id", "role", "crowdpen_staff"],
+          attributes: ["id", "role", "crowdpen_staff", "merchant"],
           required: false,
           include: [
             {
@@ -79,7 +79,8 @@ export async function GET(request, { params }) {
     const isOwner = viewerId && currentProduct?.user_id === viewerId;
     const ownerApproved =
       currentProduct?.User?.MarketplaceKycVerification?.status === "approved" ||
-      User.isKycExempt(currentProduct?.User);
+      User.isKycExempt(currentProduct?.User) ||
+      currentProduct?.User?.merchant === true;
     if (!isOwner && !ownerApproved) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
@@ -118,21 +119,14 @@ export async function GET(request, { params }) {
             AND (
               u.crowdpen_staff = true
               OR u.role IN ('admin', 'senior_admin')
+              OR u.merchant = true
             )
         )
       )
     `);
     const visibilityOr = [approvedSellerLiteral];
-    if (userId) {
-      visibilityOr.push({ user_id: userId });
-    }
-
-    const flaggedOr = userId
-      ? [{ flagged: false }, { user_id: userId }]
-      : [{ flagged: false }];
-    const statusOr = userId
-      ? [{ product_status: "published" }, { user_id: userId }]
-      : [{ product_status: "published" }];
+    const flaggedOr = [{ flagged: false }];
+    const statusOr = [{ product_status: "published" }];
 
     const finalWhere = {
       [Op.and]: [

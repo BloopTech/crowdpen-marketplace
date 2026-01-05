@@ -111,7 +111,7 @@ export async function POST(request) {
       include: [
         {
           model: User,
-          attributes: ['id', 'role', 'crowdpen_staff'],
+          attributes: ['id', 'role', 'crowdpen_staff', 'merchant'],
           include: [
             { model: MarketplaceKycVerification, attributes: ['status'], required: false },
           ],
@@ -161,7 +161,8 @@ export async function POST(request) {
       const isOwner = product.user_id === session.user.id;
       const ownerApproved =
         product?.User?.MarketplaceKycVerification?.status === 'approved' ||
-        User.isKycExempt(product?.User);
+        User.isKycExempt(product?.User) ||
+        product?.User?.merchant === true;
       if (!isOwner && !ownerApproved) {
         skippedProducts.push({
           id: product.id,

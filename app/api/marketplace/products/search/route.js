@@ -245,29 +245,18 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
           AND (
             u.crowdpen_staff = true
             OR u.role IN ('admin', 'senior_admin')
+            OR u.merchant = true
           )
       )
     )
   `);
   const visibilityOr = [approvedSellerLiteral];
-  if (viewerId) {
-    visibilityOr.push({ user_id: viewerId });
-  }
   andConditions.push({ [Op.or]: visibilityOr });
 
-  // Flagged gating: require flagged=false for public viewers; owners can see their own flagged items
-  if (viewerId) {
-    andConditions.push({
-      [Op.or]: [{ flagged: false }, { user_id: viewerId }],
-    });
-  } else {
-    andConditions.push({ flagged: false });
-  }
+  // Flagged gating: require flagged=false
+  andConditions.push({ flagged: false });
 
-  const statusOr = viewerId
-    ? [{ product_status: "published" }, { user_id: viewerId }]
-    : [{ product_status: "published" }];
-  andConditions.push({ [Op.or]: statusOr });
+  andConditions.push({ product_status: "published" });
 
   // Explicit filter params
   const {
