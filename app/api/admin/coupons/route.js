@@ -79,7 +79,7 @@ export async function GET(request) {
       include: [
         {
           model: User,
-          as: 'creator',
+          as: 'coupon_creator',
           attributes: ['id', 'name', 'email'],
         },
       ],

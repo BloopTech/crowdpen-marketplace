@@ -17,6 +17,7 @@ import { Avatar } from "../../components/ui/avatar";
 import { useAdminProductDialog } from "./details-context";
 import { FileText, Download } from "lucide-react";
 import Link from "next/link";
+import SafeHTML from "../../components/SafeHTML";
 
 function fetchAdminProduct(id) {
   return fetch(`/api/admin/products/${encodeURIComponent(id)}`, {
@@ -382,7 +383,7 @@ export default function ProductDetailsDialog() {
                       Description
                     </div>
                     <div className="prose prose-sm max-w-none dark:prose-invert whitespace-pre-wrap">
-                      {data?.description || "-"}
+                      {data?.description ? <SafeHTML html={data.description} /> : "-"}
                     </div>
                   </div>
                 </div>

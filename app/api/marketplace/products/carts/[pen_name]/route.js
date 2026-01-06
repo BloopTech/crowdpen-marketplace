@@ -236,15 +236,13 @@ export async function GET(request, { params }) {
       }
     }
 
-    const tax = subtotal * 0.1; // 10% tax
-    const total = subtotal + tax - parseFloat(cart.discount || 0);
+    const total = subtotal - parseFloat(cart.discount || 0);
 
     const currency = "USD";
 
     // Update cart totals
     await cart.update({
       subtotal: subtotal.toFixed(2),
-      tax: tax.toFixed(2),
       total: total.toFixed(2),
       currency,
     });
@@ -294,7 +292,6 @@ export async function GET(request, { params }) {
         cart: {
           id: cart.id,
           subtotal: Number(subtotal.toFixed(2)),
-          tax: Number(tax.toFixed(2)),
           discount: Number(parseFloat(cart.discount || 0).toFixed(2)),
           total: Number(total.toFixed(2)),
           item_count: count,

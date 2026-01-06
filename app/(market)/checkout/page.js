@@ -119,10 +119,6 @@ function CheckoutContent() {
     () => Number(cartSummary?.subtotal || 0) || 0,
     [cartSummary?.subtotal]
   );
-  const tax = useMemo(
-    () => Number(cartSummary?.tax || 0) || 0,
-    [cartSummary?.tax]
-  );
 
   const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD");
   const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase();
@@ -1078,7 +1074,7 @@ function CheckoutContent() {
 
                   {/* Payment Method (StartButton) */}
                   <div className="space-y-4">
-                    <h3 className="font-semibold">Payment Method</h3>
+                    {/* <h3 className="font-semibold">Payment Method</h3>
                     <RadioGroup
                       value={paymentMethod}
                       onValueChange={setPaymentMethod}
@@ -1104,7 +1100,7 @@ function CheckoutContent() {
                           </span>
                         )}
                       </div>
-                    </RadioGroup>
+                    </RadioGroup> */}
                     <div className="text-xs text-muted-foreground">
                       You&apos;ll complete your payment securely in a hosted
                       StartButton checkout.
@@ -1245,10 +1241,6 @@ function CheckoutContent() {
                   <div className="flex justify-between">
                     <span>Subtotal</span>
                     <span>{fmt(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tax</span>
-                    <span>{fmt(tax)}</span>
                   </div>
                   <Separator />
                   <div className="flex justify-between font-semibold text-lg">

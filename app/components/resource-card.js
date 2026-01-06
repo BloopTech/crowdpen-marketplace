@@ -8,6 +8,7 @@ import { Download, Star, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { StatusPill } from "./status-pill";
 import { useViewerCurrency } from "../hooks/use-viewer-currency";
+import { htmlToText } from "../lib/sanitizeHtml";
 
 export default function ResourceCard({ resource }) {
   const isOutOfStock =
@@ -62,7 +63,7 @@ export default function ResourceCard({ resource }) {
           </h3>
         </Link>
         <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
-          {resource.description}
+          {htmlToText(resource.description)}
         </p>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">

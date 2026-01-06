@@ -20,7 +20,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from "../components/ui/navigation-menu";
-import { categories } from "../lib/data";
+import { categories as fallbackCategories } from "../lib/data";
 import Link from "next/link";
 import logo from "../../public/crowdpen_icon.png";
 import Image from "next/image";
@@ -34,7 +34,14 @@ import millify from "millify";
 
 export default function MarketplaceHeader(props) {
   const { searchQuery, onSearchChange, onSearch, hideFilters = false } = props;
-  const { openLoginDialog, wishlistCountData, cartCountData } = useHome();
+  const {
+    openLoginDialog,
+    wishlistCountData,
+    cartCountData,
+    categories: contextCategories,
+    updateFilters,
+    filters,
+  } = useHome();
   const { data: session } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -161,6 +168,57 @@ export default function MarketplaceHeader(props) {
       handleSearch();
     }
   };
+
+  const availableCategories =
+    (contextCategories && contextCategories.length > 0
+      ? contextCategories
+      : fallbackCategories) || [];
+
+  const getSubcategories = (category) => {
+    if (
+      Array.isArray(category?.MarketplaceSubCategories) &&
+      category.MarketplaceSubCategories.length > 0
+    ) {
+      return category.MarketplaceSubCategories.map((sub) => ({
+        id: sub.id ?? sub.slug ?? sub.name,
+        name: sub.name ?? sub.title ?? "",
+      })).filter((sub) => sub.name);
+    }
+    if (Array.isArray(category?.subcategories) && category.subcategories.length) {
+      return category.subcategories
+        .map((name) => ({ id: name, name }))
+        .filter((sub) => sub.name);
+    }
+    return [];
+  };
+
+  const handleCategorySelect = (categoryName) => {
+    if (!categoryName || typeof updateFilters !== "function") return;
+    updateFilters({
+      category: categoryName,
+      subcategory: "",
+    });
+  };
+
+  const handleSubcategorySelect = (categoryName, subcategoryName) => {
+    if (
+      !categoryName ||
+      !subcategoryName ||
+      typeof updateFilters !== "function"
+    )
+      return;
+    updateFilters({
+      category: categoryName,
+      subcategory: subcategoryName,
+    });
+  };
+
+  const isCategoryActive = (categoryName) =>
+    filters?.category && filters.category === categoryName;
+
+  const isSubcategoryActive = (categoryName, subcategoryName) =>
+    isCategoryActive(categoryName) &&
+    filters?.subcategory === subcategoryName;
 
   const handleCreateClick = () => {
     router.push("/product/create");
@@ -378,28 +436,48 @@ export default function MarketplaceHeader(props) {
                 <NavigationMenuTrigger>All Categories</NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="grid w-[calc(100vw-2rem)] sm:w-96 gap-3 p-4 bg-popover text-popover-foreground h-auto max-h-[30rem] overflow-y-auto">
-                    {categories.map((category) => (
-                      <div key={category.name}>
-                        <h4 className="font-semibold text-sm mb-2">
+                    {availableCategories.map((category) => {
+                      const normalizedSubcategories = getSubcategories(category);
+                      const categoryKey =
+                        category.id ?? category.slug ?? category.name;
+                      return (
+                      <div key={categoryKey}>
+                        <button
+                          type="button"
+                          className={`cursor-pointer font-semibold text-sm mb-2 text-left transition-colors ${
+                            isCategoryActive(category.name)
+                              ? "text-primary"
+                              : "text-foreground"
+                          }`}
+                          onClick={() => handleCategorySelect(category.name)}
+                        >
                           {category.name}
-                        </h4>
+                        </button>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                          {category.subcategories.map((sub) => (
+                          {normalizedSubcategories.map((sub) => (
                             <button
-                              key={sub}
-                              className="text-left text-xs text-muted-foreground hover:text-foreground p-1"
+                              key={sub.id}
+                              type="button"
+                              onClick={() =>
+                                handleSubcategorySelect(category.name, sub.name)
+                              }
+                              className={`cursor-pointer text-left text-xs p-1 transition-colors ${
+                                isSubcategoryActive(category.name, sub.name)
+                                  ? "text-primary"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
                             >
-                              {sub}
+                              {sub.name}
                             </button>
                           ))}
                         </div>
                       </div>
-                    ))}
+                    )})}
                   </div>
                 </NavigationMenuContent>
               </NavigationMenuItem>
 
-              {categories?.map((category) => {
+              {availableCategories?.map((category) => {
                 const categorySlug = category.name.toLowerCase().replace(/\s+/g, "-");
                 const isActive = pathname === `/category/${categorySlug}`;
                 return (

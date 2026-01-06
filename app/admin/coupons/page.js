@@ -79,7 +79,8 @@ export default function CouponsPage() {
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.set("q", search);
-      if (statusFilter && statusFilter !== "all") params.set("status", statusFilter);
+      if (statusFilter && statusFilter !== "all")
+        params.set("status", statusFilter);
       const res = await fetch(`/api/admin/coupons?${params.toString()}`);
       const json = await res.json();
       if (!res.ok || json.status !== "success") throw new Error(json.message);
@@ -177,8 +178,12 @@ export default function CouponsPage() {
       min_order_amount: coupon.min_order_amount?.toString() || "",
       max_discount_amount: coupon.max_discount_amount?.toString() || "",
       usage_limit: coupon.usage_limit?.toString() || "",
-      start_date: coupon.start_date ? new Date(coupon.start_date).toISOString().slice(0, 10) : "",
-      end_date: coupon.end_date ? new Date(coupon.end_date).toISOString().slice(0, 10) : "",
+      start_date: coupon.start_date
+        ? new Date(coupon.start_date).toISOString().slice(0, 10)
+        : "",
+      end_date: coupon.end_date
+        ? new Date(coupon.end_date).toISOString().slice(0, 10)
+        : "",
       is_active: coupon.is_active,
     });
   };
@@ -199,15 +204,35 @@ export default function CouponsPage() {
 
   const getStatusBadge = (coupon) => {
     if (!coupon.is_active) {
-      return <Badge variant="secondary"><XCircle className="h-3 w-3 mr-1" />Inactive</Badge>;
+      return (
+        <Badge variant="secondary">
+          <XCircle className="h-3 w-3 mr-1" />
+          Inactive
+        </Badge>
+      );
     }
     if (coupon.end_date && new Date(coupon.end_date) < new Date()) {
-      return <Badge variant="destructive"><Calendar className="h-3 w-3 mr-1" />Expired</Badge>;
+      return (
+        <Badge variant="destructive">
+          <Calendar className="h-3 w-3 mr-1" />
+          Expired
+        </Badge>
+      );
     }
     if (coupon.usage_limit && coupon.usage_count >= coupon.usage_limit) {
-      return <Badge variant="secondary"><XCircle className="h-3 w-3 mr-1" />Used Up</Badge>;
+      return (
+        <Badge variant="secondary">
+          <XCircle className="h-3 w-3 mr-1" />
+          Used Up
+        </Badge>
+      );
     }
-    return <Badge className="bg-emerald-100 text-emerald-700"><CheckCircle className="h-3 w-3 mr-1" />Active</Badge>;
+    return (
+      <Badge className="bg-emerald-100 text-emerald-700">
+        <CheckCircle className="h-3 w-3 mr-1" />
+        Active
+      </Badge>
+    );
   };
 
   const coupons = data?.coupons || [];
@@ -220,15 +245,20 @@ export default function CouponsPage() {
             <Ticket className="h-6 w-6" />
             Coupon Codes
           </h1>
-          <p className="text-muted-foreground">Manage discount coupons for the marketplace</p>
+          <p className="text-muted-foreground">
+            Manage discount coupons for the marketplace
+          </p>
         </div>
-        <Dialog open={isCreateOpen || !!editingCoupon} onOpenChange={(open) => {
-          if (!open) {
-            setIsCreateOpen(false);
-            setEditingCoupon(null);
-            resetForm();
-          }
-        }}>
+        <Dialog
+          open={isCreateOpen || !!editingCoupon}
+          onOpenChange={(open) => {
+            if (!open) {
+              setIsCreateOpen(false);
+              setEditingCoupon(null);
+              resetForm();
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button onClick={() => setIsCreateOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -237,9 +267,13 @@ export default function CouponsPage() {
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editingCoupon ? "Edit Coupon" : "Create New Coupon"}</DialogTitle>
+              <DialogTitle>
+                {editingCoupon ? "Edit Coupon" : "Create New Coupon"}
+              </DialogTitle>
               <DialogDescription>
-                {editingCoupon ? "Update the coupon details below" : "Fill in the details to create a new coupon"}
+                {editingCoupon
+                  ? "Update the coupon details below"
+                  : "Fill in the details to create a new coupon"}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -249,7 +283,12 @@ export default function CouponsPage() {
                   <Input
                     id="code"
                     value={formData.code}
-                    onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        code: e.target.value.toUpperCase(),
+                      })
+                    }
                     placeholder="e.g., SAVE20"
                     required
                   />
@@ -259,7 +298,9 @@ export default function CouponsPage() {
                   <Input
                     id="description"
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, description: e.target.value })
+                    }
                     placeholder="e.g., 20% off your first purchase"
                   />
                 </div>
@@ -267,7 +308,9 @@ export default function CouponsPage() {
                   <Label htmlFor="discount_type">Discount Type *</Label>
                   <Select
                     value={formData.discount_type}
-                    onValueChange={(v) => setFormData({ ...formData, discount_type: v })}
+                    onValueChange={(v) =>
+                      setFormData({ ...formData, discount_type: v })
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -286,8 +329,17 @@ export default function CouponsPage() {
                     step="0.01"
                     min="0"
                     value={formData.discount_value}
-                    onChange={(e) => setFormData({ ...formData, discount_value: e.target.value })}
-                    placeholder={formData.discount_type === "percentage" ? "e.g., 20" : "e.g., 10.00"}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        discount_value: e.target.value,
+                      })
+                    }
+                    placeholder={
+                      formData.discount_type === "percentage"
+                        ? "e.g., 20"
+                        : "e.g., 10.00"
+                    }
                     required
                   />
                 </div>
@@ -299,7 +351,12 @@ export default function CouponsPage() {
                     step="0.01"
                     min="0"
                     value={formData.min_order_amount}
-                    onChange={(e) => setFormData({ ...formData, min_order_amount: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        min_order_amount: e.target.value,
+                      })
+                    }
                     placeholder="e.g., 50.00"
                   />
                 </div>
@@ -311,7 +368,12 @@ export default function CouponsPage() {
                     step="0.01"
                     min="0"
                     value={formData.max_discount_amount}
-                    onChange={(e) => setFormData({ ...formData, max_discount_amount: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        max_discount_amount: e.target.value,
+                      })
+                    }
                     placeholder="e.g., 100.00"
                   />
                 </div>
@@ -322,7 +384,9 @@ export default function CouponsPage() {
                     type="number"
                     min="0"
                     value={formData.usage_limit}
-                    onChange={(e) => setFormData({ ...formData, usage_limit: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, usage_limit: e.target.value })
+                    }
                     placeholder="Unlimited if empty"
                   />
                 </div>
@@ -332,7 +396,9 @@ export default function CouponsPage() {
                     id="start_date"
                     type="date"
                     value={formData.start_date}
-                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, start_date: e.target.value })
+                    }
                   />
                 </div>
                 <div>
@@ -341,7 +407,9 @@ export default function CouponsPage() {
                     id="end_date"
                     type="date"
                     value={formData.end_date}
-                    onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, end_date: e.target.value })
+                    }
                   />
                 </div>
                 <div className="col-span-2 flex items-center justify-between">
@@ -349,7 +417,9 @@ export default function CouponsPage() {
                   <Switch
                     id="is_active"
                     checked={formData.is_active}
-                    onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                    onCheckedChange={(checked) =>
+                      setFormData({ ...formData, is_active: checked })
+                    }
                   />
                 </div>
               </div>
@@ -365,7 +435,12 @@ export default function CouponsPage() {
                 >
                   Cancel
                 </Button>
-                <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                <Button
+                  type="submit"
+                  disabled={
+                    createMutation.isPending || updateMutation.isPending
+                  }
+                >
                   {(createMutation.isPending || updateMutation.isPending) && (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   )}
@@ -438,49 +513,84 @@ export default function CouponsPage() {
                   <TableRow key={coupon.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <code className="bg-muted px-2 py-1 rounded font-mono text-sm">{coupon.code}</code>
-                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={() => copyCode(coupon.code)}>
+                        <code className="bg-muted px-2 py-1 rounded font-mono text-sm">
+                          {coupon.code}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => copyCode(coupon.code)}
+                        >
                           <Copy className="h-3 w-3" />
                         </Button>
                       </div>
                       {coupon.description && (
-                        <p className="text-xs text-muted-foreground mt-1">{coupon.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {coupon.description}
+                        </p>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {coupon.discount_type === "percentage" ? (
                           <>
-                            <Percent className="h-4 w-4 text-muted-foreground" />
                             <span>{coupon.discount_value}%</span>
                           </>
                         ) : (
                           <>
                             <DollarSign className="h-4 w-4 text-muted-foreground" />
-                            <span>${parseFloat(coupon.discount_value).toFixed(2)}</span>
+                            <span>
+                              ${parseFloat(coupon.discount_value).toFixed(2)}
+                            </span>
                           </>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
                       <span>{coupon.usage_count || 0}</span>
-                      {coupon.usage_limit && <span className="text-muted-foreground"> / {coupon.usage_limit}</span>}
+                      {coupon.usage_limit && (
+                        <span className="text-muted-foreground">
+                          {" "}
+                          / {coupon.usage_limit}
+                        </span>
+                      )}
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
                         {coupon.start_date && (
-                          <div>From: {new Date(coupon.start_date).toLocaleDateString("en-US", { timeZone: "UTC" })}</div>
+                          <div>
+                            From:{" "}
+                            {new Date(coupon.start_date).toLocaleDateString(
+                              "en-US",
+                              { timeZone: "UTC" }
+                            )}
+                          </div>
                         )}
                         {coupon.end_date && (
-                          <div>To: {new Date(coupon.end_date).toLocaleDateString("en-US", { timeZone: "UTC" })}</div>
+                          <div>
+                            To:{" "}
+                            {new Date(coupon.end_date).toLocaleDateString(
+                              "en-US",
+                              { timeZone: "UTC" }
+                            )}
+                          </div>
                         )}
-                        {!coupon.start_date && !coupon.end_date && <span className="text-muted-foreground">No limit</span>}
+                        {!coupon.start_date && !coupon.end_date && (
+                          <span className="text-muted-foreground">
+                            No limit
+                          </span>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(coupon)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(coupon)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(coupon)}
+                        >
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button
@@ -488,7 +598,11 @@ export default function CouponsPage() {
                           size="sm"
                           className="text-red-600 hover:text-red-700"
                           onClick={() => {
-                            if (confirm("Are you sure you want to delete this coupon?")) {
+                            if (
+                              confirm(
+                                "Are you sure you want to delete this coupon?"
+                              )
+                            ) {
                               deleteMutation.mutate(coupon.id);
                             }
                           }}

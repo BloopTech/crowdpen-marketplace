@@ -33,9 +33,25 @@ export default function FilterSidebar({ filters, onFiltersChange, onClearFilters
             <Checkbox
               id="all-categories"
               checked={filters.category === "All"}
-              onCheckedChange={(checked) =>
-                onFiltersChange({ category: "All" })
-              }
+              onCheckedChange={() => {
+                if (typeof onClearFilters === "function") {
+                  onClearFilters();
+                } else {
+                  onFiltersChange({
+                    category: "All",
+                    subcategory: "",
+                    // tag: "",
+                    // search: "",
+                    // minPrice: 0,
+                    // maxPrice: 1000,
+                    // rating: 0,
+                    // sort: "all",
+                    // fileType: "",
+                    // deliveryTime: "",
+                    // contentLength: "",
+                  });
+                }
+              }}
             />
             <Label htmlFor="all-categories" className="text-sm font-normal">
               All Categories

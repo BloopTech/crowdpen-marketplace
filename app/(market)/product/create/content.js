@@ -13,20 +13,16 @@ import {
   Loader2,
   Upload,
   PlusCircle,
+  ImageIcon,
   X,
-  Image as ImageIcon,
   ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
-import { useFormState } from "react-dom";
 import Link from "next/link";
-
-// UI Components
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
-import { Textarea } from "../../../components/ui/textarea";
 import { Switch } from "../../../components/ui/switch";
 import {
   Select,
@@ -46,6 +42,7 @@ import {
 import { Checkbox } from "../../../components/ui/checkbox";
 import { useProductContext } from "./context";
 import WhatIncludedEditor from "./what-included-editor";
+import RichTextEditor from "../components/rich-text-editor";
 
 const initialStateValues = {
   message: "",
@@ -88,6 +85,7 @@ export default function CreateProductContent() {
   const [saleEndDate, setSaleEndDate] = useState("");
   const [productStatus, setProductStatus] = useState("draft");
   const [stock, setStock] = useState("");
+  const [description, setDescription] = useState("");
   const [whatIncluded, setWhatIncluded] = useState("");
   const [priceError, setPriceError] = useState("");
   const [hasDiscount, setHasDiscount] = useState(false);
@@ -98,6 +96,12 @@ export default function CreateProductContent() {
   );
   const formRef = useRef(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof state?.values?.description === "string") {
+      setDescription(state.values.description);
+    }
+  }, [state?.values?.description]);
 
   useEffect(() => {
     if (
@@ -408,23 +412,20 @@ export default function CreateProductContent() {
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description">
+                <Label htmlFor="description-editor">
                   Description <span className="text-red-500">*</span>
                 </Label>
-                <Textarea
-                  id="description"
-                  name="description"
+                <RichTextEditor
+                  value={description}
+                  onChange={setDescription}
                   placeholder="Enter detailed product description"
-                  required
-                  rows={5}
-                  className={`resize-none w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
+                  disabled={isPending}
+                  error={
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.description?.length
-                      ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-tertiary"
-                  }`}
-                  disabled={isPending}
+                  }
                 />
+                <input type="hidden" name="description" value={description} required />
                 <span className="text-xs text-red-500">
                   {Object.keys(state?.errors).length !== 0 &&
                   state?.errors?.description?.length
@@ -441,7 +442,7 @@ export default function CreateProductContent() {
                   onChange={setWhatIncluded}
                   error={
                     Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.whatIncluded?.length
+                    state?.errors?.what_included?.length
                   }
                   disabled={isPending}
                 />

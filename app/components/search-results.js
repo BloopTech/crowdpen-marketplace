@@ -9,6 +9,7 @@ import GridCard from "./grid-card"
 import Link from "next/link"
 import { StatusPill } from "./status-pill"
 import { useViewerCurrency } from "../hooks/use-viewer-currency"
+import { htmlToText } from "../lib/sanitizeHtml"
 
 
 export default function SearchResults({ resources, query, searchTime, viewMode, setViewMode }) {
@@ -146,7 +147,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                       </div>
                     </div>
 
-                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{resource.description}</p>
+                    <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{htmlToText(resource.description)}</p>
 
                     {/* Metadata */}
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">

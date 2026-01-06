@@ -13,14 +13,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
-import { useFormState } from "react-dom";
 import Link from "next/link";
 
 // UI Components
 import { Button } from "../../../../components/ui/button";
 import { Input } from "../../../../components/ui/input";
 import { Label } from "../../../../components/ui/label";
-import { Textarea } from "../../../../components/ui/textarea";
 import { Switch } from "../../../../components/ui/switch";
 import {
   Select,
@@ -40,6 +38,7 @@ import {
 import { Checkbox } from "../../../../components/ui/checkbox";
 import { useProductContext } from "./context";
 import WhatIncludedEditor from "./what-included-editor";
+import RichTextEditor from "../../components/rich-text-editor";
 
 const initialStateValues = {
   message: "",
@@ -50,6 +49,7 @@ const initialStateValues = {
     originalPrice: [],
     sale_end_date: [],
     product_status: [],
+    stock: [],
     marketplace_category_id: [],
     marketplace_subcategory_id: [],
     images: [],
@@ -86,11 +86,11 @@ export default function EditProductContent(props) {
   const [productStatus, setProductStatus] = useState("draft");
   const [stock, setStock] = useState("");
   const [whatIncluded, setWhatIncluded] = useState("");
+  const [description, setDescription] = useState(product?.description || "");
   const [priceError, setPriceError] = useState("");
   const [deliveryTime, setDeliveryTime] = useState("");
   const [license, setLicense] = useState("");
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [pricesInitialized, setPricesInitialized] = useState(false);
   const [hasDiscount, setHasDiscount] = useState(false);
   const [clientErrors, setClientErrors] = useState({
@@ -609,24 +609,18 @@ export default function EditProductContent(props) {
 
               {/* Description */}
               <div className="space-y-2">
-                <Label htmlFor="description">
+                <Label htmlFor="description-editor">
                   Description <span className="text-red-500">*</span>
                 </Label>
-                <Textarea
-                  id="description"
-                  name="description"
+                <RichTextEditor
+                  value={description}
+                  onChange={setDescription}
                   placeholder="Enter detailed product description"
-                  required
-                  rows={5}
-                  className={`resize-none w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 ${
+                  disabled={isPending}
+                  error={
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.description?.length
-                      ? "border-red-500 focus:ring-red-500"
-                      : "focus:ring-tertiary"
-                  }`}
-                  disabled={isPending}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  }
                 />
                 <span className="text-xs text-red-500">
                   {Object.keys(state?.errors).length !== 0 &&
@@ -634,7 +628,12 @@ export default function EditProductContent(props) {
                     ? state?.errors?.description[0]
                     : null}
                 </span>
-                <input type="hidden" value={description} name="description" />
+                <input
+                  type="hidden"
+                  name="description"
+                  value={description}
+                  required
+                />
               </div>
 
               {/* What's Included */}
@@ -645,7 +644,7 @@ export default function EditProductContent(props) {
                   onChange={setWhatIncluded}
                   error={
                     Object.keys(state?.errors).length !== 0 &&
-                    state?.errors?.whatIncluded?.length
+                    state?.errors?.what_included?.length
                   }
                   disabled={isPending}
                 />

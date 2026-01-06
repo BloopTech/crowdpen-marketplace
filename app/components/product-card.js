@@ -26,6 +26,7 @@ import { useHome } from "../context";
 import { toast } from "sonner";
 import { StatusPill } from "./status-pill";
 import { useViewerCurrency } from "../hooks/use-viewer-currency";
+import { htmlToText } from "../lib/sanitizeHtml";
 
 const initialStateValues = {
   message: "",
@@ -293,7 +294,7 @@ export default function ProductCard(props) {
 
                 {/* Description */}
                 <p className="text-sm text-muted-foreground line-clamp-2 mb-2 hidden sm:block">
-                  {resource.description}
+                  {htmlToText(resource.description)}
                 </p>
 
                 {/* Author & Rating */}

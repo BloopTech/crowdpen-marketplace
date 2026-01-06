@@ -1,11 +1,14 @@
 'use client'
 
+import { useCallback, useState } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
 import TextAlign from '@tiptap/extension-text-align'
 import { Bold, Italic, List, ListOrdered, Link as LinkIcon, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
-import { useCallback } from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog'
+import { Input } from '../../../components/ui/input'
+import { Button } from '../../../components/ui/button'
 
 const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
   const editor = useEditor({
@@ -30,25 +33,43 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
     editable: !disabled,
   })
 
-  const setLink = useCallback(() => {
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false)
+  const [linkValue, setLinkValue] = useState('')
+  const [linkError, setLinkError] = useState('')
+
+  const openLinkModal = useCallback(() => {
     if (!editor) return
     
     const previousUrl = editor.getAttributes('link').href
-    const url = window.prompt('URL', previousUrl)
+    setLinkValue(previousUrl || '')
+    setLinkError('')
+    setIsLinkModalOpen(true)
+  }, [editor])
 
-    // cancelled
-    if (url === null) {
+  const applyLink = useCallback(() => {
+    if (!editor) return
+    const trimmed = linkValue.trim()
+    if (!trimmed) {
+      setLinkError('Please enter a link.')
       return
     }
-
-    // empty
-    if (url === '') {
-      editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    if (!/^https?:\/\//i.test(trimmed)) {
+      setLinkError('Link must start with https://')
       return
     }
+    editor
+      .chain()
+      .focus()
+      .extendMarkRange('link')
+      .setLink({ href: trimmed })
+      .run()
+    setIsLinkModalOpen(false)
+  }, [editor, linkValue])
 
-    // update link
-    editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run()
+  const removeLink = useCallback(() => {
+    if (!editor) return
+    editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    setIsLinkModalOpen(false)
   }, [editor])
 
   if (!editor) {
@@ -117,7 +138,7 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
 
         <button
           type="button"
-          onClick={setLink}
+          onClick={openLinkModal}
           className={`${buttonBase} ${
             editor.isActive('link') ? activeBg : ''
           } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
@@ -169,6 +190,53 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
           className="prose prose-sm max-w-none focus-within:outline-none text-gray-900 dark:text-slate-100 [&_.ProseMirror]:outline-none [&_.ProseMirror]:m-0 [&_.ProseMirror]:p-0 [&_.ProseMirror]:border-none [&_.ProseMirror]:min-h-[80px]"
         />
       </div>
+
+      <Dialog
+        open={isLinkModalOpen}
+        onOpenChange={(open) => {
+          setIsLinkModalOpen(open)
+          if (!open) {
+            setLinkValue('')
+            setLinkError('')
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Link</DialogTitle>
+            <DialogDescription>Provide a full URL starting with https://</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <label className="text-sm font-medium text-foreground">URL</label>
+            <Input
+              autoFocus
+              type="url"
+              placeholder="https://websitelink.com"
+              value={linkValue}
+              onChange={(e) => {
+                setLinkValue(e.target.value)
+                if (linkError) setLinkError('')
+              }}
+            />
+            {linkError ? <p className="text-xs text-red-500">{linkError}</p> : null}
+          </div>
+          <DialogFooter className="sm:justify-between gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button variant="ghost" type="button" onClick={() => setIsLinkModalOpen(false)}>
+                Cancel
+              </Button>
+              {editor?.isActive('link') ? (
+                <Button type="button" variant="outline" onClick={removeLink}>
+                  Remove link
+                </Button>
+              ) : null}
+            </div>
+            <Button type="button" onClick={applyLink}>
+              Save link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

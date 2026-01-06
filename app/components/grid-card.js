@@ -8,6 +8,7 @@ import { Card, CardContent, CardFooter } from "../components/ui/card";
 import { Download, Star, Sparkles, Crown } from "lucide-react";
 import { StatusPill } from "./status-pill";
 import { useViewerCurrency } from "../hooks/use-viewer-currency";
+import { htmlToText } from "../lib/sanitizeHtml";
 
 export default function GridCard({ resource }) {
   const isOutOfStock =
@@ -78,7 +79,7 @@ export default function GridCard({ resource }) {
         </Link>
 
         <p className="text-xs text-muted-foreground mb-3 line-clamp-2">
-          {resource.description}
+          {htmlToText(resource.description)}
         </p>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">

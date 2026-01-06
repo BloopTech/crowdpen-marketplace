@@ -19,6 +19,7 @@ import { Badge } from "../../../components/ui/badge";
 import Link from "next/link";
 import { StatusPill } from "../../../components/status-pill";
 import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
+import { htmlToText } from "../../../lib/sanitizeHtml";
 
 const initialStateValues = {
   message: "",
@@ -219,11 +220,11 @@ export default function MyProductCard(props) {
             {product.category} › {product?.subCategory}
           </Link>
         </div>
-        <h3 className="font-semibold mb-2 line-clamp-2 text-base group-hover:text-tertiary cursor-pointer">
+        <h3 className="font-semibold text-lg mb-2 line-clamp-2">
           {product.title}
         </h3>
         <p className="text-sm text-slate-600 mb-3 line-clamp-2">
-          {product.description}
+          {htmlToText(product.description)}
         </p>
 
         <div className="flex items-center justify-between mb-3">

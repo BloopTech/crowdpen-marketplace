@@ -62,3 +62,27 @@ export function sanitizeHtml(dirty, options = {}) {
   clean = enforceAnchorRel(clean);
   return clean;
 }
+
+export function htmlToText(dirty) {
+  if (!dirty || typeof dirty !== "string") return "";
+  const clean = sanitizeHtml(dirty);
+
+  if (typeof document !== "undefined") {
+    try {
+      const template = document.createElement("template");
+      template.innerHTML = clean;
+      return (template.content.textContent || "").replace(/\s+/g, " ").trim();
+    } catch {
+      return clean.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+    }
+  }
+
+  return clean
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+}

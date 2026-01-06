@@ -64,7 +64,10 @@ export default function ProductDetails() {
         <Card>
           <CardContent className="p-6">
             <div className="prose max-w-none">
-              <p className="text-lg mb-4 dark:text-white">{productItemData?.description}</p>
+              <SafeHTML
+                html={productItemData?.description}
+                className="text-lg mb-4 dark:text-white"
+              />
             </div>
           </CardContent>
         </Card>
