@@ -636,10 +636,38 @@ export async function POST(request) {
       throw lastError || new Error("Failed to create product with unique product_id");
     }
 
+    let successMessage = "Product created successfully";
+    if (resolvedProductStatus === "published") {
+      const user = await db.User.findOne({
+        where: { id: userId },
+        attributes: ["id", "role", "crowdpen_staff", "merchant"],
+        raw: true,
+      });
+
+      const kyc = await db.MarketplaceKycVerification.findOne({
+        where: { user_id: userId },
+        attributes: ["status"],
+        raw: true,
+      });
+
+      const isApproved =
+        kyc?.status === "approved" ||
+        db.User.isKycExempt(user) ||
+        user?.merchant === true;
+
+      if (isApproved) {
+        successMessage = "Product published successfully";
+      } else if (kyc) {
+        successMessage = "Product will be published after your KYC is approved";
+      } else {
+        successMessage = "Your product will be published after you submit your KYC";
+      }
+    }
+
     return NextResponse.json(
       {
         status: "success",
-        message: "Product created successfully",
+        message: successMessage,
         data: {
           id: createdProduct.id,
           title: createdProduct.title,

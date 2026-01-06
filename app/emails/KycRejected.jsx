@@ -22,8 +22,8 @@ export default function KycRejected({
           {reason ? "Here is the reason:" : ""}
         </Text>
         {reason ? (
-          <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-md">
-            <Text className="text-amber-800 leading-6 m-0">{reason}</Text>
+          <div className="mt-3 p-4 bg-amber-50! border border-amber-200! rounded-md">
+            <Text className="text-amber-800! leading-6 m-0 font-semibold">{reason}</Text>
           </div>
         ) : null}
         <Text className="text-slate-700 leading-6 mt-4">

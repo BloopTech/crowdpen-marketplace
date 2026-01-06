@@ -271,6 +271,7 @@ export const authOptions = {
           session.user.color = response?.color;
           session.user.role = response?.role;
           session.user.crowdpen_staff = response?.crowdpen_staff;
+          session.user.merchant = response?.merchant;
         } catch (error) {
           console.log("session oauth error..............", error);
         }

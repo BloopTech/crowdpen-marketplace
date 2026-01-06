@@ -75,7 +75,7 @@ export default function MyBillings() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="p-4 border rounded-lg">
+          {/* <div className="p-4 border rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CreditCard className="h-5 w-5" />
@@ -91,7 +91,7 @@ export default function MyBillings() {
           </div>
           <Button variant="outline">Add Payment Method</Button>
 
-          <Separator />
+          <Separator /> */}
 
           <div>
             <h3 className="font-semibold mb-3">Recent Transactions</h3>

@@ -64,10 +64,13 @@ export default function KYCTabs(props) {
     rejectIsPending,
     approveFormAction,
     approveIsPending,
+    reopenFormAction,
+    reopenIsPending,
     setReviewId,
     reviewId,
     approveState,
     rejectState,
+    reopenState,
   } = props;
   const {
     kycPendingQueryRefetch,
@@ -103,6 +106,13 @@ export default function KYCTabs(props) {
       setApproveConfirmOpen((prev) => ({ ...prev, [id]: false }));
     }
   }, [rejectState, reviewId, setReviewId, setQs]);
+
+  useEffect(() => {
+    if (reopenState?.success && reopenState?.data?.id && reviewId === reopenState.data.id) {
+      setReviewId("");
+      setQs({ kycReviewId: "" });
+    }
+  }, [reopenState, reviewId, setReviewId, setQs]);
   return (
     <>
       <TooltipProvider>
@@ -664,11 +674,23 @@ export default function KYCTabs(props) {
                 <TableHead>Reason</TableHead>
                 <TableHead>Reviewed At</TableHead>
                 <TableHead>Reviewer</TableHead>
+                <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {rejected.map((r) => (
-                <TableRow key={r.id}>
+                <TableRow
+                  key={r.id}
+                  className="cursor-pointer"
+                  onClick={() => {
+                    setRejectReasons((prev) => ({
+                      ...prev,
+                      [r.id]: r.rejection_reason || "",
+                    }));
+                    setReviewId(r.id);
+                    setQs({ kycReviewId: r.id });
+                  }}
+                >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar
@@ -730,12 +752,244 @@ export default function KYCTabs(props) {
                       </HoverCardContent>
                     </HoverCard>
                   </TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
+                    <div className="flex gap-2 items-center">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setRejectReasons((prev) => ({
+                            ...prev,
+                            [r.id]: r.rejection_reason || "",
+                          }));
+                          setReviewId(r.id);
+                          setQs({ kycReviewId: r.id });
+                        }}
+                      >
+                        Review / Update
+                      </Button>
+                      <Dialog
+                        open={reviewId === r.id}
+                        onOpenChange={(o) => {
+                          if (!o) {
+                            setReviewId("");
+                            setQs({ kycReviewId: "" });
+                          }
+                        }}
+                      >
+                        <DialogContent className="mx-auto w-full max-w-3xl font-poynterroman flex flex-col gap-6">
+                          <DialogHeader>
+                            <DialogTitle>Rejected KYC</DialogTitle>
+                          </DialogHeader>
+
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <div>
+                              <span className="text-muted-foreground font-semibold">Name:</span>{" "}
+                              {r.first_name} {r.last_name}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground font-semibold">Email:</span>{" "}
+                              {r?.User?.email}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground font-semibold">Level:</span>{" "}
+                              {r.level}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground font-semibold">Status:</span>{" "}
+                              {r.status}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground font-semibold">Reviewed at:</span>{" "}
+                              {r.reviewed_at
+                                ? new Date(r.reviewed_at).toLocaleString("en-US", { timeZone: "UTC" })
+                                : "-"}
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground font-semibold">Reviewer:</span>{" "}
+                              {r?.Reviewer?.name || r?.Reviewer?.email || r.reviewed_by || "-"}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-4 w-full">
+                            <div>
+                              <h1 className="font-medium font-poynterroman mt-1">ID Front</h1>
+                              {r.id_front_url ? (
+                                <Link href={r.id_front_url} target="_blank" className="block">
+                                  <Image
+                                    src={r.id_front_url}
+                                    alt="ID Front"
+                                    width={200}
+                                    height={200}
+                                    className="object-cover rounded border border-[#d3a155]"
+                                    unoptimized
+                                    priority
+                                  />
+                                </Link>
+                              ) : null}
+                            </div>
+
+                            <div>
+                              <h1 className="font-medium mt-1 font-poynterroman">ID Back</h1>
+                              {r.id_back_url ? (
+                                <Link href={r.id_back_url} target="_blank" className="block">
+                                  <Image
+                                    src={r.id_back_url}
+                                    alt="ID Back"
+                                    width={200}
+                                    height={200}
+                                    className="border-[#d3a155] object-cover rounded border"
+                                    unoptimized
+                                    priority
+                                  />
+                                </Link>
+                              ) : null}
+                            </div>
+
+                            <div>
+                              <h1 className="font-medium mt-1 font-poynterroman">Selfie</h1>
+                              {r.selfie_url ? (
+                                <Link href={r.selfie_url} target="_blank" className="block">
+                                  <Image
+                                    src={r.selfie_url}
+                                    alt="Selfie"
+                                    width={200}
+                                    height={200}
+                                    className="object-cover rounded border border-[#d3a155]"
+                                    unoptimized
+                                    priority
+                                  />
+                                </Link>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-3">
+                            <div className="flex items-center gap-2">
+                              <input
+                                disabled={rejectIsPending || approveIsPending || reopenIsPending}
+                                type="text"
+                                placeholder="Rejection reason (required)"
+                                required
+                                aria-required="true"
+                                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm flex-1 focus:outline-none focus:ring-2 focus:ring-ring"
+                                value={rejectReasons[r.id] || ""}
+                                onChange={(e) =>
+                                  setRejectReasons((prev) => ({
+                                    ...prev,
+                                    [r.id]: e.target.value,
+                                  }))
+                                }
+                              />
+                              <form action={rejectFormAction}>
+                                <input type="hidden" name="kycId" value={r.id} />
+                                <input
+                                  type="hidden"
+                                  name="reason"
+                                  value={rejectReasons[r.id] || ""}
+                                />
+                                <Button
+                                  type="submit"
+                                  variant="outline"
+                                  disabled={!rejectReasons[r.id] || rejectIsPending || approveIsPending || reopenIsPending}
+                                  aria-busy={rejectIsPending}
+                                >
+                                  {rejectIsPending ? (
+                                    <span className="inline-flex items-center">
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      Updating...
+                                    </span>
+                                  ) : (
+                                    "Update reason"
+                                  )}
+                                </Button>
+                              </form>
+                            </div>
+                            <form action={approveFormAction}>
+                              <input type="hidden" name="kycId" value={r.id} />
+                              <Button
+                                type="submit"
+                                disabled={rejectIsPending || approveIsPending || reopenIsPending}
+                                aria-busy={approveIsPending}
+                              >
+                                {approveIsPending ? (
+                                  <span className="inline-flex items-center">
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Approving...
+                                  </span>
+                                ) : (
+                                  "Approve"
+                                )}
+                              </Button>
+                            </form>
+
+                            <form action={reopenFormAction}>
+                              <input type="hidden" name="kycId" value={r.id} />
+                              <Button
+                                type="submit"
+                                variant="secondary"
+                                disabled={rejectIsPending || approveIsPending || reopenIsPending}
+                                aria-busy={reopenIsPending}
+                              >
+                                {reopenIsPending ? (
+                                  <span className="inline-flex items-center">
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Moving...
+                                  </span>
+                                ) : (
+                                  "Move to pending"
+                                )}
+                              </Button>
+                            </form>
+                            {(approveState?.success && approveState?.data?.id === r.id) && (
+                              <Alert className="mt-2">
+                                <CheckCircle className="h-5 w-5" />
+                                <AlertTitle>KYC approved</AlertTitle>
+                                <AlertDescription>
+                                  {approveState?.data?.email?.sent
+                                    ? "Notification email sent to the user."
+                                    : approveState?.data?.email?.error
+                                      ? `Email failed: ${approveState.data.email.error}`
+                                      : ""}
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                            {(rejectState?.success && rejectState?.data?.id === r.id) && (
+                              <Alert className="mt-2" variant="destructive">
+                                <AlertCircle className="h-5 w-5" />
+                                <AlertTitle>KYC updated</AlertTitle>
+                                <AlertDescription>
+                                  {rejectState?.data?.email?.sent
+                                    ? "Notification email sent to the user."
+                                    : rejectState?.data?.email?.error
+                                      ? `Email failed: ${rejectState.data.email.error}`
+                                      : "Decision submitted."}
+                                </AlertDescription>
+                              </Alert>
+                            )}
+
+                            {(reopenState?.success && reopenState?.data?.id === r.id) && (
+                              <Alert className="mt-2">
+                                <CheckCircle className="h-5 w-5" />
+                                <AlertTitle>KYC moved to pending</AlertTitle>
+                                <AlertDescription>
+                                  This record is now back in the Pending tab for review.
+                                </AlertDescription>
+                              </Alert>
+                            )}
+                          </div>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))}
               {rejected.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={4}
+                    colSpan={5}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No rejected KYC.

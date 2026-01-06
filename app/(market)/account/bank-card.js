@@ -77,6 +77,29 @@ export default function BankDetailsCard() {
   const [verified, setVerified] = useState(!!bank?.verified);
   const [editing, setEditing] = useState(!bank); // if no bank, open form by default
 
+  useEffect(() => {
+    setCurrency(bank?.currency || "");
+    setCountryCode(bank?.country_code || "");
+    setSelectedBank(
+      bank?.bank_code
+        ? { code: bank.bank_code, id: bank.bank_id, name: bank.bank_name }
+        : null
+    );
+    setMsisdn(bank?.msisdn || "");
+    setVerified(!!bank?.verified);
+    setVerifiedName(bank?.account_name || "");
+    setAccountNumber("");
+  }, [
+    bank?.currency,
+    bank?.country_code,
+    bank?.bank_code,
+    bank?.bank_id,
+    bank?.bank_name,
+    bank?.msisdn,
+    bank?.verified,
+    bank?.account_name,
+  ]);
+
   // Load bank list based on server-derived location; no manual currency/country
   useEffect(() => {
     if (bankListQuery?.data?.currency) {
@@ -199,6 +222,11 @@ export default function BankDetailsCard() {
               type="hidden"
               name="verified"
               value={verified ? "true" : "false"}
+            />
+            <input
+              type="hidden"
+              name="account_name"
+              value={verified && verifiedName ? verifiedName : ""}
             />
             <div className="grid sm:grid-cols-3 gap-4">
               <div>

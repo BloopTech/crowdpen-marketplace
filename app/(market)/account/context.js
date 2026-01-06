@@ -103,11 +103,22 @@ export function AccountContextProvider({ children }) {
     },
   });
   const bankListQuery = useQuery({
-    queryKey: ["bank-list", payoutType],
+    queryKey: [
+      "bank-list",
+      payoutType,
+      accountQuery?.bank?.currency || null,
+      accountQuery?.bank?.country_code || null,
+    ],
     enabled: payoutType === "bank" || payoutType === "mobile_money",
     keepPreviousData: true,
     queryFn: async () => {
       const qs = new URLSearchParams({ type: payoutType || "" });
+      if (accountQuery?.bank?.currency) {
+        qs.set("currency", String(accountQuery.bank.currency));
+      }
+      if (accountQuery?.bank?.country_code) {
+        qs.set("countryCode", String(accountQuery.bank.country_code));
+      }
       const res = await fetch(
         `/api/marketplace/startbutton/bank-list?${qs.toString()}`,
         { cache: "no-store" }

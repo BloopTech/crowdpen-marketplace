@@ -620,10 +620,38 @@ export async function POST(request, { params }) {
       }
     }
 
+    let successMessage = "Product updated successfully!";
+    if (resolvedProductStatus === "published") {
+      const user = await db.User.findOne({
+        where: { id: user_id },
+        attributes: ["id", "role", "crowdpen_staff", "merchant"],
+        raw: true,
+      });
+
+      const kyc = await db.MarketplaceKycVerification.findOne({
+        where: { user_id },
+        attributes: ["status"],
+        raw: true,
+      });
+
+      const isApproved =
+        kyc?.status === "approved" ||
+        db.User.isKycExempt(user) ||
+        user?.merchant === true;
+
+      if (isApproved) {
+        successMessage = "Product published successfully";
+      } else if (kyc) {
+        successMessage = "Product will be published after your KYC is approved";
+      } else {
+        successMessage = "Your product will be published after you submit your KYC";
+      }
+    }
+
     return NextResponse.json(
       {
         status: "success",
-        message: "Product updated successfully!",
+        message: successMessage,
         data: {
           id: updatedProduct.id,
           title: updatedProduct.title,

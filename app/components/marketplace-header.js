@@ -9,6 +9,7 @@ import {
   LogIn,
   ArrowLeft,
   LoaderCircle,
+  X,
 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -46,6 +47,65 @@ export default function MarketplaceHeader(props) {
   const router = useRouter();
   const pathname = usePathname();
   const { isCheckingSSO, ssoAvailable, attemptSSOLogin } = useCrowdpenSSO();
+
+  const [showKycBanner, setShowKycBanner] = useState(true);
+  const [kycInfo, setKycInfo] = useState({
+    kycStatus: undefined,
+    kycExempt: undefined,
+  });
+
+  useEffect(() => {
+    setShowKycBanner(true);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setKycInfo({ kycStatus: undefined, kycExempt: undefined });
+      return;
+    }
+
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch("/api/marketplace/account/kyc", {
+          signal: controller.signal,
+        });
+        if (!res.ok) {
+          setKycInfo({ kycStatus: undefined, kycExempt: undefined });
+          return;
+        }
+        const data = await res.json();
+        const status = data?.kyc?.status ? String(data.kyc.status) : undefined;
+        setKycInfo({
+          kycStatus: status,
+          kycExempt: Boolean(data?.kycExempt),
+        });
+      } catch (e) {
+        if (e?.name === "AbortError") return;
+        setKycInfo({ kycStatus: undefined, kycExempt: undefined });
+      }
+    })();
+
+    return () => {
+      controller.abort();
+    };
+  }, [session?.user?.id]);
+
+  const isKycExempt = (u) => {
+    return (
+      u?.crowdpen_staff === true ||
+      u?.role === "admin" ||
+      u?.role === "senior_admin"
+    );
+  };
+
+  const shouldShowKycBanner =
+    session?.user &&
+    !isKycExempt(session.user) &&
+    !kycInfo.kycExempt &&
+    !session.user.merchant &&
+    kycInfo.kycStatus !== "approved" &&
+    showKycBanner;
 
   const searchQueryTrimmed = (searchQuery || "").trim();
 
@@ -226,6 +286,32 @@ export default function MarketplaceHeader(props) {
 
   return (
     <header className="sticky top-0 z-10 w-full border-b border-border bg-background">
+      {shouldShowKycBanner && (
+        <div className="w-full bg-amber-50 border-b border-amber-100 text-amber-900 px-5 md:px-10 py-2.5 text-sm relative">
+          <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
+            <div className="flex-1 flex flex-wrap items-center gap-2">
+              <span className="font-medium">Complete your KYC verification</span>
+              <span className="hidden sm:inline text-amber-700 mx-1">•</span>
+              <span className="text-amber-800">
+                Verify your identity to start selling on Crowdpen.
+              </span>
+              <Link
+                href="/account?tab=verification"
+                className="font-semibold underline decoration-amber-400 hover:text-amber-700 ml-1 whitespace-nowrap transition-colors"
+              >
+                Verify Now &rarr;
+              </Link>
+            </div>
+            <button
+              onClick={() => setShowKycBanner(false)}
+              className="cursor-pointer text-amber-800 hover:text-amber-600 p-1 rounded-md hover:bg-amber-100 transition-colors shrink-0"
+              aria-label="Close banner"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
       {/* Top Bar */}
       <div className="w-full bg-gray-900 text-white text-xs py-1 px-5 md:px-10 dark:bg-black">
         <div className="flex justify-between items-center gap-3 w-full min-w-0">

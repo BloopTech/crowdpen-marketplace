@@ -105,7 +105,7 @@ export async function GET(request) {
       const ipCountry = getHeaderCountry(request);
       const currency = deriveCurrency(ipCountry);
       if (currency === "GHS") countryCode = "GH";
-      else if (currency === "NGN") countryCode = "NG";
+      else if (currency === "NGN") countryCode = "NGN";
       // else leave undefined; upstream may return an informative error for unsupported regions
     }
 

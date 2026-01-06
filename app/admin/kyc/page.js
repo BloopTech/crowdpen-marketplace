@@ -11,8 +11,7 @@ import {
 } from "../../components/ui/card";
 import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 import KYCTabs from "./tabs";
-import { approveKyc, rejectKyc } from "./actions";
-import { success } from "zod";
+import { approveKyc, rejectKyc, reopenKyc } from "./actions";
 import { toast } from "sonner";
 
 const rejectInitialState = {
@@ -21,6 +20,11 @@ const rejectInitialState = {
 };
 
 const approveInitialState = {
+  message: "",
+  success: [],
+};
+
+const reopenInitialState = {
   message: "",
   success: [],
 };
@@ -52,6 +56,10 @@ export default function KycPage() {
   const [approveState, approveFormAction, approveIsPending] = useActionState(
     approveKyc,
     approveInitialState
+  );
+  const [reopenState, reopenFormAction, reopenIsPending] = useActionState(
+    reopenKyc,
+    reopenInitialState
   );
 
   const [tab, setTab] = useState("pending");
@@ -111,13 +119,41 @@ export default function KycPage() {
       }
       kycApprovedQueryRefetch();
       kycPendingQueryRefetch();
+      kycRejectedQueryRefetch();
     } else if (
       Object.keys(approveState?.error || {}).length > 0 &&
       approveState.message
     ) {
       toast.error(approveState.message);
     }
-  }, [kycApprovedQueryRefetch, kycPendingQueryRefetch, approveState]);
+  }, [
+    kycApprovedQueryRefetch,
+    kycPendingQueryRefetch,
+    kycRejectedQueryRefetch,
+    approveState,
+  ]);
+
+  useEffect(() => {
+    if (
+      Object.keys(reopenState?.data || {}).length > 0 &&
+      reopenState.message
+    ) {
+      toast.success(reopenState.message);
+      kycApprovedQueryRefetch();
+      kycPendingQueryRefetch();
+      kycRejectedQueryRefetch();
+    } else if (
+      Object.keys(reopenState?.error || {}).length > 0 &&
+      reopenState.message
+    ) {
+      toast.error(reopenState.message);
+    }
+  }, [
+    kycApprovedQueryRefetch,
+    kycPendingQueryRefetch,
+    kycRejectedQueryRefetch,
+    reopenState,
+  ]);
 
   useEffect(() => {
     // Initialize from URL
@@ -314,10 +350,13 @@ export default function KycPage() {
             rejectIsPending={rejectIsPending}
             approveFormAction={approveFormAction}
             approveIsPending={approveIsPending}
+            reopenFormAction={reopenFormAction}
+            reopenIsPending={reopenIsPending}
             setReviewId={setReviewId}
             reviewId={reviewId}
             approveState={approveState}
             rejectState={rejectState}
+            reopenState={reopenState}
           />
         </CardContent>
       </Card>
