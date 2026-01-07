@@ -6,7 +6,13 @@ import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../lib/security/rateLimit";
 
-const { MarketplaceReview, User, MarketplaceProduct, MarketplaceKycVerification } = db;
+const {
+  MarketplaceReview,
+  MarketplaceReviewHelpfulVote,
+  User,
+  MarketplaceProduct,
+  MarketplaceKycVerification,
+} = db;
 
 /**
  * GET handler to fetch reviews for a product
@@ -20,7 +26,8 @@ export async function GET(request, { params }) {
     const session = await getServerSession(authOptions);
     const viewerId = session?.user?.id || null;
 
-    const productIdRaw = getParams?.id == null ? "" : String(getParams.id).trim();
+    const productIdRaw =
+      getParams?.id == null ? "" : String(getParams.id).trim();
     const { searchParams } = new URL(request.url);
     const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
     const limitParam = Number.parseInt(searchParams.get("limit") || "10", 10);
@@ -114,13 +121,26 @@ export async function GET(request, { params }) {
       include: [
         {
           model: User,
-          attributes: ["id", "name", "email"],
+          attributes: ["id", "name", "email", "color", "image"],
         },
       ],
       order: [["createdAt", "DESC"]],
       limit,
       offset,
     });
+
+    let helpfulVoteSet = new Set();
+    if (viewerId && reviews.length > 0) {
+      const reviewIds = reviews.map((r) => r.id);
+      const myVotes = await MarketplaceReviewHelpfulVote.findAll({
+        where: {
+          user_id: viewerId,
+          marketplace_review_id: { [Op.in]: reviewIds },
+        },
+        attributes: ["marketplace_review_id"],
+      });
+      helpfulVoteSet = new Set(myVotes.map((v) => String(v.marketplace_review_id)));
+    }
 
     // Format reviews for frontend
     const formattedReviews = reviews.map((review) => ({
@@ -130,12 +150,15 @@ export async function GET(request, { params }) {
       content: review.content,
       verifiedPurchase: review.verifiedPurchase,
       helpful: review.helpful,
+      isHelpfulByMe: viewerId ? helpfulVoteSet.has(String(review.id)) : false,
       createdAt: review.createdAt,
       updatedAt: review.updatedAt,
       user: {
         id: review.User.id,
         name: review.User.name,
         email: review.User.email,
+        color: review.User.color,
+        image: review.User.image,
       },
     }));
 
@@ -230,7 +253,189 @@ export async function GET(request, { params }) {
         status: "error",
         message: isProd
           ? "Failed to fetch reviews"
-          : (error?.message || "Failed to fetch reviews"),
+          : error?.message || "Failed to fetch reviews",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PATCH handler to mark/unmark helpful votes
+ */
+export async function PATCH(request, { params }) {
+  const getParams = await params;
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user?.id) {
+      return NextResponse.json(
+        { status: "error", message: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({
+      key: `review-helpful:${userIdForRl}:${ip}`,
+      limit: 60,
+      windowMs: 60_000,
+    });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
+    const productIdRaw = getParams?.id == null ? "" : String(getParams.id).trim();
+    if (!productIdRaw || productIdRaw.length > 128) {
+      return NextResponse.json(
+        { status: "error", message: "Product ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const reviewIdRaw = body?.reviewId == null ? "" : String(body.reviewId).trim();
+    if (!reviewIdRaw || reviewIdRaw.length > 128) {
+      return NextResponse.json(
+        { status: "error", message: "Review ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const idParam = String(productIdRaw);
+    const orConditions = [{ product_id: idParam }];
+    if (isUUID(idParam)) {
+      orConditions.unshift({ id: idParam });
+    }
+
+    const product = await MarketplaceProduct.findOne({
+      where: { [Op.or]: orConditions },
+      attributes: ["id", "user_id", "product_status", "flagged"],
+      include: [
+        {
+          model: User,
+          attributes: ["id", "role", "crowdpen_staff", "merchant"],
+          required: false,
+          include: [
+            {
+              model: MarketplaceKycVerification,
+              attributes: ["status"],
+              required: false,
+            },
+          ],
+        },
+      ],
+    });
+
+    if (!product) {
+      return NextResponse.json(
+        { status: "error", message: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    const ownerApproved =
+      product?.User?.MarketplaceKycVerification?.status === "approved" ||
+      User.isKycExempt(product?.User) ||
+      product?.User?.merchant === true;
+
+    if (String(product.user_id) !== String(session.user.id)) {
+      if (!ownerApproved || product?.flagged === true || product?.product_status !== "published") {
+        return NextResponse.json(
+          { status: "error", message: "Product is not available" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const review = await MarketplaceReview.findOne({
+      where: {
+        id: reviewIdRaw,
+        marketplace_product_id: product.id,
+        visible: true,
+      },
+    });
+
+    if (!review) {
+      return NextResponse.json(
+        { status: "error", message: "Review not found" },
+        { status: 404 }
+      );
+    }
+
+    if (String(review.user_id) === String(session.user.id)) {
+      return NextResponse.json(
+        { status: "error", message: "You can't mark your own review as helpful" },
+        { status: 403 }
+      );
+    }
+
+    const t = await db.sequelize.transaction();
+    try {
+      const existingVote = await MarketplaceReviewHelpfulVote.findOne({
+        where: {
+          user_id: session.user.id,
+          marketplace_review_id: review.id,
+        },
+        transaction: t,
+      });
+
+      let isHelpfulByMe = false;
+      if (existingVote) {
+        await existingVote.destroy({ transaction: t });
+        await MarketplaceReview.update(
+          { helpful: db.Sequelize.literal('GREATEST("helpful" - 1, 0)') },
+          { where: { id: review.id }, transaction: t }
+        );
+        isHelpfulByMe = false;
+      } else {
+        await MarketplaceReviewHelpfulVote.create(
+          {
+            user_id: session.user.id,
+            marketplace_review_id: review.id,
+          },
+          { transaction: t }
+        );
+        await MarketplaceReview.update(
+          { helpful: db.Sequelize.literal('"helpful" + 1') },
+          { where: { id: review.id }, transaction: t }
+        );
+        isHelpfulByMe = true;
+      }
+
+      const updatedReview = await MarketplaceReview.findByPk(review.id, {
+        attributes: ["id", "helpful"],
+        transaction: t,
+      });
+      await t.commit();
+
+      return NextResponse.json({
+        status: "success",
+        message: isHelpfulByMe
+          ? "Marked review as helpful"
+          : "Removed your helpful vote",
+        data: {
+          reviewId: review.id,
+          helpful: updatedReview?.helpful ?? 0,
+          isHelpfulByMe,
+        },
+      });
+    } catch (txErr) {
+      await t.rollback();
+      throw txErr;
+    }
+  } catch (error) {
+    console.error("Error updating review helpful count:", error);
+    const isProd = process.env.NODE_ENV === "production";
+    return NextResponse.json(
+      {
+        status: "error",
+        message: isProd
+          ? "Failed to update review helpful status"
+          : (error?.message || "Failed to update review helpful status"),
       },
       { status: 500 }
     );
@@ -253,7 +458,11 @@ export async function PUT(request, { params }) {
 
     const ip = getClientIpFromHeaders(request.headers) || "unknown";
     const userIdForRl = String(session.user.id);
-    const rl = rateLimit({ key: `review-upsert:${userIdForRl}:${ip}`, limit: 20, windowMs: 60_000 });
+    const rl = rateLimit({
+      key: `review-upsert:${userIdForRl}:${ip}`,
+      limit: 20,
+      windowMs: 60_000,
+    });
     if (!rl.ok) {
       return NextResponse.json(
         { status: "error", message: "Too many requests" },
@@ -262,7 +471,8 @@ export async function PUT(request, { params }) {
     }
 
     const userId = session.user.id;
-    const productIdRaw = getParams?.id == null ? "" : String(getParams.id).trim();
+    const productIdRaw =
+      getParams?.id == null ? "" : String(getParams.id).trim();
 
     if (!productIdRaw || productIdRaw.length > 128) {
       return NextResponse.json(
@@ -297,7 +507,8 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const contentText = content === undefined ? undefined : String(content ?? "");
+    const contentText =
+      content === undefined ? undefined : String(content ?? "");
     if (typeof contentText === "string" && contentText.length > 10_000) {
       return NextResponse.json(
         { status: "error", message: "Review content is too long" },
@@ -342,7 +553,11 @@ export async function PUT(request, { params }) {
       User.isKycExempt(product?.User) ||
       product?.User?.merchant === true;
     if (!isOwnerForVisibility) {
-      if (!ownerApproved || product?.flagged === true || product?.product_status !== "published") {
+      if (
+        !ownerApproved ||
+        product?.flagged === true ||
+        product?.product_status !== "published"
+      ) {
         return NextResponse.json(
           {
             status: "error",
@@ -375,7 +590,8 @@ export async function PUT(request, { params }) {
       // Update existing review
       review.rating = rating;
       if (title !== undefined) {
-        review.title = titleText && titleText.trim().length > 0 ? titleText : null;
+        review.title =
+          titleText && titleText.trim().length > 0 ? titleText : null;
       }
       if (content !== undefined) {
         // Allow empty string to represent rating-only
@@ -434,7 +650,7 @@ export async function PUT(request, { params }) {
         status: "error",
         message: isProd
           ? "Failed to save review"
-          : (error?.message || "Failed to save review"),
+          : error?.message || "Failed to save review",
       },
       { status: 500 }
     );

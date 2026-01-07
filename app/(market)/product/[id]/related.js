@@ -62,15 +62,19 @@ export default function RelatedProducts() {
   }
 
   // No related products found
-  if (!relatedProductsData?.data?.products || relatedProductsData.data.products.length === 0) {
+  if (
+    !relatedProductsData?.data?.products ||
+    relatedProductsData.data.products.length === 0
+  ) {
     return (
       <div className="mt-12">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
           Related Products
         </h2>
-        <div className="text-center p-8 bg-gray-50 rounded-lg">
-          <p className="text-gray-600">
-            No related products found in the {productItemData.category} category.
+        <div className="text-center p-8 bg-gray-50 dark:bg-slate-900 rounded-lg">
+          <p className="text-gray-600 dark:text-slate-400">
+            No related products found in the {productItemData.category}{" "}
+            category.
           </p>
         </div>
       </div>
@@ -83,26 +87,24 @@ export default function RelatedProducts() {
   return (
     <div className="mt-12 w-full md:px-10">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Related Products
         </h2>
-        <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+        <span className="text-sm text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-900 px-3 py-1 rounded-full">
           {category}
         </span>
       </div>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {relatedProducts.map((product) => (
-          <ProductCard
-            key={product.id}
-            resource={product}
-          />
+          <ProductCard key={product.id} resource={product} />
         ))}
       </div>
-      
+
       {relatedProducts.length > 0 && (
-        <p className="text-center text-gray-500 text-sm mt-6">
-          Showing {relatedProducts.length} related product{relatedProducts.length !== 1 ? 's' : ''} from the {category} category
+        <p className="text-center text-gray-500 dark:text-slate-400 text-sm mt-6">
+          Showing {relatedProducts.length} related product
+          {relatedProducts.length !== 1 ? "s" : ""} from the {category} category
         </p>
       )}
     </div>

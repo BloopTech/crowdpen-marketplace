@@ -14,6 +14,7 @@ import MarketplaceProduct from "./MarketplaceProduct";
 import MarketplaceProductTags from "./MarketplaceProductTags";
 import MarketplaceProductVariation from "./MarketplaceProductVariation";
 import MarketplaceReview from "./MarketplaceReview";
+import MarketplaceReviewHelpfulVote from "./MarketplaceReviewHelpfulVote";
 import MarketplaceSubCategory from "./MarketplaceSubCategory";
 import MarketplaceTags from "./MarketplaceTags";
 import SubscriptionPayment from "./subscriptionpayment";
@@ -40,6 +41,7 @@ const db = {
   MarketplaceProductTags,
   MarketplaceProductVariation,
   MarketplaceReview,
+  MarketplaceReviewHelpfulVote,
   MarketplaceSubCategory,
   MarketplaceTags,
   MarketplaceWishlists,

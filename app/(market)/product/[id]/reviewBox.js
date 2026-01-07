@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useActionState, useEffect } from "react";
+import React, { useState, useActionState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
 import {
@@ -63,6 +63,7 @@ export default function ReviewBox() {
     message: "",
     errors: {},
   });
+  const lastHandledStateRef = useRef(state);
 
   // Memoized sanitized content for safe submission
   const safeContent = React.useMemo(() => sanitizeHtml(content || ""), [content]);
@@ -103,7 +104,7 @@ export default function ReviewBox() {
       attributes: {
         spellcheck: true,
         class:
-          "prose prose-sm max-w-none focus:outline-none min-h-[120px] p-3 border rounded-md",
+          "prose prose-sm max-w-none focus:outline-none min-h-[120px] p-3 border rounded-md bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 text-gray-900 dark:text-slate-100 dark:prose-invert",
       },
     },
     immediatelyRender: false,
@@ -211,6 +212,11 @@ export default function ReviewBox() {
 
   // Handle successful submission
   useEffect(() => {
+    if (lastHandledStateRef.current === state) {
+      return;
+    }
+    lastHandledStateRef.current = state;
+
     if (state.success) {
       toast.success(state.message || (isEditing ? "Review updated successfully!" : "Review submitted successfully!"));
       // Refresh reviews to update statistics and user review state
@@ -281,25 +287,25 @@ export default function ReviewBox() {
             {(isEditing || !!currentUserReview) ? 'Edit your review' : 'Rate this product'}
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white border-0 shadow-2xl">
-          <DialogHeader className="space-y-3 pb-6 border-b border-gray-100 relative">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-950 border border-gray-100 dark:border-slate-800 shadow-2xl text-gray-900 dark:text-slate-100">
+          <DialogHeader className="space-y-3 pb-6 border-b border-gray-100 dark:border-slate-800 relative">
             <DialogClose asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-0 top-0 h-8 w-8 rounded-full hover:bg-gray-100 transition-colors"
+                className="absolute right-0 top-0 h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
               >
                 <X className="h-4 w-4" />
                 <span className="sr-only">Close</span>
               </Button>
             </DialogClose>
-            <DialogTitle className="text-2xl font-bold text-primary flex items-center gap-3 pr-10">
-              <div className="p-2 bg-tertiary rounded-full">
-                <Star className="h-6 w-6 text-white" />
+            <DialogTitle className="text-2xl font-bold text-primary dark:text-white flex items-center gap-3 pr-10">
+              <div className="p-2 bg-tertiary/90 rounded-full shadow-inner">
+                <Star className="h-6 w-6 text-white drop-shadow" />
               </div>
               {isEditing ? 'Edit your review' : 'Rate & Review this product'}
             </DialogTitle>
-            <DialogDescription className="text-gray-600 text-base leading-relaxed">
+            <DialogDescription className="text-gray-600 dark:text-slate-300 text-base leading-relaxed">
               Help other customers by sharing your honest review of this product. Your feedback matters!
             </DialogDescription>
           </DialogHeader>
@@ -307,30 +313,30 @@ export default function ReviewBox() {
           <div className="space-y-8 py-6">
             {/* Context Banners and Stepper */}
             {isEditing && (
-              <div className="rounded-lg bg-amber-50 text-amber-700 text-sm px-3 py-2 border border-amber-200">
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-400/10 text-amber-700 dark:text-amber-100 text-sm px-3 py-2 border border-amber-200 dark:border-amber-300/30">
                 You&apos;re editing your existing review. Saving will replace your previous review.
               </div>
             )}
-            <div className="flex items-center justify-center gap-3 text-xs sm:text-sm text-gray-600">
-              <div className={`px-3 py-1 rounded-full border ${rating > 0 ? 'bg-tertiary text-white border-tertiary' : 'bg-gray-100'}`}>
+            <div className="flex items-center justify-center gap-3 text-xs sm:text-sm text-gray-600 dark:text-slate-300">
+              <div className={`px-3 py-1 rounded-full border transition-colors ${rating > 0 ? 'bg-tertiary text-white border-tertiary' : 'bg-gray-100 dark:bg-white/10 dark:border-slate-600 dark:text-slate-200'}`}>
                 <span className="font-medium">Step 1</span> • Rate
               </div>
-              <span className="text-gray-400">→</span>
-              <div className={`px-3 py-1 rounded-full border ${showEditor ? 'bg-tertiary text-white border-tertiary' : 'bg-gray-100'}`}>
+              <span className="text-gray-400 dark:text-slate-500">→</span>
+              <div className={`px-3 py-1 rounded-full border transition-colors ${showEditor ? 'bg-tertiary text-white border-tertiary' : 'bg-gray-100 dark:bg-white/10 dark:border-slate-600 dark:text-slate-200'}`}>
                 <span className="font-medium">Step 2</span> • Write
               </div>
             </div>
             {/* Rating Selection */}
             <div className="space-y-4">
-              <Label className="text-lg font-semibold text-gray-800">How would you rate this product? *</Label>
-              <p className="text-sm text-gray-500">You can submit just a rating now and optionally write a review later.</p>
-              <div className="flex flex-col items-center gap-4 p-6 bg-white/60 rounded-2xl border border-gray-100 shadow-sm">
+              <Label className="text-lg font-semibold text-gray-800 dark:text-white">How would you rate this product? *</Label>
+              <p className="text-sm text-gray-500 dark:text-slate-400">You can submit just a rating now and optionally write a review later.</p>
+              <div className="flex flex-col items-center gap-4 p-6 bg-white/60 dark:bg-slate-900/60 rounded-2xl border border-gray-100 dark:border-slate-700 shadow-sm">
                 <div className="flex items-center gap-2">
                   {[1, 2, 3, 4, 5].map((star) => (
                     <button
                       key={star}
                       type="button"
-                      className="p-2 hover:scale-125 transition-all duration-200 rounded-full hover:bg-yellow-50"
+                      className="p-2 hover:scale-125 transition-all duration-200 rounded-full hover:bg-yellow-50 dark:hover:bg-yellow-400/10"
                       onClick={() => setRating(star)}
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(0)}
@@ -339,7 +345,7 @@ export default function ReviewBox() {
                         className={`h-8 w-8 transition-all duration-200 ${
                           star <= (hoverRating || rating)
                             ? "fill-yellow-400 text-yellow-400 drop-shadow-sm"
-                            : "text-gray-300 hover:text-yellow-300"
+                            : "text-gray-300 dark:text-slate-600 hover:text-yellow-300"
                         }`}
                       />
                     </button>
@@ -354,7 +360,7 @@ export default function ReviewBox() {
                       {rating === 4 && "Very Good"}
                       {rating === 5 && "Excellent"}
                     </span>
-                    <span className="text-sm text-gray-500">({rating}/5 stars)</span>
+                    <span className="text-sm text-gray-500 dark:text-slate-400">({rating}/5 stars)</span>
                   </div>
                 )}
               </div>
@@ -383,6 +389,7 @@ export default function ReviewBox() {
                   type="button"
                   variant="outline"
                   onClick={() => { setShowEditor(true); setPromptToWrite(false); }}
+                  className="dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10"
                 >
                   Write a review
                 </Button>
@@ -391,17 +398,17 @@ export default function ReviewBox() {
 
             {/* Prompt to optionally write after rating-only */}
             {promptToWrite && !showEditor && (
-              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-700">
+              <div className="p-4 rounded-xl border border-gray-200 bg-gray-50 text-gray-700 dark:border-slate-700 dark:bg-slate-800/70 dark:text-slate-100">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                   <p className="text-sm flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                     Thanks! Your rating has been saved. Would you like to add a written review?
                   </p>
                   <div className="flex items-center gap-2">
                     <Button size="sm" disabled={isPending} onClick={() => { setShowEditor(true); setPromptToWrite(false); }}>
                       Write now
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setPromptToWrite(false); }}>
+                    <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setPromptToWrite(false); }} className="dark:text-slate-300 dark:hover:bg-white/10">
                       Not now
                     </Button>
                   </div>
@@ -413,7 +420,7 @@ export default function ReviewBox() {
               <div className="space-y-4">
                 {/* Title Input */}
                 <div className="space-y-3">
-                  <Label htmlFor="review-title" className="text-lg font-semibold text-gray-800">
+                  <Label htmlFor="review-title" className="text-lg font-semibold text-gray-800 dark:text-white">
                     Give your review a title (Optional)
                   </Label>
                   <Input
@@ -422,12 +429,12 @@ export default function ReviewBox() {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={100}
-                    className="h-12 text-base border-2 border-gray-200 rounded-xl focus:border-tertiary focus:ring-2 focus:ring-tertiary/20 transition-all duration-200 bg-white/80"
+                    className="h-12 text-base border-2 border-gray-200 rounded-xl focus:border-tertiary focus:ring-2 focus:ring-tertiary/20 transition-all duration-200 bg-white/80 dark:bg-slate-900/70 dark:border-slate-700 dark:text-slate-100"
                   />
                 </div>
                 {/* Editor Toolbar */}
-                <div className="flex items-center gap-2 p-3 bg-white/80 rounded-xl border-2 border-gray-100 shadow-sm">
-                  <span className="text-sm font-medium text-gray-600 mr-2">Format:</span>
+                <div className="flex items-center gap-2 p-3 bg-white/80 dark:bg-slate-900/70 rounded-xl border-2 border-gray-100 dark:border-slate-700 shadow-sm">
+                  <span className="text-sm font-medium text-gray-600 dark:text-slate-300 mr-2">Format:</span>
                   <Button
                     type="button"
                     variant="ghost"
@@ -436,7 +443,7 @@ export default function ReviewBox() {
                     className={`rounded-lg transition-all duration-200 ${
                       editor?.isActive("bold") 
                         ? "bg-tertiary text-white shadow-sm" 
-                        : "hover:bg-tertiary/10 hover:text-tertiary"
+                        : "hover:bg-tertiary/10 hover:text-tertiary dark:hover:bg-white/10"
                     }`}
                   >
                     <BoldIcon className="h-4 w-4" />
@@ -449,7 +456,7 @@ export default function ReviewBox() {
                     className={`rounded-lg transition-all duration-200 ${
                       editor?.isActive("italic") 
                         ? "bg-tertiary text-white shadow-sm" 
-                        : "hover:bg-tertiary/10 hover:text-tertiary"
+                        : "hover:bg-tertiary/10 hover:text-tertiary dark:hover:bg-white/10"
                     }`}
                   >
                     <ItalicIcon className="h-4 w-4" />
@@ -464,7 +471,7 @@ export default function ReviewBox() {
                     className={`rounded-lg transition-all duration-200 ${
                       editor?.isActive("bulletList") 
                         ? "bg-tertiary text-white shadow-sm" 
-                        : "hover:bg-tertiary/10 hover:text-tertiary"
+                        : "hover:bg-tertiary/10 hover:text-tertiary dark:hover:bg-white/10"
                     }`}
                   >
                     <List className="h-4 w-4" />
@@ -479,7 +486,7 @@ export default function ReviewBox() {
                     className={`rounded-lg transition-all duration-200 ${
                       editor?.isActive("orderedList") 
                         ? "bg-tertiary text-white shadow-sm" 
-                        : "hover:bg-tertiary/10 hover:text-tertiary"
+                        : "hover:bg-tertiary/10 hover:text-tertiary dark:hover:bg-white/10"
                     }`}
                   >
                     <ListOrdered className="h-4 w-4" />
@@ -487,10 +494,10 @@ export default function ReviewBox() {
                 </div>
 
                 {/* Editor Content */}
-                <div className="bg-white/80 border-2 border-gray-200 rounded-xl focus-within:border-tertiary focus-within:ring-2 focus-within:ring-tertiary/20 transition-all duration-200 shadow-sm">
+                <div className="bg-white/80 dark:bg-slate-900/70 border-2 border-gray-200 dark:border-slate-700 rounded-xl focus-within:border-tertiary focus-within:ring-2 focus-within:ring-tertiary/20 transition-all duration-200 shadow-sm">
                   <EditorContent
                     editor={editor}
-                    className="min-h-[150px] p-4"
+                    className="min-h-[150px] p-4 text-gray-900 dark:text-slate-100"
                     placeholder="Share your experience with this product..."
                   />
                 </div>
@@ -501,7 +508,7 @@ export default function ReviewBox() {
             {showEditor && (
               <form
                 action={session?.user?.id ? formAction : openLoginDialog}
-                className="space-y-6 pt-6 border-t border-gray-100"
+                className="space-y-6 pt-6 border-t border-gray-100 dark:border-slate-800"
               >
                 <div className="flex items-center gap-4">
                   <Button
@@ -527,7 +534,7 @@ export default function ReviewBox() {
                     type="button"
                     variant="outline"
                     onClick={handleCancel}
-                    className="border-2 border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-3 px-6 rounded-xl transition-all duration-200"
+                    className="border-2 border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-white/10 font-medium py-3 px-6 rounded-xl transition-all duration-200"
                     size="lg"
                   >
                     Cancel

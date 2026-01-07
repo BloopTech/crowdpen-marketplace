@@ -7,6 +7,7 @@ class MarketplaceReview extends Model {
     // Define associations
     MarketplaceReview.belongsTo(models.MarketplaceProduct, { foreignKey: 'marketplace_product_id' });
     MarketplaceReview.belongsTo(models.User, { foreignKey: 'user_id' });
+    MarketplaceReview.hasMany(models.MarketplaceReviewHelpfulVote, { foreignKey: 'marketplace_review_id' });
   }
 }
 

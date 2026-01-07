@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useActionState, useEffect, useState, useRef } from "react";
 import { useProductItemContext } from "./context";
 import { useSession } from "next-auth/react";
 import { Card, CardContent } from "../../../components/ui/card";
@@ -11,12 +11,17 @@ import { formatDistanceToNow } from "date-fns";
 import SafeHTML from "../../../components/SafeHTML";
 import useInfiniteScroll from "react-infinite-scroll-hook";
 import ReviewBox from "./reviewBox";
+import { markReviewHelpful } from "./action";
+import { helpfulActionInitialState } from "./helpfulActionState";
+import { toast } from "sonner";
+import { useParams } from "next/navigation";
+import { useHome } from "../../../context";
 
 export default function ProductReviews() {
-  const { 
-    reviewsLoading, 
-    reviewsError, 
-    reviewsData, 
+  const {
+    reviewsLoading,
+    reviewsError,
+    reviewsData,
     refetchReviews,
     fetchNextPage,
     hasNextPage,
@@ -26,8 +31,57 @@ export default function ProductReviews() {
   } = useProductItemContext();
 
   const { data: session } = useSession();
-  const productOwnerId = productItemData?.user_id || productItemData?.User?.id || null;
-  const isOwner = Boolean(session?.user?.id && productOwnerId && String(session.user.id) === String(productOwnerId));
+  const params = useParams();
+  const { openLoginDialog } = useHome();
+  const productActionId =
+    productItemData?.id ||
+    productItemData?.product_id ||
+    productItemData?.productId ||
+    (typeof params?.id === "string" ? params.id : null);
+  const [helpfulState, helpfulAction, helpfulPending] = useActionState(
+    markReviewHelpful,
+    helpfulActionInitialState
+  );
+  const [lastHelpfulIntent, setLastHelpfulIntent] = useState(null);
+  const productOwnerId =
+    productItemData?.user_id || productItemData?.User?.id || null;
+  const isOwner = Boolean(
+    session?.user?.id &&
+    productOwnerId &&
+    String(session.user.id) === String(productOwnerId)
+  );
+
+  const helpfulOverrides = helpfulState?.overrides || {};
+  const helpfulActionRanRef = useRef(false);
+
+  useEffect(() => {
+    if (!helpfulState) return;
+    if (!helpfulActionRanRef.current) {
+      helpfulActionRanRef.current = true;
+      return;
+    }
+    if (!lastHelpfulIntent) return;
+    if (helpfulState.success) {
+      toast.success(helpfulState.message || "Thanks for the feedback!");
+      refetchReviews?.();
+    } else if (helpfulState.success === false) {
+      toast.error(helpfulState.message || "Failed to update helpful vote");
+    }
+  }, [helpfulState, lastHelpfulIntent, refetchReviews]);
+
+  const handleHelpfulSubmit = (event, reviewId) => {
+    if (!session) {
+      event.preventDefault();
+      openLoginDialog?.();
+      return;
+    }
+    if (!productActionId) {
+      event.preventDefault();
+      toast.error("Unable to determine product. Please refresh and try again.");
+      return;
+    }
+    setLastHelpfulIntent({ reviewId });
+  };
 
   // Infinite scroll hook
   const [sentryRef] = useInfiniteScroll({
@@ -35,23 +89,26 @@ export default function ProductReviews() {
     hasNextPage: hasNextPage ?? false,
     onLoadMore: fetchNextPage,
     disabled: !!reviewsError,
-    rootMargin: '0px 0px 400px 0px',
+    rootMargin: "0px 0px 400px 0px",
   });
 
   if (reviewsLoading) {
     return (
       <div className="space-y-4">
-        <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+        <div className="h-8 bg-gray-200 dark:bg-slate-700 rounded animate-pulse"></div>
         {[...Array(3)].map((_, i) => (
-          <Card key={i}>
+          <Card
+            key={i}
+            className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800"
+          >
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
-                <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                <div className="w-10 h-10 bg-gray-200 dark:bg-slate-700 rounded-full animate-pulse"></div>
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-1/4"></div>
-                  <div className="h-3 bg-gray-200 rounded animate-pulse w-1/6"></div>
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-1/4"></div>
+                  <div className="h-3 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-1/6"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-3/4"></div>
+                  <div className="h-4 bg-gray-200 dark:bg-slate-700 rounded animate-pulse w-1/2"></div>
                 </div>
               </div>
             </CardContent>
@@ -73,20 +130,24 @@ export default function ProductReviews() {
   }
 
   // Flatten all reviews from all pages
-  const allReviews = reviewsData?.pages?.flatMap(page => page?.data?.reviews || []) || [];
+  const allReviews =
+    reviewsData?.pages?.flatMap((page) => page?.data?.reviews || []) || [];
   // Get statistics from the first page (they're the same across all pages)
   const statistics = reviewsData?.pages?.[0]?.data?.statistics || {};
   // Total written reviews (pagination totalItems counts only written content reviews)
-  const writtenReviewsTotal = reviewsData?.pages?.[0]?.data?.pagination?.totalItems || 0;
+  const writtenReviewsTotal =
+    reviewsData?.pages?.[0]?.data?.pagination?.totalItems || 0;
 
   return (
     <div className="space-y-6">
       {/* Review Statistics */}
       {statistics.totalReviews > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6">
+        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900/70 rounded-lg p-6 border border-transparent dark:border-slate-800 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold">Ratings & Reviews</h3>
-            <div className="flex items-center gap-2">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Ratings & Reviews
+            </h3>
+            <div className="flex items-center gap-2 text-gray-900 dark:text-white">
               <div className="flex">
                 {[...Array(5)].map((_, i) => (
                   <Star
@@ -99,24 +160,33 @@ export default function ProductReviews() {
                   />
                 ))}
               </div>
-              <span className="text-lg font-medium">{statistics.averageRating}</span>
-              <span className="text-sm text-muted-foreground">
-                ({statistics.totalReviews} rating{statistics.totalReviews !== 1 ? 's' : ''})
+              <span className="text-lg font-medium">
+                {statistics.averageRating}
+              </span>
+              <span className="text-sm text-muted-foreground dark:text-slate-300">
+                ({statistics.totalReviews} rating
+                {statistics.totalReviews !== 1 ? "s" : ""})
               </span>
             </div>
           </div>
-          
+
           {/* Rating Distribution */}
           <div className="space-y-2">
             {[5, 4, 3, 2, 1].map((rating) => {
               const count = statistics.ratingDistribution?.[rating] || 0;
-              const percentage = statistics.totalReviews > 0 ? (count / statistics.totalReviews) * 100 : 0;
-              
+              const percentage =
+                statistics.totalReviews > 0
+                  ? (count / statistics.totalReviews) * 100
+                  : 0;
+
               return (
-                <div key={rating} className="flex items-center gap-2 text-sm">
+                <div
+                  key={rating}
+                  className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200"
+                >
                   <span className="w-8">{rating}</span>
                   <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div className="flex-1 bg-gray-200 dark:bg-slate-700 rounded-full h-2">
                     <div
                       className="bg-yellow-400 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${percentage}%` }}
@@ -140,34 +210,51 @@ export default function ProductReviews() {
       {/* Reviews List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
             <MessageSquare className="h-5 w-5" />
             Reviews ({writtenReviewsTotal || 0})
           </h3>
         </div>
 
         {writtenReviewsTotal === 0 ? (
-          <div className="text-center py-12">
-            <MessageSquare className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h4 className="text-lg font-medium text-gray-900 mb-2">No reviews yet</h4>
-            <p className="text-gray-500 mb-4">Be the first to share your thoughts about this product!</p>
+          <div className="text-center py-12 bg-white dark:bg-slate-900 border border-dashed border-gray-200 dark:border-slate-700 rounded-xl">
+            <MessageSquare className="h-12 w-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+            <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+              No reviews yet
+            </h4>
+            <p className="text-gray-500 dark:text-slate-400 mb-4">
+              Be the first to share your thoughts about this product!
+            </p>
           </div>
         ) : (
           <>
             {allReviews.map((review) => (
-              <Card key={review.id} className="hover:shadow-md transition-shadow">
+              <Card
+                key={review.id}
+                className="hover:shadow-md transition-shadow bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
-                    <Avatar className="bg-gradient-to-r from-blue-500 to-purple-500">
+                    <Avatar
+                      className="bg-gradient-to-r from-blue-500 to-purple-500"
+                      color={review?.user?.color}
+                      imageUrl={review?.user?.image}
+                      initials={review?.user?.name.charAt(0)}
+                    >
                       <AvatarFallback className="text-white font-medium">
-                        {review.user.name?.charAt(0)?.toUpperCase() || 'U'}
+                        {review.user.name?.charAt(0)?.toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="font-medium text-gray-900">{review.user.name || 'Anonymous'}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {review.user.name || "Anonymous"}
+                        </span>
                         {review.verifiedPurchase && (
-                          <Badge variant="secondary" className="text-xs">
+                          <Badge
+                            variant="secondary"
+                            className="text-xs bg-emerald-100 text-emerald-800 dark:bg-emerald-400/20 dark:text-emerald-200"
+                          >
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Verified Purchase
                           </Badge>
@@ -186,40 +273,94 @@ export default function ProductReviews() {
                             />
                           ))}
                         </div>
-                        <span className="text-sm text-muted-foreground">
-                          {formatDistanceToNow(new Date(review.createdAt), { addSuffix: true })}
+                        <span className="text-sm text-muted-foreground dark:text-slate-400">
+                          {formatDistanceToNow(new Date(review.createdAt), {
+                            addSuffix: true,
+                          })}
                         </span>
                       </div>
                       {review.title && (
-                        <h4 className="font-medium text-gray-900 mb-2">{review.title}</h4>
+                        <h4 className="font-medium text-gray-900 dark:text-white mb-2">
+                          {review.title}
+                        </h4>
                       )}
                       <SafeHTML
-                        className="text-gray-700 leading-relaxed prose prose-sm max-w-none"
+                        className="text-gray-700 dark:text-slate-200 leading-relaxed prose prose-sm max-w-none dark:prose-invert"
                         html={review.content}
                       />
-                      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100">
-                        <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700">
-                          <ThumbsUp className="h-4 w-4 mr-1" />
-                          Helpful ({review.helpful})
-                        </Button>
+                      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-slate-800">
+                        {(() => {
+                          const override = helpfulOverrides[review.id] || {};
+                          const hasOverride = Object.prototype.hasOwnProperty.call(
+                            override,
+                            "marked"
+                          );
+                          const isMarkedHelpful = hasOverride
+                            ? override.marked === true
+                            : review.isHelpfulByMe === true;
+                          const helpfulCount = hasOverride
+                            ? (override.count ?? review.helpful)
+                            : review.helpful;
+                          const isOwnReview =
+                            session?.user?.id &&
+                            String(session.user.id) === String(review.user.id);
+                          const isButtonPending =
+                            helpfulPending &&
+                            lastHelpfulIntent?.reviewId === review.id;
+                          return (
+                            <form
+                              action={helpfulAction}
+                              onSubmit={(event) =>
+                                handleHelpfulSubmit(event, review.id)
+                              }
+                            >
+                              <input
+                                type="hidden"
+                                name="productId"
+                                value={productActionId || ""}
+                              />
+                              <input type="hidden" name="reviewId" value={review.id} />
+                              <Button
+                                type="submit"
+                                variant="ghost"
+                                size="sm"
+                                className={`text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white ${
+                                  isMarkedHelpful
+                                    ? "text-tertiary dark:text-tertiary"
+                                    : ""
+                                }`}
+                                disabled={isButtonPending || isOwnReview}
+                                aria-pressed={isMarkedHelpful ? "true" : "false"}
+                                aria-disabled={isOwnReview ? "true" : undefined}
+                              >
+                                {isButtonPending ? (
+                                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                                ) : (
+                                  <ThumbsUp className="h-4 w-4 mr-1" />
+                                )}
+                                Helpful ({helpfulCount})
+                              </Button>
+                            </form>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             ))}
-            
+
             {/* Infinite scroll loading indicator and sentry */}
             {(hasNextPage || isFetchingNextPage) && (
               <div ref={sentryRef} className="flex justify-center py-8">
                 {isFetchingNextPage ? (
-                  <div className="flex items-center gap-2 text-gray-500">
+                  <div className="flex items-center gap-2 text-gray-500 dark:text-slate-300">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Loading more reviews...</span>
                   </div>
                 ) : (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => fetchNextPage()}
                     disabled={!hasNextPage}
                   >
