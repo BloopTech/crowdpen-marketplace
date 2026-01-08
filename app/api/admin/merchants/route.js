@@ -50,13 +50,27 @@ export async function GET(request) {
       ? requestedApplicantStatus
       : "pending";
 
-    // Merchants (users with merchant=true)
-    const whereMerchants = { merchant: true };
+    // Merchants (users with merchant=true OR users who have created marketplace products)
+    const whereMerchants = {
+      [Op.and]: [
+        {
+          [Op.or]: [
+            { merchant: true },
+            db.Sequelize.literal(
+              'EXISTS (SELECT 1 FROM "marketplace_products" p WHERE p."user_id" = "User"."id")'
+            ),
+          ],
+        },
+      ],
+    };
     if (q) {
-      whereMerchants[Op.or] = [
-        { name: { [Op.iLike]: `%${q}%` } },
-        { email: { [Op.iLike]: `%${q}%` } },
-      ];
+      whereMerchants[Op.and].push({
+        [Op.or]: [
+          { name: { [Op.iLike]: `%${q}%` } },
+          { email: { [Op.iLike]: `%${q}%` } },
+          { pen_name: { [Op.iLike]: `%${q}%` } },
+        ],
+      });
     }
     const merchantsRes = await db.User.findAndCountAll({
       where: whereMerchants,
@@ -64,6 +78,7 @@ export async function GET(request) {
         "id",
         "name",
         "email",
+        "pen_name",
         "image",
         "color",
         "role",
@@ -213,7 +228,7 @@ export async function GET(request) {
         + 'FROM "marketplace_order_items" AS oi\n'
         + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
         + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
-        + 'WHERE LOWER(o."paymentStatus"::text) IN (\'successful\', \'completed\')\n'
+        + 'WHERE o."paymentStatus" IN (\'successful\'::"enum_marketplace_orders_paymentStatus", \'completed\'::"enum_marketplace_orders_paymentStatus")\n'
         + '  AND p."user_id" IN (:merchantIds)\n'
         + '  AND o."createdAt" >= :from30\n'
         + 'GROUP BY 1\n';

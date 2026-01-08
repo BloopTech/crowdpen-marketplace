@@ -24,7 +24,8 @@ function fmtDateTimeUtc(v) {
 }
 
 export default async function AdminMerchantOverviewPage({ params }) {
-  const merchantId = await params.id;
+  const { id } = await params;
+  const merchantId = id;
   if (!merchantId) {
     return (
       <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
@@ -52,15 +53,15 @@ export default async function AdminMerchantOverviewPage({ params }) {
   const lowStockThreshold = 5;
 
   const productsSql =
-    'SELECT\n'
-    + '  COUNT(*)::int AS "productsTotal",\n'
-    + '  COALESCE(SUM(CASE WHEN p."product_status" = \'published\' THEN 1 ELSE 0 END), 0)::int AS "productsPublished",\n'
-    + '  COALESCE(SUM(CASE WHEN p."product_status" = \'archived\' THEN 1 ELSE 0 END), 0)::int AS "productsArchived",\n'
-    + '  COALESCE(SUM(CASE WHEN p."flagged" = true THEN 1 ELSE 0 END), 0)::int AS "productsFlagged",\n'
-    + '  COALESCE(SUM(CASE WHEN (p."inStock" = false OR (p."stock" IS NOT NULL AND p."stock" <= 0)) THEN 1 ELSE 0 END), 0)::int AS "productsOutOfStock",\n'
-    + '  COALESCE(SUM(CASE WHEN (p."stock" IS NOT NULL AND p."stock" > 0 AND p."stock" <= :lowStockThreshold) THEN 1 ELSE 0 END), 0)::int AS "productsLowStock"\n'
-    + 'FROM "marketplace_products" AS p\n'
-    + 'WHERE p."user_id" = :merchantId\n';
+    "SELECT\n" +
+    '  COUNT(*)::int AS "productsTotal",\n' +
+    '  COALESCE(SUM(CASE WHEN p."product_status" = \'published\' THEN 1 ELSE 0 END), 0)::int AS "productsPublished",\n' +
+    '  COALESCE(SUM(CASE WHEN p."product_status" = \'archived\' THEN 1 ELSE 0 END), 0)::int AS "productsArchived",\n' +
+    '  COALESCE(SUM(CASE WHEN p."flagged" = true THEN 1 ELSE 0 END), 0)::int AS "productsFlagged",\n' +
+    '  COALESCE(SUM(CASE WHEN (p."inStock" = false OR (p."stock" IS NOT NULL AND p."stock" <= 0)) THEN 1 ELSE 0 END), 0)::int AS "productsOutOfStock",\n' +
+    '  COALESCE(SUM(CASE WHEN (p."stock" IS NOT NULL AND p."stock" > 0 AND p."stock" <= :lowStockThreshold) THEN 1 ELSE 0 END), 0)::int AS "productsLowStock"\n' +
+    'FROM "marketplace_products" AS p\n' +
+    'WHERE p."user_id" = :merchantId\n';
 
   const [productAgg] = await db.sequelize.query(productsSql, {
     replacements: { merchantId, lowStockThreshold },
@@ -68,14 +69,14 @@ export default async function AdminMerchantOverviewPage({ params }) {
   });
 
   const kycSql =
-    'SELECT DISTINCT ON (k."user_id")\n'
-    + '  k."status" AS "status",\n'
-    + '  k."level" AS "level",\n'
-    + '  k."submitted_at" AS "submittedAt",\n'
-    + '  k."reviewed_at" AS "reviewedAt"\n'
-    + 'FROM "marketplace_kyc_verifications" AS k\n'
-    + 'WHERE k."user_id" = :merchantId\n'
-    + 'ORDER BY k."user_id", k."updatedAt" DESC NULLS LAST\n';
+    'SELECT DISTINCT ON (k."user_id")\n' +
+    '  k."status" AS "status",\n' +
+    '  k."level" AS "level",\n' +
+    '  k."submitted_at" AS "submittedAt",\n' +
+    '  k."reviewed_at" AS "reviewedAt"\n' +
+    'FROM "marketplace_kyc_verifications" AS k\n' +
+    'WHERE k."user_id" = :merchantId\n' +
+    'ORDER BY k."user_id", k."updatedAt" DESC NULLS LAST\n';
 
   const [kycAgg] = await db.sequelize.query(kycSql, {
     replacements: { merchantId },
@@ -83,17 +84,17 @@ export default async function AdminMerchantOverviewPage({ params }) {
   });
 
   const salesTotalsSql =
-    'SELECT\n'
-    + '  COALESCE(SUM(CASE WHEN o."createdAt" >= :from30 THEN (oi."subtotal")::numeric ELSE 0 END), 0) AS "revenue30d",\n'
-    + '  COALESCE(SUM(CASE WHEN o."createdAt" >= :from30 THEN oi."quantity" ELSE 0 END), 0) AS "unitsSold30d",\n'
-    + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenueAllTime",\n'
-    + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSoldAllTime",\n'
-    + '  MAX(o."createdAt") AS "lastSaleAt"\n'
-    + 'FROM "marketplace_order_items" AS oi\n'
-    + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
-    + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
-    + 'WHERE LOWER(o."paymentStatus"::text) IN (\'successful\', \'completed\')\n'
-    + '  AND p."user_id" = :merchantId\n';
+    "SELECT\n" +
+    '  COALESCE(SUM(CASE WHEN o."createdAt" >= :from30 THEN (oi."subtotal")::numeric ELSE 0 END), 0) AS "revenue30d",\n' +
+    '  COALESCE(SUM(CASE WHEN o."createdAt" >= :from30 THEN oi."quantity" ELSE 0 END), 0) AS "unitsSold30d",\n' +
+    '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenueAllTime",\n' +
+    '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSoldAllTime",\n' +
+    '  MAX(o."createdAt") AS "lastSaleAt"\n' +
+    'FROM "marketplace_order_items" AS oi\n' +
+    'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n' +
+    'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n' +
+    "WHERE LOWER(o.\"paymentStatus\"::text) IN ('successful', 'completed')\n" +
+    '  AND p."user_id" = :merchantId\n';
 
   const [salesAgg] = await db.sequelize.query(salesTotalsSql, {
     replacements: { merchantId, from30 },
@@ -101,19 +102,19 @@ export default async function AdminMerchantOverviewPage({ params }) {
   });
 
   const revenueDailySql =
-    'SELECT\n'
-    + '  date_trunc(\'day\', o."createdAt") AS period,\n'
-    + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS revenue,\n'
-    + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold"\n'
-    + 'FROM "marketplace_order_items" AS oi\n'
-    + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
-    + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
-    + 'WHERE LOWER(o."paymentStatus"::text) IN (\'successful\', \'completed\')\n'
-    + '  AND p."user_id" = :merchantId\n'
-    + '  AND o."createdAt" >= :from30\n'
-    + '  AND o."createdAt" <= :to\n'
-    + 'GROUP BY 1\n'
-    + 'ORDER BY 1 ASC\n';
+    "SELECT\n" +
+    "  date_trunc('day', o.\"createdAt\") AS period,\n" +
+    '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS revenue,\n' +
+    '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold"\n' +
+    'FROM "marketplace_order_items" AS oi\n' +
+    'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n' +
+    'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n' +
+    "WHERE LOWER(o.\"paymentStatus\"::text) IN ('successful', 'completed')\n" +
+    '  AND p."user_id" = :merchantId\n' +
+    '  AND o."createdAt" >= :from30\n' +
+    '  AND o."createdAt" <= :to\n' +
+    "GROUP BY 1\n" +
+    "ORDER BY 1 ASC\n";
 
   const revenueDailyRows = await db.sequelize.query(revenueDailySql, {
     replacements: { merchantId, from30, to: now },
@@ -121,13 +122,13 @@ export default async function AdminMerchantOverviewPage({ params }) {
   });
 
   const payoutsSql =
-    'SELECT\n'
-    + '  COALESCE(SUM(CASE WHEN t."status" = \'completed\' THEN t."amount" ELSE 0 END), 0) AS "completedCents",\n'
-    + '  COALESCE(SUM(CASE WHEN t."status" = \'pending\' THEN t."amount" ELSE 0 END), 0) AS "pendingCents",\n'
-    + '  MAX(CASE WHEN t."status" = \'completed\' THEN t."createdAt" ELSE NULL END) AS "lastPaidAt"\n'
-    + 'FROM "marketplace_admin_transactions" AS t\n'
-    + 'WHERE t."trans_type" = \'payout\'\n'
-    + '  AND t."recipient_id" = :merchantId\n';
+    "SELECT\n" +
+    '  COALESCE(SUM(CASE WHEN t."status" = \'completed\' THEN t."amount" ELSE 0 END), 0) AS "completedCents",\n' +
+    '  COALESCE(SUM(CASE WHEN t."status" = \'pending\' THEN t."amount" ELSE 0 END), 0) AS "pendingCents",\n' +
+    '  MAX(CASE WHEN t."status" = \'completed\' THEN t."createdAt" ELSE NULL END) AS "lastPaidAt"\n' +
+    'FROM "marketplace_admin_transactions" AS t\n' +
+    "WHERE t.\"trans_type\" = 'payout'\n" +
+    '  AND t."recipient_id" = :merchantId\n';
 
   const [payoutAgg] = await db.sequelize.query(payoutsSql, {
     replacements: { merchantId },
@@ -135,11 +136,11 @@ export default async function AdminMerchantOverviewPage({ params }) {
   });
 
   const settlementSql =
-    'SELECT\n'
-    + '  MAX(pp."settlement_to") AS "lastSettlementTo"\n'
-    + 'FROM "marketplace_payout_periods" AS pp\n'
-    + 'WHERE pp."is_active" = true\n'
-    + '  AND pp."recipient_id" = :merchantId\n';
+    "SELECT\n" +
+    '  MAX(pp."settlement_to") AS "lastSettlementTo"\n' +
+    'FROM "marketplace_payout_periods" AS pp\n' +
+    'WHERE pp."is_active" = true\n' +
+    '  AND pp."recipient_id" = :merchantId\n';
 
   const [settlementAgg] = await db.sequelize.query(settlementSql, {
     replacements: { merchantId },
@@ -193,13 +194,16 @@ export default async function AdminMerchantOverviewPage({ params }) {
             {productsPublished}/{productsTotal}
           </div>
           <div className="text-xs text-muted-foreground mt-1 tabular-nums">
-            Flagged: {productsFlagged} • Out: {productsOutOfStock} • Low: {productsLowStock}
+            Flagged: {productsFlagged} • Out: {productsOutOfStock} • Low:{" "}
+            {productsLowStock}
           </div>
         </div>
 
         <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
           <div className="text-xs text-muted-foreground">Sales (30d)</div>
-          <div className="text-base font-semibold tabular-nums">{fmtUsd(revenue30d)}</div>
+          <div className="text-base font-semibold tabular-nums">
+            {fmtUsd(revenue30d)}
+          </div>
           <div className="text-xs text-muted-foreground mt-1 tabular-nums">
             Units: {unitsSold30d.toLocaleString("en-US")}
           </div>
@@ -207,7 +211,9 @@ export default async function AdminMerchantOverviewPage({ params }) {
 
         <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
           <div className="text-xs text-muted-foreground">Payouts</div>
-          <div className="text-base font-semibold tabular-nums">{fmtUsd(payoutsCompleted)}</div>
+          <div className="text-base font-semibold tabular-nums">
+            {fmtUsd(payoutsCompleted)}
+          </div>
           <div className="text-xs text-muted-foreground mt-1">
             Pending: {fmtUsd(payoutsPending)}
           </div>
@@ -217,21 +223,27 @@ export default async function AdminMerchantOverviewPage({ params }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
           <div className="text-xs text-muted-foreground">All-time Revenue</div>
-          <div className="text-base font-semibold tabular-nums">{fmtUsd(revenueAllTime)}</div>
+          <div className="text-base font-semibold tabular-nums">
+            {fmtUsd(revenueAllTime)}
+          </div>
           <div className="text-xs text-muted-foreground mt-1 tabular-nums">
             Units: {unitsSoldAllTime.toLocaleString("en-US")}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
           <div className="text-xs text-muted-foreground">Last Sale</div>
-          <div className="text-base font-semibold">{fmtDateTimeUtc(salesAgg?.lastSaleAt)}</div>
+          <div className="text-base font-semibold">
+            {fmtDateTimeUtc(salesAgg?.lastSaleAt)}
+          </div>
           <div className="text-xs text-muted-foreground mt-1">
             Merchant since: {fmtDateTimeUtc(merchant.createdAt)}
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
           <div className="text-xs text-muted-foreground">Settlement</div>
-          <div className="text-base font-semibold">{lastSettlementTo || "-"}</div>
+          <div className="text-base font-semibold">
+            {lastSettlementTo || "-"}
+          </div>
           <div className="text-xs text-muted-foreground mt-1">
             Last paid: {fmtDateTimeUtc(payoutAgg?.lastPaidAt)}
           </div>
@@ -241,9 +253,12 @@ export default async function AdminMerchantOverviewPage({ params }) {
       <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <div className="text-base font-semibold">Revenue (last 30 days)</div>
+            <div className="text-base font-semibold">
+              Revenue (last 30 days)
+            </div>
             <div className="text-xs text-muted-foreground">
-              Window: {from30.toISOString().slice(0, 10)} → {now.toISOString().slice(0, 10)} (USD)
+              Window: {from30.toISOString().slice(0, 10)} →{" "}
+              {now.toISOString().slice(0, 10)} (USD)
             </div>
           </div>
         </div>

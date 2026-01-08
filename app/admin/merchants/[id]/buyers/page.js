@@ -39,12 +39,12 @@ export default async function AdminMerchantBuyersPage({
     '  COALESCE(SUM(oi."quantity"), 0) AS "units",\n' +
     '  COUNT(DISTINCT o."id")::int AS "orders",\n' +
     '  MAX(o."createdAt") AS "lastPurchaseAt"\n' +
-    'FROM "marketplace_order_items" AS oi\n' +
+    'FROM "marketplace_products" AS p\n' +
+    'JOIN "marketplace_order_items" AS oi ON oi."marketplace_product_id" = p."id"\n' +
     'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n' +
-    'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n' +
     'LEFT JOIN "users" AS buyer ON buyer."id" = o."user_id"\n' +
     'WHERE p."user_id" = :merchantId\n' +
-    "  AND LOWER(o.\"paymentStatus\"::text) IN ('successful', 'completed')\n" +
+    '  AND o."paymentStatus" IN (\'successful\'::"enum_marketplace_orders_paymentStatus", \'completed\'::"enum_marketplace_orders_paymentStatus")\n' +
     'GROUP BY o."user_id", buyer."id"\n' +
     'ORDER BY "revenue" DESC\n' +
     "LIMIT :limit OFFSET :offset\n";
@@ -58,11 +58,11 @@ export default async function AdminMerchantBuyersPage({
     "SELECT COUNT(*)::int AS count\n" +
     "FROM (\n" +
     '  SELECT o."user_id"\n' +
-    '  FROM "marketplace_order_items" AS oi\n' +
+    '  FROM "marketplace_products" AS p\n' +
+    '  JOIN "marketplace_order_items" AS oi ON oi."marketplace_product_id" = p."id"\n' +
     '  JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n' +
-    '  JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n' +
     '  WHERE p."user_id" = :merchantId\n' +
-    "    AND LOWER(o.\"paymentStatus\"::text) IN ('successful', 'completed')\n" +
+    '    AND o."paymentStatus" IN (\'successful\'::"enum_marketplace_orders_paymentStatus", \'completed\'::"enum_marketplace_orders_paymentStatus")\n' +
     '  GROUP BY o."user_id"\n' +
     ") AS t\n";
 

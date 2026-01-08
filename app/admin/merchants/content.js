@@ -102,7 +102,9 @@ export default function AdminMerchantsContent() {
               Apply
             </Button>
           </div>
-          {error ? <div className="text-destructive text-sm">{error}</div> : null}
+          {error ? (
+            <div className="text-destructive text-sm">{error}</div>
+          ) : null}
           <Tabs value={tab} onValueChange={setTab}>
             <TabsList>
               <TabsTrigger value="merchants">Merchants</TabsTrigger>
@@ -143,13 +145,22 @@ export default function AdminMerchantsContent() {
                             : "neutral";
 
                     const productsTotal = Number(kpi?.productsTotal || 0) || 0;
-                    const productsPublished = Number(kpi?.productsPublished || 0) || 0;
-                    const productsFlagged = Number(kpi?.productsFlagged || 0) || 0;
-                    const outOfStock = Number(kpi?.productsOutOfStock || 0) || 0;
+                    const productsPublished =
+                      Number(kpi?.productsPublished || 0) || 0;
+                    const productsFlagged =
+                      Number(kpi?.productsFlagged || 0) || 0;
+                    const outOfStock =
+                      Number(kpi?.productsOutOfStock || 0) || 0;
                     const lowStock = Number(kpi?.productsLowStock || 0) || 0;
 
-                    const stockRiskLabel = outOfStock > 0 ? "Out" : lowStock > 0 ? "Low" : "OK";
-                    const stockRiskVariant = outOfStock > 0 ? "error" : lowStock > 0 ? "warning" : "success";
+                    const stockRiskLabel =
+                      outOfStock > 0 ? "Out" : lowStock > 0 ? "Low" : "OK";
+                    const stockRiskVariant =
+                      outOfStock > 0
+                        ? "error"
+                        : lowStock > 0
+                          ? "warning"
+                          : "success";
 
                     return (
                       <TableRow key={u.id}>
@@ -173,7 +184,9 @@ export default function AdminMerchantsContent() {
                               >
                                 {u.name || "Unnamed"}
                               </Link>
-                              <div className="text-xs text-muted-foreground">{u.email}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {u.email}
+                              </div>
                             </div>
                           </div>
                         </TableCell>
@@ -192,14 +205,20 @@ export default function AdminMerchantsContent() {
                             <div className="font-medium">
                               {productsPublished}/{productsTotal}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">Published/Total</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              Published/Total
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {productsFlagged}
                         </TableCell>
+                        {/* outOfStock counts products where inStock = false or stock ≤ 0.
+lowStock counts products with a positive stock level that’s at or below the low-stock threshold (currently 5 units). */}
                         <TableCell className="text-right">
-                          <Badge variant={stockRiskVariant}>{stockRiskLabel}</Badge>
+                          <Badge variant={stockRiskVariant}>
+                            {stockRiskLabel}
+                          </Badge>
                           <div className="text-[11px] text-muted-foreground tabular-nums mt-1">
                             {outOfStock} out, {lowStock} low
                           </div>
@@ -212,14 +231,20 @@ export default function AdminMerchantsContent() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="tabular-nums">
-                            <div className="font-medium">{fmtUsd(kpi?.payoutsCompleted || 0)}</div>
+                            <div className="font-medium">
+                              {fmtUsd(kpi?.payoutsCompleted || 0)}
+                            </div>
                             <div className="text-[11px] text-muted-foreground">
                               Pending: {fmtUsd(kpi?.payoutsPending || 0)}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">{fmtDateTimeUtc(kpi?.lastPaidAt)}</TableCell>
-                        <TableCell className="text-sm">{kpi?.lastSettlementTo || "-"}</TableCell>
+                        <TableCell className="text-sm">
+                          {fmtDateTimeUtc(kpi?.lastPaidAt)}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {kpi?.lastSettlementTo || "-"}
+                        </TableCell>
                         <TableCell>
                           <Badge variant={u.merchant ? "success" : "neutral"}>
                             {u.merchant ? "Merchant" : "Not Merchant"}
@@ -228,7 +253,9 @@ export default function AdminMerchantsContent() {
                         <TableCell>
                           <div className="flex gap-2">
                             <Button size="sm" variant="secondary" asChild>
-                              <Link href={`/admin/merchants/${u.id}`}>View</Link>
+                              <Link href={`/admin/merchants/${u.id}`}>
+                                View
+                              </Link>
                             </Button>
                             <form action={toggleMerchant}>
                               <input type="hidden" name="userId" value={u.id} />
@@ -237,8 +264,13 @@ export default function AdminMerchantsContent() {
                                 name="makeMerchant"
                                 value={u.merchant ? "false" : "true"}
                               />
-                              <Button size="sm" variant={u.merchant ? "outline" : "default"}>
-                                {u.merchant ? "Remove Merchant" : "Make Merchant"}
+                              <Button
+                                size="sm"
+                                variant={u.merchant ? "outline" : "default"}
+                              >
+                                {u.merchant
+                                  ? "Remove Merchant"
+                                  : "Make Merchant"}
                               </Button>
                             </form>
                           </div>

@@ -130,7 +130,7 @@ export async function createPayout(prevState, formData) {
       JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
       JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
       WHERE p."user_id" = :merchantId
-        AND LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+        AND o."paymentStatus" IN ('successful'::"enum_marketplace_orders_paymentStatus", 'completed'::"enum_marketplace_orders_paymentStatus")
         AND (:lastSettledTo::date IS NULL OR (o."createdAt"::date > :lastSettledTo::date))
     `,
     {
@@ -181,7 +181,7 @@ export async function createPayout(prevState, formData) {
     JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
     JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
     WHERE p."user_id" = :merchantId
-      AND LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+      AND o."paymentStatus" IN ('successful'::"enum_marketplace_orders_paymentStatus", 'completed'::"enum_marketplace_orders_paymentStatus")
       AND o."createdAt" >= :from
       AND o."createdAt" <= :to
   `;
