@@ -411,8 +411,8 @@ const CartContextProvider = ({
 
     toast.error(msg);
   }, [
-    cartSummary?.coupon_notice.reason,
-    cartSummary?.coupon_notice.code,
+    cartSummary?.coupon_notice?.reason,
+    cartSummary?.coupon_notice?.code,
     cartSummary?.coupon_notice,
   ]);
   const contextValue = {

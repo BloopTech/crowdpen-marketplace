@@ -47,6 +47,21 @@ export default function AdminMerchantsContent() {
     refresh,
   } = useAdminMerchants();
 
+  const fmtUsd = (v) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(Number(v || 0));
+  };
+
+  const fmtDateTimeUtc = (v) => {
+    const d = v ? new Date(v) : null;
+    if (!d || !Number.isFinite(d.getTime())) return "-";
+    return d.toLocaleString("en-US", { timeZone: "UTC" });
+  };
+
   return (
     <div className="px-4 space-y-6">
       <Card>
@@ -95,70 +110,146 @@ export default function AdminMerchantsContent() {
             </TabsList>
 
             <TabsContent value="merchants">
-              <Table>
+              <Table stickyFirstColumn>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
+                    <TableHead>KYC</TableHead>
+                    <TableHead className="text-right">Products</TableHead>
+                    <TableHead className="text-right">Flagged</TableHead>
+                    <TableHead className="text-right">Stock Risk</TableHead>
+                    <TableHead className="text-right">Sales (30d)</TableHead>
+                    <TableHead className="text-right">Units (30d)</TableHead>
+                    <TableHead className="text-right">Payouts</TableHead>
+                    <TableHead>Last Paid</TableHead>
+                    <TableHead>Last Settled To</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {merchants.map((u) => (
-                    <TableRow key={u.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar
-                            imageUrl={u.image}
-                            color={u.color}
-                            className="h-8 w-8"
-                          >
-                            <AvatarFallback>
-                              {(u?.name || u?.email || "")
-                                .slice(0, 2)
-                                .toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <div className="font-medium">
-                              {u.name || "Unnamed"}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {u.email}
+                  {merchants.map((u) => {
+                    const kpi = u?.kpi;
+                    const kycLabel = kpi?.kycStatus
+                      ? `${kpi.kycStatus}${kpi.kycLevel ? ` (${kpi.kycLevel})` : ""}`
+                      : "unverified";
+                    const kycVariant =
+                      kpi?.kycStatus === "approved"
+                        ? "success"
+                        : kpi?.kycStatus === "rejected"
+                          ? "error"
+                          : kpi?.kycStatus === "pending"
+                            ? "warning"
+                            : "neutral";
+
+                    const productsTotal = Number(kpi?.productsTotal || 0) || 0;
+                    const productsPublished = Number(kpi?.productsPublished || 0) || 0;
+                    const productsFlagged = Number(kpi?.productsFlagged || 0) || 0;
+                    const outOfStock = Number(kpi?.productsOutOfStock || 0) || 0;
+                    const lowStock = Number(kpi?.productsLowStock || 0) || 0;
+
+                    const stockRiskLabel = outOfStock > 0 ? "Out" : lowStock > 0 ? "Low" : "OK";
+                    const stockRiskVariant = outOfStock > 0 ? "error" : lowStock > 0 ? "warning" : "success";
+
+                    return (
+                      <TableRow key={u.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <Avatar
+                              imageUrl={u.image}
+                              color={u.color}
+                              className="h-8 w-8"
+                            >
+                              <AvatarFallback>
+                                {(u?.name || u?.email || "")
+                                  .slice(0, 2)
+                                  .toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <Link
+                                href={`/admin/merchants/${u.id}`}
+                                className="font-medium hover:underline"
+                              >
+                                {u.name || "Unnamed"}
+                              </Link>
+                              <div className="text-xs text-muted-foreground">{u.email}</div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>{u.email}</TableCell>
-                      <TableCell className="capitalize">{u.role}</TableCell>
-                      <TableCell>
-                        <Badge variant={u.merchant ? "success" : "neutral"}>
-                          {u.merchant ? "Merchant" : "Not Merchant"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <form action={toggleMerchant}>
-                            <input type="hidden" name="userId" value={u.id} />
-                            <input
-                              type="hidden"
-                              name="makeMerchant"
-                              value={u.merchant ? "false" : "true"}
-                            />
-                            <Button size="sm" variant={u.merchant ? "outline" : "default"}>
-                              {u.merchant ? "Remove Merchant" : "Make Merchant"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <Badge variant={kycVariant}>{kycLabel}</Badge>
+                            {kpi?.kycReviewedAt ? (
+                              <div className="text-[11px] text-muted-foreground">
+                                Reviewed: {fmtDateTimeUtc(kpi.kycReviewedAt)}
+                              </div>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="tabular-nums">
+                            <div className="font-medium">
+                              {productsPublished}/{productsTotal}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">Published/Total</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {productsFlagged}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant={stockRiskVariant}>{stockRiskLabel}</Badge>
+                          <div className="text-[11px] text-muted-foreground tabular-nums mt-1">
+                            {outOfStock} out, {lowStock} low
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {fmtUsd(kpi?.revenue30d || 0)}
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">
+                          {Number(kpi?.unitsSold30d || 0) || 0}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="tabular-nums">
+                            <div className="font-medium">{fmtUsd(kpi?.payoutsCompleted || 0)}</div>
+                            <div className="text-[11px] text-muted-foreground">
+                              Pending: {fmtUsd(kpi?.payoutsPending || 0)}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm">{fmtDateTimeUtc(kpi?.lastPaidAt)}</TableCell>
+                        <TableCell className="text-sm">{kpi?.lastSettlementTo || "-"}</TableCell>
+                        <TableCell>
+                          <Badge variant={u.merchant ? "success" : "neutral"}>
+                            {u.merchant ? "Merchant" : "Not Merchant"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="secondary" asChild>
+                              <Link href={`/admin/merchants/${u.id}`}>View</Link>
                             </Button>
-                          </form>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            <form action={toggleMerchant}>
+                              <input type="hidden" name="userId" value={u.id} />
+                              <input
+                                type="hidden"
+                                name="makeMerchant"
+                                value={u.merchant ? "false" : "true"}
+                              />
+                              <Button size="sm" variant={u.merchant ? "outline" : "default"}>
+                                {u.merchant ? "Remove Merchant" : "Make Merchant"}
+                              </Button>
+                            </form>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                   {!loading && merchants.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={12}
                         className="text-center text-sm text-muted-foreground"
                       >
                         No merchants yet.
