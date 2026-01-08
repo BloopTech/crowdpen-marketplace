@@ -7,6 +7,7 @@ import crypto from "crypto";
 import sharp from "sharp";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 import { assertRequiredEnvInProduction } from "../../../../lib/env";
+import { PRODUCT_ID_REGEX, generateUniqueProductId } from "../../../../lib/products/productId";
 
 assertRequiredEnvInProduction([
   "CLOUDFLARE_R2_ENDPOINT",
@@ -53,30 +54,6 @@ const deleteR2ObjectByKey = async (key) => {
     })
   );
 };
-
-const PRODUCT_ID_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-function generateProductIdCandidate(length = 10) {
-  const bytes = crypto.randomBytes(length);
-  let id = "";
-  for (let i = 0; i < length; i++) {
-    id += PRODUCT_ID_CHARS[bytes[i] % PRODUCT_ID_CHARS.length];
-  }
-  return id;
-}
-
-async function generateUniqueProductId(preferredLength = 10, fallbackLength = 8, maxAttempts = 10) {
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const useLength = attempt < Math.floor(maxAttempts / 2) ? preferredLength : fallbackLength;
-    const candidate = generateProductIdCandidate(useLength);
-    const exists = await db.MarketplaceProduct.findOne({
-      where: { product_id: candidate },
-      attributes: ["product_id", "id"],
-    });
-    if (!exists) return candidate;
-  }
-  throw new Error("Unable to generate unique product_id");
-}
 
 const formatFileSize = (bytes) => {
   if (bytes === 0) return "0 Bytes";
@@ -225,6 +202,20 @@ export async function POST(request) {
       deliveryTime: formData.get("deliveryTime") || "Instant",
       what_included: formData.get("what_included") || "",
     };
+
+    const rawProductIdInput = formData.get("product_id");
+    const productIdInput =
+      typeof rawProductIdInput === "string" ? rawProductIdInput.trim() : "";
+    if (productIdInput && !PRODUCT_ID_REGEX.test(productIdInput)) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message:
+            "Invalid product ID format. Use 8 or 10 alphanumeric characters.",
+        },
+        { status: 400 }
+      );
+    }
 
     const rawProductStatus = formData.get("product_status");
     const productStatus = rawProductStatus ? String(rawProductStatus).trim() : "";
@@ -595,9 +586,18 @@ export async function POST(request) {
 
     let createdProduct;
     let lastError;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    const maxAttempts = productIdInput ? 4 : 3;
+    const triedIds = new Set();
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const productId =
+        attempt === 0 && productIdInput
+          ? productIdInput
+          : await generateUniqueProductId();
+      if (triedIds.has(productId)) {
+        continue;
+      }
+      triedIds.add(productId);
       try {
-        const productId = await generateUniqueProductId();
         createdProduct = await db.MarketplaceProduct.create({
           ...productData,
           user_id: userId,
@@ -617,7 +617,10 @@ export async function POST(request) {
         lastError = undefined;
         break;
       } catch (e) {
-        if (e?.name === 'SequelizeUniqueConstraintError' || e?.parent?.code === '23505') {
+        if (
+          e?.name === "SequelizeUniqueConstraintError" ||
+          e?.parent?.code === "23505"
+        ) {
           lastError = e;
           continue;
         }

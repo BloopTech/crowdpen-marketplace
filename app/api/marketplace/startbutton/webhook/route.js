@@ -20,6 +20,8 @@ const {
   MarketplaceCart,
   MarketplaceCartItems,
   MarketplaceProduct,
+  MarketplaceCoupon,
+  MarketplaceCouponRedemption,
   User,
   sequelize,
 } = db;
@@ -384,7 +386,30 @@ export async function POST(request) {
       });
       if (cart) {
         await MarketplaceCartItems.destroy({ where: { marketplace_cart_id: cart.id }, transaction: t });
-        await cart.update({ subtotal: 0, tax: 0, discount: 0, total: 0 }, { transaction: t });
+        await cart.update(
+          {
+            subtotal: 0,
+            discount: 0,
+            total: 0,
+            coupon_id: null,
+            coupon_code: null,
+            coupon_applied_at: null,
+          },
+          { transaction: t }
+        );
+      }
+
+      const redemption = await MarketplaceCouponRedemption.findOne({
+        where: { order_id: lockedOrder.id },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (redemption && redemption.status !== "successful") {
+        await redemption.update({ status: "successful" }, { transaction: t });
+        await MarketplaceCoupon.increment(
+          { usage_count: 1 },
+          { where: { id: redemption.coupon_id }, transaction: t }
+        );
       }
 
       await t.commit();
@@ -410,7 +435,6 @@ export async function POST(request) {
                 orderNumber: lockedOrder.order_number,
                 items: products,
                 subtotal: Number(lockedOrder.subtotal),
-                tax: Number(lockedOrder.tax || 0),
                 discount: Number(lockedOrder.discount || 0),
                 total: Number(lockedOrder.total),
               })
@@ -442,6 +466,16 @@ export async function POST(request) {
         },
         { transaction: t }
       );
+
+      const redemption = await MarketplaceCouponRedemption.findOne({
+        where: { order_id: lockedOrder.id },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (redemption && redemption.status === "pending") {
+        await redemption.update({ status: "failed" }, { transaction: t });
+      }
+
       await t.commit();
       return NextResponse.json({ status: "success", message: "Order marked as failed" });
     }

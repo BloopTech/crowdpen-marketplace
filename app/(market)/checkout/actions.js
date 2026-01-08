@@ -16,6 +16,9 @@ const {
   MarketplaceOrder,
   MarketplaceOrderItems,
   MarketplaceAddress,
+  MarketplaceCoupon,
+  MarketplaceCouponRedemption,
+  MarketplaceCouponRedemptionItem,
   sequelize,
 } = db;
 
@@ -41,6 +44,18 @@ function getStartButtonSupportedCurrencies() {
   return new Set(["NGN", "GHS", "ZAR", "KES", "UGX", "RWF", "TZS", "ZMW", "XOF", "USD"]);
 }
 
+function getStartButtonPublicKey() {
+  return (
+    process.env.NEXT_PUBLIC_STARTBUTTON_PUBLIC_KEY ||
+    process.env.NEXT_PUBLIC_SB_PUBLIC_KEY ||
+    process.env.STARTBUTTON_PUBLIC_KEY ||
+    process.env.STARTBUTTON_PUBLISHABLE_KEY ||
+    ""
+  )
+    .toString()
+    .trim();
+}
+
 function generateOrderNumber() {
   const ts = new Date();
   const pad = (n) => String(n).padStart(2, "0");
@@ -51,6 +66,19 @@ function generateOrderNumber() {
   const mm = pad(ts.getMinutes());
   const ss = pad(ts.getSeconds());
   return `CP-${y}${m}${d}-${hh}${mm}${ss}-${Math.floor(Math.random() * 1000)}`;
+}
+
+function buildItemsSignature(items) {
+  const arr = Array.isArray(items) ? items : [];
+  return arr
+    .map((it) => {
+      const pid = (it?.marketplace_product_id || "").toString();
+      const vid = (it?.marketplace_product_variation_id || "").toString();
+      const qty = Number(it?.quantity || 0);
+      return `${pid}:${vid}:${qty}`;
+    })
+    .sort()
+    .join("|");
 }
 
 async function getHeaderCountry() {
@@ -91,6 +119,37 @@ function computeEffectivePrice(product) {
   const saleEndMs = product.sale_end_date ? new Date(product.sale_end_date).getTime() : null;
   const isExpired = hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
   return isExpired ? originalPriceNum : priceNum;
+}
+
+function couponValidity(coupon) {
+  const now = Date.now();
+  const startMs = coupon?.start_date ? new Date(coupon.start_date).getTime() : null;
+  const endMs = coupon?.end_date ? new Date(coupon.end_date).getTime() : null;
+  if (coupon?.is_active === false) return { ok: false, reason: "inactive" };
+  if (Number.isFinite(startMs) && startMs > now) return { ok: false, reason: "not_started" };
+  if (Number.isFinite(endMs) && endMs < now) return { ok: false, reason: "expired" };
+  return { ok: true, reason: null };
+}
+
+function computeCouponDiscount(coupon, eligibleSubtotal) {
+  const eligible = Number(eligibleSubtotal || 0);
+  if (!Number.isFinite(eligible) || eligible <= 0) return 0;
+
+  const t = String(coupon?.discount_type || "").toLowerCase();
+  const val = Number(coupon?.discount_value || 0);
+  if (!Number.isFinite(val) || val <= 0) return 0;
+
+  let discount = 0;
+  if (t === "percentage") discount = eligible * (val / 100);
+  else if (t === "fixed") discount = val;
+
+  if (discount > eligible) discount = eligible;
+
+  const maxRaw = coupon?.max_discount_amount;
+  const max = maxRaw != null ? Number(maxRaw) : null;
+  if (max != null && Number.isFinite(max) && max >= 0 && discount > max) discount = max;
+
+  return Number(discount.toFixed(2));
 }
 
 function deriveCurrencyByCountry(countryCode) {
@@ -194,6 +253,15 @@ export async function beginCheckout(prevState, formData) {
     };
   }
 
+  const publicKey = getStartButtonPublicKey();
+  if (!publicKey) {
+    return {
+      success: false,
+      message: "Payment gateway is not configured",
+      errors: { payment: ["Payment gateway is not configured"] },
+    };
+  }
+
   const userId = session.user.id;
   const email = (formData.get("email") || "").toString().trim();
   const firstName = (formData.get("firstName") || "").toString().trim();
@@ -207,6 +275,7 @@ export async function beginCheckout(prevState, formData) {
   const paymentMethod = (
     formData.get("paymentMethod") || "startbutton"
   ).toString();
+  const existingOrderId = (formData.get("existingOrderId") || "").toString().trim();
 
   if (
     !email ||
@@ -254,6 +323,7 @@ export async function beginCheckout(prevState, formData) {
           "currency",
           "file",
           "fileType",
+          "marketplace_category_id",
         ],
         include: [
           {
@@ -312,12 +382,11 @@ export async function beginCheckout(prevState, formData) {
         const itemTotal = effectivePrice * (ci.quantity || 1);
         subtotal += itemTotal;
       }
-      const tax = subtotal * 0.1;
+    
       const discount = Number(cart.discount ?? 0);
-      const total = subtotal + tax - discount;
+      const total = subtotal - discount;
       await cart.update({
         subtotal: subtotal.toFixed(2),
-        tax: tax.toFixed(2),
         total: total.toFixed(2),
       });
     } catch (cleanupError) {
@@ -381,13 +450,101 @@ export async function beginCheckout(prevState, formData) {
       await ci.update({ price: itemTotal.toFixed(2), subtotal: itemTotal.toFixed(2) });
     }
   }
-  const tax = subtotal * 0.1; // 10% tax
-  const discount = Number(cart.discount ?? 0);
-  const total = subtotal + tax - discount;
+
+  let discount = 0;
+  let coupon = null;
+  let couponNotice = null;
+
+  if (cart.coupon_id) {
+    coupon = await MarketplaceCoupon.findByPk(cart.coupon_id);
+    if (!coupon) {
+      await cart.update({
+        coupon_id: null,
+        coupon_code: null,
+        coupon_applied_at: null,
+        discount: 0,
+        subtotal: subtotal.toFixed(2),
+        total: (subtotal).toFixed(2),
+      });
+      couponNotice = { code: cart.coupon_code || null, reason: "not_found" };
+      coupon = null;
+    }
+
+    if (coupon) {
+      const valid = couponValidity(coupon);
+      if (!valid.ok) {
+        await cart.update({
+          coupon_id: null,
+          coupon_code: null,
+          coupon_applied_at: null,
+          discount: 0,
+          subtotal: subtotal.toFixed(2),
+          total: (subtotal).toFixed(2),
+        });
+        couponNotice = { code: cart.coupon_code || coupon.code || null, reason: valid.reason };
+        coupon = null;
+      }
+    }
+
+    if (coupon && coupon.usage_limit != null) {
+      const limit = Number(coupon.usage_limit);
+      const used = Number(coupon.usage_count || 0);
+      if (Number.isFinite(limit) && limit > 0 && used >= limit) {
+        await cart.update({
+          coupon_id: null,
+          coupon_code: null,
+          coupon_applied_at: null,
+          discount: 0,
+          subtotal: subtotal.toFixed(2),
+          total: (subtotal).toFixed(2),
+        });
+        couponNotice = { code: cart.coupon_code || coupon.code || null, reason: "usage_limit" };
+        coupon = null;
+      }
+    }
+
+    if (coupon) {
+      const appliesTo = String(coupon.applies_to || "all").toLowerCase();
+      const ids = Array.isArray(coupon.applies_to_ids) ? coupon.applies_to_ids : [];
+      const set = new Set(ids.map((v) => String(v)));
+      const eligibleSubtotal = cartItems.reduce((acc, ci) => {
+        const p = ci?.MarketplaceProduct;
+        if (!p) return acc;
+        const match =
+          appliesTo === "all" ||
+          (appliesTo === "product" && set.has(String(p.id))) ||
+          (appliesTo === "category" && set.has(String(p.marketplace_category_id || "")));
+        if (!match) return acc;
+        const effectivePrice = computeEffectivePrice(p);
+        return acc + effectivePrice * (ci.quantity || 1);
+      }, 0);
+
+      const minAmount = coupon?.min_order_amount != null ? Number(coupon.min_order_amount) : 0;
+      if (Number.isFinite(minAmount) && minAmount > 0 && eligibleSubtotal < minAmount) {
+        await cart.update({
+          coupon_id: null,
+          coupon_code: null,
+          coupon_applied_at: null,
+          discount: 0,
+          subtotal: subtotal.toFixed(2),
+          total: (subtotal).toFixed(2),
+        });
+        couponNotice = { code: cart.coupon_code || coupon.code || null, reason: "min_order_amount" };
+        coupon = null;
+      } else {
+        discount = computeCouponDiscount(coupon, eligibleSubtotal);
+        if ((cart.coupon_code || "").toString().trim().toUpperCase() !== String(coupon.code).toUpperCase()) {
+          await cart.update({ coupon_code: coupon.code });
+        }
+      }
+    }
+  }
+
+  const total = subtotal - discount;
 
   // Update cart totals if they differ
-  if (Math.abs(Number(cart.subtotal) - subtotal) > 0.01 || Math.abs(Number(cart.tax) - tax) > 0.01) {
-    await cart.update({ subtotal: subtotal.toFixed(2), tax: tax.toFixed(2), total: total.toFixed(2) });
+  if (Math.abs(Number(cart.subtotal) - subtotal) > 0.01) {
+    await cart.update({ subtotal: subtotal.toFixed(2), discount: discount.toFixed(2), total: total.toFixed(2) });
   }
 
   const baseCurrency = "USD";
@@ -420,6 +577,154 @@ export async function beginCheckout(prevState, formData) {
 
   const paidAmount = Number((Number(total) * Number(fxRate)).toFixed(2));
 
+  const cartSig = buildItemsSignature(cartItems);
+  let reuseOrderId = existingOrderId;
+  if (!reuseOrderId && cartSig) {
+    const Op = db?.Sequelize?.Op;
+    if (Op) {
+      const since = new Date(Date.now() - 15 * 60 * 1000);
+      const candidates = await MarketplaceOrder.findAll({
+        where: {
+          user_id: userId,
+          paymentStatus: "pending",
+          orderStatus: { [Op.in]: ["pending", "processing"] },
+          createdAt: { [Op.gte]: since },
+        },
+        order: [["createdAt", "DESC"]],
+        limit: 3,
+      });
+
+      for (const cand of candidates) {
+        const orderItems = await MarketplaceOrderItems.findAll({
+          where: { marketplace_order_id: cand.id },
+        });
+        const orderSig = buildItemsSignature(orderItems);
+        if (orderSig && orderSig === cartSig) {
+          reuseOrderId = cand.id;
+          break;
+        }
+      }
+    }
+  }
+
+  // If a previous attempt created an order, reuse it (retry-safe)
+  if (reuseOrderId) {
+    try {
+      const existing = await MarketplaceOrder.findOne({
+        where: { id: reuseOrderId, user_id: userId },
+      });
+      if (existing) {
+        const payStatus = String(existing.paymentStatus || "").toLowerCase();
+        const ordStatus = String(existing.orderStatus || "").toLowerCase();
+        const alreadySuccessful = payStatus === "successful" || ordStatus === "successful";
+
+        if (alreadySuccessful) {
+          return {
+            success: true,
+            message: "Checkout started",
+            coupon_notice: couponNotice,
+            publicKey,
+            orderId: existing.id,
+            orderNumber: existing.order_number,
+            amount: Number(existing.paid_amount || paidAmount),
+            currency: (existing.paid_currency || paidCurrency || baseCurrency).toString(),
+            baseAmount: Number(existing.total || total),
+            baseCurrency,
+            fxRate: Number(existing.fx_rate || fxRate),
+            viewerCurrency,
+            customer: { email, firstName, lastName },
+          };
+        }
+
+        const orderItems = await MarketplaceOrderItems.findAll({
+          where: { marketplace_order_id: existing.id },
+        });
+        const orderSig = buildItemsSignature(orderItems);
+        if (!cartSig || cartSig !== orderSig) {
+          throw new Error("Existing order no longer matches cart");
+        }
+
+        // If it's still pending, refresh totals and continue using the same order.
+        await existing.update({
+          subtotal: subtotal.toFixed(2),
+          discount: discount.toFixed(2),
+          total: total.toFixed(2),
+          paymentMethod: paymentMethod,
+          currency: baseCurrency,
+          couponCode: cart.coupon_code || null,
+          paid_amount: paidAmount,
+          paid_currency: paidCurrency,
+          fx_rate: fxRate,
+        });
+
+        const itemMap = new Map(
+          orderItems.map((oi) => [
+            `${oi?.marketplace_product_id || ""}:${oi?.marketplace_product_variation_id || ""}`,
+            oi,
+          ])
+        );
+
+        for (const ci of cartItems) {
+          const key = `${ci?.marketplace_product_id || ""}:${ci?.marketplace_product_variation_id || ""}`;
+          const oi = itemMap.get(key);
+          if (!oi) continue;
+
+          const p = ci?.MarketplaceProduct;
+          const file = p?.file != null ? String(p.file).trim() : "";
+          const lineSubtotal =
+            ci?.subtotal != null
+              ? Number(ci.subtotal).toFixed(2)
+              : (Number(ci.price) * Number(ci.quantity || 1)).toFixed(2);
+
+          await oi.update({
+            name: ci.name || p?.title || oi.name,
+            quantity: ci.quantity || 1,
+            price: ci.price,
+            subtotal: lineSubtotal,
+            downloadUrl: file || null,
+          });
+        }
+
+        const redemption = await MarketplaceCouponRedemption.findOne({
+          where: { order_id: existing.id },
+        });
+
+        if (coupon && discount > 0) {
+          if (redemption) {
+            await redemption.update({
+              coupon_id: coupon.id,
+              cart_id: cart.id,
+              status: redemption.status === "failed" ? "pending" : redemption.status,
+              discount_total: discount.toFixed(2),
+              currency: baseCurrency,
+            });
+          }
+        } else if (redemption && redemption.status === "pending") {
+          await redemption.update({ status: "failed" });
+        }
+
+        return {
+          success: true,
+          message: "Checkout started",
+          coupon_notice: couponNotice,
+          publicKey,
+          orderId: existing.id,
+          orderNumber: existing.order_number,
+          amount: paidAmount,
+          currency: paidCurrency,
+          baseAmount: Number(total),
+          baseCurrency,
+          fxRate,
+          viewerCurrency,
+          customer: { email, firstName, lastName },
+        };
+      }
+    } catch (e) {
+      // ignore and fall back to creating a new order
+      console.error("beginCheckout existing order reuse error", e);
+    }
+  }
+
   const t = await sequelize.transaction();
   try {
     // Create or reuse a simple billing address record
@@ -448,12 +753,12 @@ export async function beginCheckout(prevState, formData) {
         marketplace_address_id: address.id,
         subtotal: subtotal.toFixed(2),
         discount: discount.toFixed(2),
-        tax: tax.toFixed(2),
         total: total.toFixed(2),
         paymentMethod: paymentMethod,
         paymentStatus: "pending",
         orderStatus: "pending",
         currency: baseCurrency,
+        couponCode: cart.coupon_code || null,
         paid_amount: paidAmount,
         paid_currency: paidCurrency,
         fx_rate: fxRate,
@@ -463,8 +768,13 @@ export async function beginCheckout(prevState, formData) {
     );
 
     // Create order items from cart
+    const createdItems = [];
     for (const ci of cartItems) {
-      await MarketplaceOrderItems.create(
+      const file =
+        ci?.MarketplaceProduct?.file != null
+          ? String(ci.MarketplaceProduct.file).trim()
+          : "";
+      const created = await MarketplaceOrderItems.create(
         {
           marketplace_order_id: order.id,
           marketplace_product_id: ci.marketplace_product_id,
@@ -475,10 +785,84 @@ export async function beginCheckout(prevState, formData) {
           price: ci.price,
           subtotal:
             ci.subtotal || (Number(ci.price) * Number(ci.quantity)).toFixed(2),
-          downloadUrl: null,
+          downloadUrl: file || null,
         },
         { transaction: t }
       );
+      createdItems.push(created);
+    }
+
+    if (coupon && discount > 0) {
+      const redemption = await MarketplaceCouponRedemption.create(
+        {
+          coupon_id: coupon.id,
+          user_id: userId,
+          order_id: order.id,
+          cart_id: cart.id,
+          status: "pending",
+          discount_total: discount.toFixed(2),
+          currency: baseCurrency,
+          expires_at: new Date(Date.now() + 30 * 60 * 1000),
+        },
+        { transaction: t }
+      );
+
+      const productIds = Array.from(
+        new Set(createdItems.map((it) => String(it.marketplace_product_id)))
+      );
+      const productRows = await db.MarketplaceProduct.findAll({
+        where: { id: productIds },
+        attributes: ["id", "marketplace_category_id"],
+        transaction: t,
+      });
+      const productCategoryMap = new Map(
+        productRows.map((r) => [String(r.id), String(r.marketplace_category_id || "")])
+      );
+
+      const appliesTo = String(coupon.applies_to || "all").toLowerCase();
+      const ids = Array.isArray(coupon.applies_to_ids) ? coupon.applies_to_ids : [];
+      const set = new Set(ids.map((v) => String(v)));
+
+      const eligibleItems = createdItems.filter((it) => {
+        if (appliesTo === "all") return true;
+        if (appliesTo === "product") return set.has(String(it.marketplace_product_id));
+        if (appliesTo === "category") {
+          const cat = productCategoryMap.get(String(it.marketplace_product_id)) || "";
+          return set.has(String(cat));
+        }
+        return false;
+      });
+
+      const eligibleSubtotal = eligibleItems.reduce(
+        (acc, it) => acc + (Number(it.subtotal || 0) || 0),
+        0
+      );
+
+      if (eligibleItems.length > 0 && eligibleSubtotal > 0) {
+        const rows = [];
+        let allocated = 0;
+        for (let i = 0; i < eligibleItems.length; i++) {
+          const it = eligibleItems[i];
+          const itemSubtotal = Number(it.subtotal || 0) || 0;
+          let amt;
+          if (i === eligibleItems.length - 1) {
+            amt = Number((discount - allocated).toFixed(2));
+          } else {
+            const share = itemSubtotal / eligibleSubtotal;
+            amt = Number((discount * share).toFixed(2));
+            allocated = Number((allocated + amt).toFixed(2));
+          }
+          if (amt < 0) amt = 0;
+          rows.push({
+            redemption_id: redemption.id,
+            order_item_id: it.id,
+            product_id: it.marketplace_product_id,
+            discount_amount: amt.toFixed(2),
+          });
+        }
+
+        await MarketplaceCouponRedemptionItem.bulkCreate(rows, { transaction: t });
+      }
     }
 
     await t.commit();
@@ -486,6 +870,8 @@ export async function beginCheckout(prevState, formData) {
     return {
       success: true,
       message: "Checkout started",
+      coupon_notice: couponNotice,
+      publicKey,
       orderId: order.id,
       orderNumber,
       amount: paidAmount,
@@ -525,6 +911,17 @@ export async function finalizeOrder(prevState, formData) {
     where: { id: orderId, user_id: userId },
   });
   if (!order) return { success: false, message: "Order not found" };
+
+  const alreadySuccessful =
+    String(order.paymentStatus || "").toLowerCase() === "successful" ||
+    String(order.orderStatus || "").toLowerCase() === "successful";
+  if (alreadySuccessful) {
+    return {
+      success: true,
+      message: "Order completed",
+      orderNumber: order.order_number,
+    };
+  }
 
   const t = await sequelize.transaction();
   try {
@@ -604,8 +1001,28 @@ export async function finalizeOrder(prevState, formData) {
           transaction: t,
         });
         await cart.update(
-          { subtotal: 0, tax: 0, discount: 0, total: 0 },
+          {
+            subtotal: 0,
+            discount: 0,
+            total: 0,
+            coupon_id: null,
+            coupon_code: null,
+            coupon_applied_at: null,
+          },
           { transaction: t }
+        );
+      }
+
+      const redemption = await MarketplaceCouponRedemption.findOne({
+        where: { order_id: order.id },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (redemption && redemption.status !== "successful") {
+        await redemption.update({ status: "successful" }, { transaction: t });
+        await MarketplaceCoupon.increment(
+          { usage_count: 1 },
+          { where: { id: redemption.coupon_id }, transaction: t }
         );
       }
 
@@ -629,7 +1046,6 @@ export async function finalizeOrder(prevState, formData) {
               orderNumber: order.order_number,
               items: products,
               subtotal: Number(order.subtotal),
-              tax: Number(order.tax || 0),
               discount: Number(order.discount || 0),
               total: Number(order.total),
             })
@@ -665,6 +1081,16 @@ export async function finalizeOrder(prevState, formData) {
       },
       { transaction: t }
     );
+
+    const redemption = await MarketplaceCouponRedemption.findOne({
+      where: { order_id: order.id },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    if (redemption && redemption.status === "pending") {
+      await redemption.update({ status: "failed" }, { transaction: t });
+    }
+
     await t.commit();
     return {
       success: false,

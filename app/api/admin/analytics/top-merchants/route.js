@@ -77,6 +77,46 @@ export async function GET(request) {
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
+    const discountSql = `
+      SELECT
+        p."user_id" AS "merchantId",
+        COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",
+        COALESCE(SUM(
+          CASE
+            WHEN (cu."id" IS NULL OR cu."crowdpen_staff" = true OR LOWER(cu."role"::text) IN ('admin', 'senior_admin'))
+              THEN (ri."discount_amount")::numeric
+            ELSE 0
+          END
+        ), 0) AS "discountCrowdpenFunded",
+        COALESCE(SUM(
+          CASE
+            WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR LOWER(cu."role"::text) IN ('admin', 'senior_admin'))
+              THEN (ri."discount_amount")::numeric
+            ELSE 0
+          END
+        ), 0) AS "discountMerchantFunded"
+      FROM "marketplace_coupon_redemption_items" AS ri
+      JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"
+      JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"
+      LEFT JOIN "users" AS cu ON cu."id" = c."created_by"
+      JOIN "marketplace_order_items" AS oi ON oi."id" = ri."order_item_id"
+      JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
+      JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
+      WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+        AND o."createdAt" >= :from
+        AND o."createdAt" <= :to
+      GROUP BY 1
+    `;
+
+    const discountRows = await db.sequelize.query(discountSql, {
+      replacements: { from: fromDate, to: toDate },
+      type: db.Sequelize.QueryTypes.SELECT,
+    });
+
+    const discountByMerchantId = new Map(
+      (discountRows || []).map((r) => [String(r?.merchantId || ""), r])
+    );
+
     const CROWD_PCT = parsePct(
       process.env.CROWDPEN_FEE_PCT ||
         process.env.CROWD_PEN_FEE_PCT ||
@@ -94,8 +134,15 @@ export async function GET(request) {
       const startbuttonFee = revenue * (SB_PCT || 0);
       const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
 
+      const dRow = discountByMerchantId.get(String(r?.id || "")) || null;
+      const discountTotal = Number(dRow?.discountTotal || 0) || 0;
+      const discountCrowdpenFunded = Number(dRow?.discountCrowdpenFunded || 0) || 0;
+      const discountMerchantFunded = Number(dRow?.discountMerchantFunded || 0) || 0;
+      const crowdpenNetAfterDiscount = crowdpenFee - discountCrowdpenFunded;
+
       return {
         id: r?.id,
+        merchantId: r?.id,
         penName: r?.penName || null,
         name: r?.name || null,
         email: r?.email || null,
@@ -104,8 +151,12 @@ export async function GET(request) {
         unitsSold: Number(r?.unitsSold || 0) || 0,
         revenue,
         crowdpenFee,
+        crowdpenNetAfterDiscount,
         startbuttonFee,
         creatorPayout,
+        discountTotal,
+        discountCrowdpenFunded,
+        discountMerchantFunded,
       };
     });
 

@@ -37,6 +37,7 @@ export default function PayoutsTab() {
     return {
       totalEarnings: Number(s.totalEarnings || 0),
       pendingPayout: Number(s.availableToWithdraw || 0),
+      withdrawalDeficit: Number(s.withdrawalDeficit || 0),
       lastPayout: Number(s.lastPayout || 0),
       lastPayoutDate: lastDate
         ? lastDate.toISOString().slice(0, 10)
@@ -88,14 +89,14 @@ export default function PayoutsTab() {
       {/* Analytics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Earnings */}
-        <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200 dark:from-emerald-500/10 dark:to-emerald-500/5 dark:border-emerald-500/20">
+        <Card className="bg-linear-to-br from-emerald-50 to-emerald-100 border-emerald-200 dark:from-emerald-500/10 dark:to-emerald-500/5 dark:border-emerald-500/20">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 font-medium truncate">Total Earnings</p>
                 <p className="text-lg sm:text-2xl font-bold text-emerald-900 dark:text-emerald-300 mt-1">{fmt(analytics.totalEarnings)}</p>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
                 <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
               </div>
             </div>
@@ -103,21 +104,40 @@ export default function PayoutsTab() {
         </Card>
 
         {/* Pending Payout */}
-        <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200 dark:from-amber-500/10 dark:to-amber-500/5 dark:border-amber-500/20">
+        <Card className="bg-linear-to-br from-amber-50 to-amber-100 border-amber-200 dark:from-amber-500/10 dark:to-amber-500/5 dark:border-amber-500/20">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-400 font-medium truncate">Available to Withdraw</p>
                 <p className="text-lg sm:text-2xl font-bold text-amber-900 dark:text-amber-300 mt-1">{fmt(analytics.pendingPayout)}</p>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
                 <Clock className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-slate-50 to-slate-100 border-slate-200 dark:from-slate-500/10 dark:to-slate-500/5 dark:border-slate-500/20">
+        {analytics.withdrawalDeficit > 0 ? (
+          <Card className="bg-linear-to-br from-red-50 to-red-100 border-red-200 dark:from-red-500/10 dark:to-red-500/5 dark:border-red-500/20">
+            <CardContent className="p-4 sm:p-6">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-red-700 dark:text-red-400 font-medium truncate">Negative Balance</p>
+                  <p className="text-lg sm:text-2xl font-bold text-red-900 dark:text-red-300 mt-1">{fmt(analytics.withdrawalDeficit)}</p>
+                  <p className="text-[11px] text-red-700/80 dark:text-red-400/80 mt-1 truncate">
+                    Refunds/reversals exceeded settled earnings
+                  </p>
+                </div>
+                <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-red-500/20 flex items-center justify-center shrink-0">
+                  <XCircle className="h-5 w-5 sm:h-6 sm:w-6 text-red-600" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <Card className="bg-linear-to-br from-slate-50 to-slate-100 border-slate-200 dark:from-slate-500/10 dark:to-slate-500/5 dark:border-slate-500/20">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -125,7 +145,7 @@ export default function PayoutsTab() {
                 <p className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{fmt(analytics.pendingSettlement)}</p>
                 <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 truncate">Paid, awaiting settlement</p>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-slate-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-slate-500/20 flex items-center justify-center shrink-0">
                 <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 text-slate-600" />
               </div>
             </div>
@@ -133,7 +153,7 @@ export default function PayoutsTab() {
         </Card>
 
         {/* This Month */}
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-500/10 dark:to-blue-500/5 dark:border-blue-500/20">
+        <Card className="bg-linear-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-500/10 dark:to-blue-500/5 dark:border-blue-500/20">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -150,7 +170,7 @@ export default function PayoutsTab() {
                   </span>
                 </div>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0">
                 <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
               </div>
             </div>
@@ -158,7 +178,7 @@ export default function PayoutsTab() {
         </Card>
 
         {/* Last Payout */}
-        <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 dark:from-purple-500/10 dark:to-purple-500/5 dark:border-purple-500/20">
+        <Card className="bg-linear-to-br from-purple-50 to-purple-100 border-purple-200 dark:from-purple-500/10 dark:to-purple-500/5 dark:border-purple-500/20">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -166,7 +186,7 @@ export default function PayoutsTab() {
                 <p className="text-lg sm:text-2xl font-bold text-purple-900 dark:text-purple-300 mt-1">{fmt(analytics.lastPayout)}</p>
                 <p className="text-xs text-purple-600 mt-1">{analytics.lastPayoutDate}</p>
               </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
                 <Banknote className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600" />
               </div>
             </div>

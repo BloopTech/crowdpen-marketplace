@@ -1,5 +1,11 @@
 "use client";
-import React, { useState, useEffect, useRef, useActionState, useMemo } from "react";
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useActionState,
+  useMemo,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { EditProduct } from "./action";
@@ -200,7 +206,10 @@ export default function EditProductContent(props) {
     if (state?.message && Object.keys(state?.data || {}).length > 0) {
       toast.success(state?.message);
       console.log("state.data", state?.data);
-      router.push(`/product/${state.data.id}`);
+      const destinationId = state?.data?.product_id || state?.data?.id;
+      if (destinationId) {
+        router.push(`/product/${destinationId}`);
+      }
     }
   }, [state?.message, state?.errors, state?.data, router]);
 
@@ -257,7 +266,9 @@ export default function EditProductContent(props) {
       const originalPriceNum = parseFloat(currentOriginalPrice);
 
       if (originalPriceNum < priceNum) {
-        setPriceError("Original price must be greater than or equal to sale price");
+        setPriceError(
+          "Original price must be greater than or equal to sale price"
+        );
         return false;
       } else {
         setPriceError("");
@@ -329,7 +340,10 @@ export default function EditProductContent(props) {
         return acc + (imageObj.file?.size || 0);
       }, 0);
 
-      const incomingTotal = incomingFiles.reduce((acc, file) => acc + (file.size || 0), 0);
+      const incomingTotal = incomingFiles.reduce(
+        (acc, file) => acc + (file.size || 0),
+        0
+      );
 
       if (existingAdjustedTotal + incomingTotal > maxCombinedSize) {
         toast.error("Total images size must not exceed 3MB.");
@@ -485,7 +499,10 @@ export default function EditProductContent(props) {
       <div className="mb-4">
         <Button asChild variant="ghost" size="sm">
           <Link href="/">
-            <span className="inline-flex items-center"><ArrowLeft className="mr-2 h-4 w-4" />Back to Home</span>
+            <span className="inline-flex items-center">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </span>
           </Link>
         </Button>
       </div>
@@ -600,7 +617,8 @@ export default function EditProductContent(props) {
                     disabled={isPending}
                   />
                   <span className="text-xs text-red-500">
-                    {Object.keys(state?.errors).length !== 0 && state?.errors?.stock?.length
+                    {Object.keys(state?.errors).length !== 0 &&
+                    state?.errors?.stock?.length
                       ? state?.errors?.stock[0]
                       : null}
                   </span>
@@ -763,7 +781,11 @@ export default function EditProductContent(props) {
                       <SelectItem value="archived">Archived</SelectItem>
                     </SelectContent>
                   </Select>
-                  <input type="hidden" name="product_status" value={productStatus} />
+                  <input
+                    type="hidden"
+                    name="product_status"
+                    value={productStatus}
+                  />
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.product_status?.length
@@ -832,11 +854,13 @@ export default function EditProductContent(props) {
                     </span>
                     {hasDiscount && originalPrice && price && !priceError && (
                       <p className="text-xs text-green-600">
-                        Discount: {(
+                        Discount:{" "}
+                        {(
                           ((parseFloat(originalPrice) - parseFloat(price)) /
                             parseFloat(originalPrice)) *
                           100
-                        ).toFixed(0)}% off
+                        ).toFixed(0)}
+                        % off
                       </p>
                     )}
                   </div>
@@ -1163,10 +1187,10 @@ export default function EditProductContent(props) {
               </div>
               <span className="text-xs text-red-500">
                 {clientErrors.productFile ||
-                (Object.keys(state?.errors).length !== 0 &&
-                state?.errors?.productFile?.length
-                  ? state?.errors?.productFile[0]
-                  : null)}
+                  (Object.keys(state?.errors).length !== 0 &&
+                  state?.errors?.productFile?.length
+                    ? state?.errors?.productFile[0]
+                    : null)}
               </span>
             </div>
 
@@ -1177,7 +1201,10 @@ export default function EditProductContent(props) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* File Type */}
                 <div className="space-y-2">
-                  <Label htmlFor="fileType" className="text-gray-900 dark:text-slate-100">
+                  <Label
+                    htmlFor="fileType"
+                    className="text-gray-900 dark:text-slate-100"
+                  >
                     File Type <span className="text-red-500">*</span>
                   </Label>
                   <Input
@@ -1201,7 +1228,12 @@ export default function EditProductContent(props) {
 
                 {/* File Size */}
                 <div className="space-y-2">
-                  <Label htmlFor="fileSize" className="text-gray-900 dark:text-slate-100">File Size</Label>
+                  <Label
+                    htmlFor="fileSize"
+                    className="text-gray-900 dark:text-slate-100"
+                  >
+                    File Size
+                  </Label>
                   <Input
                     id="fileSize"
                     name="fileSize"

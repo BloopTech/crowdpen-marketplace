@@ -9,7 +9,7 @@ import { Heading } from "@react-email/heading";
 import { Hr } from "@react-email/hr";
 import { Tailwind } from "@react-email/tailwind";
 
-export function OrderConfirmationEmail({ customerName, orderNumber, items = [], subtotal = 0, tax = 0, discount = 0, total = 0 }) {
+export function OrderConfirmationEmail({ customerName, orderNumber, items = [], subtotal = 0, discount = 0, total = 0 }) {
   const currency = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
@@ -40,10 +40,6 @@ export function OrderConfirmationEmail({ customerName, orderNumber, items = [], 
                 <tr>
                   <td className="text-left">Subtotal</td>
                   <td className="text-right">{currency(subtotal)}</td>
-                </tr>
-                <tr>
-                  <td className="text-left">Tax</td>
-                  <td className="text-right">{currency(tax)}</td>
                 </tr>
                 {Number(discount) > 0 && (
                   <tr>

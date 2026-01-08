@@ -115,7 +115,10 @@ export default function CreateProductContent() {
     if (state?.message && Object.keys(state?.data || {}).length > 0) {
       toast.success(state?.message);
       console.log("state.data", state?.data);
-      router.push(`/product/${state.data.id}`);
+      const destinationId = state?.data?.product_id || state?.data?.id;
+      if (destinationId) {
+        router.push(`/product/${destinationId}`);
+      }
     }
   }, [state?.message, state?.errors, state?.data, router]);
 

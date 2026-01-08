@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../../models/index";
+import { Op } from "sequelize";
+import { validate as isUUID } from "uuid";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
@@ -7,6 +9,7 @@ import crypto from "crypto";
 import sharp from "sharp";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
 import { assertRequiredEnvInProduction } from "../../../../../lib/env";
+import { ensureProductHasProductId } from "../../../../../lib/products/productId";
 
 assertRequiredEnvInProduction([
   "CLOUDFLARE_R2_ENDPOINT",
@@ -186,18 +189,6 @@ export async function POST(request, { params }) {
       );
     }
 
-    // Get product ID from form data
-    const productId = formData.get("productId");
-    if (!productId || productId !== id) {
-      return NextResponse.json(
-        {
-          status: "error",
-          message: "Invalid product ID",
-        },
-        { status: 400 }
-      );
-    }
-
     const user_id = String(session.user.id);
     const userIdFromForm = formData.get("user_id");
     if (userIdFromForm && String(userIdFromForm) !== user_id) {
@@ -210,11 +201,28 @@ export async function POST(request, { params }) {
       );
     }
 
+    const idRaw = id == null ? "" : String(id).trim();
+    if (!idRaw || idRaw.length > 128) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Invalid product ID",
+        },
+        { status: 400 }
+      );
+    }
+
     // Verify product ownership
     const existingProduct = await MarketplaceProduct.findOne({
       where: {
-        id: productId,
         user_id,
+        [db.Sequelize.Op.or]: (() => {
+          const ors = [{ product_id: idRaw }];
+          if (isUUID(idRaw)) {
+            ors.unshift({ id: idRaw });
+          }
+          return ors;
+        })(),
       },
     });
 
@@ -225,6 +233,24 @@ export async function POST(request, { params }) {
           message: "Product not found or access denied",
         },
         { status: 404 }
+      );
+    }
+
+    const ensuredProductId = await ensureProductHasProductId(existingProduct);
+    const formProductId = formData.get("productId");
+    const normalizedFormProductId =
+      typeof formProductId === "string" ? formProductId.trim() : "";
+    if (
+      normalizedFormProductId &&
+      normalizedFormProductId !== ensuredProductId &&
+      normalizedFormProductId !== String(existingProduct.id)
+    ) {
+      return NextResponse.json(
+        {
+          status: "error",
+          message: "Invalid product ID",
+        },
+        { status: 400 }
       );
     }
 
@@ -657,6 +683,7 @@ export async function POST(request, { params }) {
           title: updatedProduct.title,
           image: updatedProduct.image,
           price: updatedProduct.price,
+          product_id: updatedProduct.product_id || ensuredProductId,
         },
       },
       { status: 200 }

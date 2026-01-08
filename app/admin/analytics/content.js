@@ -102,7 +102,7 @@ export default function AdminAnalyticsContent(props) {
   const aovValue = Number(summary?.aov || 0);
 
   return (
-    <div className="px-4 space-y-6 pb-[2rem]">
+    <div className="px-4 space-y-6 pb-8">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -577,6 +577,8 @@ export default function AdminAnalyticsContent(props) {
                     <TableHead className="text-right">Orders</TableHead>
                     <TableHead className="text-right">Units</TableHead>
                     <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="text-right">Coupon Discounts</TableHead>
+                    <TableHead className="text-right">Crowdpen-Funded Discounts</TableHead>
                     <TableHead className="text-right">Payout</TableHead>
                     <TableHead className="text-right">Crowdpen Fee ({crowdpenFeeLabel})</TableHead>
                     <TableHead className="text-right">Startbutton Fee ({startbuttonFeeLabel})</TableHead>
@@ -603,6 +605,12 @@ export default function AdminAnalyticsContent(props) {
                         {fmtMoney(m.revenue)}
                       </TableCell>
                       <TableCell className="text-right">
+                        {fmtMoney(m.discountTotal)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fmtMoney(m.discountCrowdpenFunded)}
+                      </TableCell>
+                      <TableCell className="text-right">
                         {fmtMoney(m.creatorPayout)}
                       </TableCell>
                       <TableCell className="text-right">
@@ -616,7 +624,7 @@ export default function AdminAnalyticsContent(props) {
                   {topMerchants.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={9}
                         className="text-center text-sm text-muted-foreground"
                       >
                         No merchants.

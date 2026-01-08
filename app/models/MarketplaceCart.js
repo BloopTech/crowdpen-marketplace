@@ -6,6 +6,10 @@ class MarketplaceCart extends Model {
   static associate(models) {
     // Define associations
     MarketplaceCart.belongsTo(models.User, { foreignKey: 'user_id' });
+    MarketplaceCart.belongsTo(models.MarketplaceCoupon, {
+      foreignKey: "coupon_id",
+      as: "coupon",
+    });
     MarketplaceCart.hasMany(models.MarketplaceFunnelEvents, {
       foreignKey: "session_id",
       sourceKey: "session_id",
@@ -54,6 +58,22 @@ MarketplaceCart.init(
     discount: {
       type: DataTypes.DECIMAL(10, 2),
       defaultValue: 0.00
+    },
+    coupon_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "marketplace_coupons",
+        key: "id",
+      },
+    },
+    coupon_code: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+    coupon_applied_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     currency: {
       type: DataTypes.TEXT,

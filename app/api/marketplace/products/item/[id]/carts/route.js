@@ -177,7 +177,6 @@ export async function POST(request, { params }) {
         active: true,
         subtotal: 0.0,
         discount: 0.0,
-        tax: 0.0,
         total: 0.0,
         currency: "USD",
       });
@@ -235,10 +234,8 @@ export async function POST(request, { params }) {
           return sum + parseFloat(item.price || 0);
         }, 0);
 
-        const tax = subtotal * 0.1; // 10% tax
         cart.subtotal = subtotal;
-        cart.tax = tax;
-        cart.total = subtotal + tax - parseFloat(cart.discount || 0);
+        cart.total = subtotal - parseFloat(cart.discount || 0);
         await cart.save();
       }
 
@@ -260,7 +257,7 @@ export async function POST(request, { params }) {
       });
     }
 
-    // Update cart totals with tax
+    // Update cart totals
     const cartItems = await MarketplaceCartItems.findAll({
       where: {
         marketplace_cart_id: cart.id,
@@ -271,10 +268,8 @@ export async function POST(request, { params }) {
       return sum + parseFloat(item.price || 0);
     }, 0);
 
-    const tax = subtotal * 0.1; // 10% tax
     cart.subtotal = subtotal;
-    cart.tax = tax;
-    cart.total = subtotal + tax - parseFloat(cart.discount || 0);
+    cart.total = subtotal - parseFloat(cart.discount || 0);
     await cart.save();
 
     // Return success response with cart item data

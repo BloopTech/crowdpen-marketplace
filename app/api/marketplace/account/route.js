@@ -212,7 +212,10 @@ export async function GET() {
           model: db.MarketplaceOrder,
           attributes: ["id", "createdAt", "order_number", "orderStatus", "paymentStatus"],
           required: true,
-          where: { orderStatus: "successful" },
+          where: {
+            orderStatus: "successful",
+            [Op.or]: [{ paymentStatus: "successful" }, { paymentStatus: "completed" }],
+          },
         },
         {
           model: db.MarketplaceProduct,
@@ -232,7 +235,7 @@ export async function GET() {
           attributes: ["id", "createdAt", "order_number", "orderStatus", "paymentStatus"],
           required: true,
           where: {
-            paymentStatus: "successful",
+            [Op.or]: [{ paymentStatus: "successful" }, { paymentStatus: "completed" }],
             orderStatus: { [Op.ne]: "successful" },
           },
         },
@@ -269,10 +272,10 @@ export async function GET() {
       return n / 100;
     };
 
-    const settledEarnings = sumMoney(merchantSettledItems, (r) => r?.subtotal ?? r?.price);
+    const settledEarnings = sumMoney(merchantSettledItems, (r) => r?.subtotal);
     const pendingSettlement = sumMoney(
       merchantPendingSettlementItems,
-      (r) => r?.subtotal ?? r?.price
+      (r) => r?.subtotal
     );
 
     const totalPaidOut = sumMoney(
@@ -295,7 +298,7 @@ export async function GET() {
           : null;
         return d && d >= monthStart;
       }),
-      (r) => r?.subtotal ?? r?.price
+      (r) => r?.subtotal
     );
 
     const lastMonthEarnings = sumMoney(
@@ -305,7 +308,7 @@ export async function GET() {
           : null;
         return d && d >= lastMonthStart && d <= lastMonthEnd;
       }),
-      (r) => r?.subtotal ?? r?.price
+      (r) => r?.subtotal
     );
 
     const growthPercent =
@@ -315,7 +318,9 @@ export async function GET() {
           ? 100
           : 0;
 
-    const availableToWithdraw = Math.max(0, settledEarnings - totalPaidOut - totalPendingPayouts);
+    const availableToWithdrawRaw = settledEarnings - totalPaidOut - totalPendingPayouts;
+    const availableToWithdraw = Math.max(0, availableToWithdrawRaw);
+    const withdrawalDeficit = Math.max(0, -availableToWithdrawRaw);
 
     const payoutSummary = {
       currency: "USD",
@@ -323,6 +328,7 @@ export async function GET() {
       settledEarnings,
       pendingSettlement,
       availableToWithdraw,
+      withdrawalDeficit,
       totalPaidOut,
       pendingPayouts: totalPendingPayouts,
       lastPayout: lastCompleted ? payoutMajorAmount(lastCompleted) : 0,

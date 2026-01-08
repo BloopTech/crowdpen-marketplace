@@ -227,13 +227,11 @@ async function recalculateCartTotals(cartId) {
       return sum + parseFloat(item.price);
     }, 0);
     
-    const tax = subtotal * 0.1; // 10% tax
-    const total = subtotal + tax - parseFloat(cart.discount || 0);
+    const total = subtotal - parseFloat(cart.discount || 0);
     
     // Update cart totals
     await cart.update({
       subtotal: subtotal.toFixed(2),
-      tax: tax.toFixed(2),
       total: total.toFixed(2),
       currency: "USD",
     });

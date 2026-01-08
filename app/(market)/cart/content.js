@@ -50,8 +50,12 @@ export default function CartContent() {
     removeItem,
     loadMore,
     refetch,
+    applyCoupon,
+    removeCoupon,
     isUpdating,
     isRemoving,
+    isApplyingCoupon,
+    isRemovingCoupon,
     search,
     setSearch,
     category,
@@ -76,6 +80,26 @@ export default function CartContent() {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     }).format(Number(v || 0) * displayRate);
+
+  const normalizeCode = (v) => String(v || "").trim().toUpperCase();
+
+  const handleApplyCode = () => {
+    const code = normalizeCode(promoCode);
+    if (!code) return;
+    applyCoupon(code, {
+      onSuccess: () => {
+        setPromoCode("");
+      },
+    });
+  };
+
+  const handleRemoveCoupon = () => {
+    removeCoupon({
+      onSuccess: () => {
+        setPromoCode("");
+      },
+    });
+  };
 
   // Handle quantity updates with debouncing
   const handleQuantityChange = (itemId, newQuantity) => {
@@ -452,10 +476,6 @@ export default function CartContent() {
                       <span>Subtotal</span>
                       <span>{fmt(0)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Tax (10%)</span>
-                      <span>{fmt(0)}</span>
-                    </div>
                     <Separator />
                     <div className="flex justify-between font-semibold text-lg">
                       <span>Total</span>
@@ -469,14 +489,42 @@ export default function CartContent() {
                     placeholder="Enter promo code"
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value)}
-                    disabled={isLoading || !cartSummary}
+                    disabled={isLoading || !cartSummary || isApplyingCoupon || isRemovingCoupon}
                   />
+                  {cartSummary?.coupon_code ? (
+                    <div className="flex items-center justify-between rounded-md border p-2 text-sm">
+                      <div className="truncate">
+                        Applied: <span className="font-semibold">{String(cartSummary.coupon_code)}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleRemoveCoupon}
+                        disabled={isLoading || isRemovingCoupon}
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        {isRemovingCoupon ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Remove"
+                        )}
+                      </Button>
+                    </div>
+                  ) : null}
                   <Button
                     variant="outline"
-                    className="w-full"
-                    disabled={isLoading || !cartSummary || !promoCode.trim()}
+                    className={`w-full ${promoCode.trim() ? "bg-[#d3a155] text-black hover:bg-[#d3a155]/90 border-[#d3a155]" : ""}`}
+                    disabled={isLoading || !cartSummary || !promoCode.trim() || isApplyingCoupon}
+                    onClick={handleApplyCode}
                   >
-                    Apply Code
+                    {isApplyingCoupon ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        Applying...
+                      </>
+                    ) : (
+                      "Apply Code"
+                    )}
                   </Button>
                 </div>
 

@@ -95,8 +95,10 @@ export async function POST(request) {
     await cart.update({
       subtotal: 0.00,
       discount: 0.00,
-      tax: 0.00,
-      total: 0.00
+      total: 0.00,
+      coupon_id: null,
+      coupon_code: null,
+      coupon_applied_at: null
     });
     
     return NextResponse.json({

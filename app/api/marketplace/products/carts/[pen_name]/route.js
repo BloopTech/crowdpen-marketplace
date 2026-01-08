@@ -13,6 +13,7 @@ const {
   MarketplaceCartItems,
   MarketplaceKycVerification,
   MarketplaceReview,
+  MarketplaceCoupon,
 } = db;
 
 // Helper to compute effective price respecting discount expiry
@@ -23,6 +24,37 @@ function computeEffectivePrice(product) {
   const saleEndMs = product.sale_end_date ? new Date(product.sale_end_date).getTime() : null;
   const isExpired = hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
   return isExpired ? originalPriceNum : priceNum;
+}
+
+function couponValidity(coupon) {
+  const now = Date.now();
+  const startMs = coupon?.start_date ? new Date(coupon.start_date).getTime() : null;
+  const endMs = coupon?.end_date ? new Date(coupon.end_date).getTime() : null;
+  if (coupon?.is_active === false) return { ok: false, reason: "inactive" };
+  if (Number.isFinite(startMs) && startMs > now) return { ok: false, reason: "not_started" };
+  if (Number.isFinite(endMs) && endMs < now) return { ok: false, reason: "expired" };
+  return { ok: true, reason: null };
+}
+
+function computeCouponDiscount(coupon, eligibleSubtotal) {
+  const eligible = Number(eligibleSubtotal || 0);
+  if (!Number.isFinite(eligible) || eligible <= 0) return 0;
+
+  const t = String(coupon?.discount_type || "").toLowerCase();
+  const val = Number(coupon?.discount_value || 0);
+  if (!Number.isFinite(val) || val <= 0) return 0;
+
+  let discount = 0;
+  if (t === "percentage") discount = eligible * (val / 100);
+  else if (t === "fixed") discount = val;
+
+  if (discount > eligible) discount = eligible;
+
+  const maxRaw = coupon?.max_discount_amount;
+  const max = maxRaw != null ? Number(maxRaw) : null;
+  if (max != null && Number.isFinite(max) && max >= 0 && discount > max) discount = max;
+
+  return Number(discount.toFixed(2));
 }
 
 function readCountryHeader(headers) {
@@ -140,16 +172,23 @@ export async function GET(request, { params }) {
       await cart.update({ currency: "USD" });
     }
 
-    // Build where conditions for product search - only published products visible
-    const productWhere = {
-      product_status: 'published',
+    // Build where conditions for product search.
+    // Published products are visible to everyone, and the cart owner can see their own products
+    // even if they are not published (matches checkout gating logic).
+    const visibilityWhere = {
+      [Op.or]: [{ product_status: "published" }, { user_id: user.id }],
     };
-    if (search) {
-      productWhere[Op.or] = [
-        { title: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } }
-      ];
-    }
+    const searchWhere = search
+      ? {
+          [Op.or]: [
+            { title: { [Op.iLike]: `%${search}%` } },
+            { description: { [Op.iLike]: `%${search}%` } },
+          ],
+        }
+      : null;
+    const productWhere = searchWhere
+      ? { [Op.and]: [visibilityWhere, searchWhere] }
+      : visibilityWhere;
 
     // Build category filter
     const categoryWhere = {};
@@ -236,13 +275,68 @@ export async function GET(request, { params }) {
       }
     }
 
-    const total = subtotal - parseFloat(cart.discount || 0);
+    let appliedDiscount = Number(parseFloat(cart.discount || 0).toFixed(2));
+    let couponNotice = null;
+    if (cart.coupon_id) {
+      const coupon = await MarketplaceCoupon.findByPk(cart.coupon_id);
+      if (!coupon) {
+        couponNotice = {
+          code: cart.coupon_code || null,
+          reason: "not_found",
+        };
+        appliedDiscount = 0;
+        await cart.update({ coupon_id: null, coupon_code: null, coupon_applied_at: null });
+      } else {
+        const valid = couponValidity(coupon);
+        if (!valid.ok) {
+          couponNotice = {
+            code: cart.coupon_code || coupon.code || null,
+            reason: valid.reason,
+          };
+          appliedDiscount = 0;
+          await cart.update({ coupon_id: null, coupon_code: null, coupon_applied_at: null });
+        } else {
+          const appliesTo = String(coupon.applies_to || "all").toLowerCase();
+          const ids = Array.isArray(coupon.applies_to_ids) ? coupon.applies_to_ids : [];
+          const set = new Set(ids.map((v) => String(v)));
+          const eligibleSubtotal = cartItems.reduce((acc, it) => {
+            const p = it?.MarketplaceProduct;
+            if (!p) return acc;
+            const match =
+              appliesTo === "all" ||
+              (appliesTo === "product" && set.has(String(p.id))) ||
+              (appliesTo === "category" && set.has(String(p?.MarketplaceCategory?.id || "")));
+            if (!match) return acc;
+            const effectivePrice = computeEffectivePrice(p);
+            return acc + effectivePrice * (it.quantity || 1);
+          }, 0);
+
+          const minAmount = coupon?.min_order_amount != null ? Number(coupon.min_order_amount) : 0;
+          if (Number.isFinite(minAmount) && minAmount > 0 && eligibleSubtotal < minAmount) {
+            couponNotice = {
+              code: cart.coupon_code || coupon.code || null,
+              reason: "min_order_amount",
+            };
+            appliedDiscount = 0;
+            await cart.update({ coupon_id: null, coupon_code: null, coupon_applied_at: null });
+          } else {
+            appliedDiscount = computeCouponDiscount(coupon, eligibleSubtotal);
+            if ((cart.coupon_code || "").toString().trim().toUpperCase() !== String(coupon.code).toUpperCase()) {
+              await cart.update({ coupon_code: coupon.code });
+            }
+          }
+        }
+      }
+    }
+
+    const total = subtotal - appliedDiscount;
 
     const currency = "USD";
 
     // Update cart totals
     await cart.update({
       subtotal: subtotal.toFixed(2),
+      discount: appliedDiscount.toFixed(2),
       total: total.toFixed(2),
       currency,
     });
@@ -292,10 +386,14 @@ export async function GET(request, { params }) {
         cart: {
           id: cart.id,
           subtotal: Number(subtotal.toFixed(2)),
-          discount: Number(parseFloat(cart.discount || 0).toFixed(2)),
+          discount: Number(appliedDiscount.toFixed(2)),
           total: Number(total.toFixed(2)),
           item_count: count,
-          currency
+          currency,
+          coupon_id: cart.coupon_id || null,
+          coupon_code: cart.coupon_code || null,
+          coupon_applied_at: cart.coupon_applied_at || null,
+          coupon_notice: couponNotice
         },
         pagination: {
           page,

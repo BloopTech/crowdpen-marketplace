@@ -217,14 +217,12 @@ export async function POST(request) {
       }
     }
 
-    // Update cart totals with tax
+    // Update cart totals
     if (addedCount > 0) {
       const newSubtotal = parseFloat(cart.subtotal) + totalAmount;
-      const tax = newSubtotal * 0.1; // 10% tax
       await cart.update({
         subtotal: newSubtotal,
-        tax: tax,
-        total: newSubtotal + tax - parseFloat(cart.discount || 0)
+        total: newSubtotal - parseFloat(cart.discount || 0)
       });
     }
 
