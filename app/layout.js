@@ -48,6 +48,10 @@ export default async function RootLayout({ children }) {
   const h = await headers();
   const nonce = h.get("x-csp-nonce") || h.get("x-nonce") || "";
 
+  const sbSdkSrc =
+    process.env.NEXT_PUBLIC_SB_SDK_SRC ||
+    "https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js";
+
   return (
     <html
       lang="en"
@@ -61,16 +65,17 @@ export default async function RootLayout({ children }) {
       <body className="antialiased scroll-auto w-full">
         {/* StartButton SDK: pin via env, fallback to latest if missing */}
         <Script
-          src={process.env.NEXT_PUBLIC_SB_SDK_SRC || "https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js"}
+          src={sbSdkSrc}
           strategy="afterInteractive"
           nonce={nonce || undefined}
+          data-sb-sdk="primary"
         />
         <Script
           id="sb-fallback-loader"
           strategy="afterInteractive"
           nonce={nonce || undefined}
           dangerouslySetInnerHTML={{
-            __html: `(() => {try {setTimeout(() => {try {if (!window.SBInit) { var s = document.createElement('script'); s.src = 'https://checkout.startbutton.tech/version/latest/sb-web-sdk.min.js'; s.async = true; document.head.appendChild(s); }} catch(_) {}}, 2000);} catch(_) {}})();`,
+            __html: `(() => {try {setTimeout(() => {try {if (!window.SBInit) { var existing = document.querySelector('script[data-sb-sdk="primary"],script[data-sb-sdk="fallback"],script[src*="sb-web-sdk.min.js"]'); if (!existing) { var s = document.createElement('script'); s.src = ${JSON.stringify(sbSdkSrc)}; s.async = true; s.setAttribute('data-sb-sdk', 'fallback'); document.head.appendChild(s); } }} catch(_) {}}, 2000);} catch(_) {}})();`,
           }}
         />
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>

@@ -209,14 +209,7 @@ export function useCheckoutController() {
         const fd = new FormData();
         fd.set("orderId", order.orderId);
         fd.set("status", status);
-        fd.set(
-          "reference",
-          payload?.reference ||
-            payload?.data?.reference ||
-            payload?.txRef ||
-            payload?.ref ||
-            ""
-        );
+        fd.set("reference", extractReference(payload));
         fd.set("payload", JSON.stringify(payload || {}));
         fd.set("email", formData.email);
         finalizeStartedRef.current = true;
@@ -514,18 +507,40 @@ export function useCheckoutController() {
   useStartButtonOverlayFix(processing, setClosePos);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const markLoaded = () => setStartButtonLoaded(true);
+    if (getStartButtonApi()) {
+      markLoaded();
+      return;
+    }
+
+    let scriptEl = null;
+    try {
+      scriptEl =
+        document.querySelector('script[data-startbutton-sdk="1"]') ||
+        document.querySelector('script[src*="startbutton"]');
+      if (scriptEl) scriptEl.addEventListener("load", markLoaded, { once: true });
+    } catch {}
+
     let tries = 0;
-    const maxTries = 40; // ~10s at 250ms interval
+    const maxTries = 240; // ~60s at 250ms interval
     const id = setInterval(() => {
       const api = getStartButtonApi();
       if (api) {
-        setStartButtonLoaded(true);
+        markLoaded();
         clearInterval(id);
       } else if (++tries >= maxTries) {
         clearInterval(id);
       }
     }, 250);
-    return () => clearInterval(id);
+
+    return () => {
+      clearInterval(id);
+      try {
+        scriptEl?.removeEventListener?.("load", markLoaded);
+      } catch {}
+    };
   }, []);
 
   useEffect(() => {

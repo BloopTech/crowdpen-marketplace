@@ -127,7 +127,6 @@ export default function AccountContentPage() {
   useEffect(() => {
     if (Object.keys(kycState?.data || {}).length > 0 && kycState.message) {
       toast.success(kycState.message);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setKycStep(0);
       refetchAccountQuery();
     } else if (
@@ -163,7 +162,6 @@ export default function AccountContentPage() {
   const [draftProfile, setDraftProfile] = useState(null);
   useEffect(() => {
     if (profile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDraftProfile({
         firstName: profile.firstName || "",
         lastName: profile.lastName || "",
@@ -312,7 +310,6 @@ export default function AccountContentPage() {
 
   useEffect(() => {
     if (kyc) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setKycForm((prev) => ({
         ...prev,
         first_name: kyc.first_name || "",
