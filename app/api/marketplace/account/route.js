@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
- import { Op } from "sequelize";
+import { Op } from "sequelize";
+import { getMarketplaceFeePercents } from "../../../lib/marketplaceFees";
 
 // GET /api/marketplace/account
 // Returns current user's profile and purchases
@@ -125,7 +126,7 @@ export async function GET() {
           price: orderTotal,
           subtotal: orderSubtotal,
           currency: orderCurrency,
-          status: order.paymentStatus || order.orderStatus || "completed",
+          status: order.paymentStatus || order.orderStatus || "processing",
           canDownload,
         });
       }
@@ -190,64 +191,112 @@ export async function GET() {
       : null;
 
     // Merchant payouts + earnings (seller-side)
-    const sumMoney = (rows, getter) => {
-      let total = 0;
-      for (const r of rows || []) {
-        const v = getter(r);
-        const n = v != null ? Number(v) : NaN;
-        if (Number.isFinite(n)) total += n;
-      }
-      return total;
-    };
-
     const now = new Date();
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
     const lastMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
 
-    const merchantSettledItems = await db.MarketplaceOrderItems.findAll({
-      attributes: ["id", "subtotal", "price", "quantity"],
-      include: [
-        {
-          model: db.MarketplaceOrder,
-          attributes: ["id", "createdAt", "order_number", "orderStatus", "paymentStatus"],
-          required: true,
-          where: {
-            orderStatus: "successful",
-            [Op.or]: [{ paymentStatus: "successful" }, { paymentStatus: "completed" }],
-          },
-        },
-        {
-          model: db.MarketplaceProduct,
-          attributes: ["id", "user_id"],
-          required: true,
-          where: { user_id: userId },
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
+    const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
+      await getMarketplaceFeePercents({ db });
 
-    const merchantPendingSettlementItems = await db.MarketplaceOrderItems.findAll({
-      attributes: ["id", "subtotal", "price", "quantity"],
-      include: [
+    const aggSqlBase = `
+      SELECT
+        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue",
+        COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",
+        COALESCE(SUM(
+          CASE
+            WHEN (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
+              THEN (ri."discount_amount")::numeric
+            ELSE 0
+          END
+        ), 0) AS "discountCrowdpenFunded",
+        COALESCE(SUM(
+          CASE
+            WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
+              THEN (ri."discount_amount")::numeric
+            ELSE 0
+          END
+        ), 0) AS "discountMerchantFunded"
+      FROM "marketplace_order_items" AS oi
+      JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
+      JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
+      LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
+      LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"
+      LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"
+      LEFT JOIN "users" AS cu ON cu."id" = c."created_by"
+      WHERE p."user_id" = :merchantId
+        AND o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
+    `;
+
+    let lastSettledTo = null;
+    try {
+      const [settledRow] = await db.sequelize.query(
+        `
+          SELECT MAX(settlement_to) AS "lastSettledTo"
+          FROM public.marketplace_payout_periods
+          WHERE recipient_id = :merchantId
+            AND is_active = TRUE
+        `,
         {
-          model: db.MarketplaceOrder,
-          attributes: ["id", "createdAt", "order_number", "orderStatus", "paymentStatus"],
-          required: true,
-          where: {
-            [Op.or]: [{ paymentStatus: "successful" }, { paymentStatus: "completed" }],
-            orderStatus: { [Op.ne]: "successful" },
+          replacements: { merchantId: userId },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }
+      );
+      if (settledRow?.lastSettledTo) {
+        const dt = new Date(settledRow.lastSettledTo);
+        lastSettledTo = Number.isFinite(dt.getTime()) ? dt : null;
+      }
+    } catch (e) {
+      const code = e?.original?.code || e?.code;
+      if (code !== "42P01") throw e;
+    }
+
+    const settledAllTimeSql = `${aggSqlBase} AND :settledTo::date IS NOT NULL AND o."createdAt"::date <= :settledTo::date`;
+    const pendingAllTimeSql = `${aggSqlBase} AND (:settledTo::date IS NULL OR (o."createdAt"::date > :settledTo::date))`;
+    const settledMonthSql = `${settledAllTimeSql} AND o."createdAt" >= :from AND o."createdAt" <= :to`;
+
+    const [settledAllTimeRows, pendingAllTimeRows, settledMonthRows, settledLastMonthRows] =
+      await Promise.all([
+        db.sequelize.query(settledAllTimeSql, {
+          replacements: { merchantId: userId, settledTo: lastSettledTo },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }),
+        db.sequelize.query(pendingAllTimeSql, {
+          replacements: { merchantId: userId, settledTo: lastSettledTo },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }),
+        db.sequelize.query(settledMonthSql, {
+          replacements: {
+            merchantId: userId,
+            settledTo: lastSettledTo,
+            from: monthStart,
+            to: now,
           },
-        },
-        {
-          model: db.MarketplaceProduct,
-          attributes: ["id", "user_id"],
-          required: true,
-          where: { user_id: userId },
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
+          type: db.Sequelize.QueryTypes.SELECT,
+        }),
+        db.sequelize.query(settledMonthSql, {
+          replacements: {
+            merchantId: userId,
+            settledTo: lastSettledTo,
+            from: lastMonthStart,
+            to: lastMonthEnd,
+          },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }),
+      ]);
+
+    const calcNetEarnings = (row) => {
+      const revenue = Number(row?.revenue || 0) || 0;
+      const discountTotal = Number(row?.discountTotal || 0) || 0;
+      const discountMerchantFunded = Number(row?.discountMerchantFunded || 0) || 0;
+      const buyerPaid = Math.max(0, revenue - discountTotal);
+      const crowdpenFee = revenue * (CROWD_PCT || 0);
+      const startbuttonFee = buyerPaid * (SB_PCT || 0);
+      return Math.max(
+        0,
+        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+      );
+    };
 
     const payoutsRows = db?.MarketplaceAdminTransactions
       ? await db.MarketplaceAdminTransactions.findAll({
@@ -272,44 +321,26 @@ export async function GET() {
       return n / 100;
     };
 
-    const settledEarnings = sumMoney(merchantSettledItems, (r) => r?.subtotal);
-    const pendingSettlement = sumMoney(
-      merchantPendingSettlementItems,
-      (r) => r?.subtotal
-    );
+    const settledEarnings = calcNetEarnings(settledAllTimeRows?.[0]);
+    const pendingSettlement = calcNetEarnings(pendingAllTimeRows?.[0]);
 
-    const totalPaidOut = sumMoney(
-      payoutsRows?.filter((p) => String(p?.status || "").toLowerCase() === "completed"),
-      (p) => payoutMajorAmount(p)
-    );
-    const totalPendingPayouts = sumMoney(
-      payoutsRows?.filter((p) => String(p?.status || "").toLowerCase() === "pending"),
-      (p) => payoutMajorAmount(p)
-    );
+    let totalPaidOut = 0;
+    let totalPendingPayouts = 0;
+    let lastCompleted = null;
+    for (const p of payoutsRows || []) {
+      const status = String(p?.status || "").toLowerCase();
+      const amt = payoutMajorAmount(p);
+      if (status === "completed") {
+        totalPaidOut += amt;
+        if (!lastCompleted) lastCompleted = p;
+      } else if (status === "pending") {
+        totalPendingPayouts += amt;
+      }
+    }
 
-    const lastCompleted = (payoutsRows || []).find(
-      (p) => String(p?.status || "").toLowerCase() === "completed"
-    );
+    const monthEarnings = calcNetEarnings(settledMonthRows?.[0]);
 
-    const monthEarnings = sumMoney(
-      merchantSettledItems?.filter((it) => {
-        const d = it?.MarketplaceOrder?.createdAt
-          ? new Date(it.MarketplaceOrder.createdAt)
-          : null;
-        return d && d >= monthStart;
-      }),
-      (r) => r?.subtotal
-    );
-
-    const lastMonthEarnings = sumMoney(
-      merchantSettledItems?.filter((it) => {
-        const d = it?.MarketplaceOrder?.createdAt
-          ? new Date(it.MarketplaceOrder.createdAt)
-          : null;
-        return d && d >= lastMonthStart && d <= lastMonthEnd;
-      }),
-      (r) => r?.subtotal
-    );
+    const lastMonthEarnings = calcNetEarnings(settledLastMonthRows?.[0]);
 
     const growthPercent =
       lastMonthEarnings > 0

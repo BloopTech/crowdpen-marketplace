@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { validate as isUUID } from "uuid";
+import { getMarketplaceFeePercents } from "../../../../lib/marketplaceFees";
 
 function assertAdmin(user) {
   return (
@@ -10,13 +11,6 @@ function assertAdmin(user) {
     user?.role === "admin" ||
     user?.role === "senior_admin"
   );
-}
-
-function parsePct(v) {
-  if (v == null || v === "") return 0;
-  const n = Number(String(v).replace(/%/g, ""));
-  if (!isFinite(n) || isNaN(n)) return 0;
-  return n > 1 ? n / 100 : n;
 }
 
 function parseDateSafe(v) {
@@ -54,7 +48,7 @@ export async function GET(request) {
     const toDate = parseDateSafe(toParam) || now;
 
     const whereParts = [
-      `LOWER(o."paymentStatus"::text) IN ('successful', 'completed')`,
+      `o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"`,
       `o."createdAt" >= :from`,
       `o."createdAt" <= :to`,
     ];
@@ -80,10 +74,22 @@ export async function GET(request) {
       'SELECT\n'
       + '  date_trunc(:interval, o."createdAt") AS period,\n'
       + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS revenue,\n'
+      + '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",\n'
+      + '  COALESCE(SUM(\n'
+      + '    CASE\n'
+      + '      WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN (\'admin\', \'senior_admin\'))\n'
+      + '        THEN (ri."discount_amount")::numeric\n'
+      + '      ELSE 0\n'
+      + '    END\n'
+      + '  ), 0) AS "discountMerchantFunded",\n'
       + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold"\n'
       + 'FROM "marketplace_order_items" AS oi\n'
       + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
       + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
+      + 'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n'
+      + 'LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"\n'
+      + 'LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"\n'
+      + 'LEFT JOIN "users" AS cu ON cu."id" = c."created_by"\n'
       + 'WHERE ' + whereSql + '\n'
       + 'GROUP BY 1\n'
       + 'ORDER BY 1 ASC\n';
@@ -93,26 +99,24 @@ export async function GET(request) {
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
-    const CROWD_PCT = parsePct(
-      process.env.CROWDPEN_FEE_PCT ||
-        process.env.CROWD_PEN_FEE_PCT ||
-        process.env.PLATFORM_FEE_PCT
-    );
-    const SB_PCT = parsePct(
-      process.env.STARTBUTTON_FEE_PCT ||
-        process.env.START_BUTTON_FEE_PCT ||
-        process.env.GATEWAY_FEE_PCT
-    );
+    const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
+      await getMarketplaceFeePercents({ db });
 
     let totalsRevenue = 0;
     let totalsUnitsSold = 0;
 
     const data = (rows || []).map((r) => {
       const revenue = Number(r?.revenue || 0) || 0;
+      const discountTotal = Number(r?.discountTotal || 0) || 0;
+      const discountMerchantFunded = Number(r?.discountMerchantFunded || 0) || 0;
+      const buyerPaid = Math.max(0, revenue - discountTotal);
       const unitsSold = Number(r?.unitsSold || 0) || 0;
       const crowdpenFee = revenue * (CROWD_PCT || 0);
-      const startbuttonFee = revenue * (SB_PCT || 0);
-      const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
+      const startbuttonFee = buyerPaid * (SB_PCT || 0);
+      const creatorPayout = Math.max(
+        0,
+        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+      );
 
       totalsRevenue += revenue;
       totalsUnitsSold += unitsSold;
@@ -121,6 +125,9 @@ export async function GET(request) {
       return {
         period: d && Number.isFinite(d.getTime()) ? d.toISOString() : String(r?.period || ""),
         revenue,
+        discountTotal,
+        discountMerchantFunded,
+        buyerPaid,
         unitsSold,
         crowdpenFee,
         startbuttonFee,
@@ -130,14 +137,30 @@ export async function GET(request) {
 
     const totals = {
       revenue: totalsRevenue,
+      buyerPaid: null,
       unitsSold: totalsUnitsSold,
       crowdpenFee: totalsRevenue * (CROWD_PCT || 0),
-      startbuttonFee: totalsRevenue * (SB_PCT || 0),
-      creatorPayout: Math.max(
-        0,
-        totalsRevenue - totalsRevenue * (CROWD_PCT || 0) - totalsRevenue * (SB_PCT || 0)
-      ),
+      startbuttonFee: null,
+      creatorPayout: null,
     };
+
+    const totalsDiscountTotal = (rows || []).reduce(
+      (acc, r) => acc + (Number(r?.discountTotal || 0) || 0),
+      0
+    );
+    const totalsDiscountMerchantFunded = (rows || []).reduce(
+      (acc, r) => acc + (Number(r?.discountMerchantFunded || 0) || 0),
+      0
+    );
+    const totalsBuyerPaid = Math.max(0, totalsRevenue - totalsDiscountTotal);
+    totals.buyerPaid = totalsBuyerPaid;
+    totals.discountTotal = totalsDiscountTotal;
+    totals.discountMerchantFunded = totalsDiscountMerchantFunded;
+    totals.startbuttonFee = totalsBuyerPaid * (SB_PCT || 0);
+    totals.creatorPayout = Math.max(
+      0,
+      totalsRevenue - totalsDiscountMerchantFunded - totals.crowdpenFee - totals.startbuttonFee
+    );
 
     return NextResponse.json({
       status: "success",

@@ -44,7 +44,7 @@ export async function GET(request) {
         COUNT(DISTINCT o."user_id")::bigint AS "uniqueBuyers",
         COUNT(*)::bigint AS "paidOrders"
       FROM "marketplace_orders" AS o
-      WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+      WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
         AND o."createdAt" >= :from
         AND o."createdAt" <= :to
     `;
@@ -55,7 +55,7 @@ export async function GET(request) {
       FROM (
         SELECT o."user_id"
         FROM "marketplace_orders" AS o
-        WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+        WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
           AND o."createdAt" >= :from
           AND o."createdAt" <= :to
         GROUP BY o."user_id"
@@ -69,7 +69,7 @@ export async function GET(request) {
       FROM (
         SELECT o."user_id", MIN(o."createdAt") AS first_paid_at
         FROM "marketplace_orders" AS o
-        WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+        WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
         GROUP BY o."user_id"
       ) t
       WHERE t.first_paid_at >= :from

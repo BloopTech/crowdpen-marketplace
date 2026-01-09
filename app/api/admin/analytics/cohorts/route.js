@@ -56,7 +56,7 @@ export async function GET(request) {
           o."user_id" AS user_id,
           o."createdAt" AS created_at
         FROM "marketplace_orders" AS o
-        WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+        WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
           AND o."createdAt" >= :from
           AND o."createdAt" <= :to
       ),

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op } from "sequelize";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
 
 function assertAdmin(user) {
   return (
@@ -19,6 +20,16 @@ export async function GET(request) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
         { status: 403 }
+      );
+    }
+
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `admin-payouts:list:${userIdForRl}:${ip}`, limit: 240, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
       );
     }
 
@@ -60,12 +71,17 @@ export async function GET(request) {
     if (format === "csv") {
       const rows = await db.MarketplaceAdminTransactions.findAll({
         where,
-        include: [{ model: db.User, attributes: ["id", "name", "email", "image", "color"] }],
+        include: [
+          { model: db.User, attributes: ["id", "name", "email", "image", "color"] },
+          { model: db.User, as: "CreatedBy", attributes: ["id", "name", "email"] },
+        ],
         order: [["createdAt", "DESC"]],
       });
       const header = [
         "id",
         "recipient",
+        "created_by",
+        "created_via",
         "amount",
         "currency",
         "status",
@@ -83,9 +99,12 @@ export async function GET(request) {
       const lines = [header.join(",")];
       for (const tx of rows) {
         const recipient = tx?.User?.name || tx?.User?.email || tx.recipient_id;
+        const createdBy = tx?.CreatedBy?.name || tx?.CreatedBy?.email || tx.created_by || "";
         lines.push([
           esc(tx.id),
           esc(recipient),
+          esc(createdBy),
+          esc(tx.created_via || ""),
           esc(toMajor(tx.amount)),
           esc(tx.currency),
           esc(tx.status),
@@ -106,6 +125,7 @@ export async function GET(request) {
         where,
         include: [
           { model: db.User, attributes: ["id", "name", "email", "image", "color"] },
+          { model: db.User, as: "CreatedBy", attributes: ["id", "name", "email"] },
         ],
         order: [["createdAt", "DESC"]],
         limit: pageSize,

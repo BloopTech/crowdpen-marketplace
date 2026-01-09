@@ -120,9 +120,9 @@ export default function AdminMerchantsContent() {
                     <TableHead className="text-right">Products</TableHead>
                     <TableHead className="text-right">Flagged</TableHead>
                     <TableHead className="text-right">Stock Risk</TableHead>
-                    <TableHead className="text-right">Sales (30d)</TableHead>
+                    <TableHead className="text-right">Buyer Paid (30d)</TableHead>
                     <TableHead className="text-right">Units (30d)</TableHead>
-                    <TableHead className="text-right">Payouts</TableHead>
+                    <TableHead className="text-right">Payouts (Owed)</TableHead>
                     <TableHead>Last Paid</TableHead>
                     <TableHead>Last Settled To</TableHead>
                     <TableHead>Status</TableHead>
@@ -232,10 +232,13 @@ lowStock counts products with a positive stock level that’s at or below the lo
                         <TableCell className="text-right">
                           <div className="tabular-nums">
                             <div className="font-medium">
-                              {fmtUsd(kpi?.payoutsCompleted || 0)}
+                              {fmtUsd(kpi?.payoutsOwed || 0)}
                             </div>
                             <div className="text-[11px] text-muted-foreground">
-                              Pending: {fmtUsd(kpi?.payoutsPending || 0)}
+                              Paid: {fmtUsd(kpi?.payoutsCompleted || 0)}
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              In-flight: {fmtUsd(kpi?.payoutsPending || 0)}
                             </div>
                           </div>
                         </TableCell>

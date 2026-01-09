@@ -25,6 +25,13 @@ export default function AdminPayoutsContent() {
   const {
     list,
     users,
+    recipientSelectUsers,
+    recipientsQuery,
+    recipientQ,
+    setRecipientQ,
+    recipientPage,
+    setRecipientPage,
+    recipientTotalPages,
     loading,
     page,
     pageSize,
@@ -63,6 +70,8 @@ export default function AdminPayoutsContent() {
     merchantPayoutsQuery,
     eligibleMerchantPayouts,
     payoutSummaryQuery,
+    crowdpenFeeLabel,
+    startbuttonFeeLabel,
     selectedRecipientId,
     setSelectedRecipientId,
     suggestedPayoutAmount,
@@ -93,6 +102,59 @@ export default function AdminPayoutsContent() {
             </div>
 
             <div className="flex flex-wrap items-end gap-3 mb-3">
+              <div className="flex-1 min-w-64">
+                <label className="block text-xs mb-1">Merchant search</label>
+                <input
+                  value={recipientQ}
+                  onChange={(e) => {
+                    setRecipientQ(e.target.value);
+                    setRecipientPage(1);
+                    resetBulkBatch();
+                  }}
+                  placeholder="Search merchants by name or email…"
+                  className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="flex items-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setRecipientPage(Math.max(1, Number(recipientPage || 1) - 1));
+                    resetBulkBatch();
+                  }}
+                  disabled={
+                    (Number(recipientPage || 1) <= 1) ||
+                    recipientsQuery.isFetching
+                  }
+                >
+                  Prev
+                </Button>
+                <div className="text-xs text-muted-foreground">
+                  Page <span className="font-medium">{recipientPage}</span> / {recipientTotalPages}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setRecipientPage(
+                      Math.min(
+                        Number(recipientTotalPages || 1),
+                        Number(recipientPage || 1) + 1
+                      )
+                    );
+                    resetBulkBatch();
+                  }}
+                  disabled={
+                    (Number(recipientPage || 1) >= Number(recipientTotalPages || 1)) ||
+                    recipientsQuery.isFetching
+                  }
+                >
+                  Next
+                </Button>
+              </div>
+
               <div>
                 <label className="block text-xs mb-1">Mode</label>
                 <select
@@ -150,7 +212,7 @@ export default function AdminPayoutsContent() {
                     }}
                     disabled={users.length === 0}
                   >
-                    Select all
+                    Select page
                   </Button>
                   <Button
                     type="button"
@@ -466,10 +528,13 @@ export default function AdminPayoutsContent() {
                         Crowdpen-Funded Discounts
                       </TableHead>
                       <TableHead className="text-right">
-                        Crowdpen Share (15%)
+                        Merchant-Funded Discounts
                       </TableHead>
                       <TableHead className="text-right">
-                        Startbutton Share (5%)
+                        Crowdpen Share ({crowdpenFeeLabel})
+                      </TableHead>
+                      <TableHead className="text-right">
+                        Startbutton Share ({startbuttonFeeLabel})
                       </TableHead>
                       <TableHead className="text-right">Net Payout</TableHead>
                     </TableRow>
@@ -487,6 +552,12 @@ export default function AdminPayoutsContent() {
                         <TableCell className="text-right">
                           {fmt(
                             merchant.discountCrowdpenFunded,
+                            merchant.currency
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {fmt(
+                            merchant.discountMerchantFunded,
                             merchant.currency
                           )}
                         </TableCell>
@@ -521,7 +592,7 @@ export default function AdminPayoutsContent() {
                 onChange={(e) => setSelectedRecipientId(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                {users.map((u) => (
+                {recipientSelectUsers.map((u) => (
                   <option key={u.id} value={u.id}>
                     {u.name || u.email}
                   </option>
@@ -607,6 +678,8 @@ export default function AdminPayoutsContent() {
             <TableHeader>
               <TableRow>
                 <TableHead>Recipient</TableHead>
+                <TableHead>Created By</TableHead>
+                <TableHead>Source</TableHead>
                 <TableHead>Amount</TableHead>
                 <TableHead>Currency</TableHead>
                 <TableHead>Status</TableHead>
@@ -642,6 +715,10 @@ export default function AdminPayoutsContent() {
                       </div>
                     </div>
                   </TableCell>
+                  <TableCell>
+                    {tx?.CreatedBy?.name || tx?.CreatedBy?.email || tx.created_by || "-"}
+                  </TableCell>
+                  <TableCell className="capitalize">{tx.created_via || "-"}</TableCell>
                   <TableCell>{fmt(Number(tx.amount || 0), tx.currency)}</TableCell>
                   <TableCell>{tx.currency}</TableCell>
                   <TableCell className="capitalize">{tx.status}</TableCell>
@@ -658,7 +735,7 @@ export default function AdminPayoutsContent() {
               {list.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={8}
                     className="text-center text-sm text-muted-foreground"
                   >
                     No payouts yet.

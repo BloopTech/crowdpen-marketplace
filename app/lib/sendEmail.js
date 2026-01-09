@@ -1,7 +1,7 @@
 import "server-only";
 import nodemailer from "nodemailer";
 
-export async function sendEmail({ to, subject, html, text, replyTo }) {
+export async function sendEmail({ to, subject, html, text, replyTo, cc, bcc }) {
   if (!to) throw new Error("Recipient 'to' is required");
   const host = process.env.EMAIL_SERVER_HOST;
   const port = Number(process.env.EMAIL_SERVER_PORT || 465);
@@ -23,6 +23,8 @@ export async function sendEmail({ to, subject, html, text, replyTo }) {
   const result = await transport.sendMail({
     from,
     to,
+    ...(cc && { cc }),
+    ...(bcc && { bcc }),
     subject,
     html,
     text,

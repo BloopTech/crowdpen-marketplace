@@ -36,7 +36,7 @@ export default function AdminContent() {
       value: millify(data?.totalPayoutAmount, { precision: 2 }),
     },
     {
-      label: "Total Sales",
+      label: "Total Buyer Paid",
       value: millify(data?.totalSales, { precision: 2 }),
     },
   ];

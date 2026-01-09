@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { validate as isUUID } from "uuid";
+import { getMarketplaceFeePercents } from "../../../../lib/marketplaceFees";
 
 function assertAdmin(user) {
   return (
@@ -10,13 +11,6 @@ function assertAdmin(user) {
     user?.role === "admin" ||
     user?.role === "senior_admin"
   );
-}
-
-function parsePct(v) {
-  if (v == null || v === "") return 0;
-  const n = Number(String(v).replace(/%/g, ""));
-  if (!isFinite(n) || isNaN(n)) return 0;
-  return n > 1 ? n / 100 : n;
 }
 
 function parseDateSafe(v) {
@@ -52,7 +46,7 @@ export async function GET(request) {
     const toDate = parseDateSafe(toParam) || now;
 
     const whereParts = [
-      `LOWER(o."paymentStatus"::text) IN ('successful', 'completed')`,
+      `o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"`,
       `o."createdAt" >= :from`,
       `o."createdAt" <= :to`,
     ];
@@ -79,11 +73,23 @@ export async function GET(request) {
       + '  u."pen_name" AS "merchantPenName",\n'
       + '  u."name" AS "merchantName",\n'
       + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",\n'
-      + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue"\n'
+      + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue",\n'
+      + '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",\n'
+      + '  COALESCE(SUM(\n'
+      + '    CASE\n'
+      + '      WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN (\'admin\', \'senior_admin\'))\n'
+      + '        THEN (ri."discount_amount")::numeric\n'
+      + '      ELSE 0\n'
+      + '    END\n'
+      + '  ), 0) AS "discountMerchantFunded"\n'
       + 'FROM "marketplace_order_items" AS oi\n'
       + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
       + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
       + 'LEFT JOIN "users" AS u ON u."id" = p."user_id"\n'
+      + 'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n'
+      + 'LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"\n'
+      + 'LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"\n'
+      + 'LEFT JOIN "users" AS cu ON cu."id" = c."created_by"\n'
       + 'WHERE ' + whereSql + '\n'
       + 'GROUP BY p."id", u."id"\n'
       + 'ORDER BY "revenue" DESC\n'
@@ -94,22 +100,20 @@ export async function GET(request) {
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
-    const CROWD_PCT = parsePct(
-      process.env.CROWDPEN_FEE_PCT ||
-        process.env.CROWD_PEN_FEE_PCT ||
-        process.env.PLATFORM_FEE_PCT
-    );
-    const SB_PCT = parsePct(
-      process.env.STARTBUTTON_FEE_PCT ||
-        process.env.START_BUTTON_FEE_PCT ||
-        process.env.GATEWAY_FEE_PCT
-    );
+    const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
+      await getMarketplaceFeePercents({ db });
 
     const data = (rows || []).map((r) => {
       const revenue = Number(r?.revenue || 0) || 0;
+      const discountTotal = Number(r?.discountTotal || 0) || 0;
+      const discountMerchantFunded = Number(r?.discountMerchantFunded || 0) || 0;
+      const buyerPaid = Math.max(0, revenue - discountTotal);
       const crowdpenFee = revenue * (CROWD_PCT || 0);
-      const startbuttonFee = revenue * (SB_PCT || 0);
-      const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
+      const startbuttonFee = buyerPaid * (SB_PCT || 0);
+      const creatorPayout = Math.max(
+        0,
+        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+      );
 
       return {
         id: r?.id,
@@ -121,6 +125,9 @@ export async function GET(request) {
         merchantName: r?.merchantName || null,
         unitsSold: Number(r?.unitsSold || 0) || 0,
         revenue,
+        discountTotal,
+        discountMerchantFunded,
+        buyerPaid,
         crowdpenFee,
         startbuttonFee,
         creatorPayout,

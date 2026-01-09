@@ -1,6 +1,5 @@
 "use client";
 import React, { useMemo } from "react";
-import { Button } from "../../../components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,7 +8,6 @@ import {
   CardDescription,
 } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
-import { Separator } from "../../../components/ui/separator";
 import {
   Wallet,
   TrendingUp,
@@ -36,6 +34,7 @@ export default function PayoutsTab() {
     const lastDate = s?.lastPayoutDate ? new Date(s.lastPayoutDate) : null;
     return {
       totalEarnings: Number(s.totalEarnings || 0),
+      settledEarnings: Number(s.settledEarnings || 0),
       pendingPayout: Number(s.availableToWithdraw || 0),
       withdrawalDeficit: Number(s.withdrawalDeficit || 0),
       lastPayout: Number(s.lastPayout || 0),
@@ -88,13 +87,43 @@ export default function PayoutsTab() {
     <div className="space-y-6">
       {/* Analytics Cards */}
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Total Earnings */}
+        <Card className="bg-linear-to-br from-emerald-50 to-emerald-100 border-emerald-200 dark:from-emerald-500/10 dark:to-emerald-500/5 dark:border-emerald-500/20">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 font-medium truncate">Settled Earnings</p>
+                <p className="text-lg sm:text-2xl font-bold text-emerald-900 dark:text-emerald-300 mt-1">{fmt(analytics.settledEarnings)}</p>
+                <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-1 truncate">Eligible for payout</p>
+              </div>
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-linear-to-br from-slate-50 to-slate-100 border-slate-200 dark:from-slate-500/10 dark:to-slate-500/5 dark:border-slate-500/20">
+          <CardContent className="p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium truncate">Pending Settlement</p>
+                <p className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{fmt(analytics.pendingSettlement)}</p>
+                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 truncate">Paid, awaiting settlement</p>
+              </div>
+              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-slate-500/20 flex items-center justify-center shrink-0">
+                <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 text-slate-600" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="bg-linear-to-br from-emerald-50 to-emerald-100 border-emerald-200 dark:from-emerald-500/10 dark:to-emerald-500/5 dark:border-emerald-500/20">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm text-emerald-700 dark:text-emerald-400 font-medium truncate">Total Earnings</p>
                 <p className="text-lg sm:text-2xl font-bold text-emerald-900 dark:text-emerald-300 mt-1">{fmt(analytics.totalEarnings)}</p>
+                <p className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-1 truncate">Settled + pending settlement</p>
               </div>
               <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
                 <Wallet className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-600" />
@@ -137,27 +166,12 @@ export default function PayoutsTab() {
           </Card>
         ) : null}
 
-        <Card className="bg-linear-to-br from-slate-50 to-slate-100 border-slate-200 dark:from-slate-500/10 dark:to-slate-500/5 dark:border-slate-500/20">
-          <CardContent className="p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-slate-700 dark:text-slate-300 font-medium truncate">Pending Settlement</p>
-                <p className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-slate-100 mt-1">{fmt(analytics.pendingSettlement)}</p>
-                <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 truncate">Paid, awaiting settlement</p>
-              </div>
-              <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-slate-500/20 flex items-center justify-center shrink-0">
-                <Loader2 className="h-5 w-5 sm:h-6 sm:w-6 text-slate-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* This Month */}
         <Card className="bg-linear-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-500/10 dark:to-blue-500/5 dark:border-blue-500/20">
           <CardContent className="p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-400 font-medium truncate">This Month</p>
+                <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-400 font-medium truncate">This Month (Settled)</p>
                 <p className="text-lg sm:text-2xl font-bold text-blue-900 dark:text-blue-300 mt-1">{fmt(analytics.thisMonthEarnings)}</p>
                 <div className="flex items-center mt-1">
                   {analytics.growthPercent >= 0 ? (

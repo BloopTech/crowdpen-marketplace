@@ -59,7 +59,7 @@ export async function GET(request) {
           COALESCE(SUM(oi."quantity"), 0) AS units_sold
         FROM "marketplace_order_items" oi
         JOIN "marketplace_orders" o ON o."id" = oi."marketplace_order_id"
-        WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+        WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
           AND o."createdAt" >= :from
           AND o."createdAt" <= :to
         GROUP BY 1

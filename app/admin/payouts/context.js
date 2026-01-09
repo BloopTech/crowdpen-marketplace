@@ -46,11 +46,13 @@ function postJson(url, body) {
 export function AdminPayoutsProvider({ children }) {
   const {
     payoutsQuery,
-    merchantRecipientsQuery,
     payoutsParams,
     setPayoutsParams,
   } = useAdmin();
   const [selectedRecipientId, setSelectedRecipientId] = useState("");
+  const [recipientQ, setRecipientQ] = useState("");
+  const [recipientPage, setRecipientPage] = useState(1);
+  const [recipientPageSize, setRecipientPageSize] = useState(20);
   const [bulkMode, setBulkMode] = useState("settle_all");
   const [bulkCutoffTo, setBulkCutoffTo] = useState("");
   const [bulkScope, setBulkScope] = useState("all");
@@ -86,11 +88,54 @@ export function AdminPayoutsProvider({ children }) {
     () => payoutsQuery?.data?.data || [],
     [payoutsQuery?.data?.data]
   );
-  const recipientsData = merchantRecipientsQuery?.data?.data;
+  const recipientsQuery = useQuery({
+    queryKey: [
+      "admin",
+      "users",
+      "payout_recipients",
+      { q: recipientQ, page: recipientPage, pageSize: recipientPageSize },
+    ],
+    queryFn: () => {
+      const sp = new URLSearchParams({
+        scope: "all",
+        merchant: "true",
+        page: String(recipientPage || 1),
+        pageSize: String(recipientPageSize || 20),
+      });
+      if (recipientQ) sp.set("q", recipientQ);
+      return fetchJson(`/api/admin/users?${sp.toString()}`);
+    },
+  });
+
   const users = useMemo(() => {
-    const arr = Array.isArray(recipientsData) ? recipientsData : [];
+    const arr = Array.isArray(recipientsQuery?.data?.data)
+      ? recipientsQuery.data.data
+      : [];
     return arr.filter((u) => u?.merchant === true);
-  }, [recipientsData]);
+  }, [recipientsQuery?.data?.data]);
+
+  const selectedRecipientQuery = useQuery({
+    queryKey: ["admin", "users", "payout_recipient", selectedRecipientId],
+    enabled: Boolean(selectedRecipientId),
+    queryFn: () => {
+      const sp = new URLSearchParams({
+        scope: "all",
+        merchant: "true",
+        id: selectedRecipientId,
+      });
+      return fetchJson(`/api/admin/users?${sp.toString()}`);
+    },
+  });
+
+  const selectedRecipientUser = selectedRecipientQuery?.data?.data || null;
+
+  const recipientSelectUsers = useMemo(() => {
+    const selectedId = String(selectedRecipientId || "");
+    const selected = selectedRecipientUser;
+    if (!selectedId || !selected) return users;
+    if (users.some((u) => String(u?.id || "") === selectedId)) return users;
+    return [selected, ...users];
+  }, [selectedRecipientId, selectedRecipientUser, users]);
 
   useEffect(() => {
     if (!selectedRecipientId && users.length > 0) {
@@ -114,6 +159,20 @@ export function AdminPayoutsProvider({ children }) {
       maximumFractionDigits: 2,
     }).format(Number(v || 0));
   }, []);
+
+  const feesQuery = useQuery({
+    queryKey: ["admin", "fees"],
+    queryFn: () => fetchJson("/api/admin/fees"),
+  });
+
+  const crowdpenFeePercent = Number(feesQuery?.data?.data?.crowdpenPct) || 0;
+  const startbuttonFeePercent = Number(feesQuery?.data?.data?.startbuttonPct) || 0;
+  const fmtPct = (n) => {
+    const pct = Math.round((Number(n || 0) || 0) * 10000) / 100;
+    return `${pct}%`;
+  };
+  const crowdpenFeeLabel = fmtPct(crowdpenFeePercent);
+  const startbuttonFeeLabel = fmtPct(startbuttonFeePercent);
 
   const todayIso = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -184,45 +243,62 @@ export function AdminPayoutsProvider({ children }) {
     },
   });
 
+  const selectedMerchantPayoutQuery = useQuery({
+    queryKey: [
+      "admin",
+      "analytics",
+      "merchant-payouts",
+      "selected",
+      selectedRecipientId || "",
+      payoutsParams.from || "",
+      payoutsParams.to || "",
+    ],
+    enabled: Boolean(selectedRecipientId && payoutsParams.from && payoutsParams.to),
+    queryFn: () => {
+      const qs = new URLSearchParams({
+        limit: "1",
+        merchantId: selectedRecipientId,
+      });
+      if (payoutsParams.from) qs.set("from", payoutsParams.from);
+      if (payoutsParams.to) qs.set("to", payoutsParams.to);
+      return fetchJson(`/api/admin/analytics/top-merchants?${qs.toString()}`);
+    },
+  });
+
   const eligibleMerchantPayouts = useMemo(() => {
-    if (!users.length || !Array.isArray(merchantPayoutsQuery?.data?.data)) {
+    if (!Array.isArray(merchantPayoutsQuery?.data?.data)) {
       return [];
     }
-    const eligibleIds = new Set(users.map((u) => u.id));
-    return merchantPayoutsQuery.data.data
-      .filter((row) => eligibleIds.has(row.merchantId || row.id))
-      .map((row) => {
+    return merchantPayoutsQuery.data.data.map((row) => {
         const revenue = Number(row.revenue || 0);
         const crowdpenFee = Number(row.crowdpenFee || 0);
         const startbuttonFee = Number(row.startbuttonFee || 0);
+        const discountTotal = Number(row.discountTotal || 0);
+        const discountCrowdpenFunded = Number(row.discountCrowdpenFunded || 0);
+        const discountMerchantFunded = Number(row.discountMerchantFunded || 0);
         const creatorPayout =
           row.creatorPayout != null
             ? Number(row.creatorPayout)
-            : Math.max(0, revenue - crowdpenFee - startbuttonFee);
+            : Math.max(
+                0,
+                revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+              );
         const merchantId = row.merchantId || row.id;
-        const matchedUser = users.find((u) => u.id === merchantId);
-        const discountTotal = Number(row.discountTotal || 0);
-        const discountCrowdpenFunded = Number(
-          row.discountCrowdpenFunded || 0
-        );
         return {
           merchantId,
           merchantName:
-            matchedUser?.name ||
-            matchedUser?.email ||
-            row.merchantPenName ||
-            row.merchantName ||
-            "Unknown merchant",
+            row.penName || row.name || row.email || "Unknown merchant",
           revenue,
           crowdpenFee,
           startbuttonFee,
           creatorPayout,
           discountTotal,
           discountCrowdpenFunded,
+          discountMerchantFunded,
           currency: row.currency || "USD",
         };
       });
-  }, [merchantPayoutsQuery?.data?.data, users]);
+  }, [merchantPayoutsQuery?.data?.data]);
 
   const payoutSummaryQuery = useQuery({
     queryKey: [
@@ -246,12 +322,22 @@ export function AdminPayoutsProvider({ children }) {
 
   const selectedMerchantPayoutRow = useMemo(() => {
     if (!selectedRecipientId) return null;
-    return (
-      eligibleMerchantPayouts.find(
-        (m) => m.merchantId === selectedRecipientId
-      ) || null
-    );
-  }, [eligibleMerchantPayouts, selectedRecipientId]);
+    const rows = selectedMerchantPayoutQuery?.data?.data;
+    if (!Array.isArray(rows) || rows.length === 0) return null;
+    const row = rows[0];
+    return {
+      merchantId: row.merchantId || row.id,
+      merchantName: row.penName || row.name || row.email || "Unknown merchant",
+      revenue: Number(row.revenue || 0) || 0,
+      crowdpenFee: Number(row.crowdpenFee || 0) || 0,
+      startbuttonFee: Number(row.startbuttonFee || 0) || 0,
+      creatorPayout: Number(row.creatorPayout || 0) || 0,
+      discountTotal: Number(row.discountTotal || 0) || 0,
+      discountCrowdpenFunded: Number(row.discountCrowdpenFunded || 0) || 0,
+      discountMerchantFunded: Number(row.discountMerchantFunded || 0) || 0,
+      currency: row.currency || "USD",
+    };
+  }, [selectedMerchantPayoutQuery?.data?.data, selectedRecipientId]);
 
   const suggestedPayoutAmount = useMemo(() => {
     const grossNetPayout =
@@ -387,6 +473,15 @@ export function AdminPayoutsProvider({ children }) {
     () => ({
       list,
       users,
+      recipientSelectUsers,
+      recipientsQuery,
+      recipientQ,
+      setRecipientQ,
+      recipientPage,
+      setRecipientPage,
+      recipientPageSize,
+      setRecipientPageSize,
+      recipientTotalPages: recipientsQuery?.data?.totalPages || 1,
       loading,
       page,
       pageSize,
@@ -426,6 +521,11 @@ export function AdminPayoutsProvider({ children }) {
       merchantPayoutsQuery,
       eligibleMerchantPayouts,
       payoutSummaryQuery,
+      feesQuery,
+      crowdpenFeePercent,
+      startbuttonFeePercent,
+      crowdpenFeeLabel,
+      startbuttonFeeLabel,
       selectedRecipientId,
       setSelectedRecipientId,
       suggestedPayoutAmount,
@@ -437,6 +537,11 @@ export function AdminPayoutsProvider({ children }) {
     [
       list,
       users,
+      recipientSelectUsers,
+      recipientsQuery,
+      recipientQ,
+      recipientPage,
+      recipientPageSize,
       loading,
       page,
       pageSize,
@@ -475,6 +580,11 @@ export function AdminPayoutsProvider({ children }) {
       merchantPayoutsQuery,
       eligibleMerchantPayouts,
       payoutSummaryQuery,
+      feesQuery,
+      crowdpenFeePercent,
+      startbuttonFeePercent,
+      crowdpenFeeLabel,
+      startbuttonFeeLabel,
       selectedRecipientId,
       setSelectedRecipientId,
       suggestedPayoutAmount,
@@ -483,6 +593,9 @@ export function AdminPayoutsProvider({ children }) {
       eligibilityFrom,
       eligibilityMaxTo,
       clearBulkResult,
+      setRecipientQ,
+      setRecipientPage,
+      setRecipientPageSize,
     ]
   );
 

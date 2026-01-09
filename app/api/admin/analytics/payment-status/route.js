@@ -39,14 +39,17 @@ export async function GET(request) {
 
     const sql = `
       SELECT
-        LOWER(o."paymentStatus"::text) AS "paymentStatus",
-        COUNT(*)::bigint AS "orderCount",
-        COALESCE(SUM((o."total")::numeric), 0) AS "orderTotal"
+        o."paymentStatus" AS "paymentStatus",
+        COUNT(DISTINCT o."id")::bigint AS "orderCount",
+        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "grossRevenue",
+        COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal"
       FROM "marketplace_orders" AS o
+      LEFT JOIN "marketplace_order_items" AS oi ON oi."marketplace_order_id" = o."id"
+      LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
       WHERE o."createdAt" >= :from
         AND o."createdAt" <= :to
       GROUP BY 1
-      ORDER BY "orderTotal" DESC
+      ORDER BY "grossRevenue" DESC
     `;
 
     const rows = await db.sequelize.query(sql, {
@@ -54,11 +57,17 @@ export async function GET(request) {
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
-    const data = (rows || []).map((r) => ({
-      paymentStatus: r?.paymentStatus,
-      orderCount: Number(r?.orderCount || 0) || 0,
-      orderTotal: Number(r?.orderTotal || 0) || 0,
-    }));
+    const data = (rows || []).map((r) => {
+      const grossRevenue = Number(r?.grossRevenue || 0) || 0;
+      const discountTotal = Number(r?.discountTotal || 0) || 0;
+      return {
+        paymentStatus: r?.paymentStatus,
+        orderCount: Number(r?.orderCount || 0) || 0,
+        grossRevenue,
+        discountTotal,
+        buyerPaid: Math.max(0, grossRevenue - discountTotal),
+      };
+    });
 
     return NextResponse.json({
       status: "success",

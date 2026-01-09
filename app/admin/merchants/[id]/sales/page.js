@@ -1,7 +1,7 @@
 "use server";
 import React from "react";
-import Link from "next/link";
 import { db } from "../../../../models/index";
+import MerchantSubpagePagination from "../MerchantSubpagePagination";
 
 function fmtUsd(v) {
   return new Intl.NumberFormat("en-US", {
@@ -32,6 +32,7 @@ export default async function AdminMerchantSalesPage({ params, searchParams }) {
     + '  oi."id" AS "orderItemId",\n'
     + '  oi."quantity" AS "quantity",\n'
     + '  (oi."subtotal")::numeric AS "subtotal",\n'
+    + '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",\n'
     + '  o."id" AS "orderId",\n'
     + '  o."order_number" AS "orderNumber",\n'
     + '  o."createdAt" AS "createdAt",\n'
@@ -45,9 +46,11 @@ export default async function AdminMerchantSalesPage({ params, searchParams }) {
     + 'FROM "marketplace_products" AS p\n'
     + 'JOIN "marketplace_order_items" AS oi ON oi."marketplace_product_id" = p."id"\n'
     + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
+    + 'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n'
     + 'LEFT JOIN "users" AS buyer ON buyer."id" = o."user_id"\n'
     + 'WHERE p."user_id" = :merchantId\n'
-    + '  AND o."paymentStatus" IN (\'successful\'::"enum_marketplace_orders_paymentStatus", \'completed\'::"enum_marketplace_orders_paymentStatus")\n'
+    + '  AND o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n'
+    + 'GROUP BY oi."id", o."id", buyer."id", p."id"\n'
     + 'ORDER BY o."createdAt" DESC\n'
     + 'LIMIT :limit OFFSET :offset\n';
 
@@ -62,7 +65,7 @@ export default async function AdminMerchantSalesPage({ params, searchParams }) {
     + 'JOIN "marketplace_order_items" AS oi ON oi."marketplace_product_id" = p."id"\n'
     + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
     + 'WHERE p."user_id" = :merchantId\n'
-    + '  AND o."paymentStatus" IN (\'successful\'::"enum_marketplace_orders_paymentStatus", \'completed\'::"enum_marketplace_orders_paymentStatus")\n';
+    + '  AND o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n';
 
   const [countRow] = await db.sequelize.query(countSql, {
     replacements: { merchantId },
@@ -89,6 +92,8 @@ export default async function AdminMerchantSalesPage({ params, searchParams }) {
               <th className="text-left p-3">Order</th>
               <th className="text-right p-3">Qty</th>
               <th className="text-right p-3">Subtotal (USD)</th>
+              <th className="text-right p-3">Discount (USD)</th>
+              <th className="text-right p-3">Buyer Paid (USD)</th>
               <th className="text-left p-3">Coupon</th>
             </tr>
           </thead>
@@ -110,12 +115,21 @@ export default async function AdminMerchantSalesPage({ params, searchParams }) {
                 </td>
                 <td className="p-3 text-right tabular-nums">{Number(r.quantity || 0).toLocaleString("en-US")}</td>
                 <td className="p-3 text-right tabular-nums">{fmtUsd(r.subtotal)}</td>
+                <td className="p-3 text-right tabular-nums">{fmtUsd(r.discountTotal)}</td>
+                <td className="p-3 text-right tabular-nums">
+                  {fmtUsd(
+                    Math.max(
+                      0,
+                      (Number(r.subtotal || 0) || 0) - (Number(r.discountTotal || 0) || 0)
+                    )
+                  )}
+                </td>
                 <td className="p-3">{r.couponCode || "-"}</td>
               </tr>
             ))}
             {(rows || []).length === 0 ? (
               <tr>
-                <td className="p-6 text-center text-muted-foreground" colSpan={7}>
+                <td className="p-6 text-center text-muted-foreground" colSpan={9}>
                   No sales found.
                 </td>
               </tr>
@@ -128,20 +142,10 @@ export default async function AdminMerchantSalesPage({ params, searchParams }) {
         <div className="text-xs text-muted-foreground">
           Page {getPage.toLocaleString("en-US")} of {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")} rows)
         </div>
-        <div className="flex gap-2">
-          <Link
-            className={`text-sm underline ${getPage <= 1 ? "pointer-events-none opacity-50" : ""}`}
-            href={`/admin/merchants/${merchantId}/sales?page=${getPage - 1}&pageSize=${getPageSize}`}
-          >
-            Previous
-          </Link>
-          <Link
-            className={`text-sm underline ${getPage >= totalPages ? "pointer-events-none opacity-50" : ""}`}
-            href={`/admin/merchants/${merchantId}/sales?page=${getPage + 1}&pageSize=${getPageSize}`}
-          >
-            Next
-          </Link>
-        </div>
+      </div>
+
+      <div>
+        <MerchantSubpagePagination currentPage={getPage} totalPages={totalPages} />
       </div>
     </div>
   );

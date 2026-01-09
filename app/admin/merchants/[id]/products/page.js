@@ -2,6 +2,7 @@
 import React from "react";
 import Link from "next/link";
 import { db } from "../../../../models/index";
+import MerchantSubpagePagination from "../MerchantSubpagePagination";
 
 function fmtDateTimeUtc(v) {
   const d = v ? new Date(v) : null;
@@ -103,20 +104,10 @@ export default async function AdminMerchantProductsPage({ params, searchParams }
         <div className="text-xs text-muted-foreground">
           Page {getPage.toLocaleString("en-US")} of {totalPages.toLocaleString("en-US")}
         </div>
-        <div className="flex gap-2">
-          <Link
-            className={`text-sm underline ${getPage <= 1 ? "pointer-events-none opacity-50" : ""}`}
-            href={`/admin/merchants/${merchantId}/products?page=${getPage - 1}&pageSize=${getPageSize}`}
-          >
-            Previous
-          </Link>
-          <Link
-            className={`text-sm underline ${getPage >= totalPages ? "pointer-events-none opacity-50" : ""}`}
-            href={`/admin/merchants/${merchantId}/products?page=${getPage + 1}&pageSize=${getPageSize}`}
-          >
-            Next
-          </Link>
-        </div>
+      </div>
+
+      <div>
+        <MerchantSubpagePagination currentPage={getPage} totalPages={totalPages} />
       </div>
     </div>
   );

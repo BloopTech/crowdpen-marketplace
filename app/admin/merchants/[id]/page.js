@@ -86,14 +86,17 @@ export default async function AdminMerchantOverviewPage({ params }) {
   const salesTotalsSql =
     "SELECT\n" +
     '  COALESCE(SUM(CASE WHEN o."createdAt" >= :from30 THEN (oi."subtotal")::numeric ELSE 0 END), 0) AS "revenue30d",\n' +
+    '  COALESCE(SUM(CASE WHEN o."createdAt" >= :from30 THEN (ri."discount_amount")::numeric ELSE 0 END), 0) AS "discountTotal30d",\n' +
     '  COALESCE(SUM(CASE WHEN o."createdAt" >= :from30 THEN oi."quantity" ELSE 0 END), 0) AS "unitsSold30d",\n' +
     '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenueAllTime",\n' +
+    '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotalAllTime",\n' +
     '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSoldAllTime",\n' +
     '  MAX(o."createdAt") AS "lastSaleAt"\n' +
     'FROM "marketplace_order_items" AS oi\n' +
     'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n' +
     'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n' +
-    "WHERE LOWER(o.\"paymentStatus\"::text) IN ('successful', 'completed')\n" +
+    'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n' +
+    'WHERE o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n' +
     '  AND p."user_id" = :merchantId\n';
 
   const [salesAgg] = await db.sequelize.query(salesTotalsSql, {
@@ -105,11 +108,13 @@ export default async function AdminMerchantOverviewPage({ params }) {
     "SELECT\n" +
     "  date_trunc('day', o.\"createdAt\") AS period,\n" +
     '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS revenue,\n' +
+    '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",\n' +
     '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold"\n' +
     'FROM "marketplace_order_items" AS oi\n' +
     'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n' +
     'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n' +
-    "WHERE LOWER(o.\"paymentStatus\"::text) IN ('successful', 'completed')\n" +
+    'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n' +
+    'WHERE o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n' +
     '  AND p."user_id" = :merchantId\n' +
     '  AND o."createdAt" >= :from30\n' +
     '  AND o."createdAt" <= :to\n' +
@@ -159,9 +164,13 @@ export default async function AdminMerchantOverviewPage({ params }) {
   const productsOutOfStock = Number(productAgg?.productsOutOfStock || 0) || 0;
   const productsLowStock = Number(productAgg?.productsLowStock || 0) || 0;
 
-  const revenue30d = Number(salesAgg?.revenue30d || 0) || 0;
+  const revenue30dRaw = Number(salesAgg?.revenue30d || 0) || 0;
+  const discountTotal30d = Number(salesAgg?.discountTotal30d || 0) || 0;
+  const revenue30d = Math.max(0, revenue30dRaw - discountTotal30d);
   const unitsSold30d = Number(salesAgg?.unitsSold30d || 0) || 0;
-  const revenueAllTime = Number(salesAgg?.revenueAllTime || 0) || 0;
+  const revenueAllTimeRaw = Number(salesAgg?.revenueAllTime || 0) || 0;
+  const discountTotalAllTime = Number(salesAgg?.discountTotalAllTime || 0) || 0;
+  const revenueAllTime = Math.max(0, revenueAllTimeRaw - discountTotalAllTime);
   const unitsSoldAllTime = Number(salesAgg?.unitsSoldAllTime || 0) || 0;
 
   const payoutsCompleted = toMajorCents(payoutAgg?.completedCents);
@@ -200,7 +209,7 @@ export default async function AdminMerchantOverviewPage({ params }) {
         </div>
 
         <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">Sales (30d)</div>
+          <div className="text-xs text-muted-foreground">Buyer Paid (30d)</div>
           <div className="text-base font-semibold tabular-nums">
             {fmtUsd(revenue30d)}
           </div>
@@ -222,7 +231,7 @@ export default async function AdminMerchantOverviewPage({ params }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">All-time Revenue</div>
+          <div className="text-xs text-muted-foreground">Buyer Paid (All-time)</div>
           <div className="text-base font-semibold tabular-nums">
             {fmtUsd(revenueAllTime)}
           </div>
@@ -266,7 +275,10 @@ export default async function AdminMerchantOverviewPage({ params }) {
           <MerchantRevenueChart
             rows={(revenueDailyRows || []).map((r) => ({
               period: safeIso(r?.period),
-              revenue: Number(r?.revenue || 0) || 0,
+              revenue: Math.max(
+                0,
+                (Number(r?.revenue || 0) || 0) - (Number(r?.discountTotal || 0) || 0)
+              ),
               unitsSold: Number(r?.unitsSold || 0) || 0,
             }))}
           />

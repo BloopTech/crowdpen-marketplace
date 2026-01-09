@@ -44,16 +44,19 @@ export async function GET(request) {
 
     const sql = `
       SELECT
-        UPPER(TRIM(o."couponCode")) AS "couponCode",
-        COUNT(*)::bigint AS "orderCount",
-        COALESCE(SUM((o."discount")::numeric), 0) AS "discountTotal",
-        COALESCE(SUM((o."total")::numeric), 0) AS "orderTotal"
+        UPPER(TRIM(c."code")) AS "couponCode",
+        COUNT(DISTINCT o."id")::bigint AS "orderCount",
+        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "grossRevenue",
+        COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal"
       FROM "marketplace_orders" AS o
-      WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+      JOIN "marketplace_coupon_redemptions" AS r ON r."order_id" = o."id"
+      JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"
+      LEFT JOIN "marketplace_order_items" AS oi ON oi."marketplace_order_id" = o."id"
+      LEFT JOIN "marketplace_coupon_redemption_items" AS ri
+        ON ri."order_item_id" = oi."id" AND ri."redemption_id" = r."id"
+      WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
         AND o."createdAt" >= :from
         AND o."createdAt" <= :to
-        AND o."couponCode" IS NOT NULL
-        AND TRIM(o."couponCode") <> ''
       GROUP BY 1
       ORDER BY "discountTotal" DESC
       LIMIT :limit
@@ -64,17 +67,23 @@ export async function GET(request) {
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
-    const data = (rows || []).map((r) => ({
-      couponCode: r?.couponCode,
-      orderCount: Number(r?.orderCount || 0) || 0,
-      discountTotal: Number(r?.discountTotal || 0) || 0,
-      orderTotal: Number(r?.orderTotal || 0) || 0,
-    }));
+    const data = (rows || []).map((r) => {
+      const grossRevenue = Number(r?.grossRevenue || 0) || 0;
+      const discountTotal = Number(r?.discountTotal || 0) || 0;
+      return {
+        couponCode: r?.couponCode,
+        orderCount: Number(r?.orderCount || 0) || 0,
+        grossRevenue,
+        discountTotal,
+        buyerPaid: Math.max(0, grossRevenue - discountTotal),
+      };
+    });
 
     const totals = {
       orderCount: data.reduce((acc, r) => acc + (Number(r.orderCount) || 0), 0),
       discountTotal: data.reduce((acc, r) => acc + (Number(r.discountTotal) || 0), 0),
-      orderTotal: data.reduce((acc, r) => acc + (Number(r.orderTotal) || 0), 0),
+      grossRevenue: data.reduce((acc, r) => acc + (Number(r.grossRevenue) || 0), 0),
+      buyerPaid: data.reduce((acc, r) => acc + (Number(r.buyerPaid) || 0), 0),
     };
 
     return NextResponse.json({

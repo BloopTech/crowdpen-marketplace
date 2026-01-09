@@ -47,16 +47,18 @@ export async function GET(request) {
         c."id" AS "id",
         c."name" AS "name",
         COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",
-        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue"
+        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "grossRevenue",
+        COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal"
       FROM "marketplace_order_items" AS oi
       JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
       JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
+      LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
       LEFT JOIN "marketplace_categories" AS c ON c."id" = p."marketplace_category_id"
-      WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+      WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
         AND o."createdAt" >= :from
         AND o."createdAt" <= :to
       GROUP BY c."id", c."name"
-      ORDER BY "revenue" DESC
+      ORDER BY "grossRevenue" DESC
       LIMIT :limit
     `;
 
@@ -65,12 +67,20 @@ export async function GET(request) {
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
-    const data = (rows || []).map((r) => ({
-      id: r?.id || null,
-      name: r?.name || "Uncategorized",
-      unitsSold: Number(r?.unitsSold || 0) || 0,
-      revenue: Number(r?.revenue || 0) || 0,
-    }));
+    const data = (rows || []).map((r) => {
+      const grossRevenue = Number(r?.grossRevenue || 0) || 0;
+      const discountTotal = Number(r?.discountTotal || 0) || 0;
+      const buyerPaid = Math.max(0, grossRevenue - discountTotal);
+      return {
+        id: r?.id || null,
+        name: r?.name || "Uncategorized",
+        unitsSold: Number(r?.unitsSold || 0) || 0,
+        grossRevenue,
+        discountTotal,
+        buyerPaid,
+        revenue: buyerPaid,
+      };
+    });
 
     return NextResponse.json({
       status: "success",

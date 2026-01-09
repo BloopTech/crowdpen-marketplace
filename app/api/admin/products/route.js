@@ -4,6 +4,7 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
+import { getMarketplaceFeePercents } from "../../../lib/marketplaceFees";
 
 function assertAdmin(user) {
   return (
@@ -245,7 +246,7 @@ export async function GET(request) {
     if (productIds.length > 0) {
       const whereParts = [
         `oi."marketplace_product_id" IN (:productIds)`,
-        `LOWER(o."paymentStatus"::text) IN ('successful', 'completed')`,
+        `o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"`,
       ];
       const replacements = { productIds };
       if (fromDate) {
@@ -262,9 +263,21 @@ export async function GET(request) {
         'SELECT\n'
         + '  oi."marketplace_product_id" AS "marketplace_product_id",\n'
         + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",\n'
-        + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "totalRevenue"\n'
+        + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "totalRevenue",\n'
+        + '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",\n'
+        + '  COALESCE(SUM(\n'
+        + '    CASE\n'
+        + '      WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN (\'admin\', \'senior_admin\'))\n'
+        + '        THEN (ri."discount_amount")::numeric\n'
+        + '      ELSE 0\n'
+        + '    END\n'
+        + '  ), 0) AS "discountMerchantFunded"\n'
         + 'FROM "marketplace_order_items" AS oi\n'
         + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
+        + 'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n'
+        + 'LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"\n'
+        + 'LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"\n'
+        + 'LEFT JOIN "users" AS cu ON cu."id" = c."created_by"\n'
         + 'WHERE ' + whereSql + '\n'
         + 'GROUP BY 1\n';
 
@@ -277,27 +290,28 @@ export async function GET(request) {
         aggByProductId.set(String(r.marketplace_product_id), {
           unitsSold: Number(r.unitsSold || 0) || 0,
           totalRevenue: Number(r.totalRevenue || 0) || 0,
+          discountTotal: Number(r.discountTotal || 0) || 0,
+          discountMerchantFunded: Number(r.discountMerchantFunded || 0) || 0,
         });
       }
     }
 
-    // Parse optional fee rates from env (% provided as '0.2' or '20')
-    const parsePct = (v) => {
-      if (v == null || v === "") return 0;
-      const n = Number(String(v).replace(/%/g, ""));
-      if (!isFinite(n) || isNaN(n)) return 0;
-      return n > 1 ? n / 100 : n; // accept 20 => 0.2
-    };
-    const CROWD_PCT = parsePct(process.env.CROWDPEN_FEE_PCT || process.env.CROWD_PEN_FEE_PCT || process.env.PLATFORM_FEE_PCT);
-    const SB_PCT = parsePct(process.env.STARTBUTTON_FEE_PCT || process.env.START_BUTTON_FEE_PCT || process.env.GATEWAY_FEE_PCT);
+    const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
+      await getMarketplaceFeePercents({ db });
 
     const data = rows.map((p) => {
       const j = p.toJSON();
       const agg = aggByProductId.get(String(j.id)) || { unitsSold: 0, totalRevenue: 0 };
       const revenue = Number(agg.totalRevenue || 0) || 0;
+      const discountTotal = Number(agg.discountTotal || 0) || 0;
+      const discountMerchantFunded = Number(agg.discountMerchantFunded || 0) || 0;
+      const buyerPaid = Math.max(0, revenue - discountTotal);
       const crowdpenFee = revenue * (CROWD_PCT || 0);
-      const startbuttonFee = revenue * (SB_PCT || 0);
-      const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
+      const startbuttonFee = buyerPaid * (SB_PCT || 0);
+      const creatorPayout = Math.max(
+        0,
+        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+      );
 
       const reviewAgg = reviewAggByProductId.get(String(j.id));
       const rating = Number.isFinite(reviewAgg?.avg) ? reviewAgg.avg : 0;
@@ -320,6 +334,9 @@ export async function GET(request) {
         salesCount: Number(j.salesCount) || 0,
         unitsSold: Number(agg.unitsSold) || 0,
         totalRevenue: revenue,
+        discountTotal,
+        discountMerchantFunded,
+        buyerPaid,
         crowdpenFee,
         startbuttonFee,
         creatorPayout,

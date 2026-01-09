@@ -14,6 +14,11 @@ export function AdminTransactionsProvider({ children }) {
       pageSize: parseAsInteger.withDefault(20),
       from: parseAsString.withDefault(""),
       to: parseAsString.withDefault(""),
+      q: parseAsString.withDefault(""),
+      status: parseAsString.withDefault(""),
+      type: parseAsString.withDefault(""),
+      recipientId: parseAsString.withDefault(""),
+      currency: parseAsString.withDefault(""),
     },
     { clearOnDefault: true }
   );
@@ -25,6 +30,11 @@ export function AdminTransactionsProvider({ children }) {
       pageSize: qs.pageSize,
       from: qs.from,
       to: qs.to,
+      q: qs.q,
+      status: qs.status,
+      type: qs.type,
+      recipientId: qs.recipientId,
+      currency: qs.currency,
     }));
     transactionsQuery.refetch();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -49,6 +59,14 @@ export function AdminTransactionsProvider({ children }) {
   }, []);
 
   const setDate = useCallback(
+    (key, value) => {
+      setTransactionsParams((p) => ({ ...p, page: 1, [key]: value }));
+      setQs({ [key]: value, page: 1 });
+    },
+    [setTransactionsParams, setQs]
+  );
+
+  const setFilter = useCallback(
     (key, value) => {
       setTransactionsParams((p) => ({ ...p, page: 1, [key]: value }));
       setQs({ [key]: value, page: 1 });
@@ -86,6 +104,11 @@ export function AdminTransactionsProvider({ children }) {
       fmt,
       setFrom: (v) => setDate("from", v),
       setTo: (v) => setDate("to", v),
+      setQ: (v) => setFilter("q", v),
+      setStatus: (v) => setFilter("status", v),
+      setType: (v) => setFilter("type", v),
+      setRecipientId: (v) => setFilter("recipientId", v),
+      setCurrency: (v) => setFilter("currency", v),
       setPage: setPageValue,
       setPageSize: setPageSizeValue,
       refetch,
@@ -99,6 +122,7 @@ export function AdminTransactionsProvider({ children }) {
       transactionsParams,
       fmt,
       setDate,
+      setFilter,
       setPageValue,
       setPageSizeValue,
       refetch,

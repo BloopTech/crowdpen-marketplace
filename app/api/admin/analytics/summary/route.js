@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
+import { getMarketplaceFeePercents } from "../../../../lib/marketplaceFees";
 
 function assertAdmin(user) {
   return (
@@ -9,13 +10,6 @@ function assertAdmin(user) {
     user?.role === "admin" ||
     user?.role === "senior_admin"
   );
-}
-
-function parsePct(v) {
-  if (v == null || v === "") return 0;
-  const n = Number(String(v).replace(/%/g, ""));
-  if (!isFinite(n) || isNaN(n)) return 0;
-  return n > 1 ? n / 100 : n;
 }
 
 function parseDateSafe(v) {
@@ -49,11 +43,23 @@ export async function GET(request) {
         COUNT(DISTINCT o."id")::bigint AS "paidOrders",
         COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",
         COALESCE(SUM((oi."subtotal")::numeric), 0) AS "grossRevenue",
+        COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",
+        COALESCE(SUM(
+          CASE
+            WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
+              THEN (ri."discount_amount")::numeric
+            ELSE 0
+          END
+        ), 0) AS "discountMerchantFunded",
         COUNT(DISTINCT p."user_id")::bigint AS "activeMerchants"
       FROM "marketplace_order_items" AS oi
       JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
       JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
-      WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+      LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
+      LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"
+      LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"
+      LEFT JOIN "users" AS cu ON cu."id" = c."created_by"
+      WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
         AND o."createdAt" >= :from
         AND o."createdAt" <= :to
     `;
@@ -61,10 +67,22 @@ export async function GET(request) {
     const refundAggSql = `
       SELECT
         COUNT(DISTINCT o."id")::bigint AS "refundedOrders",
-        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "refundRevenue"
+        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "refundRevenue",
+        COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "refundDiscountTotal",
+        COALESCE(SUM(
+          CASE
+            WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
+              THEN (ri."discount_amount")::numeric
+            ELSE 0
+          END
+        ), 0) AS "refundDiscountMerchantFunded"
       FROM "marketplace_order_items" AS oi
       JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-      WHERE LOWER(o."paymentStatus"::text) = 'refunded'
+      LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
+      LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"
+      LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"
+      LEFT JOIN "users" AS cu ON cu."id" = c."created_by"
+      WHERE o."paymentStatus" = 'refunded'::"enum_marketplace_orders_paymentStatus"
         AND o."createdAt" >= :from
         AND o."createdAt" <= :to
     `;
@@ -102,32 +120,42 @@ export async function GET(request) {
     const paidOrders = Number(paidAgg?.paidOrders || 0) || 0;
     const unitsSold = Number(paidAgg?.unitsSold || 0) || 0;
     const grossRevenue = Number(paidAgg?.grossRevenue || 0) || 0;
+    const discountTotal = Number(paidAgg?.discountTotal || 0) || 0;
+    const discountMerchantFunded = Number(paidAgg?.discountMerchantFunded || 0) || 0;
     const activeMerchants = Number(paidAgg?.activeMerchants || 0) || 0;
 
     const refundedOrders = Number(refundAgg?.refundedOrders || 0) || 0;
     const refundRevenue = Number(refundAgg?.refundRevenue || 0) || 0;
+    const refundDiscountTotal = Number(refundAgg?.refundDiscountTotal || 0) || 0;
+    const refundDiscountMerchantFunded =
+      Number(refundAgg?.refundDiscountMerchantFunded || 0) || 0;
 
     const netRevenue = Math.max(0, grossRevenue - refundRevenue);
+    const netDiscountTotal = Math.max(0, discountTotal - refundDiscountTotal);
+    const netDiscountMerchantFunded = Math.max(
+      0,
+      discountMerchantFunded - refundDiscountMerchantFunded
+    );
     const aov = paidOrders > 0 ? grossRevenue / paidOrders : 0;
 
-    const CROWD_PCT = parsePct(
-      process.env.CROWDPEN_FEE_PCT ||
-        process.env.CROWD_PEN_FEE_PCT ||
-        process.env.PLATFORM_FEE_PCT
-    );
-    const SB_PCT = parsePct(
-      process.env.STARTBUTTON_FEE_PCT ||
-        process.env.START_BUTTON_FEE_PCT ||
-        process.env.GATEWAY_FEE_PCT
-    );
+    const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
+      await getMarketplaceFeePercents({ db });
 
+    const buyerPaidGross = Math.max(0, grossRevenue - discountTotal);
     const crowdpenFeeGross = grossRevenue * (CROWD_PCT || 0);
-    const startbuttonFeeGross = grossRevenue * (SB_PCT || 0);
-    const creatorPayoutGross = Math.max(0, grossRevenue - crowdpenFeeGross - startbuttonFeeGross);
+    const startbuttonFeeGross = buyerPaidGross * (SB_PCT || 0);
+    const creatorPayoutGross = Math.max(
+      0,
+      grossRevenue - discountMerchantFunded - crowdpenFeeGross - startbuttonFeeGross
+    );
 
+    const buyerPaidNet = Math.max(0, netRevenue - netDiscountTotal);
     const crowdpenFeeNet = netRevenue * (CROWD_PCT || 0);
-    const startbuttonFeeNet = netRevenue * (SB_PCT || 0);
-    const creatorPayoutNet = Math.max(0, netRevenue - crowdpenFeeNet - startbuttonFeeNet);
+    const startbuttonFeeNet = buyerPaidNet * (SB_PCT || 0);
+    const creatorPayoutNet = Math.max(
+      0,
+      netRevenue - netDiscountMerchantFunded - crowdpenFeeNet - startbuttonFeeNet
+    );
 
     const payouts = {
       completed: { count: 0, amount: 0 },
@@ -160,9 +188,17 @@ export async function GET(request) {
         unitsSold,
         activeMerchants,
         grossRevenue,
+        discountTotal,
+        discountMerchantFunded,
+        buyerPaidGross,
         refundRevenue,
+        refundDiscountTotal,
+        refundDiscountMerchantFunded,
         refundedOrders,
         netRevenue,
+        buyerPaidNet,
+        netDiscountTotal,
+        netDiscountMerchantFunded,
         aov,
         fees: {
           gross: {

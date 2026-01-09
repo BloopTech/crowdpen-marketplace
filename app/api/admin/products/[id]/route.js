@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { Op } from "sequelize";
+import { getMarketplaceFeePercents } from "../../../../lib/marketplaceFees";
 
 function assertAdmin(user) {
   return (
@@ -76,27 +77,38 @@ export async function GET(_request, { params }) {
     const [agg] = await db.sequelize.query(
       `SELECT
          COALESCE(SUM(oi."quantity"), 0) AS "unitsSold",
-         COALESCE(SUM((oi."subtotal")::numeric), 0) AS "totalRevenue"
+         COALESCE(SUM((oi."subtotal")::numeric), 0) AS "totalRevenue",
+         COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",
+         COALESCE(SUM(
+           CASE
+             WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
+               THEN (ri."discount_amount")::numeric
+             ELSE 0
+           END
+         ), 0) AS "discountMerchantFunded"
        FROM "marketplace_order_items" AS oi
        JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
+       LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
+       LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"
+       LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"
+       LEFT JOIN "users" AS cu ON cu."id" = c."created_by"
        WHERE oi."marketplace_product_id" = :pid
-         AND LOWER(o."paymentStatus"::text) IN ('successful', 'completed')`,
+         AND o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"`,
       { replacements: { pid: j.id }, type: db.Sequelize.QueryTypes.SELECT }
     );
 
-    // Parse optional fee rates from env (% provided as '0.2' or '20')
-    const parsePct = (v) => {
-      if (v == null || v === "") return 0;
-      const n = Number(String(v).replace(/%/g, ""));
-      if (!isFinite(n) || isNaN(n)) return 0;
-      return n > 1 ? n / 100 : n; // accept 20 => 0.2
-    };
-    const CROWD_PCT = parsePct(process.env.CROWDPEN_FEE_PCT || process.env.CROWD_PEN_FEE_PCT || process.env.PLATFORM_FEE_PCT);
-    const SB_PCT = parsePct(process.env.STARTBUTTON_FEE_PCT || process.env.START_BUTTON_FEE_PCT || process.env.GATEWAY_FEE_PCT);
+    const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
+      await getMarketplaceFeePercents({ db });
     const revenue = Number(agg?.totalRevenue || 0) || 0;
+    const discountTotal = Number(agg?.discountTotal || 0) || 0;
+    const discountMerchantFunded = Number(agg?.discountMerchantFunded || 0) || 0;
+    const buyerPaid = Math.max(0, revenue - discountTotal);
     const crowdpenFee = revenue * (CROWD_PCT || 0);
-    const startbuttonFee = revenue * (SB_PCT || 0);
-    const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
+    const startbuttonFee = buyerPaid * (SB_PCT || 0);
+    const creatorPayout = Math.max(
+      0,
+      revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+    );
 
     const fileUrl = typeof j.file === "string" && j.file.trim() ? j.file : null;
     let fileName = null;
@@ -141,6 +153,9 @@ export async function GET(_request, { params }) {
       inStock: Boolean(j.inStock),
       unitsSold: Number(agg?.unitsSold || 0) || 0,
       totalRevenue: revenue,
+      discountTotal,
+      discountMerchantFunded,
+      buyerPaid,
       crowdpenFee,
       startbuttonFee,
       creatorPayout,

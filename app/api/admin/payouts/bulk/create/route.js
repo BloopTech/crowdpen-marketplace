@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../models/index";
+import { getMarketplaceFeePercents } from "../../../../../lib/marketplaceFees";
+import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
 
 function assertAdmin(user) {
   return (
@@ -9,14 +11,6 @@ function assertAdmin(user) {
     user?.role === "admin" ||
     user?.role === "senior_admin"
   );
-}
-
-function parsePct(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return 0;
-  if (n > 1) return n / 100;
-  if (n < 0) return 0;
-  return n;
 }
 
 function isoDay(v) {
@@ -146,7 +140,7 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
         JOIN public.marketplace_order_items oi ON oi.marketplace_product_id = p.id
         JOIN public.marketplace_orders o ON o.id = oi.marketplace_order_id
         LEFT JOIN last_settled ls ON ls.recipient_id = m.id
-        WHERE LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+        WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
           AND (ls.last_settled_to IS NULL OR (o."createdAt"::date > ls.last_settled_to))
         GROUP BY m.id, m.name, m.email, ls.last_settled_to
       ), window AS (
@@ -166,13 +160,29 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
         w.last_settled_to AS "lastSettledTo",
         w.eligible_from AS "eligibleFrom",
         w.eligible_to AS "eligibleTo",
-        COALESCE(SUM((oi."subtotal")::numeric), 0) AS revenue
+        COALESCE(SUM(
+          CASE WHEN o.id IS NOT NULL THEN (oi."subtotal")::numeric ELSE 0 END
+        ), 0) AS revenue,
+        COALESCE(SUM(
+          CASE WHEN o.id IS NOT NULL THEN (ri."discount_amount")::numeric ELSE 0 END
+        ), 0) AS "discountTotal",
+        COALESCE(SUM(
+          CASE
+            WHEN o.id IS NOT NULL AND NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
+              THEN (ri."discount_amount")::numeric
+            ELSE 0
+          END
+        ), 0) AS "discountMerchantFunded"
       FROM window w
       LEFT JOIN public.marketplace_products p ON p.user_id = w.merchant_id
       LEFT JOIN public.marketplace_order_items oi ON oi.marketplace_product_id = p.id
+      LEFT JOIN public.marketplace_coupon_redemption_items ri ON ri.order_item_id = oi.id
+      LEFT JOIN public.marketplace_coupon_redemptions r ON r.id = ri.redemption_id
+      LEFT JOIN public.marketplace_coupons c ON c.id = r.coupon_id
+      LEFT JOIN public.users cu ON cu.id = c.created_by
       LEFT JOIN public.marketplace_orders o
         ON o.id = oi.marketplace_order_id
-        AND LOWER(o."paymentStatus"::text) IN ('successful', 'completed')
+        AND o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
         AND o."createdAt"::date >= w.eligible_from
         AND o."createdAt"::date <= w.eligible_to
         AND (w.last_settled_to IS NULL OR (o."createdAt"::date > w.last_settled_to))
@@ -188,16 +198,8 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
     }
   );
 
-  const CROWD_PCT = parsePct(
-    process.env.CROWDPEN_FEE_PCT ||
-      process.env.CROWD_PEN_FEE_PCT ||
-      process.env.PLATFORM_FEE_PCT
-  );
-  const SB_PCT = parsePct(
-    process.env.STARTBUTTON_FEE_PCT ||
-      process.env.START_BUTTON_FEE_PCT ||
-      process.env.GATEWAY_FEE_PCT
-  );
+  const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
+    await getMarketplaceFeePercents({ db });
 
   const periods = (rows || [])
     .map((r) => {
@@ -205,9 +207,15 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
       const to = isoDay(r?.eligibleTo);
       if (!from || !to || from > to) return null;
       const revenue = Number(r?.revenue || 0) || 0;
+      const discountTotal = Number(r?.discountTotal || 0) || 0;
+      const discountMerchantFunded = Number(r?.discountMerchantFunded || 0) || 0;
+      const buyerPaid = Math.max(0, revenue - discountTotal);
       const crowdpenFee = revenue * (CROWD_PCT || 0);
-      const startbuttonFee = revenue * (SB_PCT || 0);
-      const expectedPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
+      const startbuttonFee = buyerPaid * (SB_PCT || 0);
+      const expectedPayout = Math.max(
+        0,
+        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+      );
       const expectedCents = Math.round(expectedPayout * 100);
       return {
         merchantId: r.merchantId,
@@ -216,6 +224,9 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
         from,
         to,
         revenue,
+        discountTotal,
+        discountMerchantFunded,
+        buyerPaid,
         expectedCents,
       };
     })
@@ -314,6 +325,16 @@ export async function POST(request) {
       );
     }
 
+    const ip = getClientIpFromHeaders(request.headers) || "unknown";
+    const userIdForRl = String(session.user.id);
+    const rl = rateLimit({ key: `admin-payouts:bulk-create:${userIdForRl}:${ip}`, limit: 60, windowMs: 60_000 });
+    if (!rl.ok) {
+      return NextResponse.json(
+        { status: "error", message: "Too many requests" },
+        { status: 429, headers: rateLimitResponseHeaders(rl) }
+      );
+    }
+
     const body = (await request.json().catch(() => null)) || {};
     const modeRaw = String(body.mode || "settle_all").trim();
     const mode = modeRaw === "cutoff" ? "cutoff" : "settle_all";
@@ -363,6 +384,27 @@ export async function POST(request) {
               transaction_reference: transaction_reference || null,
               gateway_reference: note || null,
               completedAt: null,
+              created_by: session.user.id,
+              created_via: "admin_bulk",
+            },
+            { transaction: t }
+          );
+
+          await db.MarketplacePayoutEvent.create(
+            {
+              marketplace_admin_transaction_id: payoutTx.id,
+              event_type: "payout_created",
+              from_status: null,
+              to_status: "pending",
+              actor_type: "admin",
+              actor_user_id: session.user.id,
+              metadata: {
+                recipient_id: item.merchantId,
+                settlement_from: item.from,
+                settlement_to: item.to,
+                amount_cents: amountCents,
+                currency: "USD",
+              },
             },
             { transaction: t }
           );

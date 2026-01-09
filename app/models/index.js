@@ -30,6 +30,9 @@ import MarketplaceFunnelEvents from "./MarketplaceFunnelEvents";
 import MarketplaceCouponApplication from "./MarketplaceCouponApplication";
 import MarketplaceCouponRedemption from "./MarketplaceCouponRedemption";
 import MarketplaceCouponRedemptionItem from "./MarketplaceCouponRedemptionItem";
+import MarketplaceFeeSettings from "./MarketplaceFeeSettings";
+import MarketplacePayoutReceipt from "./MarketplacePayoutReceipt";
+import MarketplacePayoutEvent from "./MarketplacePayoutEvent";
 
 // Create models object
 const db = {
@@ -59,7 +62,10 @@ const db = {
   MarketplaceFunnelEvents,
   MarketplaceCouponApplication,
   MarketplaceCouponRedemption,
-  MarketplaceCouponRedemptionItem
+  MarketplaceCouponRedemptionItem,
+  MarketplaceFeeSettings,
+  MarketplacePayoutReceipt,
+  MarketplacePayoutEvent
 };
 
 // Initialize all associations after all models are loaded

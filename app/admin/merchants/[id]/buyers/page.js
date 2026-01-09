@@ -1,7 +1,7 @@
 "use server";
 import React from "react";
 import { db } from "../../../../models/index";
-import Link from "next/link";
+import MerchantSubpagePagination from "../MerchantSubpagePagination";
 
 function fmtUsd(v) {
   return new Intl.NumberFormat("en-US", {
@@ -36,15 +36,17 @@ export default async function AdminMerchantBuyersPage({
     '  buyer."name" AS "buyerName",\n' +
     '  buyer."email" AS "buyerEmail",\n' +
     '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue",\n' +
+    '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",\n' +
     '  COALESCE(SUM(oi."quantity"), 0) AS "units",\n' +
     '  COUNT(DISTINCT o."id")::int AS "orders",\n' +
     '  MAX(o."createdAt") AS "lastPurchaseAt"\n' +
     'FROM "marketplace_products" AS p\n' +
     'JOIN "marketplace_order_items" AS oi ON oi."marketplace_product_id" = p."id"\n' +
     'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n' +
+    'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n' +
     'LEFT JOIN "users" AS buyer ON buyer."id" = o."user_id"\n' +
     'WHERE p."user_id" = :merchantId\n' +
-    '  AND o."paymentStatus" IN (\'successful\'::"enum_marketplace_orders_paymentStatus", \'completed\'::"enum_marketplace_orders_paymentStatus")\n' +
+    '  AND o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n' +
     'GROUP BY o."user_id", buyer."id"\n' +
     'ORDER BY "revenue" DESC\n' +
     "LIMIT :limit OFFSET :offset\n";
@@ -62,7 +64,7 @@ export default async function AdminMerchantBuyersPage({
     '  JOIN "marketplace_order_items" AS oi ON oi."marketplace_product_id" = p."id"\n' +
     '  JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n' +
     '  WHERE p."user_id" = :merchantId\n' +
-    '    AND o."paymentStatus" IN (\'successful\'::"enum_marketplace_orders_paymentStatus", \'completed\'::"enum_marketplace_orders_paymentStatus")\n' +
+    '    AND o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n' +
     '  GROUP BY o."user_id"\n' +
     ") AS t\n";
 
@@ -88,7 +90,8 @@ export default async function AdminMerchantBuyersPage({
           <thead>
             <tr className="border-b">
               <th className="text-left p-3">Buyer</th>
-              <th className="text-right p-3">Revenue (USD)</th>
+              <th className="text-right p-3">Buyer Paid (USD)</th>
+              <th className="text-right p-3">Coupon Discounts</th>
               <th className="text-right p-3">Units</th>
               <th className="text-right p-3">Orders</th>
               <th className="text-left p-3">Last Purchase</th>
@@ -106,7 +109,15 @@ export default async function AdminMerchantBuyersPage({
                   </div>
                 </td>
                 <td className="p-3 text-right tabular-nums">
-                  {fmtUsd(r.revenue)}
+                  {fmtUsd(
+                    Math.max(
+                      0,
+                      (Number(r.revenue || 0) || 0) - (Number(r.discountTotal || 0) || 0)
+                    )
+                  )}
+                </td>
+                <td className="p-3 text-right tabular-nums">
+                  {fmtUsd(Number(r.discountTotal || 0) || 0)}
                 </td>
                 <td className="p-3 text-right tabular-nums">
                   {Number(r.units || 0).toLocaleString("en-US")}
@@ -121,7 +132,7 @@ export default async function AdminMerchantBuyersPage({
               <tr>
                 <td
                   className="p-6 text-center text-muted-foreground"
-                  colSpan={5}
+                  colSpan={6}
                 >
                   No buyers found.
                 </td>
@@ -137,20 +148,10 @@ export default async function AdminMerchantBuyersPage({
           {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")}{" "}
           buyers)
         </div>
-        <div className="flex gap-2">
-          <Link
-            className={`text-sm underline ${getPage <= 1 ? "pointer-events-none opacity-50" : ""}`}
-            href={`/admin/merchants/${merchantId}/buyers?page=${getPage - 1}&pageSize=${getPageSize}`}
-          >
-            Previous
-          </Link>
-          <Link
-            className={`text-sm underline ${getPage >= totalPages ? "pointer-events-none opacity-50" : ""}`}
-            href={`/admin/merchants/${merchantId}/buyers?page=${getPage + 1}&pageSize=${getPageSize}`}
-          >
-            Next
-          </Link>
-        </div>
+      </div>
+
+      <div>
+        <MerchantSubpagePagination currentPage={getPage} totalPages={totalPages} />
       </div>
     </div>
   );

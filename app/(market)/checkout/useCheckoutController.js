@@ -595,19 +595,26 @@ export function useCheckoutController() {
       return;
     const order = currentOrderRef.current;
     if (finalState.success) {
-      trackFunnelEvent({
-        event_name: "paid",
-        marketplace_order_id: order?.orderId || null,
-        metadata: {
-          orderNumber: finalState?.orderNumber || order?.orderNumber,
-        },
-      });
+      const settled = finalState?.settled === true;
+      if (settled) {
+        trackFunnelEvent({
+          event_name: "paid",
+          marketplace_order_id: order?.orderId || null,
+          metadata: {
+            orderNumber: finalState?.orderNumber || order?.orderNumber,
+          },
+        });
+      }
 
       setResultModal({
         open: true,
         type: "success",
-        title: "Payment successful",
-        message: finalState?.message || "Your order has been placed successfully.",
+        title: settled ? "Payment successful" : "Payment processing",
+        message:
+          finalState?.message ||
+          (settled
+            ? "Your order has been placed successfully."
+            : "Your payment is processing. Your purchase will be available once confirmed."),
         orderNumber: finalState?.orderNumber || order?.orderNumber,
         details: null,
       });

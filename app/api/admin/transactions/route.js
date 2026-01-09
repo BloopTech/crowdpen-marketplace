@@ -27,6 +27,11 @@ export async function GET(request) {
     const pageParam = Number.parseInt(searchParams.get("page") || "1", 10);
     const fromParam = (searchParams.get("from") || "").slice(0, 100);
     const toParam = (searchParams.get("to") || "").slice(0, 100);
+    const q = (searchParams.get("q") || "").slice(0, 200);
+    const statusParam = (searchParams.get("status") || "").slice(0, 50);
+    const typeParam = (searchParams.get("type") || "").slice(0, 50);
+    const recipientIdParam = (searchParams.get("recipientId") || "").slice(0, 80);
+    const currencyParam = (searchParams.get("currency") || "").slice(0, 10);
     const formatParam = (searchParams.get("format") || "json").toLowerCase();
     const format = formatParam === "csv" ? "csv" : "json";
     const pageSize = Number.isFinite(limitParam)
@@ -44,12 +49,54 @@ export async function GET(request) {
     const fromDate = parseDateSafe(fromParam);
     const toDate = parseDateSafe(toParam);
 
-    const where = {};
+    const whereAnd = [];
     if (fromDate || toDate) {
-      where.createdAt = {};
-      if (fromDate) where.createdAt[Op.gte] = fromDate;
-      if (toDate) where.createdAt[Op.lte] = toDate;
+      const createdAt = {};
+      if (fromDate) createdAt[Op.gte] = fromDate;
+      if (toDate) createdAt[Op.lte] = toDate;
+      whereAnd.push({ createdAt });
     }
+
+    const allowedStatuses = [
+      "pending",
+      "completed",
+      "failed",
+      "cancelled",
+      "refunded",
+      "partially_refunded",
+      "reversed",
+    ];
+    const status = allowedStatuses.includes(statusParam) ? statusParam : "";
+    if (status) whereAnd.push({ status });
+
+    const allowedTypes = ["payout", "transfer", "refund", "payment", "adjustment"];
+    const type = allowedTypes.includes(typeParam) ? typeParam : "";
+    if (type) whereAnd.push({ trans_type: type });
+
+    if (recipientIdParam) whereAnd.push({ recipient_id: recipientIdParam });
+
+    const currency = currencyParam
+      ? String(currencyParam).trim().toUpperCase()
+      : "";
+    if (currency) whereAnd.push({ currency });
+
+    if (q) {
+      const like = `%${q}%`;
+      whereAnd.push({
+        [Op.or]: [
+          { id: { [Op.iLike]: like } },
+          { transaction_reference: { [Op.iLike]: like } },
+          { gateway_reference: { [Op.iLike]: like } },
+          { transaction_id: { [Op.iLike]: like } },
+          { merchant_id: { [Op.iLike]: like } },
+          { recipient_id: { [Op.iLike]: like } },
+          { "$User.name$": { [Op.iLike]: like } },
+          { "$User.email$": { [Op.iLike]: like } },
+        ],
+      });
+    }
+
+    const where = whereAnd.length ? { [Op.and]: whereAnd } : {};
 
     const toMajor = (n) => {
       const v = n != null ? Number(n) : NaN;
@@ -60,7 +107,13 @@ export async function GET(request) {
     if (format === "csv") {
       const rows = await db.MarketplaceAdminTransactions.findAll({
         where,
-        include: [{ model: db.User, attributes: ["id", "name", "email", "image", "color"] }],
+        include: [
+          {
+            model: db.User,
+            attributes: ["id", "name", "email", "image", "color"],
+            required: false,
+          },
+        ],
         order: [["createdAt", "DESC"]],
       });
       const header = [
@@ -107,11 +160,16 @@ export async function GET(request) {
       const { rows, count } = await db.MarketplaceAdminTransactions.findAndCountAll({
         where,
         include: [
-          { model: db.User, attributes: ["id", "name", "email", "image", "color"] },
+          {
+            model: db.User,
+            attributes: ["id", "name", "email", "image", "color"],
+            required: false,
+          },
         ],
         order: [["createdAt", "DESC"]],
         limit: pageSize,
         offset,
+        distinct: true,
       });
 
       const data = (rows || []).map((r) => ({

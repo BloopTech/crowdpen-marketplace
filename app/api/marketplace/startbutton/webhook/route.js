@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
+import { Op } from "sequelize";
 import { db } from "../../../../models";
 import { render } from "@react-email/render";
 import { sendEmail } from "../../../../lib/sendEmail";
 import { OrderConfirmationEmail } from "../../../../lib/emails/OrderConfirmation";
+import { PayoutReceiptEmail } from "../../../../lib/emails/PayoutReceipt";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 import { assertAnyEnvInProduction } from "../../../../lib/env";
 
@@ -22,9 +24,29 @@ const {
   MarketplaceProduct,
   MarketplaceCoupon,
   MarketplaceCouponRedemption,
+  MarketplaceAdminTransactions,
+  MarketplacePayoutReceipt,
+  MarketplacePayoutEvent,
   User,
   sequelize,
 } = db;
+
+function fmtDateTimeUtc(v) {
+  const d = v ? new Date(v) : null;
+  if (!d || !Number.isFinite(d.getTime())) return null;
+  return d.toLocaleString("en-US", { timeZone: "UTC" });
+}
+
+function getFinancePayoutBcc() {
+  const raw =
+    process.env.PAYOUT_RECEIPTS_BCC ||
+    process.env.PAYOUT_RECEIPT_BCC ||
+    process.env.FINANCE_PAYOUT_BCC ||
+    process.env.FINANCE_EMAIL ||
+    "";
+  const s = String(raw || "").trim();
+  return s ? s : null;
+}
 
 function getWebhookSecret() {
   return (
@@ -235,6 +257,45 @@ function extractMetadata(payload) {
   );
 }
 
+function extractTransactionType(payload) {
+  return firstString(
+    payload?.data?.transaction?.transType,
+    payload?.data?.transaction?.trans_type,
+    payload?.data?.transType,
+    payload?.data?.trans_type,
+    payload?.transType,
+    payload?.trans_type
+  );
+}
+
+function looksLikeTransferEvent(payload) {
+  const p = payload || {};
+  const transType = (extractTransactionType(p) || "").toString().toLowerCase();
+  if (transType === "transfer") return true;
+  const s = String(p?.event || p?.type || "").toLowerCase();
+  return s.includes("transfer.");
+}
+
+function mapTransferStatus(payload) {
+  const p = payload || {};
+  const candidates = [
+    p?.data?.transaction?.status,
+    p?.status,
+    p?.data?.status,
+    p?.event,
+    p?.type,
+  ];
+  const joined = candidates.filter(Boolean).map((v) => String(v)).join(" |");
+  const s = joined.toLowerCase();
+
+  if (s.includes("failed")) return "failed";
+  if (s.includes("reversed")) return "reversed";
+  if (s.includes("cancelled") || s.includes("canceled")) return "cancelled";
+  if (s.includes("successful") || s.includes("success")) return "completed";
+  if (s.includes("pending") || s.includes("initiated")) return "pending";
+  return null;
+}
+
 function isRevokedValue(value) {
   const s = value != null ? String(value).trim() : "";
   return s.toUpperCase() === "REVOKED";
@@ -278,9 +339,286 @@ export async function POST(request) {
     return NextResponse.json({ status: "error", message: "Unauthorized" }, { status: 401 });
   }
 
-  const ok = isPaymentSuccess(payload);
-  const failed = isPaymentFailed(payload);
-  const stage = getCollectionStage(payload);
+  const isTransfer = looksLikeTransferEvent(payload);
+  const ok = !isTransfer && isPaymentSuccess(payload);
+  const failed = !isTransfer && isPaymentFailed(payload);
+  const stage = !isTransfer ? getCollectionStage(payload) : null;
+
+  if (isTransfer) {
+    const tx = payload?.data?.transaction || {};
+    const transferStatus = mapTransferStatus(payload);
+    const referenceCandidates = [
+      tx?.userTransactionReference,
+      tx?.user_transaction_reference,
+      tx?.transactionReference,
+      tx?.transaction_reference,
+      tx?.gatewayReference,
+      tx?.gateway_reference,
+      tx?._id,
+      tx?.id,
+    ]
+      .filter(Boolean)
+      .map((v) => String(v).trim())
+      .filter(Boolean);
+    const references = Array.from(new Set(referenceCandidates));
+
+    if (!transferStatus || !references.length) {
+      return NextResponse.json({ status: "success", message: "Transfer webhook received" });
+    }
+
+    const payoutTx = await MarketplaceAdminTransactions.findOne({
+      where: {
+        trans_type: "payout",
+        [Op.or]: [
+          { transaction_reference: { [Op.in]: references } },
+          { gateway_reference: { [Op.in]: references } },
+          { transaction_id: { [Op.in]: references } },
+        ],
+      },
+    });
+
+    if (!payoutTx) {
+      return NextResponse.json({ status: "success", message: "Transfer webhook received" });
+    }
+
+    const t = await sequelize.transaction();
+    try {
+      const lockedTx = await MarketplaceAdminTransactions.findOne({
+        where: { id: payoutTx.id },
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
+      if (!lockedTx) throw new Error("Payout transaction not found");
+
+      const current = String(lockedTx.status || "").toLowerCase();
+      const updates = {};
+
+      const statusChanged = current !== transferStatus;
+      const becameCompleted = transferStatus === "completed" && current !== "completed";
+
+      if (current !== transferStatus) {
+        updates.status = transferStatus;
+      }
+
+      if (!lockedTx.transaction_reference && references[0]) {
+        updates.transaction_reference = references[0];
+      }
+
+      if (!lockedTx.gateway_reference && (tx?.gatewayReference || tx?.gateway_reference)) {
+        updates.gateway_reference = tx?.gatewayReference || tx?.gateway_reference;
+      }
+
+      if (tx?.merchantId && !lockedTx.merchant_id) {
+        updates.merchant_id = tx?.merchantId;
+      }
+
+      if (tx?.feeAmount != null && lockedTx.fee_amount == null) {
+        updates.fee_amount = tx?.feeAmount;
+      }
+
+      if (tx?.amount != null && lockedTx.amount == null) {
+        updates.amount = tx?.amount;
+      }
+
+      if (tx?.currency && !lockedTx.currency) {
+        updates.currency = String(tx.currency).toUpperCase();
+      }
+
+      if (
+        transferStatus === "completed" &&
+        !lockedTx.completedAt
+      ) {
+        updates.completedAt = new Date();
+      }
+
+      if (Object.keys(updates).length) {
+        await lockedTx.update(updates, { transaction: t });
+      }
+
+      if (statusChanged) {
+        await MarketplacePayoutEvent.create(
+          {
+            marketplace_admin_transaction_id: lockedTx.id,
+            event_type: "payout_status_changed",
+            from_status: current || null,
+            to_status: transferStatus || null,
+            actor_type: "startbutton_webhook",
+            actor_user_id: null,
+            metadata: {
+              references,
+              event: payload?.event || payload?.type || null,
+            },
+          },
+          { transaction: t }
+        );
+      }
+
+      // Queue receipt (idempotent) if payout became completed.
+      if (becameCompleted) {
+        const recipient = await User.findOne({
+          where: { id: lockedTx.recipient_id },
+          transaction: t,
+        });
+        const toEmail = recipient?.email ? String(recipient.email).trim() : "";
+        if (toEmail) {
+          const bcc = getFinancePayoutBcc();
+          await MarketplacePayoutReceipt.findOrCreate({
+            where: { marketplace_admin_transaction_id: lockedTx.id },
+            defaults: {
+              marketplace_admin_transaction_id: lockedTx.id,
+              recipient_id: lockedTx.recipient_id,
+              to_email: toEmail,
+              bcc_email: bcc,
+              subject: "Crowdpen payout receipt",
+              status: "queued",
+              sent_at: null,
+            },
+            transaction: t,
+          });
+        }
+      }
+
+      await t.commit();
+
+      // Send receipt after commit (best-effort), with idempotent claim.
+      try {
+        if (becameCompleted) {
+          const t2 = await sequelize.transaction();
+          let claimed = false;
+          let receiptRow = null;
+          try {
+            receiptRow = await MarketplacePayoutReceipt.findOne({
+              where: { marketplace_admin_transaction_id: payoutTx.id },
+              transaction: t2,
+              lock: t2.LOCK.UPDATE,
+            });
+            if (receiptRow && !receiptRow.sent_at && receiptRow.status !== "sending") {
+              await receiptRow.update({ status: "sending" }, { transaction: t2 });
+              claimed = true;
+            }
+            await t2.commit();
+          } catch (e) {
+            await t2.rollback();
+            throw e;
+          }
+
+          if (claimed && receiptRow) {
+            const txFresh = await MarketplaceAdminTransactions.findOne({ where: { id: payoutTx.id } });
+            const recipient = txFresh
+              ? await User.findOne({ where: { id: txFresh.recipient_id } })
+              : null;
+
+            const [period] = await sequelize.query(
+              `
+                SELECT settlement_from AS "settlementFrom", settlement_to AS "settlementTo"
+                FROM public.marketplace_payout_periods
+                WHERE marketplace_admin_transaction_id = :txId
+                LIMIT 1
+              `,
+              {
+                replacements: { txId: payoutTx.id },
+                type: db.Sequelize.QueryTypes.SELECT,
+              }
+            );
+
+            const currency = (txFresh?.currency || "USD").toString().toUpperCase();
+            const amountMajor = Number(txFresh?.amount || 0) / 100;
+            const paidAtUtc = fmtDateTimeUtc(txFresh?.completedAt || new Date());
+            const settlementFrom = period?.settlementFrom ? String(period.settlementFrom) : null;
+            const settlementTo = period?.settlementTo ? String(period.settlementTo) : null;
+            const reference =
+              txFresh?.transaction_reference ||
+              txFresh?.gateway_reference ||
+              txFresh?.transaction_id ||
+              null;
+
+            const merchantName = recipient?.name || null;
+            const merchantEmail = receiptRow.to_email;
+
+            const html = render(
+              PayoutReceiptEmail({
+                merchantName,
+                merchantEmail,
+                payoutId: payoutTx.id,
+                amount: amountMajor,
+                currency,
+                paidAt: paidAtUtc,
+                settlementFrom,
+                settlementTo,
+                reference,
+              })
+            );
+
+            const subject = `Crowdpen payout receipt - ${amountMajor.toFixed(2)} ${currency}`;
+            const bcc = receiptRow.bcc_email || getFinancePayoutBcc();
+
+            const result = await sendEmail({
+              to: receiptRow.to_email,
+              bcc,
+              subject,
+              html,
+              text: `Payout receipt. Amount: ${amountMajor.toFixed(2)} ${currency}. Payout ID: ${payoutTx.id}.`,
+            });
+
+            await MarketplacePayoutReceipt.update(
+              {
+                subject,
+                html,
+                text: `Payout receipt. Amount: ${amountMajor.toFixed(2)} ${currency}. Payout ID: ${payoutTx.id}.`,
+                provider_message_id: result?.messageId || null,
+                status: "sent",
+                sent_at: new Date(),
+                error: null,
+              },
+              { where: { marketplace_admin_transaction_id: payoutTx.id } }
+            );
+
+            await MarketplacePayoutEvent.create({
+              marketplace_admin_transaction_id: payoutTx.id,
+              event_type: "payout_receipt_sent",
+              from_status: null,
+              to_status: null,
+              actor_type: "system_email",
+              actor_user_id: null,
+              metadata: { to: receiptRow.to_email, bcc: bcc || null },
+            });
+          }
+        }
+      } catch (e) {
+        console.error("payout receipt email error", e);
+        try {
+          await MarketplacePayoutReceipt.update(
+            {
+              status: "error",
+              error: e?.message || "Failed to send receipt",
+            },
+            { where: { marketplace_admin_transaction_id: payoutTx.id, sent_at: null } }
+          );
+          await MarketplacePayoutEvent.create({
+            marketplace_admin_transaction_id: payoutTx.id,
+            event_type: "payout_receipt_failed",
+            from_status: null,
+            to_status: null,
+            actor_type: "system_email",
+            actor_user_id: null,
+            metadata: { error: e?.message || "Failed" },
+          });
+        } catch {
+          // best-effort
+        }
+      }
+
+      return NextResponse.json({ status: "success", message: "Payout transaction updated" });
+    } catch (error) {
+      await t.rollback();
+      console.error("startbutton transfer webhook error:", error);
+      const isProd = process.env.NODE_ENV === "production";
+      return NextResponse.json(
+        { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },
+        { status: 500 }
+      );
+    }
+  }
 
   // Identify order
   const orderId = extractOrderId(payload);
@@ -322,7 +660,10 @@ export async function POST(request) {
       String(lockedOrder.paymentStatus || "").toLowerCase() === "successful" ||
       String(lockedOrder.orderStatus || "").toLowerCase() === "successful";
 
-    if (ok) {
+    const isSettled = stage === "completed";
+    const isVerified = stage === "verified";
+
+    if (ok && isSettled) {
       const meta = extractMetadata(payload) || {};
       const paid_amount = toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
       const fx_rate = toFiniteNumber(meta?.fxRate) ?? toFiniteNumber(meta?.fx_rate);
@@ -331,12 +672,7 @@ export async function POST(request) {
         .trim()
         .toUpperCase();
 
-      const nextOrderStatus =
-        stage === "completed"
-          ? "successful"
-          : String(lockedOrder.orderStatus || "").toLowerCase() === "successful"
-            ? "successful"
-            : "processing";
+      const nextOrderStatus = "successful";
 
       await lockedOrder.update(
         {
@@ -364,7 +700,7 @@ export async function POST(request) {
           },
         ],
         transaction: t,
-        lock: t.LOCK.UPDATE,
+        lock: { level: t.LOCK.UPDATE, of: MarketplaceOrderItems },
       });
       for (const item of items) {
         if (isRevokedValue(item.downloadUrl)) continue;
@@ -455,6 +791,24 @@ export async function POST(request) {
         status: "success",
         message: stage === "completed" ? "Order marked as completed" : "Order marked as paid",
       });
+    }
+
+    if (ok && isVerified) {
+      const nextOrderStatus =
+        ["successful"].includes(String(lockedOrder.orderStatus || "").toLowerCase())
+          ? "successful"
+          : "processing";
+
+      await lockedOrder.update(
+        {
+          orderStatus: nextOrderStatus,
+          notes: mergedNotes,
+        },
+        { transaction: t }
+      );
+
+      await t.commit();
+      return NextResponse.json({ status: "success", message: "Order marked as processing" });
     }
 
     if (failed) {

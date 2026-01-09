@@ -80,21 +80,10 @@ export default function AdminAnalyticsContent(props) {
   const crowdpenFeeLabel = `${Math.round(crowdpenFeePercent * 100)}%`;
   const startbuttonFeeLabel = `${Math.round(startbuttonFeePercent * 100)}%`;
 
-  const computeFee = (amount, percent) => {
-    const value = Number(amount || 0) * percent;
-    return Number.isFinite(value) ? value : 0;
-  };
-
   const totalRevenueValue = Number(revenueTotals?.revenue || 0);
-  const totalCrowdpenShare = computeFee(totalRevenueValue, crowdpenFeePercent);
-  const totalStartbuttonShare = computeFee(
-    totalRevenueValue,
-    startbuttonFeePercent
-  );
-  const totalCreatorShare = Math.max(
-    0,
-    totalRevenueValue - totalCrowdpenShare - totalStartbuttonShare
-  );
+  const totalCrowdpenShare = Number(revenueTotals?.crowdpenFee || 0) || 0;
+  const totalStartbuttonShare = Number(revenueTotals?.startbuttonFee || 0) || 0;
+  const totalCreatorShare = Number(revenueTotals?.creatorPayout || 0) || 0;
 
   const grossRevenueValue = Number(summary?.grossRevenue || 0);
   const netRevenueValue = Number(summary?.netRevenue || 0);
@@ -437,18 +426,9 @@ export default function AdminAnalyticsContent(props) {
                       {revenueData.map((entry) => {
                         const periodLabel = fmtPeriod(entry.period);
                         const revenueValue = Number(entry.revenue || 0);
-                        const entryCrowdpen = computeFee(
-                          revenueValue,
-                          crowdpenFeePercent
-                        );
-                        const entryStartbutton = computeFee(
-                          revenueValue,
-                          startbuttonFeePercent
-                        );
-                        const entryCreator = Math.max(
-                          0,
-                          revenueValue - entryCrowdpen - entryStartbutton
-                        );
+                        const entryCrowdpen = Number(entry.crowdpenFee || 0) || 0;
+                        const entryStartbutton = Number(entry.startbuttonFee || 0) || 0;
+                        const entryCreator = Number(entry.creatorPayout || 0) || 0;
                         return (
                           <TableRow key={`${entry.period}-${entry.revenue}`}>
                             <TableCell>{periodLabel}</TableCell>
@@ -535,10 +515,10 @@ export default function AdminAnalyticsContent(props) {
                         {fmtMoney(p.creatorPayout, p.currency)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fmtMoney(computeFee(p.revenue, crowdpenFeePercent), p.currency)}
+                        {fmtMoney(p.crowdpenFee, p.currency)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fmtMoney(computeFee(p.revenue, startbuttonFeePercent), p.currency)}
+                        {fmtMoney(p.startbuttonFee, p.currency)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -614,10 +594,10 @@ export default function AdminAnalyticsContent(props) {
                         {fmtMoney(m.creatorPayout)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fmtMoney(computeFee(m.revenue, crowdpenFeePercent))}
+                        {fmtMoney(m.crowdpenFee)}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fmtMoney(computeFee(m.revenue, startbuttonFeePercent))}
+                        {fmtMoney(m.startbuttonFee)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -804,7 +784,9 @@ export default function AdminAnalyticsContent(props) {
                   <TableRow>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Orders</TableHead>
-                    <TableHead className="text-right">Order Total</TableHead>
+                    <TableHead className="text-right">Gross Revenue</TableHead>
+                    <TableHead className="text-right">Discount</TableHead>
+                    <TableHead className="text-right">Buyer Paid</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -817,14 +799,20 @@ export default function AdminAnalyticsContent(props) {
                         {Number(r.orderCount || 0).toLocaleString("en-US")}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fmtMoney(r.orderTotal)}
+                        {fmtMoney(r.grossRevenue)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fmtMoney(r.discountTotal)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fmtMoney(r.buyerPaid)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {paymentStatusRows.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={3}
+                        colSpan={5}
                         className="text-center text-sm text-muted-foreground"
                       >
                         No orders.
@@ -854,7 +842,7 @@ export default function AdminAnalyticsContent(props) {
                   <TableRow>
                     <TableHead>Category</TableHead>
                     <TableHead className="text-right">Units</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="text-right">Buyer Paid</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -865,7 +853,7 @@ export default function AdminAnalyticsContent(props) {
                         {Number(c.unitsSold || 0).toLocaleString("en-US")}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fmtMoney(c.revenue)}
+                        {fmtMoney(c.buyerPaid ?? c.revenue)}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -971,8 +959,9 @@ export default function AdminAnalyticsContent(props) {
                   <TableRow>
                     <TableHead>Method</TableHead>
                     <TableHead className="text-right">Orders</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="text-right">Gross Revenue</TableHead>
                     <TableHead className="text-right">Discount</TableHead>
+                    <TableHead className="text-right">Buyer Paid</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -985,17 +974,20 @@ export default function AdminAnalyticsContent(props) {
                         {Number(r.orderCount || 0).toLocaleString("en-US")}
                       </TableCell>
                       <TableCell className="text-right">
-                        {fmtMoney(r.orderTotal)}
+                        {fmtMoney(r.grossRevenue)}
                       </TableCell>
                       <TableCell className="text-right">
                         {fmtMoney(r.discountTotal)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {fmtMoney(r.buyerPaid)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {paymentMethods.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={4}
+                        colSpan={5}
                         className="text-center text-sm text-muted-foreground"
                       >
                         No paid orders.
@@ -1022,7 +1014,7 @@ export default function AdminAnalyticsContent(props) {
             ) : (
               <div className="space-y-3">
                 {couponTotals && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="rounded border border-border p-3">
                       <div className="text-xs text-muted-foreground">
                         Coupon Orders
@@ -1041,6 +1033,14 @@ export default function AdminAnalyticsContent(props) {
                         {fmtMoney(couponTotals.discountTotal)}
                       </div>
                     </div>
+                    <div className="rounded border border-border p-3">
+                      <div className="text-xs text-muted-foreground">
+                        Total Buyer Paid
+                      </div>
+                      <div className="text-base font-semibold">
+                        {fmtMoney(couponTotals.buyerPaid)}
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -1048,8 +1048,10 @@ export default function AdminAnalyticsContent(props) {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Code</TableHead>
-                      <TableHead className="text-right">Crowdpen Fee ({crowdpenFeeLabel})</TableHead>
-                      <TableHead className="text-right">Startbutton Fee ({startbuttonFeeLabel})</TableHead>
+                      <TableHead className="text-right">Orders</TableHead>
+                      <TableHead className="text-right">Gross Revenue</TableHead>
+                      <TableHead className="text-right">Discount</TableHead>
+                      <TableHead className="text-right">Buyer Paid</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1062,14 +1064,20 @@ export default function AdminAnalyticsContent(props) {
                           {Number(r.orderCount || 0).toLocaleString("en-US")}
                         </TableCell>
                         <TableCell className="text-right">
+                          {fmtMoney(r.grossRevenue)}
+                        </TableCell>
+                        <TableCell className="text-right">
                           {fmtMoney(r.discountTotal)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {fmtMoney(r.buyerPaid)}
                         </TableCell>
                       </TableRow>
                     ))}
                     {couponRows.length === 0 && (
                       <TableRow>
                         <TableCell
-                          colSpan={3}
+                          colSpan={5}
                           className="text-center text-sm text-muted-foreground"
                         >
                           No coupon usage.

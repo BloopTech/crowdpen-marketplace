@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op } from "sequelize";
+import { getMarketplaceFeePercents } from "../../../lib/marketplaceFees";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
 
 function assertAdmin(user) {
@@ -155,6 +156,7 @@ export async function GET(request) {
         lastSaleAt: null,
         payoutsCompleted: 0,
         payoutsPending: 0,
+        payoutsOwed: 0,
         lastPaidAt: null,
         lastSettlementTo: null,
       });
@@ -223,12 +225,14 @@ export async function GET(request) {
         'SELECT\n'
         + '  p."user_id" AS "merchantId",\n'
         + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue30d",\n'
+        + '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal30d",\n'
         + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSold30d",\n'
         + '  MAX(o."createdAt") AS "lastSaleAt"\n'
         + 'FROM "marketplace_order_items" AS oi\n'
         + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
         + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
-        + 'WHERE o."paymentStatus" IN (\'successful\'::"enum_marketplace_orders_paymentStatus", \'completed\'::"enum_marketplace_orders_paymentStatus")\n'
+        + 'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n'
+        + 'WHERE o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n'
         + '  AND p."user_id" IN (:merchantIds)\n'
         + '  AND o."createdAt" >= :from30\n'
         + 'GROUP BY 1\n';
@@ -242,10 +246,79 @@ export async function GET(request) {
         const mid = String(r.merchantId);
         const kpi = kpiByMerchantId.get(mid);
         if (!kpi) continue;
-        kpi.revenue30d = toNumberSafe(r.revenue30d);
+        const revenue30d = toNumberSafe(r.revenue30d);
+        const discountTotal30d = toNumberSafe(r.discountTotal30d);
+        kpi.revenue30d = Math.max(0, revenue30d - discountTotal30d);
         kpi.unitsSold30d = toNumberSafe(r.unitsSold30d);
         kpi.lastSaleAt = toIsoOrNull(r.lastSaleAt);
       }
+
+      const salesAllTimeSql =
+        'SELECT\n'
+        + '  p."user_id" AS "merchantId",\n'
+        + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenueAllTime",\n'
+        + '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotalAllTime",\n'
+        + '  COALESCE(SUM(oi."quantity"), 0) AS "unitsSoldAllTime"\n'
+        + 'FROM "marketplace_order_items" AS oi\n'
+        + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
+        + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
+        + 'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n'
+        + 'WHERE o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n'
+        + '  AND p."user_id" IN (:merchantIds)\n'
+        + 'GROUP BY 1\n';
+
+      const salesAllTimeRows = await db.sequelize.query(salesAllTimeSql, {
+        replacements: { merchantIds },
+        type: db.Sequelize.QueryTypes.SELECT,
+      });
+
+      for (const r of salesAllTimeRows || []) {
+        const mid = String(r.merchantId);
+        const kpi = kpiByMerchantId.get(mid);
+        if (!kpi) continue;
+        const revenueAllTime = toNumberSafe(r.revenueAllTime);
+        const discountTotalAllTime = toNumberSafe(r.discountTotalAllTime);
+        kpi.revenueAllTime = Math.max(0, revenueAllTime - discountTotalAllTime);
+        kpi.unitsSoldAllTime = toNumberSafe(r.unitsSoldAllTime);
+      }
+
+      const discountFundingSql =
+        'SELECT\n'
+        + '  p."user_id" AS "merchantId",\n'
+        + '  COALESCE(SUM((oi."subtotal")::numeric), 0) AS "grossSubtotalAllTime",\n'
+        + '  COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotalAllTime",\n'
+        + '  COALESCE(SUM(\n'
+        + '    CASE\n'
+        + '      WHEN (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN (\'admin\', \'senior_admin\'))\n'
+        + '        THEN (ri."discount_amount")::numeric\n'
+        + '      ELSE 0\n'
+        + '    END\n'
+        + '  ), 0) AS "discountCrowdpenFundedAllTime",\n'
+        + '  COALESCE(SUM(\n'
+        + '    CASE\n'
+        + '      WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN (\'admin\', \'senior_admin\'))\n'
+        + '        THEN (ri."discount_amount")::numeric\n'
+        + '      ELSE 0\n'
+        + '    END\n'
+        + '  ), 0) AS "discountMerchantFundedAllTime"\n'
+        + 'FROM "marketplace_order_items" AS oi\n'
+        + 'JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"\n'
+        + 'JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"\n'
+        + 'LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"\n'
+        + 'LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"\n'
+        + 'LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"\n'
+        + 'LEFT JOIN "users" AS cu ON cu."id" = c."created_by"\n'
+        + 'WHERE o."paymentStatus" = \'successful\'::"enum_marketplace_orders_paymentStatus"\n'
+        + '  AND p."user_id" IN (:merchantIds)\n'
+        + 'GROUP BY 1\n';
+
+      const discountFundingRows = await db.sequelize.query(discountFundingSql, {
+        replacements: { merchantIds },
+        type: db.Sequelize.QueryTypes.SELECT,
+      });
+
+      const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
+        await getMarketplaceFeePercents({ db });
 
       const payoutsSql =
         'SELECT\n'
@@ -270,6 +343,31 @@ export async function GET(request) {
         kpi.payoutsCompleted = toMajorCents(r.completedCents);
         kpi.payoutsPending = toMajorCents(r.pendingCents);
         kpi.lastPaidAt = toIsoOrNull(r.lastPaidAt);
+      }
+
+      for (const r of discountFundingRows || []) {
+        const mid = String(r.merchantId);
+        const kpi = kpiByMerchantId.get(mid);
+        if (!kpi) continue;
+
+        const grossSubtotalAllTime = toNumberSafe(r.grossSubtotalAllTime);
+        const discountTotalAllTime = toNumberSafe(r.discountTotalAllTime);
+        const discountMerchantFundedAllTime = toNumberSafe(
+          r.discountMerchantFundedAllTime
+        );
+
+        const buyerPaid = Math.max(0, grossSubtotalAllTime - discountTotalAllTime);
+        const crowdpenFee = grossSubtotalAllTime * (CROWD_PCT || 0);
+        const startbuttonFee = buyerPaid * (SB_PCT || 0);
+        const creatorPayout = Math.max(
+          0,
+          grossSubtotalAllTime - discountMerchantFundedAllTime - crowdpenFee - startbuttonFee
+        );
+
+        const completed = Number(kpi.payoutsCompleted || 0) || 0;
+        const inFlight = Number(kpi.payoutsPending || 0) || 0;
+        const owed = creatorPayout - completed - inFlight;
+        kpi.payoutsOwed = Number.isFinite(owed) ? Math.max(0, Number(owed.toFixed(2))) : 0;
       }
 
       const settlementSql =

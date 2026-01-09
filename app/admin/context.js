@@ -114,7 +114,17 @@ export function AdminProvider({ children }) {
   });
 
   // Transactions
-  const [transactionsParams, setTransactionsParams] = useState({ page: 1, pageSize: 20, from: "", to: "" });
+  const [transactionsParams, setTransactionsParams] = useState({
+    page: 1,
+    pageSize: 20,
+    from: "",
+    to: "",
+    q: "",
+    status: "",
+    type: "",
+    recipientId: "",
+    currency: "",
+  });
   const transactionsQuery = useQuery({
     queryKey: ["admin", "transactions", transactionsParams],
     queryFn: () => {
@@ -124,6 +134,13 @@ export function AdminProvider({ children }) {
       });
       if (transactionsParams.from) qs.set("from", transactionsParams.from);
       if (transactionsParams.to) qs.set("to", transactionsParams.to);
+      if (transactionsParams.q) qs.set("q", transactionsParams.q);
+      if (transactionsParams.status) qs.set("status", transactionsParams.status);
+      if (transactionsParams.type) qs.set("type", transactionsParams.type);
+      if (transactionsParams.recipientId) {
+        qs.set("recipientId", transactionsParams.recipientId);
+      }
+      if (transactionsParams.currency) qs.set("currency", transactionsParams.currency);
       return fetchJson(`/api/admin/transactions?${qs.toString()}`);
     },
     enabled: false,
@@ -153,6 +170,7 @@ export function AdminProvider({ children }) {
   const merchantRecipientsQuery = useQuery({
     queryKey: ["admin", "users", { scope: "all", purpose: "payout_recipients" }],
     queryFn: () => fetchJson(`/api/admin/users?scope=all&limit=500`),
+    enabled: false,
   });
 
   // Tickets

@@ -6,10 +6,6 @@ import { useQueryStates, parseAsInteger, parseAsString } from "nuqs";
 
 const AdminAnalyticsContext = createContext(null);
 
-const CROWD_PEN_FEE_PERCENT = 0.15;
-const STARTBUTTON_FEE_PERCENT = 0.05;
-const PLATFORM_FEE_PERCENT = CROWD_PEN_FEE_PERCENT + STARTBUTTON_FEE_PERCENT;
-
 async function fetchJson(url) {
   return fetch(url, { credentials: "include", cache: "no-store" }).then(
     async (res) => {
@@ -222,11 +218,17 @@ export function AdminAnalyticsProvider({ children }) {
     },
   });
 
+  const feesQuery = useQuery({
+    queryKey: ["admin", "fees"],
+    queryFn: () => fetchJson("/api/admin/fees"),
+  });
+
   const loading =
     revenueQuery.isLoading ||
     summaryQuery.isLoading ||
     topProductsQuery.isLoading ||
     topMerchantsQuery.isLoading ||
+    feesQuery.isLoading ||
     paymentStatusQuery.isLoading ||
     categoryBreakdownQuery.isLoading ||
     customersQuery.isLoading ||
@@ -257,9 +259,9 @@ export function AdminAnalyticsProvider({ children }) {
 
   const chartData = revenueData.map((r) => {
     const revenue = Number(r.revenue || 0) || 0;
-    const crowdpenFee = revenue * CROWD_PEN_FEE_PERCENT;
-    const startbuttonFee = revenue * STARTBUTTON_FEE_PERCENT;
-    const creatorPayout = Math.max(0, revenue - crowdpenFee - startbuttonFee);
+    const crowdpenFee = Number(r.crowdpenFee || 0) || 0;
+    const startbuttonFee = Number(r.startbuttonFee || 0) || 0;
+    const creatorPayout = Number(r.creatorPayout || 0) || 0;
     return {
       period: r.period,
       revenue,
@@ -278,6 +280,12 @@ export function AdminAnalyticsProvider({ children }) {
 
   const topProducts = topProductsQuery?.data?.data || [];
   const topMerchants = topMerchantsQuery?.data?.data || [];
+
+  const crowdpenFeePercent =
+    Number(feesQuery?.data?.data?.crowdpenPct) || 0;
+  const startbuttonFeePercent =
+    Number(feesQuery?.data?.data?.startbuttonPct) || 0;
+  const platformFeePercent = crowdpenFeePercent + startbuttonFeePercent;
 
   return (
     <AdminAnalyticsContext.Provider
@@ -319,9 +327,9 @@ export function AdminAnalyticsProvider({ children }) {
         fmtMoney,
         fmtPeriod,
         revenueData,
-        platformFeePercent: PLATFORM_FEE_PERCENT,
-        crowdpenFeePercent: CROWD_PEN_FEE_PERCENT,
-        startbuttonFeePercent: STARTBUTTON_FEE_PERCENT,
+        platformFeePercent,
+        crowdpenFeePercent,
+        startbuttonFeePercent,
         interval
       }}
     >

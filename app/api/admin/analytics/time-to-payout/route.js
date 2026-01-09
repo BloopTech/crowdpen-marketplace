@@ -52,8 +52,8 @@ export async function GET(request) {
           ON t.id = pa.marketplace_admin_transaction_id
         JOIN marketplace_orders AS o
           ON o.id = pa.marketplace_order_id
-        WHERE LOWER(t.trans_type::text) = 'payout'
-          AND LOWER(t.status::text) = 'completed'
+        WHERE t.trans_type = 'payout'
+          AND t.status = 'completed'
           AND t."completedAt" IS NOT NULL
           AND t."completedAt" >= :from
           AND t."completedAt" <= :to

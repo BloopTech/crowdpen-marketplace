@@ -9,6 +9,11 @@ class MarketplaceAdminTransactions extends Model {
     MarketplaceAdminTransactions.belongsTo(models.User, {
       foreignKey: "recipient_id",
     });
+
+    MarketplaceAdminTransactions.belongsTo(models.User, {
+      as: "CreatedBy",
+      foreignKey: "created_by",
+    });
   }
 }
 
@@ -51,6 +56,14 @@ MarketplaceAdminTransactions.init(
     currency: DataTypes.TEXT,
     authorization_code: DataTypes.TEXT,
     completedAt: DataTypes.DATE,
+    created_by: {
+      type: DataTypes.UUID,
+      references: {
+        model: "users",
+        key: "id",
+      },
+    },
+    created_via: DataTypes.TEXT,
   },
   {
     sequelize,

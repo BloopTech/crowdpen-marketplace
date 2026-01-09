@@ -957,6 +957,31 @@ export async function finalizeOrder(prevState, formData) {
         stageParts.includes("completed");
       const nextOrderStatus = isSettled ? "successful" : "processing";
 
+      if (!isSettled) {
+        await order.update(
+          {
+            orderStatus: nextOrderStatus,
+            paystackReferenceId: reference || order.paystackReferenceId,
+            notes,
+            paid_amount: paid_amount != null ? paid_amount : order.paid_amount,
+            paid_currency: paid_currency || order.paid_currency,
+            fx_rate: fx_rate != null ? fx_rate : order.fx_rate,
+          },
+          { transaction: t }
+        );
+
+        await t.commit();
+        revalidatePath("/cart");
+        revalidatePath("/account");
+
+        return {
+          success: true,
+          message: "Payment is processing",
+          orderNumber: order.order_number,
+          settled: false,
+        };
+      }
+
       await order.update(
         {
           paymentStatus: "successful",
@@ -1069,6 +1094,7 @@ export async function finalizeOrder(prevState, formData) {
         success: true,
         message: "Order completed",
         orderNumber: order.order_number,
+        settled: true,
       };
     }
 

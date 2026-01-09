@@ -1,7 +1,7 @@
 "use server";
 import React from "react";
-import Link from "next/link";
 import { db } from "../../../../models/index";
+import MerchantSubpagePagination from "../MerchantSubpagePagination";
 
 function fmtUsd(v) {
   return new Intl.NumberFormat("en-US", {
@@ -130,20 +130,10 @@ export default async function AdminMerchantPayoutsPage({
           {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")}{" "}
           payouts)
         </div>
-        <div className="flex gap-2">
-          <Link
-            className={`text-sm underline ${getPage <= 1 ? "pointer-events-none opacity-50" : ""}`}
-            href={`/admin/merchants/${merchantId}/payouts?page=${getPage - 1}&pageSize=${getPageSize}`}
-          >
-            Previous
-          </Link>
-          <Link
-            className={`text-sm underline ${getPage >= totalPages ? "pointer-events-none opacity-50" : ""}`}
-            href={`/admin/merchants/${merchantId}/payouts?page=${getPage + 1}&pageSize=${getPageSize}`}
-          >
-            Next
-          </Link>
-        </div>
+      </div>
+
+      <div>
+        <MerchantSubpagePagination currentPage={getPage} totalPages={totalPages} />
       </div>
     </div>
   );

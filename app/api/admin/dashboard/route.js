@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
+import { Op } from "sequelize";
 
 function assertAdmin(user) {
   return (
@@ -29,25 +30,32 @@ export async function GET() {
       db.MarketplaceAdminTransactions.count(),
     ]);
 
-    // Sum payouts
-    const payouts = await db.MarketplaceAdminTransactions.findAll({
-      attributes: ["amount", "currency", "status", "trans_type"],
-    });
-    let totalPayoutAmount = 0;
-    for (const p of payouts) {
-      if (p?.amount) totalPayoutAmount += Number(p.amount) || 0;
-    }
-    totalPayoutAmount = totalPayoutAmount / 100;
+    const [totalPayoutAmountCents, salesAggRows] = await Promise.all([
+      db.MarketplaceAdminTransactions.sum("amount", {
+        where: {
+          trans_type: "payout",
+          status: { [Op.in]: ["completed"] },
+        },
+      }),
+      db.sequelize.query(
+        `
+          SELECT
+            COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue",
+            COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal"
+          FROM "marketplace_order_items" AS oi
+          JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
+          LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
+          WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
+        `,
+        { type: db.Sequelize.QueryTypes.SELECT }
+      ),
+    ]);
 
-    // Total sales from orders
-    const orders = await db.MarketplaceOrder.findAll({ attributes: ["total", "currency", "paymentStatus"] });
-    let totalSales = 0;
-    for (const o of orders) {
-      const ps = String(o?.paymentStatus || "").toLowerCase();
-      if (["successful", "completed"].includes(ps) && o?.total) {
-        totalSales += Number(o.total) || 0;
-      }
-    }
+    const totalPayoutAmount = (Number(totalPayoutAmountCents) || 0) / 100;
+
+    const grossRevenue = Number(salesAggRows?.[0]?.revenue || 0) || 0;
+    const discountTotal = Number(salesAggRows?.[0]?.discountTotal || 0) || 0;
+    const totalSales = Math.max(0, grossRevenue - discountTotal);
 
     return NextResponse.json({
       status: "success",
