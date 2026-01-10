@@ -1,4 +1,6 @@
-import DOMPurify from "isomorphic-dompurify";
+"use client";
+
+import DOMPurify from "dompurify";
 
 export const DEFAULT_ALLOWED_TAGS = [
   "a",
@@ -31,6 +33,17 @@ export const DEFAULT_ALLOWED_ATTRS = [
   "class",
 ];
 
+const DEFAULT_FORBID_TAGS = [
+  "script",
+  "style",
+  "iframe",
+  "object",
+  "embed",
+  "link",
+  "meta",
+  "form",
+];
+
 function enforceAnchorRel(html) {
   // Add rel=noopener noreferrer to target=_blank anchors
   try {
@@ -51,13 +64,15 @@ function enforceAnchorRel(html) {
 
 export function sanitizeHtml(dirty, options = {}) {
   if (!dirty || typeof dirty !== "string") return "";
+
   const cfg = {
     ALLOWED_TAGS: options.allowedTags || DEFAULT_ALLOWED_TAGS,
     ALLOWED_ATTR: options.allowedAttrs || DEFAULT_ALLOWED_ATTRS,
     USE_PROFILES: { html: true },
-    FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "link", "meta", "form"],
+    FORBID_TAGS: DEFAULT_FORBID_TAGS,
     ALLOW_ARIA_ATTR: false,
   };
+
   let clean = DOMPurify.sanitize(dirty, cfg);
   clean = enforceAnchorRel(clean);
   return clean;
