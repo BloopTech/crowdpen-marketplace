@@ -341,7 +341,7 @@ export default function ProductCard(props) {
                       variant="outline"
                       size="sm"
                       type="submit"
-                      disabled={isPending || !session?.user || resource?.user_id === session?.user?.id}
+                      disabled={isPending || resource?.user_id === session?.user?.id}
                       className={isPending ? "opacity-50" : ""}
                     >
                       <Heart className={`h-4 w-4 ${isWished ? "fill-red-500 text-red-500" : ""}`} />
@@ -349,19 +349,28 @@ export default function ProductCard(props) {
                     <input type="hidden" name="productId" value={resource.id} />
                   </form>
 
-                  <form action={handleCartAction} onSubmit={() => {
-                    if (isCarted) {
-                      setLocalCartState(null);
-                      setHasLocalCartOverride(true);
-                    } else {
-                      setLocalCartState({ id: "temp", product_id: resource.id });
-                      setHasLocalCartOverride(true);
-                    }
-                  }}>
+                  <form
+                    action={handleCartAction}
+                    onSubmit={(e) => {
+                      if (!session?.user?.id) {
+                        e.preventDefault();
+                        openLoginDialog("login");
+                        return;
+                      }
+
+                      if (isCarted) {
+                        setLocalCartState(null);
+                        setHasLocalCartOverride(true);
+                      } else {
+                        setLocalCartState({ id: "temp", product_id: resource.id });
+                        setHasLocalCartOverride(true);
+                      }
+                    }}
+                  >
                     <Button
                       type="submit"
                       size="sm"
-                      disabled={isCartPending || !session || resource.user_id === session?.user?.id}
+                      disabled={isCartPending || resource.user_id === session?.user?.id}
                     >
                       <ShoppingCart className="h-4 w-4 mr-2" />
                       {isCartPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : isCarted ? "Remove" : "Add to Cart"}
@@ -461,7 +470,6 @@ export default function ProductCard(props) {
               type="submit"
               disabled={
                 isPending ||
-                !session?.user ||
                 resource?.user_id === session?.user?.id
               }
               title={
@@ -617,8 +625,13 @@ export default function ProductCard(props) {
 
           <form
             action={handleCartAction}
-            onSubmit={() => {
-              // Optimistic update for immediate visual feedback
+            onSubmit={(e) => {
+              if (!session?.user?.id) {
+                e.preventDefault();
+                openLoginDialog("login");
+                return;
+              }
+
               if (isCarted) {
                 setLocalCartState(null);
                 setHasLocalCartOverride(true);
@@ -634,8 +647,7 @@ export default function ProductCard(props) {
               size="sm"
               disabled={
                 isCartPending ||
-                !session ||
-                resource.user_id === session.user.id ||
+                resource?.user_id === session?.user?.id ||
                 isOutOfStock  
               }
             >

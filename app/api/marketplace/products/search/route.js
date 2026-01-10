@@ -450,6 +450,11 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
     const reviewCount = Number(reviewAgg?.count || 0) || 0;
     const rating = Number.isFinite(reviewAgg?.avg) ? reviewAgg.avg : 0;
 
+    const salesCount =
+      typeof json.salesCount === "number" ? json.salesCount : Number(json.salesCount || 0);
+
+    const downloads = typeof json.downloads === "number" ? json.downloads : 0;
+
     return {
       id: json.id,
       title: json.title,
@@ -461,7 +466,7 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
       subcategorySlug: subCategorySlug,
       rating,
       reviewCount,
-      downloads: typeof json.downloads === "number" ? json.downloads : 0,
+      downloads,
       tags,
       featured: Boolean(json.featured),
       image: json.image || "/placeholder.svg",
@@ -469,14 +474,8 @@ async function queryDB({ q, limit = 50, filters = {}, viewerId = null }) {
       fileSize: json.fileSize || "",
       license: json.license || "",
       author: authorName,
-      salesCount:
-        typeof json.salesCount === "number"
-          ? json.salesCount
-          : Number(json.salesCount || 0),
-      isBestseller:
-        (typeof json.salesCount === "number"
-          ? json.salesCount
-          : Number(json.salesCount || 0)) >= BESTSELLER_MIN_SALES,
+      salesCount,
+      isBestseller: salesCount >= BESTSELLER_MIN_SALES,
     };
   });
 

@@ -4,6 +4,7 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { Op } from "sequelize";
 import { getMarketplaceFeePercents } from "../../../../lib/marketplaceFees";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 function assertAdmin(user) {
   return (
@@ -14,8 +15,10 @@ function assertAdmin(user) {
 }
 
 export async function GET(_request, { params }) {
+  const requestId = getRequestIdFromHeaders(_request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -190,7 +193,14 @@ export async function GET(_request, { params }) {
 
     return NextResponse.json({ status: "success", data });
   } catch (error) {
-    console.error("/api/admin/products/[id] GET error", error);
+    await reportError(error, {
+      route: "/api/admin/products/[id]",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "admin_products_get_by_id",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },

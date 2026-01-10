@@ -205,7 +205,7 @@ export async function GET(request, { params }) {
         order.push(["createdAt", "DESC"]);
         break;
       case "popular":
-        order.push(["downloads", "DESC"]); // Using downloads instead of purchases
+        order.push([salesCountLiteral, "DESC"]);
         break;
       case "bestsellers":
         order.push([salesCountLiteral, "DESC"]);

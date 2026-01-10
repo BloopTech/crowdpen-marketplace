@@ -19,11 +19,13 @@ try {
       logging: false,
       pool: { max: 5, min: 1, idle: 10000, acquire: 30000 },
   });
-  
-  // Test the connection
-  sequelize.authenticate()
-    .then(() => console.log('Database connection established successfully.'))
-    .catch(err => console.error('Unable to connect to the database:', err));
+
+  // Test the connection (development only)
+  if (process.env.NODE_ENV !== "production") {
+    sequelize.authenticate()
+      .then(() => console.log('Database connection established successfully.'))
+      .catch(err => console.error('Unable to connect to the database:', err));
+  }
     
 } catch (error) {
   console.error('Failed to initialize database connection:', error);

@@ -188,6 +188,23 @@ export function AdminProvider({ children }) {
     enabled: false,
   });
 
+  // Errors
+  const [errorsParams, setErrorsParams] = useState({ page: 1, pageSize: 20, q: "", from: "", to: "" });
+  const errorsQuery = useQuery({
+    queryKey: ["admin", "errors", errorsParams],
+    queryFn: () => {
+      const qs = new URLSearchParams({
+        page: String(errorsParams.page || 1),
+        pageSize: String(errorsParams.pageSize || 20),
+      });
+      if (errorsParams.q) qs.set("q", errorsParams.q);
+      if (errorsParams.from) qs.set("from", errorsParams.from);
+      if (errorsParams.to) qs.set("to", errorsParams.to);
+      return fetchJson(`/api/admin/errors?${qs.toString()}`);
+    },
+    enabled: false,
+  });
+
   const value = useMemo(() => ({
     dashboardQuery,
     merchantsQuery,
@@ -222,6 +239,9 @@ export function AdminProvider({ children }) {
     ticketsQuery,
     ticketsParams,
     setTicketsParams,
+    errorsQuery,
+    errorsParams,
+    setErrorsParams,
   }), [
     dashboardQuery,
     merchantsQuery,
@@ -248,6 +268,8 @@ export function AdminProvider({ children }) {
     merchantRecipientsQuery,
     ticketsQuery,
     ticketsParams,
+    errorsQuery,
+    errorsParams,
   ]);
 
   return (

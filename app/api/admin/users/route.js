@@ -35,6 +35,14 @@ export async function GET(request) {
     const merchantOnly =
       merchantRaw === "1" || merchantRaw === "true" || merchantRaw === "yes";
 
+    const includeKycExemptRaw = (
+      searchParams.get("includeKycExempt") || ""
+    ).toLowerCase();
+    const includeKycExempt =
+      includeKycExemptRaw === "1" ||
+      includeKycExemptRaw === "true" ||
+      includeKycExemptRaw === "yes";
+
     const pageParam = Number.parseInt(searchParams.get("page") || "", 10);
     const pageSizeParam = Number.parseInt(
       searchParams.get("pageSize") || searchParams.get("page_size") || "",
@@ -64,7 +72,20 @@ export async function GET(request) {
     }
     if (role) whereAnd.push({ role });
 
-    if (merchantOnly) whereAnd.push({ merchant: true });
+    if (merchantOnly) {
+      if (includeKycExempt) {
+        whereAnd.push({
+          [Op.or]: [
+            { merchant: true },
+            { crowdpen_staff: true },
+            { role: "admin" },
+            { role: "senior_admin" },
+          ],
+        });
+      } else {
+        whereAnd.push({ merchant: true });
+      }
+    }
 
     // Default: only privileged users
     if (scope !== "all") {

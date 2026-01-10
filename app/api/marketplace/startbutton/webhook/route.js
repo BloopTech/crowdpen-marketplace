@@ -8,6 +8,7 @@ import { OrderConfirmationEmail } from "../../../../lib/emails/OrderConfirmation
 import { PayoutReceiptEmail } from "../../../../lib/emails/PayoutReceipt";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 import { assertAnyEnvInProduction } from "../../../../lib/env";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 assertAnyEnvInProduction([
   "STARTBUTTON_WEBHOOK_SECRET",
@@ -307,6 +308,7 @@ function toFiniteNumber(v) {
 }
 
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request.headers) || null;
   const secret = getWebhookSecret();
   if (!secret) {
     return NextResponse.json({ status: "error", message: "Webhook secret not configured" }, { status: 500 });
@@ -611,7 +613,13 @@ export async function POST(request) {
       return NextResponse.json({ status: "success", message: "Payout transaction updated" });
     } catch (error) {
       await t.rollback();
-      console.error("startbutton transfer webhook error:", error);
+      await reportError(error, {
+        route: "/api/marketplace/startbutton/webhook",
+        method: "POST",
+        status: 500,
+        requestId,
+        tag: "startbutton_webhook_transfer",
+      });
       const isProd = process.env.NODE_ENV === "production";
       return NextResponse.json(
         { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },
@@ -845,7 +853,13 @@ export async function POST(request) {
     return NextResponse.json({ status: "success", message: "Webhook received" });
   } catch (error) {
     await t.rollback();
-    console.error("startbutton webhook error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/startbutton/webhook",
+      method: "POST",
+      status: 500,
+      requestId,
+      tag: "startbutton_webhook",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },

@@ -10,9 +10,13 @@ import Link from "next/link"
 import { StatusPill } from "./status-pill"
 import { useViewerCurrency } from "../hooks/use-viewer-currency"
 import { htmlToText } from "../lib/sanitizeHtml"
+import { useHome } from "../context"
+import { useSession } from "next-auth/react"
 
 
 export default function SearchResults({ resources, query, searchTime, viewMode, setViewMode }) {
+  const { openLoginDialog } = useHome()
+  const { data: session } = useSession()
   const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD")
   const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase()
   const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1
@@ -141,7 +145,17 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                             `In stock: ${resource?.stock}`
                           ) : null}
                         </div>
-                        <Button size="sm" className="mt-1" disabled={isOutOfStock}>
+                        <Button
+                          size="sm"
+                          className="mt-1"
+                          disabled={isOutOfStock}
+                          onClick={() => {
+                            if (isOutOfStock) return
+                            if (!session?.user?.id) {
+                              openLoginDialog("login")
+                            }
+                          }}
+                        >
                           {isOutOfStock ? "Out of Stock" : "Add to Cart"}
                         </Button>
                       </div>

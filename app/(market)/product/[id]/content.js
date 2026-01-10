@@ -51,7 +51,6 @@ import { useViewerCurrency } from "../../../hooks/use-viewer-currency";
 import { trackFunnelEvent } from "../../../lib/funnelEventsClient";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -543,9 +542,14 @@ export default function ProductDetailContent(props) {
               {/* Actions */}
               <div className="space-y-3">
                 <form
-                  action={session?.user?.id ? cartFormAction : openLoginDialog}
-                  onSubmit={() => {
-                    // Optimistic update for immediate visual feedback
+                  action={cartFormAction}
+                  onSubmit={(e) => {
+                    if (!session?.user?.id) {
+                      e.preventDefault();
+                      openLoginDialog("login");
+                      return;
+                    }
+
                     if (isCarted) {
                       setLocalCartState(null);
                       setHasLocalCartOverride(true);
@@ -565,8 +569,7 @@ export default function ProductDetailContent(props) {
                     size="lg"
                     disabled={
                       isCartPending ||
-                      !session ||
-                      productItemData.user_id === session.user.id ||
+                      productItemData.user_id === session?.user?.id ||
                       isOutOfStock
                     }
                   >
@@ -589,7 +592,13 @@ export default function ProductDetailContent(props) {
 
                 <div className="flex gap-2">
                   <form
-                    action={session?.user?.id ? formAction : openLoginDialog}
+                    action={formAction}
+                    onSubmit={(e) => {
+                      if (!session?.user?.id) {
+                        e.preventDefault();
+                        openLoginDialog("login");
+                      }
+                    }}
                   >
                     <Button
                       variant="outline"
@@ -602,7 +611,6 @@ export default function ProductDetailContent(props) {
                       type="submit"
                       disabled={
                         isPending ||
-                        !session?.user ||
                         productItemData?.user_id === session?.user?.id
                       }
                     >
@@ -672,7 +680,13 @@ export default function ProductDetailContent(props) {
           productTitle={productItemData?.title || ""}
         />
 
-        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            if (isDeletePending) return;
+            setIsDeleteDialogOpen(open);
+          }}
+        >
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>{deleteDialogTitle}</AlertDialogTitle>
@@ -682,17 +696,21 @@ export default function ProductDetailContent(props) {
               <AlertDialogCancel disabled={isDeletePending}>Cancel</AlertDialogCancel>
               <form action={deleteFormAction}>
                 <input type="hidden" name="productId" value={productItemData?.id || ""} />
-                <AlertDialogAction
+                <Button
                   type="submit"
+                  variant={ownerCanDelete ? "destructive" : "default"}
+                  size="sm"
                   disabled={isDeletePending || !productItemData?.id}
-                  className={
-                    ownerCanDelete
-                      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      : undefined
-                  }
                 >
-                  {isDeletePending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : deleteDialogActionLabel}
-                </AlertDialogAction>
+                  {isDeletePending ? (
+                    <span className="inline-flex items-center">
+                      <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
+                      {deleteDialogActionLabel}...
+                    </span>
+                  ) : (
+                    deleteDialogActionLabel
+                  )}
+                </Button>
               </form>
             </AlertDialogFooter>
           </AlertDialogContent>

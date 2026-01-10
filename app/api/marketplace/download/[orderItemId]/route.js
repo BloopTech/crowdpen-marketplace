@@ -193,6 +193,13 @@ export async function GET(request, { params }) {
     try {
       await item.increment("downloadCount", { by: 1 });
       await item.update({ lastDownloaded: new Date() });
+
+      if (product?.id) {
+        await MarketplaceProduct.increment(
+          { downloads: 1 },
+          { where: { id: product.id } }
+        );
+      }
     } catch (e) {
       console.error("download tracking update error", e);
     }

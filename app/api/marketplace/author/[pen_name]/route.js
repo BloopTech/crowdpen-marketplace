@@ -62,11 +62,18 @@ export async function GET(request, { params }) {
       where: { user_id: author.id, product_status: "published" }
     });
     
-    // Get total sales from products (using downloads as sales metric)
-    const salesResult = await MarketplaceProduct.sum('downloads', {
-      where: { user_id: author.id, product_status: "published" }
-    });
-    const totalSales = salesResult || 0;
+    const salesRows = await db.sequelize.query(
+      'SELECT COALESCE(SUM(s."sales_count"), 0) AS "totalSales"\n'
+        + 'FROM "mv_product_sales" AS s\n'
+        + 'JOIN "marketplace_products" AS p ON p."id" = s."marketplace_product_id"\n'
+        + 'WHERE p."user_id" = :userId\n'
+        + '  AND p."product_status" = :publishedStatus',
+      {
+        replacements: { userId: author.id, publishedStatus: "published" },
+        type: db.Sequelize.QueryTypes.SELECT,
+      }
+    );
+    const totalSales = Number(salesRows?.[0]?.totalSales || 0) || 0;
     
     // Calculate average rating from reviews
     const reviewStats = await MarketplaceReview.findAll({

@@ -42,7 +42,6 @@ import {
 } from "../../../components/ui/tooltip";
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -384,6 +383,7 @@ export default function MyProducts() {
       <AlertDialog
         open={isConfirmOpen}
         onOpenChange={(open) => {
+          if (isDeletePending) return;
           setIsConfirmOpen(open);
           if (!open) setSelectedProduct(null);
         }}
@@ -401,17 +401,21 @@ export default function MyProducts() {
                 name="productId"
                 value={selectedProduct?.product_id || selectedProduct?.id || ""}
               />
-              <AlertDialogAction
+              <Button
                 type="submit"
+                variant={selectedIsDeletable ? "destructive" : "default"}
+                size="sm"
                 disabled={isDeletePending || !selectedProduct?.id}
-                className={
-                  selectedIsDeletable
-                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    : undefined
-                }
               >
-                {confirmActionLabel}
-              </AlertDialogAction>
+                {isDeletePending ? (
+                  <span className="inline-flex items-center">
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {confirmActionLabel}...
+                  </span>
+                ) : (
+                  confirmActionLabel
+                )}
+              </Button>
             </form>
           </AlertDialogFooter>
         </AlertDialogContent>

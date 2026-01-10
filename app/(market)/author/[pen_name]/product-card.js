@@ -167,7 +167,15 @@ export default function MyProductCard(props) {
         </div>
 
         <div className="absolute top-1 right-2">
-          <form action={session?.user?.id ? formAction : openLoginDialog}>
+          <form
+            action={formAction}
+            onSubmit={(e) => {
+              if (!session?.user?.id) {
+                e.preventDefault();
+                openLoginDialog("login");
+              }
+            }}
+          >
             <Button
               variant="ghost"
               size="sm"
@@ -179,7 +187,6 @@ export default function MyProductCard(props) {
               type="submit"
               disabled={
                 isPending ||
-                !session?.user ||
                 product?.user_id === session?.user?.id
               }
               title={
@@ -255,9 +262,14 @@ export default function MyProductCard(props) {
 
       <CardFooter className="pt-0 w-full">
         <form
-          action={session?.user?.id ? cartFormAction : openLoginDialog}
-          onSubmit={() => {
-            // Optimistic update for immediate visual feedback
+          action={cartFormAction}
+          onSubmit={(e) => {
+            if (!session?.user?.id) {
+              e.preventDefault();
+              openLoginDialog("login");
+              return;
+            }
+
             if (isCarted) {
               setLocalCartState(null);
               setHasLocalCartOverride(true);
@@ -277,7 +289,6 @@ export default function MyProductCard(props) {
             size="sm"
             disabled={
               isCartPending ||
-              !session ||
               product.user_id === session.user.id ||
               isOutOfStock
             }

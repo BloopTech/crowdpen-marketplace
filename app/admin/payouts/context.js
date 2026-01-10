@@ -99,6 +99,7 @@ export function AdminPayoutsProvider({ children }) {
       const sp = new URLSearchParams({
         scope: "all",
         merchant: "true",
+        includeKycExempt: "true",
         page: String(recipientPage || 1),
         pageSize: String(recipientPageSize || 20),
       });
@@ -111,7 +112,14 @@ export function AdminPayoutsProvider({ children }) {
     const arr = Array.isArray(recipientsQuery?.data?.data)
       ? recipientsQuery.data.data
       : [];
-    return arr.filter((u) => u?.merchant === true);
+    return arr.filter((u) => {
+      return (
+        u?.merchant === true ||
+        u?.crowdpen_staff === true ||
+        u?.role === "admin" ||
+        u?.role === "senior_admin"
+      );
+    });
   }, [recipientsQuery?.data?.data]);
 
   const selectedRecipientQuery = useQuery({
@@ -121,6 +129,7 @@ export function AdminPayoutsProvider({ children }) {
       const sp = new URLSearchParams({
         scope: "all",
         merchant: "true",
+        includeKycExempt: "true",
         id: selectedRecipientId,
       });
       return fetchJson(`/api/admin/users?${sp.toString()}`);

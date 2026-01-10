@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import crypto from "crypto";
 import { db } from "../../../../models";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 const { User, Session } = db;
 
@@ -61,6 +62,7 @@ function getSecretKeyCandidates(secret) {
 
 export async function POST(request) {
   const cookieStore = await cookies();
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
 
   try {
     const ip = getClientIpFromHeaders(request.headers) || "unknown";
@@ -237,7 +239,13 @@ export async function POST(request) {
       redirectUrl: safeRedirectUrl,
     });
   } catch (error) {
-    console.error("SSO direct signin error:", error);
+    await reportError(error, {
+      route: "/api/auth/sso/signin",
+      method: "POST",
+      status: 500,
+      requestId,
+      tag: "sso_signin",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

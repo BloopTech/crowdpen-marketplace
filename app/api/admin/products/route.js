@@ -5,6 +5,7 @@ import { db } from "../../../models/index";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
 import { getMarketplaceFeePercents } from "../../../lib/marketplaceFees";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 function assertAdmin(user) {
   return (
@@ -30,8 +31,10 @@ function parseOptionalBoolean(v) {
 }
 
 export async function PATCH(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -72,7 +75,14 @@ export async function PATCH(request) {
     await product.update(patch);
     return NextResponse.json({ status: "success", data: { id, ...patch } });
   } catch (error) {
-    console.error("/api/admin/products PATCH error", error);
+    await reportError(error, {
+      route: "/api/admin/products",
+      method: "PATCH",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "admin_products_patch",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
@@ -82,8 +92,10 @@ export async function PATCH(request) {
 }
 
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -347,7 +359,14 @@ export async function GET(request) {
 
     return NextResponse.json({ status: "success", page, pageSize, total: count, data });
   } catch (error) {
-    console.error("/api/admin/products error", error);
+    await reportError(error, {
+      route: "/api/admin/products",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "admin_products_list",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

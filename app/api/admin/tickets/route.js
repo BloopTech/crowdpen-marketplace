@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op, col, where as sqlWhere } from "sequelize";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 function assertAdmin(user) {
   return (
@@ -14,8 +15,10 @@ function assertAdmin(user) {
 
 // Placeholder tickets API
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -71,7 +74,14 @@ export async function GET(request) {
 
     return NextResponse.json({ status: "success", page, pageSize, total: count, data });
   } catch (error) {
-    console.error("/api/admin/tickets error", error);
+    await reportError(error, {
+      route: "/api/admin/tickets",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "admin_tickets_list",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },

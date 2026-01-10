@@ -9,8 +9,12 @@ import Link from "next/link";
 import { StatusPill } from "./status-pill";
 import { useViewerCurrency } from "../hooks/use-viewer-currency";
 import { htmlToText } from "../lib/sanitizeHtml";
+import { useHome } from "../context";
+import { useSession } from "next-auth/react";
 
 export default function ResourceCard({ resource }) {
+  const { openLoginDialog } = useHome();
+  const { data: session } = useSession();
   const isOutOfStock =
     resource?.inStock === false ||
     (resource?.stock !== null &&
@@ -100,7 +104,16 @@ export default function ResourceCard({ resource }) {
             ) : null}
           </div>
         </div>
-        <Button size="sm" disabled={isOutOfStock}>
+        <Button
+          size="sm"
+          disabled={isOutOfStock}
+          onClick={() => {
+            if (isOutOfStock) return;
+            if (!session?.user?.id) {
+              openLoginDialog("login");
+            }
+          }}
+        >
           {isOutOfStock ? "Out of Stock" : "Add to Cart"}
         </Button>
       </CardFooter>
