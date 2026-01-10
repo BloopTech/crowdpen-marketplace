@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../api/auth/[...nextauth]/route";
 import { Op } from "sequelize";
 import { validate as isUUID } from "uuid";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 const {
   MarketplaceProduct,
@@ -22,7 +23,10 @@ const {
   MarketplaceFunnelEvents,
 } = db;
 
+export const runtime = "nodejs";
+
 export async function GET(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   const session = await getServerSession(authOptions);
 
   const { id } = await params;
@@ -205,7 +209,14 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(getProduct);
   } catch (error) {
-    console.error("Error fetching product:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "marketplace_product_item_get",
+    });
     return NextResponse.json(
       { error: "Failed to fetch product" },
       { status: 500 }
@@ -214,6 +225,7 @@ export async function GET(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json(
@@ -381,7 +393,14 @@ export async function DELETE(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error deleting/archiving product:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]",
+      method: "DELETE",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "marketplace_product_item_delete",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

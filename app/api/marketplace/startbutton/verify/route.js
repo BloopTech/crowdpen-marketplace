@@ -4,6 +4,9 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 import { assertSafeExternalUrl } from "../../../../lib/security/ssrf";
 import { assertAnyEnvInProduction } from "../../../../lib/env";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 assertAnyEnvInProduction([
   "STARTBUTTON_SECRET_KEY",
@@ -60,8 +63,10 @@ function deriveCurrency(code) {
 }
 
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -105,7 +110,7 @@ export async function GET(request) {
       const ipCountry = getHeaderCountry(request);
       const currency = deriveCurrency(ipCountry);
       if (currency === "GHS") countryCode = "GH";
-      else if (currency === "NGN") countryCode = "NGN";
+      else if (currency === "NGN") countryCode = "NG";
       // else leave undefined; upstream may return an informative error for unsupported regions
     }
 
@@ -148,7 +153,14 @@ export async function GET(request) {
 
     return NextResponse.json({ status: "success", data: data?.data || null });
   } catch (error) {
-    console.error("verify proxy error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/startbutton/verify",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "startbutton_verify_proxy",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },

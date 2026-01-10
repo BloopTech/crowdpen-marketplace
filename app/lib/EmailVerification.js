@@ -12,7 +12,7 @@ import { Img } from "@react-email/img";
 import { Link } from "@react-email/link";
 import { Section } from "@react-email/section";
 import { Tailwind } from "@react-email/tailwind";
-import { render } from "@react-email/render";
+import { render, pretty } from "@react-email/render";
 import { Button } from "@react-email/button";
 import { sendEmail } from "./sendEmail";
 import { assertRequiredEnvInProduction } from "./env";
@@ -53,12 +53,9 @@ export default async function sendVerificationRequest(params) {
 
   //console.log("transport...............................", transport);
 
-  const html = await render(
-    <CrowdpenMagicLinkEmail url={url} identifier={identifier} />,
-    {
-      pretty: true,
-    }
-  );
+  const html = await pretty(await render(
+    <CrowdpenMagicLinkEmail url={url} identifier={identifier} />
+  ));
 
 
   await sendEmail({

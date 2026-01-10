@@ -5,8 +5,11 @@ import { authOptions } from "../../../../../../auth/[...nextauth]/route";
 import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../../../lib/observability/reportError";
 
 const { MarketplaceReview, User, MarketplaceProduct, MarketplaceKycVerification } = db;
+
+export const runtime = "nodejs";
 
 /**
  * POST handler to create a new review for a product
@@ -16,8 +19,10 @@ const { MarketplaceReview, User, MarketplaceProduct, MarketplaceKycVerification 
  */
 export async function POST(request, { params }) {
   const getParams = await params;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -224,7 +229,14 @@ export async function POST(request, { params }) {
       },
     });
   } catch (error) {
-    console.error("Error creating review:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/reviews/create",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "product_review_create",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

@@ -4,6 +4,8 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
+export const runtime = "nodejs";
+
 function assertAdmin(user) {
   return (
     user?.crowdpen_staff === true ||

@@ -9,6 +9,7 @@ import React, {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQueryState } from "nuqs";
 import { useSession } from "next-auth/react";
+import { reportClientError } from "./lib/observability/reportClientError";
 
 // API functions for data fetching with proper error handling
 const fetchProducts = async (params = {}) => {
@@ -33,7 +34,10 @@ const fetchProducts = async (params = {}) => {
 
     return response.json();
   } catch (error) {
-    console.error("Products fetch error:", error);
+    await reportClientError(error, {
+      tag: "home_products_fetch_error",
+      extra: { params },
+    });
     throw error;
   }
 };
@@ -49,7 +53,9 @@ const fetchCategories = async () => {
 
     return response.json();
   } catch (error) {
-    console.error("Categories fetch error:", error);
+    await reportClientError(error, {
+      tag: "home_categories_fetch_error",
+    });
     throw error;
   }
 };
@@ -65,7 +71,9 @@ const fetchTags = async () => {
 
     return response.json();
   } catch (error) {
-    console.error("Tags fetch error:", error);
+    await reportClientError(error, {
+      tag: "home_tags_fetch_error",
+    });
     throw error;
   }
 };

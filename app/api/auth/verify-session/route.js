@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import sequelize from "../../../models/database";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 function getSessionTokenFromCookieHeader(cookieHeader) {
   const raw = String(cookieHeader || "");
@@ -23,6 +26,7 @@ function getSessionTokenFromCookieHeader(cookieHeader) {
  * This runs in Node.js runtime and can safely access the database
  */
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   try {
     if (request.headers.get("x-cp-internal-proxy") !== "1") {
       return NextResponse.json({ isValid: false }, { status: 403 });
@@ -84,7 +88,13 @@ export async function POST(request) {
         : null,
     });
   } catch (error) {
-    console.error("Error verifying session:", error);
+    await reportError(error, {
+      route: "/api/auth/verify-session",
+      method: "POST",
+      status: 500,
+      requestId,
+      tag: "verify_session",
+    });
     // On database error, return false for security
     return NextResponse.json({ isValid: false }, { status: 500 });
   }

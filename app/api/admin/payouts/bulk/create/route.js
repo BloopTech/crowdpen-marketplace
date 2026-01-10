@@ -4,6 +4,7 @@ import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../models/index";
 import { getMarketplaceFeePercents } from "../../../../../lib/marketplaceFees";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 function assertAdmin(user) {
   return (
@@ -315,9 +316,14 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
   };
 }
 
+export const runtime = "nodejs";
+
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -485,7 +491,14 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("/api/admin/payouts/bulk/create error", error);
+    await reportError(error, {
+      tag: "admin_payouts_bulk_create_post",
+      route: "/api/admin/payouts/bulk/create",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : error?.message || "Failed" },

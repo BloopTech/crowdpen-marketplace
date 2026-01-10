@@ -3,10 +3,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
-export async function GET() {
+export const runtime = "nodejs";
+
+export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -33,7 +38,14 @@ export async function GET() {
       kycExempt,
     });
   } catch (error) {
-    console.error("KYC GET error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/account/kyc",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "account_kyc_get",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
@@ -46,8 +58,10 @@ export async function GET() {
 }
 
 export async function PATCH(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -156,7 +170,14 @@ export async function PATCH(request) {
       kycId: record.id,
     });
   } catch (error) {
-    console.error("KYC PATCH error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/account/kyc",
+      method: "PATCH",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "account_kyc_upsert",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

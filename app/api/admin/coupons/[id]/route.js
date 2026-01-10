@@ -3,8 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 const { MarketplaceCoupon, User } = db;
+
+export const runtime = "nodejs";
 
 // Check if user is admin
 async function isAdmin(session) {
@@ -20,8 +23,11 @@ function isUUID(v) {
 
 // GET /api/admin/coupons/[id] - Get single coupon
 export async function GET(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!await isAdmin(session)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -70,7 +76,14 @@ export async function GET(request, { params }) {
       coupon: coupon.toJSON(),
     });
   } catch (error) {
-    console.error("Error fetching coupon:", error);
+    await reportError(error, {
+      tag: "admin_coupon_get",
+      route: "/api/admin/coupons/[id]",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
@@ -84,8 +97,11 @@ export async function GET(request, { params }) {
 
 // PATCH /api/admin/coupons/[id] - Update coupon
 export async function PATCH(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!await isAdmin(session)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -320,7 +336,14 @@ export async function PATCH(request, { params }) {
       coupon: coupon.toJSON(),
     });
   } catch (error) {
-    console.error("Error updating coupon:", error);
+    await reportError(error, {
+      tag: "admin_coupon_update",
+      route: "/api/admin/coupons/[id]",
+      method: "PATCH",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
@@ -334,8 +357,11 @@ export async function PATCH(request, { params }) {
 
 // DELETE /api/admin/coupons/[id] - Delete coupon
 export async function DELETE(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!await isAdmin(session)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -378,7 +404,14 @@ export async function DELETE(request, { params }) {
       message: "Coupon deleted successfully",
     });
   } catch (error) {
-    console.error("Error deleting coupon:", error);
+    await reportError(error, {
+      tag: "admin_coupon_delete",
+      route: "/api/admin/coupons/[id]",
+      method: "DELETE",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

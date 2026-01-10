@@ -4,12 +4,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { db } from "../../models/index";
+import { withServerActionErrorHandling } from "../../lib/observability/withServerActionErrorHandling";
 
 function isAdminOrSenior(user) {
   return user?.role === "admin" || user?.role === "senior_admin";
 }
 
-export async function revokeLicense(prevState, formData) {
+async function revokeLicenseImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
     return { success: false, message: "Unauthorized" };
@@ -25,3 +26,16 @@ export async function revokeLicense(prevState, formData) {
   revalidatePath("/admin/licenses");
   return { success: true, message: "License revoked" };
 }
+
+export const revokeLicense = withServerActionErrorHandling(revokeLicenseImpl, {
+  route: "/admin/licenses/revokeLicense",
+  method: "ACTION",
+  tag: "admin_licenses",
+  getContext: async () => {
+    const session = await getServerSession(authOptions);
+    return { userId: session?.user?.id || null };
+  },
+  onError: ({ error }) => {
+    return { success: false, message: error?.message || "Failed" };
+  },
+});

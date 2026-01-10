@@ -4,8 +4,10 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { v4 as uuidv4 } from "uuid";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const SESSION_KEY = "cp_marketplace_session_id_v1";
 
@@ -120,6 +122,8 @@ function validateEventPayload(body) {
 }
 
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
     if (isLocalhostRequest(request)) {
       return new NextResponse(null, { status: 204 });
@@ -147,7 +151,7 @@ export async function POST(request) {
       );
     }
 
-    const session = await getServerSession(authOptions).catch(() => null);
+    session = await getServerSession(authOptions).catch(() => null);
 
     const occurredAt = parsed.data?.occurred_at
       ? new Date(parsed.data.occurred_at)
@@ -235,7 +239,14 @@ export async function POST(request) {
 
     return NextResponse.json({ status: "success", id });
   } catch (error) {
-    console.error("/api/marketplace/funnel-events error", error);
+    await reportError(error, {
+      route: "/api/marketplace/funnel-events",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "marketplace_funnel_events",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },

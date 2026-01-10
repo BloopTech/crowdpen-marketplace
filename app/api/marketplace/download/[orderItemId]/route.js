@@ -4,8 +4,11 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { assertSafeExternalUrl } from "../../../../lib/security/ssrf";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 const { MarketplaceOrderItems, MarketplaceOrder, MarketplaceProduct } = db;
+
+export const runtime = "nodejs";
 
 function normalizeDownloadValue(value) {
   if (value == null) return null;
@@ -88,8 +91,10 @@ function isOrderSuccessful(order) {
 }
 
 export async function GET(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -201,7 +206,14 @@ export async function GET(request, { params }) {
         );
       }
     } catch (e) {
-      console.error("download tracking update error", e);
+      await reportError(e, {
+        route: "/api/marketplace/download/[orderItemId]",
+        method: "GET",
+        status: 200,
+        requestId,
+        userId: session?.user?.id || null,
+        tag: "download_tracking_update",
+      });
     }
 
     const urlExt = getExtensionFromUrl(fileUrl);
@@ -222,7 +234,14 @@ export async function GET(request, { params }) {
 
     return new Response(upstream.body, { status: 200, headers });
   } catch (error) {
-    console.error("/api/marketplace/download/[orderItemId] error", error);
+    await reportError(error, {
+      route: "/api/marketplace/download/[orderItemId]",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "download_file",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

@@ -3,6 +3,7 @@ import { db } from "../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { Op } from "sequelize";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 const {
   MarketplaceWishlists,
@@ -18,6 +19,8 @@ const {
   MarketplaceReview,
 } = db;
 
+export const runtime = "nodejs";
+
 // Helper to compute effective price respecting discount expiry
 function computeEffectivePrice(product) {
   const priceNum = Number(product.price);
@@ -30,6 +33,9 @@ function computeEffectivePrice(product) {
 
 export async function GET(request, { params }) {
   const getParams = await params;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
+  let viewerId = null;
 
   try {
     const { pen_name } = getParams;
@@ -67,8 +73,8 @@ export async function GET(request, { params }) {
     const normalizedMin = Math.min(minPrice, maxPrice);
     const normalizedMax = Math.max(minPrice, maxPrice);
 
-    const session = await getServerSession(authOptions);
-    const viewerId = session?.user?.id || null;
+    session = await getServerSession(authOptions);
+    viewerId = session?.user?.id || null;
 
     // Find user by pen_name
     const user = await User.findOne({
@@ -321,7 +327,14 @@ export async function GET(request, { params }) {
       },
     });
   } catch (error) {
-    console.error("Wishlist API Error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/wishlist/[pen_name]",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: viewerId,
+      tag: "wishlist_list",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },

@@ -4,6 +4,9 @@ import { Op } from "sequelize";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../../api/auth/[...nextauth]/route";
 import { validate as isUUID } from "uuid";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 const {
   MarketplaceProduct,
@@ -22,9 +25,12 @@ const {
 
 export async function GET(request, { params }) {
   const getParams = await params;
-  const session = await getServerSession(authOptions);
-  const userId = session?.user?.id || null;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
+  let userId = null;
   try {
+    session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     const { id } = getParams;
     const idRaw = id == null ? "" : String(id).trim();
     if (!idRaw) {
@@ -333,7 +339,14 @@ export async function GET(request, { params }) {
       },
     });
   } catch (error) {
-    console.error("Error fetching related products:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/[id]/related",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+      tag: "marketplace_related_products",
+    });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

@@ -11,6 +11,9 @@ import axios from "axios";
 import { cookies } from "next/headers";
 import { assertRequiredEnvInProduction } from "../../../lib/env";
 import crypto from "crypto";
+import { reportError } from "../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 // Determine the absolute URL for the app
 const absoluteUrl = process.env.NEXTAUTH_URL;
@@ -24,7 +27,13 @@ export async function handleUserData(userData) {
     console.log("User data provided:", userData ? "YES" : "NO");
 
     if (!userData) {
-      console.error("No user data provided for SSO auth");
+      await reportError(new Error("No user data provided for SSO auth"), {
+        tag: "sso_user_data_auth",
+        route: "/api/auth/[...nextauth]",
+        extra: {
+          stage: "missing_user_data",
+        },
+      });
       return null;
     }
 
@@ -37,7 +46,13 @@ export async function handleUserData(userData) {
         //console.log('Decoded user data:', decodedData);
         parsedUserData = JSON.parse(decodedData);
       } catch (parseError) {
-        console.error("Failed to parse user data:", parseError);
+        await reportError(parseError, {
+          tag: "sso_user_data_auth",
+          route: "/api/auth/[...nextauth]",
+          extra: {
+            stage: "parse_user_data",
+          },
+        });
         return null;
       }
     } else {
@@ -47,7 +62,13 @@ export async function handleUserData(userData) {
     //console.log('Parsed user data:', parsedUserData);
 
     if (!parsedUserData.email) {
-      console.error("No email in user data");
+      await reportError(new Error("No email in user data"), {
+        tag: "sso_user_data_auth",
+        route: "/api/auth/[...nextauth]",
+        extra: {
+          stage: "missing_email",
+        },
+      });
       return null;
     }
 
@@ -70,7 +91,13 @@ export async function handleUserData(userData) {
     console.log("=== SSO AUTHORIZE FAILED - USER NOT FOUND ===");
     return null;
   } catch (error) {
-    console.error("=== SSO USER DATA AUTH ERROR ===", error);
+    await reportError(error, {
+      tag: "sso_user_data_auth",
+      route: "/api/auth/[...nextauth]",
+      extra: {
+        stage: "unhandled",
+      },
+    });
     return null;
   }
 }
@@ -209,7 +236,14 @@ export const authOptions = {
 
         // Validate user email
         if (!user.email) {
-          console.error("ERROR: User email is missing in OAuth callback");
+          await reportError(new Error("User email is missing in OAuth callback"), {
+            tag: "nextauth_signin",
+            route: "/api/auth/[...nextauth]",
+            extra: {
+              stage: "missing_email",
+              provider: account?.provider || null,
+            },
+          });
           //console.error('User object:', user);
           return false;
         }
@@ -238,7 +272,14 @@ export const authOptions = {
             console.log("=== OAUTH DATABASE USER VALIDATED ===");
           }
         } catch (error) {
-          console.error("Error validating OAuth user in database:", error);
+          await reportError(error, {
+            tag: "nextauth_signin",
+            route: "/api/auth/[...nextauth]",
+            extra: {
+              stage: "validate_oauth_user_db",
+              provider: account?.provider || null,
+            },
+          });
           // Don't fail the sign-in for database errors, let NextAuth handle it
         }
       }

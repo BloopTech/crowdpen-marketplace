@@ -3,6 +3,7 @@ import { db } from "../../../models/index";
 import { Op } from "sequelize";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 //import sequelize from "../../../models/database";
 
 const {
@@ -22,13 +23,17 @@ const {
   MarketplaceReview,
 } = db;
 
-export async function GET(request) {
-  const session = await getServerSession(authOptions);
+export const runtime = "nodejs";
 
-  const userId = session?.user?.id || null;
+export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
+  let userId = null;
 
   try {
-    //await sequelize.transaction(async (t) => {
+    session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
+
     const { searchParams } = new URL(request.url);
     const category = (searchParams.get("category") || "").slice(0, 100);
     const subcategory = (searchParams.get("subcategory") || "").slice(0, 100);
@@ -414,9 +419,14 @@ export async function GET(request) {
     });
     //});
   } catch (error) {
-    console.error("====== ERROR FETCHING PRODUCTS ======");
-    console.error("Error:", error);
-    console.error("Error name:", error?.name);
+    await reportError(error, {
+      route: "/api/marketplace/products",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+      tag: "marketplace_products_list",
+    });
 
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(

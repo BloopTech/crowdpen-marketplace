@@ -2,8 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 const { MarketplaceWishlists, MarketplaceProduct } = db;
+
+export const runtime = "nodejs";
 
 /**
  * GET handler to check if a product is in user's wishlist
@@ -12,9 +15,11 @@ const { MarketplaceWishlists, MarketplaceProduct } = db;
  * @returns {NextResponse} - JSON response with wishlist status
  */
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
     // Get current user from session
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json(
         {
@@ -47,7 +52,14 @@ export async function GET(request) {
       count: wishlistCount,
     });
   } catch (error) {
-    console.error("Error checking wishlist status:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/wishlist",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "wishlist_count",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

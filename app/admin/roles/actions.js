@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { db } from "../../models/index";
+import { withServerActionErrorHandling } from "../../lib/observability/withServerActionErrorHandling";
 
 function isAdminOrSenior(user) {
   return user?.role === "admin" || user?.role === "senior_admin";
@@ -17,7 +18,7 @@ async function getTargetUser(userId) {
   return db.User.findOne({ where: { id: userId } });
 }
 
-export async function promoteToAdmin(prevState, formData) {
+async function promoteToAdminImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
     return { success: false, message: "Unauthorized" };
@@ -44,7 +45,20 @@ export async function promoteToAdmin(prevState, formData) {
   return { success: true, message: "Promoted to admin" };
 }
 
-export async function demoteAdminToUser(prevState, formData) {
+export const promoteToAdmin = withServerActionErrorHandling(promoteToAdminImpl, {
+  route: "/admin/roles/promoteToAdmin",
+  method: "ACTION",
+  tag: "admin_roles",
+  getContext: async () => {
+    const session = await getServerSession(authOptions);
+    return { userId: session?.user?.id || null };
+  },
+  onError: ({ error }) => {
+    return { success: false, message: error?.message || "Failed" };
+  },
+});
+
+async function demoteAdminToUserImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
     return { success: false, message: "Unauthorized" };
@@ -71,7 +85,20 @@ export async function demoteAdminToUser(prevState, formData) {
   return { success: true, message: "Admin removed" };
 }
 
-export async function promoteToSeniorAdmin(prevState, formData) {
+export const demoteAdminToUser = withServerActionErrorHandling(demoteAdminToUserImpl, {
+  route: "/admin/roles/demoteAdminToUser",
+  method: "ACTION",
+  tag: "admin_roles",
+  getContext: async () => {
+    const session = await getServerSession(authOptions);
+    return { userId: session?.user?.id || null };
+  },
+  onError: ({ error }) => {
+    return { success: false, message: error?.message || "Failed" };
+  },
+});
+
+async function promoteToSeniorAdminImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isSeniorAdmin(session.user)) {
     return { success: false, message: "Only senior_admin can add senior_admin" };
@@ -95,7 +122,23 @@ export async function promoteToSeniorAdmin(prevState, formData) {
   return { success: true, message: "Promoted to senior_admin" };
 }
 
-export async function demoteSeniorAdminToAdmin(prevState, formData) {
+export const promoteToSeniorAdmin = withServerActionErrorHandling(
+  promoteToSeniorAdminImpl,
+  {
+    route: "/admin/roles/promoteToSeniorAdmin",
+    method: "ACTION",
+    tag: "admin_roles",
+    getContext: async () => {
+      const session = await getServerSession(authOptions);
+      return { userId: session?.user?.id || null };
+    },
+    onError: ({ error }) => {
+      return { success: false, message: error?.message || "Failed" };
+    },
+  }
+);
+
+async function demoteSeniorAdminToAdminImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isSeniorAdmin(session.user)) {
     return { success: false, message: "Only senior_admin can remove senior_admin" };
@@ -118,3 +161,19 @@ export async function demoteSeniorAdminToAdmin(prevState, formData) {
   revalidatePath("/admin/roles");
   return { success: true, message: "Senior admin removed (demoted to admin)" };
 }
+
+export const demoteSeniorAdminToAdmin = withServerActionErrorHandling(
+  demoteSeniorAdminToAdminImpl,
+  {
+    route: "/admin/roles/demoteSeniorAdminToAdmin",
+    method: "ACTION",
+    tag: "admin_roles",
+    getContext: async () => {
+      const session = await getServerSession(authOptions);
+      return { userId: session?.user?.id || null };
+    },
+    onError: ({ error }) => {
+      return { success: false, message: error?.message || "Failed" };
+    },
+  }
+);

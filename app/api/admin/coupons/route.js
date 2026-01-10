@@ -4,8 +4,11 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 const { MarketplaceCoupon, User } = db;
+
+export const runtime = "nodejs";
 
 // Check if user is admin
 async function isAdmin(session) {
@@ -21,8 +24,11 @@ function isUUID(v) {
 
 // GET /api/admin/coupons - List all coupons with pagination and search
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!await isAdmin(session)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -99,7 +105,14 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    console.error("Error fetching coupons:", error);
+    await reportError(error, {
+      tag: "admin_coupons_list",
+      route: "/api/admin/coupons",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
@@ -113,8 +126,11 @@ export async function GET(request) {
 
 // POST /api/admin/coupons - Create a new coupon
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!await isAdmin(session)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -307,7 +323,14 @@ export async function POST(request) {
       coupon: coupon.toJSON(),
     });
   } catch (error) {
-    console.error("Error creating coupon:", error);
+    await reportError(error, {
+      tag: "admin_coupon_create",
+      route: "/api/admin/coupons",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

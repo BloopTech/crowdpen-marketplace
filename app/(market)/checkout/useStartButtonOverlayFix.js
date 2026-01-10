@@ -270,10 +270,17 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
         ".cdk-overlay-container{pointer-events:auto!important;z-index:100001!important;}",
         ".cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}",
         ".cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}",
-        ".cdk-overlay-backdrop{pointer-events:none!important;}",
+        ".cdk-overlay-backdrop{pointer-events:auto!important;}",
         ".mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}",
       ].join("");
       const cssVars = ":root{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}";
+      const cssMobile = `@media (max-width: 640px), (pointer: coarse) {
+  .cdk-overlay-container,.cdk-global-overlay-wrapper{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;}
+  .cdk-overlay-pane{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
+  iframe[src*="startbutton"],iframe[src*="sb-web-sdk"],iframe[src*="startbutton.tech"]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;display:block!important;}
+  dialog[open]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;}
+  sb-init{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-top:env(safe-area-inset-top)!important;padding-bottom:env(safe-area-inset-bottom)!important;}
+}`;
       styleEl = document.createElement("style");
       styleEl.type = "text/css";
       const nonceEl = document.querySelector(
@@ -282,7 +289,7 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
       const nonce =
         nonceEl?.getAttribute?.("nonce") || nonceEl?.getAttribute?.("content") || "";
       if (nonce) styleEl.setAttribute("nonce", nonce);
-      styleEl.textContent = cssWidth + cssWrapper + cssVars + cssPointer;
+      styleEl.textContent = cssWidth + cssWrapper + cssVars + cssPointer + cssMobile;
       document.head.appendChild(styleEl);
       try {
         let linkDoc = document.querySelector(
@@ -291,7 +298,7 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
         if (!linkDoc) {
           linkElDoc = document.createElement("link");
           linkElDoc.rel = "stylesheet";
-          linkElDoc.href = "/sb-override.css?v=1";
+          linkElDoc.href = "/sb-override.css?v=2";
           if (nonce) linkElDoc.setAttribute("nonce", nonce);
           linkElDoc.setAttribute("data-sb-override", "1");
           document.head.appendChild(linkElDoc);
@@ -321,15 +328,22 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
           ".cdk-overlay-container{pointer-events:auto!important;z-index:100001!important;}",
           ".cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}",
           ".cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}",
-          ".cdk-overlay-backdrop{pointer-events:none!important;}",
+          ".cdk-overlay-backdrop{pointer-events:auto!important;}",
           ".mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}",
         ].join("");
         const shadowVars = ":host{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}";
+        const shadowMobile = `@media (max-width: 640px), (pointer: coarse) {
+  .cdk-overlay-container,.cdk-global-overlay-wrapper{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;}
+  .cdk-overlay-pane{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
+  iframe[src*="startbutton"],iframe[src*="sb-web-sdk"],iframe[src*="startbutton.tech"]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;display:block!important;}
+  dialog[open]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;}
+  :host sb-init{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-top:env(safe-area-inset-top)!important;padding-bottom:env(safe-area-inset-bottom)!important;}
+}`;
         styleElShadow = document.createElement("style");
         styleElShadow.type = "text/css";
         if (nonce) styleElShadow.setAttribute("nonce", nonce);
         styleElShadow.textContent =
-          shadowCssWidth + shadowWrapper + shadowVars + shadowPointer;
+          shadowCssWidth + shadowWrapper + shadowVars + shadowPointer + shadowMobile;
         host.shadowRoot.appendChild(styleElShadow);
         try {
           let linkShadow = host.shadowRoot.querySelector(
@@ -338,7 +352,7 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
           if (!linkShadow) {
             linkElShadow = document.createElement("link");
             linkElShadow.rel = "stylesheet";
-            linkElShadow.href = "/sb-override.css?v=1";
+            linkElShadow.href = "/sb-override.css?v=2";
             if (nonce) linkElShadow.setAttribute("nonce", nonce);
             linkElShadow.setAttribute("data-sb-override", "1");
             host.shadowRoot.appendChild(linkElShadow);
@@ -494,10 +508,17 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
               ".cdk-overlay-container{pointer-events:auto!important;z-index:100001!important;}",
               ".cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}",
               ".cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}",
-              ".cdk-overlay-backdrop{pointer-events:none!important;}",
+              ".cdk-overlay-backdrop{pointer-events:auto!important;}",
               ".mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}",
             ].join("");
             const shadowVars = ":host{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}";
+            const shadowMobile = `@media (max-width: 640px), (pointer: coarse) {
+  .cdk-overlay-container,.cdk-global-overlay-wrapper{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;}
+  .cdk-overlay-pane{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
+  iframe[src*="startbutton"],iframe[src*="sb-web-sdk"],iframe[src*="startbutton.tech"]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;display:block!important;}
+  dialog[open]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;}
+  :host sb-init{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-top:env(safe-area-inset-top)!important;padding-bottom:env(safe-area-inset-bottom)!important;}
+}`;
             styleElShadow = document.createElement("style");
             styleElShadow.type = "text/css";
             styleElShadow.className = "__sb_shadow_override__";
@@ -508,7 +529,7 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
               nonceEl?.getAttribute?.("nonce") || nonceEl?.getAttribute?.("content") || "";
             if (nonce) styleElShadow.setAttribute("nonce", nonce);
             styleElShadow.textContent =
-              shadowCssWidth + shadowWrapper + shadowVars + shadowPointer;
+              shadowCssWidth + shadowWrapper + shadowVars + shadowPointer + shadowMobile;
             host.shadowRoot.appendChild(styleElShadow);
           }
           let linkShadow = host.shadowRoot.querySelector(
@@ -517,7 +538,7 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
           if (!linkShadow) {
             const link = document.createElement("link");
             link.rel = "stylesheet";
-            link.href = "/sb-override.css?v=1";
+            link.href = "/sb-override.css?v=2";
             const nonceEl2 = document.querySelector(
               'style[nonce],link[rel="stylesheet"][nonce],script[nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]'
             );

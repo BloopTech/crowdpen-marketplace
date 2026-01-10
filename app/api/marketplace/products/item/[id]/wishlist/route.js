@@ -5,6 +5,7 @@ import { authOptions } from "../../../../../auth/[...nextauth]/route";
 import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../../lib/observability/reportError";
 
 const {
   MarketplaceWishlists,
@@ -13,6 +14,8 @@ const {
   MarketplaceKycVerification
 } = db;
 
+export const runtime = "nodejs";
+
 /**
  * GET handler to check if a product is in user's wishlist
  * @param {Request} request - The request object
@@ -20,9 +23,11 @@ const {
  * @returns {NextResponse} - JSON response with wishlist status
  */
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
     // Get current user from session
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user) {
       return NextResponse.json(
         {
@@ -47,7 +52,14 @@ export async function GET(request) {
       count: wishlistCount,
     });
   } catch (error) {
-    console.error("Error checking wishlist status:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/wishlist",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "wishlist_item_count",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
@@ -70,9 +82,11 @@ export async function GET(request) {
  */
 export async function POST(request, { params }) {
   const getParams = await params;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
 
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         {
@@ -231,7 +245,14 @@ export async function POST(request, { params }) {
       );
     }
   } catch (error) {
-    console.error("Error managing wishlist:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/wishlist",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "wishlist_item_toggle",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

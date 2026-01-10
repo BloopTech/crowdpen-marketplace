@@ -3,11 +3,17 @@ import { db } from "../../../../../models/index";
 import { Op } from "sequelize";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 const { User, MarketplaceProduct, MarketplaceReview, MarketplaceKycVerification } = db;
 
+export const runtime = "nodejs";
+
 export async function GET(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   const getParams = await params;
+
   const { pen_name } = getParams;
   const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
   const { searchParams } = new URL(request.url);
@@ -26,7 +32,7 @@ export async function GET(request, { params }) {
   const sortBy = (searchParams.get('sortBy') || 'newest').slice(0, 50); // newest, oldest, rating-high, rating-low
 
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     const viewerId = session?.user?.id || null;
 
     if (!penNameRaw || penNameRaw.length > 80) {
@@ -187,7 +193,14 @@ export async function GET(request, { params }) {
       }, {})
     });
   } catch (error) {
-    console.error("Error fetching author reviews:", error);
+    await reportError(error, {
+      route: "/api/marketplace/author/[pen_name]/reviews",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "author_reviews",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 function assertAdmin(user) {
   return (
@@ -18,9 +19,14 @@ function parseDateSafe(v) {
   return d;
 }
 
+export const runtime = "nodejs";
+
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -76,7 +82,14 @@ export async function GET(request) {
       data,
     });
   } catch (error) {
-    console.error("/api/admin/analytics/payment-status error", error);
+    await reportError(error, {
+      tag: "admin_analytics_payment_status_get",
+      route: "/api/admin/analytics/payment-status",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },

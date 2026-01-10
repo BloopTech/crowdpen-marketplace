@@ -38,6 +38,7 @@ import { addProductWishlist, addProductToCart, deleteOrArchiveProductItem } from
 import ProductDetails from "./details";
 import { useHome } from "../../../context";
 import { useSession } from "next-auth/react";
+import { reportClientError } from "../../../lib/observability/reportClientError";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -185,7 +186,15 @@ export default function ProductDetailContent(props) {
       );
     } else if (cartState.message && !cartState.success) {
       // Show error message
-      console.error("Failed to update cart:", cartState.message);
+      void (async () => {
+        const msg =
+          typeof cartState.message === "string" && cartState.message
+            ? cartState.message
+            : "Failed to update cart";
+        await reportClientError(new Error(msg), {
+          tag: "product_detail_cart_update_error",
+        });
+      })();
       toast.error(cartState.message);
       // Reset override on error to fall back to server state
       setHasLocalCartOverride(false);

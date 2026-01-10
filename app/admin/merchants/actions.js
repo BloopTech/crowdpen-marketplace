@@ -4,12 +4,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { db } from "../../models/index";
+import { withServerActionErrorHandling } from "../../lib/observability/withServerActionErrorHandling";
 
 function isAdminOrSenior(user) {
   return user?.role === "admin" || user?.role === "senior_admin";
 }
 
-export async function toggleMerchant(prevState, formData) {
+async function toggleMerchantImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
     return { success: false, message: "Unauthorized" };
@@ -30,3 +31,16 @@ export async function toggleMerchant(prevState, formData) {
   revalidatePath("/admin/merchants");
   return { success: true, message: makeMerchant ? "Merchant enabled" : "Merchant removed" };
 }
+
+export const toggleMerchant = withServerActionErrorHandling(toggleMerchantImpl, {
+  route: "/admin/merchants/toggleMerchant",
+  method: "ACTION",
+  tag: "admin_merchants",
+  getContext: async () => {
+    const session = await getServerSession(authOptions);
+    return { userId: session?.user?.id || null };
+  },
+  onError: ({ error }) => {
+    return { success: false, message: error?.message || "Failed" };
+  },
+});

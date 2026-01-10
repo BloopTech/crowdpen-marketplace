@@ -5,6 +5,8 @@ import { db } from "../../../../models";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
+export const runtime = "nodejs";
+
 const { User, Session } = db;
 
 function safeTimingEqual(a, b) {
@@ -170,7 +172,14 @@ export async function POST(request) {
       parsedUserData =
         typeof userData === "string" ? JSON.parse(userData) : userData;
     } catch (error) {
-      console.error("Failed to parse user data:", error);
+      await reportError(error, {
+        route: "/api/auth/sso/signin",
+        method: "POST",
+        status: 400,
+        requestId,
+        tag: "sso_signin",
+        extra: { stage: "parse_user_data" },
+      });
       return NextResponse.json(
         { error: "Invalid user data format" },
         { status: 400 }

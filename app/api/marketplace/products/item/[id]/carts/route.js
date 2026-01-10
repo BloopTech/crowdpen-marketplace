@@ -5,6 +5,7 @@ import { db } from "../../../../../../models/index";
 import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../../lib/observability/reportError";
 
 const {
   MarketplaceProduct,
@@ -13,6 +14,8 @@ const {
   User,
   MarketplaceKycVerification,
 } = db;
+
+export const runtime = "nodejs";
 
 // Helper to compute effective price respecting discount expiry
 function computeEffectivePrice(product) {
@@ -26,9 +29,11 @@ function computeEffectivePrice(product) {
 
 export async function POST(request, { params }) {
   const getParams = await params;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
 
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -292,7 +297,14 @@ export async function POST(request, { params }) {
       },
     });
   } catch (error) {
-    console.error("Error adding item to cart:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/carts",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "cart_toggle_item",
+    });
     return NextResponse.json(
       { status: "error", message: "Internal server error" },
       { status: 500 }

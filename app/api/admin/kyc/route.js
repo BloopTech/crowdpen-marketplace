@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op } from "sequelize";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 function assertAdmin(user) {
   return (
@@ -17,9 +18,14 @@ function isUUID(v) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(s);
 }
 
+export const runtime = "nodejs";
+
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -103,7 +109,14 @@ export async function GET(request) {
       data: rows,
     });
   } catch (error) {
-    console.error("/api/admin/kyc error", error);
+    await reportError(error, {
+      tag: "admin_kyc_list",
+      route: "/api/admin/kyc",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },

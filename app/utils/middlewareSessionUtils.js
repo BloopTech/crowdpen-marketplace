@@ -41,7 +41,6 @@ export async function isAuthenticatedInMiddleware(request) {
       user: isValid ? result.user ?? null : null,
     };
   } catch (error) {
-    console.error("Error checking authentication in middleware:", error);
     // On error, fall back to false for security
     return { isAuthenticated: false, user: null };
   }

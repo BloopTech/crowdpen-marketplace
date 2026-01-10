@@ -8,6 +8,7 @@ import {
   rateLimit,
   rateLimitResponseHeaders,
 } from "../../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../../lib/observability/reportError";
 
 const {
   User,
@@ -17,6 +18,8 @@ const {
   MarketplaceCoupon,
   MarketplaceCouponApplication,
 } = db;
+
+export const runtime = "nodejs";
 
 const applyCouponSchema = z.object({
   code: z.string().min(1).max(50),
@@ -89,8 +92,10 @@ function computeEligibility({ coupon, cartItems }) {
 }
 
 export async function POST(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
@@ -298,7 +303,14 @@ export async function POST(request, { params }) {
       },
     });
   } catch (error) {
-    console.error("Apply coupon error", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/carts/[pen_name]/coupon",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "cart_coupon_apply",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },
@@ -308,8 +320,10 @@ export async function POST(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
@@ -372,7 +386,14 @@ export async function DELETE(request, { params }) {
 
     return NextResponse.json({ success: true, data: { removed: !!prevCode } });
   } catch (error) {
-    console.error("Remove coupon error", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/carts/[pen_name]/coupon",
+      method: "DELETE",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "cart_coupon_remove",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },

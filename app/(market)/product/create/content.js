@@ -18,6 +18,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
+import { reportClientError } from "../../../lib/observability/reportClientError";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../../../components/ui/button";
@@ -254,7 +255,9 @@ export default function CreateProductContent() {
         return next;
       });
     } catch (error) {
-      console.error("Error handling image:", error);
+      await reportClientError(error, {
+        tag: "product_create_handle_image_error",
+      });
       toast.error("Failed to process image");
     } finally {
       setUploadingImage(false);
@@ -325,7 +328,9 @@ export default function CreateProductContent() {
 
       toast.success(`File "${file.name}" selected (${formattedSize})`);
     } catch (error) {
-      console.error("Error handling file:", error);
+      await reportClientError(error, {
+        tag: "product_create_handle_file_error",
+      });
       toast.error("Failed to process file");
     } finally {
       setUploadingFile(false);

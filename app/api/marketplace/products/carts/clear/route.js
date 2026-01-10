@@ -4,8 +4,11 @@ import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../models/index";
 import { z } from "zod";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 const { MarketplaceCart, MarketplaceCartItems, User } = db;
+
+export const runtime = "nodejs";
 
 // Validation schema
 const clearCartSchema = z.object({
@@ -13,6 +16,8 @@ const clearCartSchema = z.object({
 });
 
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
     const body = await request.json().catch(() => ({}));
     
@@ -31,7 +36,7 @@ export async function POST(request) {
     const { penName } = validationResult.data;
     
     // Get session to verify user
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -110,7 +115,14 @@ export async function POST(request) {
     });
     
   } catch (error) {
-    console.error("Clear Cart API Error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/carts/clear",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "cart_clear",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },

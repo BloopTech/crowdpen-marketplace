@@ -5,6 +5,9 @@ import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../
 import { assertAnyEnvInProduction } from "../../../../lib/env";
 import { assertSafeExternalUrl } from "../../../../lib/security/ssrf";
 import { isIP } from "net";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 assertAnyEnvInProduction([
   "STARTBUTTON_SECRET_KEY",
@@ -16,7 +19,6 @@ const getBaseUrl = () =>
   process.env.STARTBUTTON_BASE_URL ||
   (process.env.NODE_ENV === "production"
     ? "https://api.startbutton.tech"
-     //: "https://api-dev.startbutton.tech");
     : "https://api.startbutton.tech");
 
 const ALLOWED_STARTBUTTON_HOSTS = new Set([
@@ -136,8 +138,8 @@ async function fetchCountryFromIp(ip) {
     const res = await fetchWithTimeout(
       safeUrl.toString(),
       {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
+        headers: { Accept: "application/json" },
+        cache: "no-store",
       },
       2500
     );
@@ -197,8 +199,10 @@ function deriveCurrencyAndCountry(code) {
 }
 
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -313,7 +317,14 @@ export async function GET(request) {
       .filter((b) => b?.code && b?.name);
     return NextResponse.json({ status: "success", banks, currency, countryCode: countryCode || null });
   } catch (error) {
-    console.error("bank-list proxy error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/startbutton/bank-list",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "startbutton_bank_list_proxy",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },

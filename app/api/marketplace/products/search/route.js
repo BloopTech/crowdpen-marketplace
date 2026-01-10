@@ -4,6 +4,9 @@ import { db } from "../../../../models/index";
 import { literal } from "sequelize";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 const {
   MarketplaceProduct,
@@ -512,9 +515,12 @@ export async function GET(request) {
   const subcategoryNames = parseCsv(searchParams.get("subcategory"));
 
   const started = Date.now();
-  const session = await getServerSession(authOptions);
-  const viewerId = session?.user?.id || null;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
+  let viewerId = null;
   try {
+    session = await getServerSession(authOptions);
+    viewerId = session?.user?.id || null;
     const dbResults = await queryDB({
       q,
       limit,
@@ -537,7 +543,14 @@ export async function GET(request) {
       searchTime: ended - started,
     });
   } catch (err) {
-    console.error("/api/marketplace/products/search error:", err);
+    await reportError(err, {
+      route: "/api/marketplace/products/search",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: viewerId,
+      tag: "marketplace_products_search",
+    });
     const ended = Date.now();
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(

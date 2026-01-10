@@ -4,6 +4,9 @@ import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 import { assertSafeExternalUrl } from "../../../../lib/security/ssrf";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 const getBaseUrl = () =>
   process.env.STARTBUTTON_BASE_URL ||
@@ -74,9 +77,11 @@ async function verifyBankAccount({ bankCode, accountNumber, countryCode }) {
   };
 }
 
-export async function GET() {
+export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -111,7 +116,14 @@ export async function GET() {
 
     return NextResponse.json({ status: "success", bank });
   } catch (error) {
-    console.error("Bank GET error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/account/bank",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "account_bank_get",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
@@ -124,8 +136,10 @@ export async function GET() {
 }
 
 export async function PATCH(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -299,7 +313,14 @@ export async function PATCH(request) {
 
     return NextResponse.json({ status: "success", id: record.id });
   } catch (error) {
-    console.error("Bank PATCH error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/account/bank",
+      method: "PATCH",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "account_bank_upsert",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

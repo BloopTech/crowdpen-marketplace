@@ -6,6 +6,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { headers } from "next/headers";
+import { getRequestIdFromHeaders, reportError } from "../../lib/observability/reportError";
 
 async function getServerActionHeaders() {
   try {
@@ -122,7 +123,16 @@ export async function updateCartItemQuantity(prevState, formData) {
     };
 
   } catch (error) {
-    console.error("Update cart item error:", error);
+    const hdrs = await getServerActionHeaders();
+    const requestId = getRequestIdFromHeaders(hdrs);
+    await reportError(error, {
+      tag: "cart_update_quantity",
+      route: "server_action:cart#updateCartItemQuantity",
+      method: "SERVER_ACTION",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+    });
     return {
       success: false,
       message: "Failed to update cart item",
@@ -204,7 +214,16 @@ export async function removeCartItem(prevState, formData) {
     };
 
   } catch (error) {
-    console.error("Remove cart item error:", error);
+    const hdrs = await getServerActionHeaders();
+    const requestId = getRequestIdFromHeaders(hdrs);
+    await reportError(error, {
+      tag: "cart_remove_item",
+      route: "server_action:cart#removeCartItem",
+      method: "SERVER_ACTION",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+    });
     return {
       success: false,
       message: "Failed to remove cart item",
@@ -295,7 +314,16 @@ export async function clearCart(prevState, formData) {
     };
 
   } catch (error) {
-    console.error("Clear cart error:", error);
+    const hdrs = await getServerActionHeaders();
+    const requestId = getRequestIdFromHeaders(hdrs);
+    await reportError(error, {
+      tag: "cart_clear",
+      route: "server_action:cart#clearCart",
+      method: "SERVER_ACTION",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+    });
     return {
       success: false,
       message: "Failed to clear cart",

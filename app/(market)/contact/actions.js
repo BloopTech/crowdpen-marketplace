@@ -1,18 +1,18 @@
 "use server";
 
 import { z } from "zod";
-import { render } from "@react-email/render";
+import { headers } from "next/headers";
+import { render, pretty } from "@react-email/render";
 import { sendEmail } from "@/app/lib/sendEmail";
 import ContactFormSubmission from "@/app/emails/ContactFormSubmission";
+import { getRequestIdFromHeaders, reportError } from "../../lib/observability/reportError";
 
 const contactSchema = z.object({
   name: z
     .string()
     .min(2, "Name must be at least 2 characters")
     .max(100, "Name must be less than 100 characters"),
-  email: z
-    .string()
-    .email("Please enter a valid email address"),
+  email: z.string().email("Please enter a valid email address"),
   subject: z
     .string()
     .min(5, "Subject must be at least 5 characters")
@@ -49,16 +49,21 @@ export async function submitContactForm(prevState, formData) {
   const submittedAt = new Date().toISOString();
 
   try {
-    const supportEmail = process.env.SUPPORT_EMAIL || process.env.EMAIL_FROM || "support@crowdpen.co";
-    
-    const html = await render(
-      ContactFormSubmission({
-        name,
-        email,
-        subject,
-        message,
-        submittedAt,
-      })
+    const supportEmail =
+      process.env.SUPPORT_EMAIL ||
+      process.env.EMAIL_FROM ||
+      "support@crowdpen.co";
+
+    const html = await pretty(
+      await render(
+        <ContactFormSubmission
+          name={name}
+          email={email}
+          subject={subject}
+          message={message}
+          submittedAt={submittedAt}
+        />
+      )
     );
 
     const text = `
@@ -83,10 +88,23 @@ ${message}
 
     return {
       success: true,
-      message: "Your message has been sent successfully! We'll get back to you soon.",
+      message:
+        "Your message has been sent successfully! We'll get back to you soon.",
     };
   } catch (error) {
-    console.error("Contact form submission error:", error);
+    let requestId = null;
+    try {
+      requestId = getRequestIdFromHeaders(await headers());
+    } catch {
+      requestId = null;
+    }
+    await reportError(error, {
+      tag: "contact_form_submit",
+      route: "server_action:contact#submitContactForm",
+      method: "SERVER_ACTION",
+      status: 500,
+      requestId,
+    });
     return {
       success: false,
       errors: {

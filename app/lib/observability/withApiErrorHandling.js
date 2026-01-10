@@ -8,16 +8,44 @@ export function withApiErrorHandling(handler, options) {
     try {
       return await handler(request, params);
     } catch (error) {
-      const requestId = getRequestIdFromHeaders(request?.headers) || null;
+      const requestIdFromHeaders = getRequestIdFromHeaders(request?.headers) || null;
 
-      const { requestId: finalRequestId, fingerprint } = await reportError(error, {
-        route: opts.route || null,
-        method: opts.method || request?.method || null,
-        status: opts.status || 500,
-        requestId,
-        userId: opts.userId || null,
-        tag: opts.tag || "api",
-      });
+      let dynamicCtx = null;
+      if (typeof opts.getContext === "function") {
+        try {
+          dynamicCtx = await opts.getContext({
+            request,
+            params,
+            error,
+            requestId: requestIdFromHeaders,
+          });
+        } catch {
+          dynamicCtx = null;
+        }
+      }
+
+      const ctx = {
+        ...(dynamicCtx && typeof dynamicCtx === "object" ? dynamicCtx : {}),
+        route: opts.route || dynamicCtx?.route || null,
+        method: opts.method || request?.method || dynamicCtx?.method || null,
+        status: opts.status || dynamicCtx?.status || 500,
+        requestId: requestIdFromHeaders,
+        userId: opts.userId || dynamicCtx?.userId || null,
+        tag: opts.tag || dynamicCtx?.tag || "api",
+      };
+
+      const { requestId: finalRequestId, fingerprint } = await reportError(error, ctx);
+
+      if (typeof opts.onError === "function") {
+        return await opts.onError({
+          request,
+          params,
+          error,
+          requestId: finalRequestId || requestIdFromHeaders || null,
+          fingerprint,
+          ctx,
+        });
+      }
 
       return NextResponse.json(
         {

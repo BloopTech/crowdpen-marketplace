@@ -9,6 +9,7 @@ import React, {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useQueryState } from "nuqs";
 import { useSession } from "next-auth/react";
+import { reportClientError } from "../../../lib/observability/reportClientError";
 
 const CategoryContext = createContext();
 
@@ -35,7 +36,10 @@ const fetchProducts = async (slug, params = {}) => {
 
     return response.json();
   } catch (error) {
-    console.error("Products fetch error:", error);
+    await reportClientError(error, {
+      tag: "category_products_fetch_error",
+      extra: { slug, params },
+    });
     throw error;
   }
 };
@@ -51,7 +55,10 @@ const fetchCategory = async (slug) => {
 
     return response.json();
   } catch (error) {
-    console.error("Categories fetch error:", error);
+    await reportClientError(error, {
+      tag: "category_fetch_error",
+      extra: { slug },
+    });
     throw error;
   }
 };
@@ -67,7 +74,9 @@ const fetchTags = async () => {
 
     return response.json();
   } catch (error) {
-    console.error("Tags fetch error:", error);
+    await reportClientError(error, {
+      tag: "tags_fetch_error",
+    });
     throw error;
   }
 };

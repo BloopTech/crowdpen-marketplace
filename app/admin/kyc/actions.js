@@ -8,6 +8,8 @@ import { render, pretty } from "@react-email/render";
 import KycApproved from "../../emails/KycApproved";
 import KycRejected from "../../emails/KycRejected";
 import { sendEmail } from "../../lib/sendEmail";
+import { reportError } from "../../lib/observability/reportError";
+import { withServerActionErrorHandling } from "../../lib/observability/withServerActionErrorHandling";
 
 function escapeHtml(s) {
   return String(s)
@@ -31,7 +33,7 @@ function isAdminOrSenior(user) {
   );
 }
 
-export async function approveKyc(prevState, formData) {
+async function approveKycImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
     return {
@@ -118,7 +120,14 @@ export async function approveKyc(prevState, formData) {
       }
     }
   } catch (e) {
-    console.error("approveKyc email error", e);
+    await reportError(e, {
+      route: "/admin/kyc/approveKyc",
+      method: "ACTION",
+      status: 500,
+      userId: session?.user?.id || null,
+      tag: "admin_kyc",
+      extra: { stage: "send_approval_email" },
+    });
     emailInfo.error = e?.message || "Failed to send email";
   }
 
@@ -140,7 +149,25 @@ export async function approveKyc(prevState, formData) {
   };
 }
 
-export async function rejectKyc(prevState, formData) {
+export const approveKyc = withServerActionErrorHandling(approveKycImpl, {
+  route: "/admin/kyc/approveKyc",
+  method: "ACTION",
+  tag: "admin_kyc",
+  getContext: async () => {
+    const session = await getServerSession(authOptions);
+    return { userId: session?.user?.id || null };
+  },
+  onError: ({ error }) => {
+    return {
+      success: false,
+      message: error?.message || "Failed",
+      error: { message: error?.message || "Failed" },
+      data: {},
+    };
+  },
+});
+
+async function rejectKycImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
     return {
@@ -201,7 +228,7 @@ export async function rejectKyc(prevState, formData) {
           process.env.NEXT_PUBLIC_APP_URL ||
           "http://localhost:3000";
         const accountUrl = new URL("/account", origin).toString();
-        const text = `Hi ${user?.name || "there"},\n\nWe couldn\'t approve your KYC at this time.${reason ? `\n\nReason: ${reason}` : ""}\n\nReview and resubmit here: ${accountUrl}\n`;
+        const text = `Hi ${user?.name || "there"},\n\nWe couldn't approve your KYC at this time.${reason ? `\n\nReason: ${reason}` : ""}\n\nReview and resubmit here: ${accountUrl}\n`;
         const html = await pretty(
           await render(
             <KycRejected
@@ -222,7 +249,14 @@ export async function rejectKyc(prevState, formData) {
       }
     }
   } catch (e) {
-    console.error("rejectKyc email error", e);
+    await reportError(e, {
+      route: "/admin/kyc/rejectKyc",
+      method: "ACTION",
+      status: 500,
+      userId: session?.user?.id || null,
+      tag: "admin_kyc",
+      extra: { stage: "send_rejection_email" },
+    });
     emailInfo.error = e?.message || "Failed to send email";
   }
 
@@ -241,7 +275,25 @@ export async function rejectKyc(prevState, formData) {
   };
 }
 
-export async function reopenKyc(prevState, formData) {
+export const rejectKyc = withServerActionErrorHandling(rejectKycImpl, {
+  route: "/admin/kyc/rejectKyc",
+  method: "ACTION",
+  tag: "admin_kyc",
+  getContext: async () => {
+    const session = await getServerSession(authOptions);
+    return { userId: session?.user?.id || null };
+  },
+  onError: ({ error }) => {
+    return {
+      success: false,
+      message: error?.message || "Failed",
+      error: { message: error?.message || "Failed" },
+      data: {},
+    };
+  },
+});
+
+async function reopenKycImpl(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
     return {
@@ -292,3 +344,21 @@ export async function reopenKyc(prevState, formData) {
     },
   };
 }
+
+ export const reopenKyc = withServerActionErrorHandling(reopenKycImpl, {
+   route: "/admin/kyc/reopenKyc",
+   method: "ACTION",
+   tag: "admin_kyc",
+   getContext: async () => {
+     const session = await getServerSession(authOptions);
+     return { userId: session?.user?.id || null };
+   },
+   onError: ({ error }) => {
+     return {
+       success: false,
+       message: error?.message || "Failed",
+       error: { message: error?.message || "Failed" },
+       data: {},
+     };
+   },
+ });

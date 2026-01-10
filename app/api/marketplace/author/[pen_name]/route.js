@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../models/index";
 import { Op } from "sequelize";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 const { User, MarketplaceProduct, MarketplaceReview, MarketplaceCategory } = db;
 
+export const runtime = "nodejs";
+
 export async function GET(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   const getParams = await params;
   const { pen_name } = getParams;
   const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
@@ -147,7 +151,13 @@ export async function GET(request, { params }) {
       author: authorData,
     });
   } catch (error) {
-    console.error("Error fetching author:", error);
+    await reportError(error, {
+      route: "/api/marketplace/author/[pen_name]",
+      method: "GET",
+      status: 500,
+      requestId,
+      tag: "marketplace_author_get",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

@@ -87,7 +87,7 @@ export default function CheckoutContent() {
           <button
             type="button"
             onClick={cancelStartButton}
-            className="cursor-pointer fixed z-100005 px-2 py-2 rounded-full bg-background text-foreground text-sm shadow-lg border border-border hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="cursor-pointer fixed z-[100005] px-2 py-2 rounded-full bg-background text-foreground text-sm shadow-lg border border-border hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             style={{
               top: closePos?.top ?? 24,
               left: closePos?.left ?? undefined,
@@ -96,7 +96,7 @@ export default function CheckoutContent() {
           >
             <X className="h-4 w-4" />
           </button>
-          <div className="fixed inset-0 z-100005 flex items-center justify-center pointer-events-none">
+          <div className="fixed inset-0 z-[100005] flex items-center justify-center pointer-events-none">
             <Image
               src="https://res.cloudinary.com/dsuwnvwo1/image/upload/v1731081972/pf6c5fzwp29p8fmloiku.gif"
               alt=""

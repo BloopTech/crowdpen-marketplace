@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   try {
     // Cross-origin cookie forwarding is unreliable between different domains
     // Instead of trying to check Crowdpen sessions directly, we'll return false
@@ -16,7 +20,13 @@ export async function GET(request) {
     });
     
   } catch (error) {
-    console.error('Error in session check endpoint:', error);
+    await reportError(error, {
+      route: "/api/auth/check-crowdpen-session",
+      method: "GET",
+      status: 500,
+      requestId,
+      tag: "check_crowdpen_session",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

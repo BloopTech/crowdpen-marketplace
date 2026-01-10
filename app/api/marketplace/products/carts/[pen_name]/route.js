@@ -3,6 +3,7 @@ import { db } from "../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { Op } from "sequelize";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 const {
   MarketplaceProduct,
@@ -15,6 +16,8 @@ const {
   MarketplaceReview,
   MarketplaceCoupon,
 } = db;
+
+export const runtime = "nodejs";
 
 // Helper to compute effective price respecting discount expiry
 function computeEffectivePrice(product) {
@@ -91,6 +94,8 @@ function deriveCurrencyByCountry(code) {
 }
 
 export async function GET(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   const getParams = await params;
 
   try {
@@ -103,7 +108,7 @@ export async function GET(request, { params }) {
       );
     }
 
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -407,7 +412,14 @@ export async function GET(request, { params }) {
     });
     
   } catch (error) {
-    console.error("Cart API Error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/carts/[pen_name]",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "cart_list",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },

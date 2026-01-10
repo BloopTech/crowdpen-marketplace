@@ -58,6 +58,11 @@ class User extends Model {
       foreignKey: "created_by",
       as: "CreatedCoupons",
     });
+
+    User.hasMany(models.MarketplaceErrorEvent, {
+      foreignKey: "last_user_id",
+      as: "LastSeenErrorEvents",
+    });
   }
 }
 

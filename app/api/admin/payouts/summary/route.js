@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { Op } from "sequelize";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 function assertAdmin(user) {
   return (
@@ -40,9 +41,14 @@ function settlementKey(fromDate, toDate) {
   return `settlement:${fromKey}:${toKey}`;
 }
 
+export const runtime = "nodejs";
+
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -123,7 +129,14 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    console.error("/api/admin/payouts/summary error", error);
+    await reportError(error, {
+      tag: "admin_payouts_summary_get",
+      route: "/api/admin/payouts/summary",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },

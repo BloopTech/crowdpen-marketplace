@@ -3,6 +3,7 @@ import { db } from "../../../../../models/index";
 import { Op } from "sequelize";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 //import sequelize from "../../../models/database";
 
 const {
@@ -22,10 +23,14 @@ const {
   MarketplaceReview,
 } = db;
 
+export const runtime = "nodejs";
+
 export async function GET(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   const { slug } = await params;
   const slugRaw = slug == null ? "" : String(slug).trim();
   if (!slugRaw || slugRaw.length > 100) {
+    await reportError(new Error("Category slug is required"), { requestId });
     return NextResponse.json(
       {
         error: "Category slug is required",
@@ -454,9 +459,14 @@ export async function GET(request, { params }) {
     });
     //});
   } catch (error) {
-    console.error("====== ERROR FETCHING PRODUCTS ======");
-    console.error("Error:", error);
-    console.error("Error name:", error?.name);
+    await reportError(error, {
+      route: "/api/marketplace/categories/[slug]/products",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+      tag: "category_products",
+    });
 
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(

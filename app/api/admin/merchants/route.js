@@ -5,6 +5,7 @@ import { db } from "../../../models/index";
 import { Op } from "sequelize";
 import { getMarketplaceFeePercents } from "../../../lib/marketplaceFees";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 function assertAdmin(user) {
   return (
@@ -14,9 +15,14 @@ function assertAdmin(user) {
   );
 }
 
+export const runtime = "nodejs";
+
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -414,7 +420,14 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    console.error("/api/admin/merchants error", error);
+    await reportError(error, {
+      tag: "admin_merchants_list",
+      route: "/api/admin/merchants",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },

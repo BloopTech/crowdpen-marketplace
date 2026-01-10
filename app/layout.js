@@ -33,6 +33,12 @@ export const metadata = {
   description: "Crowdpen-Marketplace",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default async function RootLayout({ children }) {
   const session = await getServerSession(authOptions);
   //console.log("session.....................", session)

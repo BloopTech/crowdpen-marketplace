@@ -3,11 +3,13 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
 import { db } from "../../models/index";
 import { getMarketplaceFeePercents } from "../../lib/marketplaceFees";
-import { render } from "@react-email/render";
+import { render, pretty } from "@react-email/render";
 import { sendEmail } from "../../lib/sendEmail";
 import { PayoutReceiptEmail } from "../../lib/emails/PayoutReceipt";
+import { getRequestIdFromHeaders, reportError } from "../../lib/observability/reportError";
 
 function parseDateSafe(v) {
   if (!v) return null;
@@ -396,19 +398,19 @@ export async function createPayout(prevState, formData) {
           const amountMajor = Number(tx?.amount || 0) / 100;
           const paidAtUtc = fmtDateTimeUtc(tx?.completedAt || new Date());
 
-          const html = render(
-            PayoutReceiptEmail({
-              merchantName: user?.name || null,
-              merchantEmail: toEmail,
-              payoutId: tx.id,
-              amount: amountMajor,
-              currency: currencyUp,
-              paidAt: paidAtUtc,
-              settlementFrom: period?.settlementFrom ? String(period.settlementFrom) : null,
-              settlementTo: period?.settlementTo ? String(period.settlementTo) : null,
-              reference: tx?.transaction_reference || tx?.gateway_reference || tx?.transaction_id || null,
-            })
-          );
+          const html = await pretty(await render(
+            <PayoutReceiptEmail
+              merchantName={user?.name || null}
+              merchantEmail={toEmail}
+              payoutId={tx.id}
+              amount={amountMajor}
+              currency={currencyUp}
+              paidAt={paidAtUtc}
+              settlementFrom={period?.settlementFrom ? String(period.settlementFrom) : null}
+              settlementTo={period?.settlementTo ? String(period.settlementTo) : null}
+              reference={tx?.transaction_reference || tx?.gateway_reference || tx?.transaction_id || null}
+            />
+          ));
 
           const subject = `Crowdpen payout receipt - ${amountMajor.toFixed(2)} ${currencyUp}`;
           const bcc = receiptRow.bcc_email || getFinancePayoutBcc();
@@ -437,7 +439,20 @@ export async function createPayout(prevState, formData) {
         }
       }
     } catch (e) {
-      console.error("payout receipt email error", e);
+      let requestId = null;
+      try {
+        requestId = getRequestIdFromHeaders(await headers());
+      } catch {
+        requestId = null;
+      }
+      await reportError(e, {
+        tag: "admin_payout_receipt_email_error",
+        route: "server_action:admin/payouts#createPayout",
+        method: "SERVER_ACTION",
+        status: 500,
+        requestId,
+        userId: session?.user?.id || null,
+      });
       try {
         await db.MarketplacePayoutReceipt.update(
           { status: "error", error: e?.message || "Failed to send receipt" },

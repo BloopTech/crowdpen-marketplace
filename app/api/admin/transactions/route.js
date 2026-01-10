@@ -5,6 +5,8 @@ import { db } from "../../../models/index";
 import { Op } from "sequelize";
 import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
+export const runtime = "nodejs";
+
 function assertAdmin(user) {
   return (
     user?.crowdpen_staff === true ||

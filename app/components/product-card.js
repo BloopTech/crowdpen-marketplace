@@ -24,6 +24,7 @@ import { useSession } from "next-auth/react";
 import { addProductWishlist, addProductToCart } from "../actions";
 import { useHome } from "../context";
 import { toast } from "sonner";
+import { reportClientError } from "../lib/observability/reportClientError";
 import { StatusPill } from "./status-pill";
 import { useViewerCurrency } from "../hooks/use-viewer-currency";
 import { htmlToText } from "../lib/sanitizeHtml";
@@ -201,7 +202,15 @@ export default function ProductCard(props) {
       cartState?.message
     ) {
       // Show error message
-      console.error("Failed to update cart:", cartState?.message);
+      void (async () => {
+        const msg =
+          typeof cartState?.message === "string" && cartState.message
+            ? cartState.message
+            : "Failed to update cart";
+        await reportClientError(new Error(msg), {
+          tag: "product_card_cart_update_error",
+        });
+      })();
       toast.error(cartState?.message);
     }
   }, [cartState, isCartPending, refetchCartCount]);

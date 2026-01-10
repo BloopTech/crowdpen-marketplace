@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LoaderCircle } from 'lucide-react';
+import { reportClientError } from '../../lib/observability/reportClientError';
 
 export default function SSOSignInPage() {
   const [status, setStatus] = useState('processing');
@@ -80,7 +81,9 @@ export default function SSOSignInPage() {
           throw new Error(result.error || 'Failed to create database session');
         }
       } catch (error) {
-        console.error('SSO processing error:', error);
+        await reportClientError(error, {
+          tag: 'sso_processing_error',
+        });
         setError(error.message);
         setStatus('error');
       }

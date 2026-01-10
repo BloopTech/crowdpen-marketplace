@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "../../../../models/index";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 //import sequelize from "../../../models/database";
 
 const { MarketplaceCategory, MarketplaceSubCategory } = db;
 
+export const runtime = "nodejs";
+
 export async function GET(request, { params }) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   const { slug } = await params;
   const slugRaw = slug == null ? "" : String(slug).trim();
   const normalizedSlug = slugRaw.replace(/&/g, "and").slice(0, 100);
@@ -43,7 +47,13 @@ export async function GET(request, { params }) {
 
     return NextResponse.json(category);
   } catch (error) {
-    console.error("Error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/categories/[slug]",
+      method: "GET",
+      status: 500,
+      requestId,
+      tag: "marketplace_category_get",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

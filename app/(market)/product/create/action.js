@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { headers } from "next/headers";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 async function getServerActionHeaders() {
   try {
@@ -307,7 +308,16 @@ export async function createProduct(prevState, queryData) {
         formData.append("images", images);
       }
     } catch (error) {
-      console.error("Error processing images in server action:", error);
+      const hdrs = await getServerActionHeaders();
+      const requestId = getRequestIdFromHeaders(hdrs);
+      await reportError(error, {
+        tag: "product_create_process_images_error",
+        route: "server_action:product/create#createProduct",
+        method: "SERVER_ACTION",
+        status: 500,
+        requestId,
+        userId,
+      });
     }
   }
 
@@ -319,7 +329,16 @@ export async function createProduct(prevState, queryData) {
         formData.append("productFile", productFile);
       }
     } catch (error) {
-      console.error("Error processing product file in server action:", error);
+      const hdrs = await getServerActionHeaders();
+      const requestId = getRequestIdFromHeaders(hdrs);
+      await reportError(error, {
+        tag: "product_create_process_file_error",
+        route: "server_action:product/create#createProduct",
+        method: "SERVER_ACTION",
+        status: 500,
+        requestId,
+        userId,
+      });
     }
   }
 
@@ -362,7 +381,16 @@ export async function createProduct(prevState, queryData) {
       };
     }
   } catch (error) {
-    console.error("Error parsing product creation response:", error);
+    const hdrs = await getServerActionHeaders();
+    const requestId = getRequestIdFromHeaders(hdrs);
+    await reportError(error, {
+      tag: "product_create_parse_response_error",
+      route: "server_action:product/create#createProduct",
+      method: "SERVER_ACTION",
+      status: 500,
+      requestId,
+      userId,
+    });
   }
 
   const responseMessage =

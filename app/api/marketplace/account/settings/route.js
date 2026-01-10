@@ -3,12 +3,15 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 // PATCH /api/marketplace/account/settings
 // Updates user account settings
 export async function PATCH(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
 
     if (!session || !session.user?.id) {
       return NextResponse.json(
@@ -76,7 +79,14 @@ export async function PATCH(request) {
       settings: newSettings,
     });
   } catch (error) {
-    console.error("Settings update error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/account/settings",
+      method: "PATCH",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "account_settings_update",
+    });
     return NextResponse.json(
       { status: "error", message: "Failed to update settings" },
       { status: 500 }
@@ -86,9 +96,13 @@ export async function PATCH(request) {
 
 // GET /api/marketplace/account/settings
 // Returns user account settings
-export async function GET() {
+export const runtime = "nodejs";
+
+export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
 
     if (!session || !session.user?.id) {
       return NextResponse.json(
@@ -124,7 +138,14 @@ export async function GET() {
       settings,
     });
   } catch (error) {
-    console.error("Settings fetch error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/account/settings",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "account_settings_get",
+    });
     return NextResponse.json(
       { status: "error", message: "Failed to fetch settings" },
       { status: 500 }

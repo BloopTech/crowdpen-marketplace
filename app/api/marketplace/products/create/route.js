@@ -8,6 +8,9 @@ import sharp from "sharp";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 import { assertRequiredEnvInProduction } from "../../../../lib/env";
 import { PRODUCT_ID_REGEX, generateUniqueProductId } from "../../../../lib/products/productId";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 assertRequiredEnvInProduction([
   "CLOUDFLARE_R2_ENDPOINT",
@@ -139,6 +142,8 @@ const calculateContentLength = (fileType, fileSizeBytes) => {
 export async function POST(request) {
   let uploadedKeys = [];
   let uploadedProductKey = null;
+  let session;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
 
   try {
     // Process form data
@@ -150,7 +155,7 @@ export async function POST(request) {
     uploadedKeys = [];
     uploadedProductKey = null;
 
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         {
@@ -380,7 +385,15 @@ export async function POST(request) {
             imageUrls = imageUrlsJson;
           }
         } catch (error) {
-          console.error("Error processing image URLs:", error);
+          await reportError(error, {
+            route: "/api/marketplace/products/create",
+            method: "POST",
+            status: 400,
+            requestId,
+            userId: session?.user?.id || null,
+            tag: "product_create",
+            extra: { stage: "parse_image_urls" },
+          });
         }
       }
     }
@@ -442,11 +455,27 @@ export async function POST(request) {
         });
         
       } catch (error) {
-        console.error("Error uploading product file:", error);
+        await reportError(error, {
+          route: "/api/marketplace/products/create",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "product_create",
+          extra: { stage: "upload_product_file" },
+        });
         try {
           if (uploadedProductKey) await deleteR2ObjectByKey(uploadedProductKey);
         } catch (cleanupError) {
-          console.error("Error cleaning up product file:", cleanupError);
+          await reportError(cleanupError, {
+            route: "/api/marketplace/products/create",
+            method: "POST",
+            status: 500,
+            requestId,
+            userId: session?.user?.id || null,
+            tag: "product_create",
+            extra: { stage: "cleanup_product_file" },
+          });
         }
         return NextResponse.json(
           {
@@ -501,7 +530,6 @@ export async function POST(request) {
               throw new Error('Unable to read file data');
             }
           } catch (bufferError) {
-            console.error('Error converting file to buffer:', bufferError);
             throw new Error('Failed to process file buffer');
           }
 
@@ -536,7 +564,15 @@ export async function POST(request) {
           const imageUrl = `${publicUrlBase}/${fileName}`;
           imageUrls.push(imageUrl);
         } catch (error) {
-          console.error("Error processing file:", error);
+          await reportError(error, {
+            route: "/api/marketplace/products/create",
+            method: "POST",
+            status: 500,
+            requestId,
+            userId: session?.user?.id || null,
+            tag: "product_create",
+            extra: { stage: "upload_image", fileName: file?.name || null },
+          });
           // Continue with other files if one fails
         }
       }
@@ -554,7 +590,15 @@ export async function POST(request) {
             await Promise.all(uploadedKeys.map((key) => deleteR2ObjectByKey(key)));
           }
         } catch (cleanupError) {
-          console.error("Error cleaning up failed upload:", cleanupError);
+          await reportError(cleanupError, {
+            route: "/api/marketplace/products/create",
+            method: "POST",
+            status: 500,
+            requestId,
+            userId: session?.user?.id || null,
+            tag: "product_create",
+            extra: { stage: "cleanup_failed_upload" },
+          });
         }
         return NextResponse.json(
           { message: "Failed to upload images", status: "error" },
@@ -567,7 +611,15 @@ export async function POST(request) {
       try {
         if (uploadedProductKey) await deleteR2ObjectByKey(uploadedProductKey);
       } catch (cleanupError) {
-        console.error("Error cleaning up product file:", cleanupError);
+        await reportError(cleanupError, {
+          route: "/api/marketplace/products/create",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "product_create",
+          extra: { stage: "cleanup_product_file_no_images" },
+        });
       }
       return NextResponse.json(
         {
@@ -634,7 +686,15 @@ export async function POST(request) {
           await Promise.all(uploadedKeys.map((key) => deleteR2ObjectByKey(key)));
         }
       } catch (cleanupError) {
-        console.error("Error cleaning up failed product create:", cleanupError);
+        await reportError(cleanupError, {
+          route: "/api/marketplace/products/create",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "product_create",
+          extra: { stage: "cleanup_failed_product_create" },
+        });
       }
       throw lastError || new Error("Failed to create product with unique product_id");
     }
@@ -682,7 +742,15 @@ export async function POST(request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error creating product:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/create",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "product_create",
+      extra: { stage: "unhandled" },
+    });
 
     try {
       if (uploadedProductKey) await deleteR2ObjectByKey(uploadedProductKey);
@@ -690,7 +758,15 @@ export async function POST(request) {
         await Promise.all(uploadedKeys.map((key) => deleteR2ObjectByKey(key)));
       }
     } catch (cleanupError) {
-      console.error("Error cleaning up after create failure:", cleanupError);
+      await reportError(cleanupError, {
+        route: "/api/marketplace/products/create",
+        method: "POST",
+        status: 500,
+        requestId,
+        userId: session?.user?.id || null,
+        tag: "product_create",
+        extra: { stage: "cleanup_after_create_failure" },
+      });
     }
 
     const isProd = process.env.NODE_ENV === "production";

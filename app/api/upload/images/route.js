@@ -6,6 +6,9 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import crypto from "crypto";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
 import { assertRequiredEnvInProduction } from "../../../lib/env";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 assertRequiredEnvInProduction([
   "CLOUDFLARE_R2_ENDPOINT",
@@ -38,6 +41,7 @@ const randomImageName = (bytes = 32) =>
   crypto.randomBytes(bytes).toString("hex");
 
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   try {
     // Verify authentication
     const session = await getServerSession(authOptions);
@@ -145,7 +149,15 @@ export async function POST(request) {
         const imageUrl = `${publicUrlBase}/${key}`;
         uploadedUrls.push(imageUrl);
       } catch (error) {
-        console.error("Error processing file:", error);
+        await reportError(error, {
+          route: "/api/upload/images",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "upload_images",
+          extra: { stage: "process_file" },
+        });
         // Continue with other files if one fails
       }
     }
@@ -163,7 +175,13 @@ export async function POST(request) {
       urls: uploadedUrls,
     });
   } catch (error) {
-    console.error("Image upload error:", error);
+    await reportError(error, {
+      route: "/api/upload/images",
+      method: "POST",
+      status: 500,
+      requestId,
+      tag: "upload_images",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

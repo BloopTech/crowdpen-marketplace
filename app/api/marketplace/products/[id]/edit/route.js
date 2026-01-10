@@ -10,6 +10,9 @@ import sharp from "sharp";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
 import { assertRequiredEnvInProduction } from "../../../../../lib/env";
 import { ensureProductHasProductId } from "../../../../../lib/products/productId";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 assertRequiredEnvInProduction([
   "CLOUDFLARE_R2_ENDPOINT",
@@ -157,18 +160,35 @@ export async function GET(request, { params }) {
   try {
     // Add your GET logic here
   } catch (error) {
-    // Handle GET error
+    await reportError(error, {
+      route: "/api/marketplace/products/[id]/edit",
+      method: "GET",
+      status: 500,
+      requestId: getRequestIdFromHeaders(request?.headers) || null,
+      userId: null,
+      tag: "product_edit",
+      extra: { stage: "unhandled" },
+    });
+    return NextResponse.json(
+      {
+        status: "error",
+        message: "Internal server error",
+      },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request, { params }) {
+  let session;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   try {
     const { id } = await params;
 
     // Process form data
     const formData = await request.formData();
 
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         {
@@ -386,7 +406,15 @@ export async function POST(request, { params }) {
           finalImages = [...existingImages];
         }
       } catch (e) {
-        console.warn("Failed to parse existing images:", e);
+        await reportError(e, {
+          route: "/api/marketplace/products/[id]/edit",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "product_edit",
+          extra: { stage: "parse_existing_images" },
+        });
       }
     }
 
@@ -460,7 +488,15 @@ export async function POST(request, { params }) {
             const imageUrl = `${process.env.CLOUDFLARE_R2_PUBLIC_URL}/${fileName}`;
             finalImages.push(imageUrl);
           } catch (error) {
-            console.error("Error processing image:", error);
+            await reportError(error, {
+              route: "/api/marketplace/products/[id]/edit",
+              method: "POST",
+              status: 500,
+              requestId,
+              userId: session?.user?.id || null,
+              tag: "product_edit",
+              extra: { stage: "process_image", imageName: imageFile?.name || null },
+            });
             return NextResponse.json(
               {
                 status: "error",
@@ -563,7 +599,15 @@ export async function POST(request, { params }) {
         // Construct the public URL
         finalProductFile = `${process.env.CLOUDFLARE_R2_PUBLIC_URL}/marketplace/files/${fileName}_${sanitizedFileName}`;
       } catch (error) {
-        console.error("Error processing product file:", error);
+        await reportError(error, {
+          route: "/api/marketplace/products/[id]/edit",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "product_edit",
+          extra: { stage: "process_product_file" },
+        });
         return NextResponse.json(
           {
             status: "error",
@@ -634,7 +678,15 @@ export async function POST(request, { params }) {
         await Promise.all(keys.map((key) => deleteR2ObjectByKey(key)));
       }
     } catch (cleanupError) {
-      console.error("Error deleting removed images:", cleanupError);
+      await reportError(cleanupError, {
+        route: "/api/marketplace/products/[id]/edit",
+        method: "POST",
+        status: 500,
+        requestId,
+        userId: session?.user?.id || null,
+        tag: "product_edit",
+        extra: { stage: "cleanup_removed_images" },
+      });
     }
 
     if (newProductFile && newProductFile.size > 0 && previousProductFileUrl) {
@@ -642,7 +694,15 @@ export async function POST(request, { params }) {
         const oldKey = getR2KeyFromPublicUrl(previousProductFileUrl);
         if (oldKey) await deleteR2ObjectByKey(oldKey);
       } catch (cleanupError) {
-        console.error("Error deleting replaced product file:", cleanupError);
+        await reportError(cleanupError, {
+          route: "/api/marketplace/products/[id]/edit",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "product_edit",
+          extra: { stage: "cleanup_replaced_product_file" },
+        });
       }
     }
 
@@ -689,7 +749,15 @@ export async function POST(request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error updating product:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/[id]/edit",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "product_edit",
+      extra: { stage: "unhandled" },
+    });
     return NextResponse.json(
       {
         status: "error",

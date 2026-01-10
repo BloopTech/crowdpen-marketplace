@@ -4,6 +4,9 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
 import { getMarketplaceFeePercents, normalizeFeePctInput } from "../../../lib/marketplaceFees";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 function assertAdmin(user) {
   return (
@@ -14,8 +17,11 @@ function assertAdmin(user) {
 }
 
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -43,7 +49,14 @@ export async function GET(request) {
       },
     });
   } catch (error) {
-    console.error("/api/admin/fees GET error", error);
+    await reportError(error, {
+      tag: "admin_fees_get",
+      route: "/api/admin/fees",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },
@@ -53,8 +66,11 @@ export async function GET(request) {
 }
 
 export async function PUT(request) {
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let userId = null;
   try {
     const session = await getServerSession(authOptions);
+    userId = session?.user?.id || null;
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { status: "error", message: "Unauthorized" },
@@ -106,7 +122,14 @@ export async function PUT(request) {
       data: { crowdpenPct, startbuttonPct },
     });
   } catch (error) {
-    console.error("/api/admin/fees PUT error", error);
+    await reportError(error, {
+      tag: "admin_fees_put",
+      route: "/api/admin/fees",
+      method: "PUT",
+      status: 500,
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { status: "error", message: isProd ? "Failed" : (error?.message || "Failed") },

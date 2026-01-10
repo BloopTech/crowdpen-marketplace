@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 import { handleUserData } from '../../[...nextauth]/route';
+import { getRequestIdFromHeaders, reportError } from '../../../../lib/observability/reportError';
+
+export const runtime = "nodejs";
 
 function normalizeSha256SignatureToHex(sig) {
   const sigText = String(sig || "").trim();
@@ -23,14 +26,21 @@ function normalizeSha256SignatureToHex(sig) {
 }
 
 export async function GET(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let providerParam = null;
+  let callbackUrl = "/";
+  let userPresent = false;
   try {
     const { searchParams } = new URL(request.url);
     const user = searchParams.get('user'); // User data passed as JSON string from Crowdpen
     const provider = searchParams.get('provider'); // Provider used on Crowdpen (email/github/google)
     const callbackUrlRaw = searchParams.get('callbackUrl') || '/';
-    const callbackUrl = typeof callbackUrlRaw === 'string' && callbackUrlRaw.startsWith('/')
+    callbackUrl = typeof callbackUrlRaw === 'string' && callbackUrlRaw.startsWith('/')
       ? callbackUrlRaw
       : '/';
+
+    providerParam = provider || null;
+    userPresent = Boolean(user);
 
     const ts = searchParams.get('ts') || searchParams.get('timestamp') || searchParams.get('t');
     const sig = searchParams.get('sig') || searchParams.get('signature');
@@ -72,7 +82,19 @@ export async function GET(request) {
         
         // Validate user data
         if (!userData.email) {
-          console.error('Invalid user data - missing email');
+          await reportError(new Error("Invalid user data - missing email"), {
+            route: "/api/auth/sso/callback",
+            method: "GET",
+            status: 400,
+            requestId,
+            tag: "sso_callback",
+            extra: {
+              stage: "missing_email",
+              provider: providerParam,
+              callbackUrl,
+              userPresent,
+            },
+          });
           return NextResponse.redirect(new URL('/auth/error?error=InvalidUserData', request.url));
         }
         
@@ -83,7 +105,19 @@ export async function GET(request) {
         const dbUser = await handleUserData(JSON.stringify(userData));
         
         if (!dbUser) {
-          console.error('User not found in database - must sign up on Crowdpen first');
+          await reportError(new Error("User not found in database"), {
+            route: "/api/auth/sso/callback",
+            method: "GET",
+            status: 404,
+            requestId,
+            tag: "sso_callback",
+            extra: {
+              stage: "user_not_found",
+              provider: providerParam,
+              callbackUrl,
+              userPresent,
+            },
+          });
           return NextResponse.redirect(new URL('/auth/error?error=UserNotFound', request.url));
         }
         
@@ -140,22 +174,70 @@ export async function GET(request) {
         }
         
       } catch (parseError) {
-        console.error('Failed to parse user data:', parseError);
+        await reportError(parseError, {
+          route: "/api/auth/sso/callback",
+          method: "GET",
+          status: 400,
+          requestId,
+          tag: "sso_callback",
+          extra: {
+            stage: "parse_user_data",
+            provider: providerParam,
+            callbackUrl,
+            userPresent,
+          },
+        });
         return NextResponse.redirect(new URL('/auth/error?error=InvalidUserData', request.url));
       }
     } else {
       if (!user) {
-        console.error('No user data provided in SSO callback');
+        await reportError(new Error("No user data provided in SSO callback"), {
+          route: "/api/auth/sso/callback",
+          method: "GET",
+          status: 400,
+          requestId,
+          tag: "sso_callback",
+          extra: {
+            stage: "missing_user",
+            provider: providerParam,
+            callbackUrl,
+            userPresent,
+          },
+        });
         return NextResponse.redirect(new URL('/auth/error?error=NoUserData', request.url));
       }
       if (!provider) {
-        console.error('No provider specified in SSO callback');
+        await reportError(new Error("No provider specified in SSO callback"), {
+          route: "/api/auth/sso/callback",
+          method: "GET",
+          status: 400,
+          requestId,
+          tag: "sso_callback",
+          extra: {
+            stage: "missing_provider",
+            provider: providerParam,
+            callbackUrl,
+            userPresent,
+          },
+        });
         return NextResponse.redirect(new URL('/auth/error?error=NoProvider', request.url));
       }
     }
     
   } catch (error) {
-    console.error('SSO callback error:', error);
+    await reportError(error, {
+      route: "/api/auth/sso/callback",
+      method: "GET",
+      status: 500,
+      requestId,
+      tag: "sso_callback",
+      extra: {
+        stage: "unhandled",
+        provider: providerParam,
+        callbackUrl,
+        userPresent,
+      },
+    });
     return NextResponse.redirect(new URL('/auth/error?error=CallbackError', request.url));
   }
 }

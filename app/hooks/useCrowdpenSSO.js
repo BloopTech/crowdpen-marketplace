@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { signIn, useSession } from 'next-auth/react';
 import { toast } from 'sonner';
+import { reportClientError } from '../lib/observability/reportClientError';
 
 export function useCrowdpenSSO() {
   const [isCheckingSSO, setIsCheckingSSO] = useState(false);
@@ -27,7 +28,9 @@ export function useCrowdpenSSO() {
         return null;
       }
     } catch (error) {
-      console.error('Error checking Crowdpen session:', error);
+      await reportClientError(error, {
+        tag: 'sso_check_session_error',
+      });
       setSsoAvailable(false);
       return null;
     } finally {
@@ -56,7 +59,9 @@ export function useCrowdpenSSO() {
       
       return; // Exit early since we're redirecting
     } catch (error) {
-      console.error('SSO login error:', error);
+      await reportClientError(error, {
+        tag: 'sso_login_error',
+      });
       toast.error('Failed to sign in with Crowdpen');
       return false;
     } finally {

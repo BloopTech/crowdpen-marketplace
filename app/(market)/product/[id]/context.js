@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState } from "react";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { reportClientError } from "../../../lib/observability/reportClientError";
 
 const ProductItemContext = createContext();
 
@@ -93,8 +94,10 @@ function ProductItemContextProvider({ children, id }) {
           // Reset copied state after 3 seconds
           setTimeout(() => setIsCopied(false), 3000);
         })
-        .catch((err) => {
-          console.error("Failed to copy URL: ", err);
+        .catch(async (err) => {
+          await reportClientError(err, {
+            tag: "product_share_copy_error",
+          });
           toast.error("Failed to copy URL");
         });
     }

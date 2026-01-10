@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { addProductToCart, addProductWishlist } from "./action";
 import { useSession } from "next-auth/react";
 import { useHome } from "../../../context";
+import { reportClientError } from "../../../lib/observability/reportClientError";
 import { Badge } from "../../../components/ui/badge";
 import Link from "next/link";
 import { StatusPill } from "../../../components/status-pill";
@@ -125,7 +126,15 @@ export default function MyProductCard(props) {
       );
     } else if (cartState.message && !cartState.success) {
       // Show error message
-      console.error("Failed to update cart:", cartState.message);
+      void (async () => {
+        const msg =
+          typeof cartState?.message === "string" && cartState.message
+            ? cartState.message
+            : "Failed to update cart";
+        await reportClientError(new Error(msg), {
+          tag: "author_product_card_cart_update_error",
+        });
+      })();
       toast.error(cartState.message);
       // Reset override on error to fall back to server state
       setHasLocalCartOverride(false);

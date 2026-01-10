@@ -1,5 +1,15 @@
 import crypto from "crypto";
-import { db } from "../../models";
+
+let dbPromise;
+
+async function getDbSafe() {
+  if (!dbPromise) {
+    dbPromise = import("../../models")
+      .then((m) => m?.db || m?.default || null)
+      .catch(() => null);
+  }
+  return await dbPromise;
+}
 
 function truncateText(value, maxLen) {
   const s = value == null ? "" : String(value);
@@ -90,7 +100,7 @@ function sanitizeContext(context) {
   return out;
 }
 
-async function withStatementTimeout(timeoutMs, fn) {
+async function withStatementTimeout(db, timeoutMs, fn) {
   const ms = Number(timeoutMs);
   if (!Number.isFinite(ms) || ms <= 0) return await fn(null);
 
@@ -164,84 +174,58 @@ export async function reportError(error, context) {
   const sampleContextJson = JSON.stringify(sampleContext);
 
   try {
-    if (db?.sequelize?.query) {
-      const userId = ctx.userId && isUuid(ctx.userId) ? String(ctx.userId) : null;
-      const route = ctx.route ? String(ctx.route) : null;
-      const method = ctx.method ? String(ctx.method) : null;
-      const status = ctx.status != null ? Number(ctx.status) : null;
+    const db = await getDbSafe();
+    const userId = ctx.userId && isUuid(ctx.userId) ? String(ctx.userId) : null;
+    const route = ctx.route ? String(ctx.route) : null;
+    const method = ctx.method ? String(ctx.method) : null;
+    const status = ctx.status != null ? Number(ctx.status) : null;
 
-      await withStatementTimeout(250, async (transaction) => {
+    if (db?.MarketplaceErrorEvent?.upsertFromReport) {
+      await db.MarketplaceErrorEvent.upsertFromReport({
+        fingerprint,
+        route,
+        method,
+        status,
+        errorName,
+        pgCode,
+        constraintName,
+        message,
+        stack,
+        contextJson: sampleContextJson,
+        requestId,
+        userId,
+      });
+    }
+
+    if (process.env.OBS_QUEUE_ERROR_EVENTS === "true" && db?.sequelize?.query) {
+      const jobDataJson = JSON.stringify({
+        fingerprint,
+        requestId,
+        route,
+        method,
+        status,
+        errorName,
+        pgCode,
+        constraintName,
+        message,
+      });
+
+      await withStatementTimeout(db, 250, async (transaction) => {
         await db.sequelize.query(
-          `INSERT INTO public.marketplace_error_events
-            (fingerprint, route, method, status, error_name, pg_code, constraint_name, sample_message, sample_stack, sample_context, last_request_id, last_user_id)
-           VALUES
-            (:fingerprint, :route, :method, :status, :errorName, :pgCode, :constraintName, :message, :stack, :context::jsonb, :requestId, :userId::uuid)
-           ON CONFLICT (fingerprint)
-           DO UPDATE SET
-            last_seen_at = now(),
-            event_count = public.marketplace_error_events.event_count + 1,
-            route = COALESCE(EXCLUDED.route, public.marketplace_error_events.route),
-            method = COALESCE(EXCLUDED.method, public.marketplace_error_events.method),
-            status = COALESCE(EXCLUDED.status, public.marketplace_error_events.status),
-            error_name = COALESCE(EXCLUDED.error_name, public.marketplace_error_events.error_name),
-            pg_code = COALESCE(EXCLUDED.pg_code, public.marketplace_error_events.pg_code),
-            constraint_name = COALESCE(EXCLUDED.constraint_name, public.marketplace_error_events.constraint_name),
-            sample_message = EXCLUDED.sample_message,
-            sample_stack = EXCLUDED.sample_stack,
-            sample_context = EXCLUDED.sample_context,
-            last_request_id = EXCLUDED.last_request_id,
-            last_user_id = EXCLUDED.last_user_id`,
+          `INSERT INTO pgboss_v11.job_common (name, data, policy, singleton_key)
+           VALUES (:name, :data::jsonb, 'short', :singletonKey)
+           ON CONFLICT DO NOTHING`,
           {
             transaction,
             replacements: {
-              fingerprint,
-              route,
-              method,
-              status,
-              errorName,
-              pgCode,
-              constraintName,
-              message,
-              stack,
-              context: sampleContextJson,
-              requestId,
-              userId,
+              name: "marketplace.errorEvent",
+              data: jobDataJson,
+              singletonKey: fingerprint,
             },
             type: db.Sequelize.QueryTypes.RAW,
           }
         );
       });
-
-      if (process.env.OBS_QUEUE_ERROR_EVENTS === "true") {
-        const jobDataJson = JSON.stringify({
-          fingerprint,
-          requestId,
-          route,
-          method,
-          status,
-          errorName,
-          pgCode,
-          constraintName,
-          message,
-        });
-
-        await withStatementTimeout(250, async (transaction) => {
-          await db.sequelize.query(
-            `INSERT INTO pgboss_v11.job_common (name, data, policy, singleton_key)
-             VALUES (:name, :data::jsonb, 'short', :singletonKey)
-             ON CONFLICT DO NOTHING`,
-            {
-              transaction,
-              replacements: {
-                name: "marketplace.errorEvent",
-                data: jobDataJson,
-                singletonKey: fingerprint,
-              },
-              type: db.Sequelize.QueryTypes.RAW,
-            }
-          );
-        });
-      }
     }
   } catch (e) {
     console.error(

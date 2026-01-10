@@ -5,6 +5,7 @@ import { authOptions } from "../../../../../auth/[...nextauth]/route";
 import { validate as isUUID } from "uuid";
 import { Op } from "sequelize";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../../lib/observability/reportError";
 
 const {
   MarketplaceReview,
@@ -14,6 +15,8 @@ const {
   MarketplaceKycVerification,
 } = db;
 
+export const runtime = "nodejs";
+
 /**
  * GET handler to fetch reviews for a product
  * @param {Request} request - The request object
@@ -22,8 +25,10 @@ const {
  */
 export async function GET(request, { params }) {
   const getParams = await params;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     const viewerId = session?.user?.id || null;
 
     const productIdRaw =
@@ -246,7 +251,14 @@ export async function GET(request, { params }) {
       },
     });
   } catch (error) {
-    console.error("Error fetching reviews:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/reviews",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "product_reviews_list",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
@@ -265,8 +277,10 @@ export async function GET(request, { params }) {
  */
 export async function PATCH(request, { params }) {
   const getParams = await params;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -428,7 +442,14 @@ export async function PATCH(request, { params }) {
       throw txErr;
     }
   } catch (error) {
-    console.error("Error updating review helpful count:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/reviews",
+      method: "PATCH",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "product_review_helpful",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {
@@ -447,8 +468,10 @@ export async function PATCH(request, { params }) {
  */
 export async function PUT(request, { params }) {
   const getParams = await params;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json(
         { status: "error", message: "Authentication required" },
@@ -643,7 +666,14 @@ export async function PUT(request, { params }) {
       data: { review: formatted },
     });
   } catch (error) {
-    console.error("Error upserting review:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/reviews",
+      method: "PUT",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "product_review_upsert",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

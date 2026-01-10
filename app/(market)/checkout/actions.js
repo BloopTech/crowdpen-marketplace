@@ -5,9 +5,10 @@ import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { headers } from "next/headers";
 import { db } from "../../models";
 import { revalidatePath } from "next/cache";
-import { render } from "@react-email/render";
+import { render, pretty } from "@react-email/render";
 import { sendEmail } from "../../lib/sendEmail";
 import { OrderConfirmationEmail } from "../../lib/emails/OrderConfirmation";
+import { getRequestIdFromHeaders, reportError } from "../../lib/observability/reportError";
 
 const {
   User,
@@ -41,7 +42,18 @@ function getStartButtonSupportedCurrencies() {
   }
 
   // Default allowlist based on existing app usage.
-  return new Set(["NGN", "GHS", "ZAR", "KES", "UGX", "RWF", "TZS", "ZMW", "XOF", "USD"]);
+  return new Set([
+    "NGN",
+    "GHS",
+    "ZAR",
+    "KES",
+    "UGX",
+    "RWF",
+    "TZS",
+    "ZMW",
+    "XOF",
+    "USD",
+  ]);
 }
 
 function getStartButtonPublicKey() {
@@ -115,19 +127,27 @@ function toFiniteNumber(v) {
 function computeEffectivePrice(product) {
   const priceNum = Number(product.price);
   const originalPriceNum = Number(product.originalPrice);
-  const hasDiscount = Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
-  const saleEndMs = product.sale_end_date ? new Date(product.sale_end_date).getTime() : null;
-  const isExpired = hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
+  const hasDiscount =
+    Number.isFinite(originalPriceNum) && originalPriceNum > priceNum;
+  const saleEndMs = product.sale_end_date
+    ? new Date(product.sale_end_date).getTime()
+    : null;
+  const isExpired =
+    hasDiscount && Number.isFinite(saleEndMs) && saleEndMs < Date.now();
   return isExpired ? originalPriceNum : priceNum;
 }
 
 function couponValidity(coupon) {
   const now = Date.now();
-  const startMs = coupon?.start_date ? new Date(coupon.start_date).getTime() : null;
+  const startMs = coupon?.start_date
+    ? new Date(coupon.start_date).getTime()
+    : null;
   const endMs = coupon?.end_date ? new Date(coupon.end_date).getTime() : null;
   if (coupon?.is_active === false) return { ok: false, reason: "inactive" };
-  if (Number.isFinite(startMs) && startMs > now) return { ok: false, reason: "not_started" };
-  if (Number.isFinite(endMs) && endMs < now) return { ok: false, reason: "expired" };
+  if (Number.isFinite(startMs) && startMs > now)
+    return { ok: false, reason: "not_started" };
+  if (Number.isFinite(endMs) && endMs < now)
+    return { ok: false, reason: "expired" };
   return { ok: true, reason: null };
 }
 
@@ -147,7 +167,8 @@ function computeCouponDiscount(coupon, eligibleSubtotal) {
 
   const maxRaw = coupon?.max_discount_amount;
   const max = maxRaw != null ? Number(maxRaw) : null;
-  if (max != null && Number.isFinite(max) && max >= 0 && discount > max) discount = max;
+  if (max != null && Number.isFinite(max) && max >= 0 && discount > max)
+    discount = max;
 
   return Number(discount.toFixed(2));
 }
@@ -275,7 +296,9 @@ export async function beginCheckout(prevState, formData) {
   const paymentMethod = (
     formData.get("paymentMethod") || "startbutton"
   ).toString();
-  const existingOrderId = (formData.get("existingOrderId") || "").toString().trim();
+  const existingOrderId = (formData.get("existingOrderId") || "")
+    .toString()
+    .trim();
 
   if (
     !email ||
@@ -330,7 +353,11 @@ export async function beginCheckout(prevState, formData) {
             model: db.User,
             attributes: ["id", "role", "crowdpen_staff", "merchant"],
             include: [
-              { model: db.MarketplaceKycVerification, attributes: ["status"], required: false },
+              {
+                model: db.MarketplaceKycVerification,
+                attributes: ["status"],
+                required: false,
+              },
             ],
           },
         ],
@@ -350,10 +377,12 @@ export async function beginCheckout(prevState, formData) {
     const p = ci?.MarketplaceProduct;
     if (!p) return false;
     const isOwner = p.user_id === userId;
-    return !isOwner && p.product_status !== 'published';
+    return !isOwner && p.product_status !== "published";
   });
   if (statusBlocked.length > 0) {
-    const titles = statusBlocked.map((ci) => ci?.MarketplaceProduct?.title).filter(Boolean);
+    const titles = statusBlocked
+      .map((ci) => ci?.MarketplaceProduct?.title)
+      .filter(Boolean);
     const idsToRemove = statusBlocked.map((ci) => ci?.id).filter(Boolean);
     try {
       if (idsToRemove.length) {
@@ -382,7 +411,7 @@ export async function beginCheckout(prevState, formData) {
         const itemTotal = effectivePrice * (ci.quantity || 1);
         subtotal += itemTotal;
       }
-    
+
       const discount = Number(cart.discount ?? 0);
       const total = subtotal - discount;
       await cart.update({
@@ -390,7 +419,20 @@ export async function beginCheckout(prevState, formData) {
         total: total.toFixed(2),
       });
     } catch (cleanupError) {
-      console.error("checkout status cleanup error", cleanupError);
+      let requestId = null;
+      try {
+        requestId = getRequestIdFromHeaders(await headers());
+      } catch {
+        requestId = null;
+      }
+      await reportError(cleanupError, {
+        tag: "checkout_status_cleanup_error",
+        route: "server_action:checkout#beginCheckout",
+        method: "SERVER_ACTION",
+        status: 500,
+        requestId,
+        userId,
+      });
     }
     return {
       success: false,
@@ -405,13 +447,15 @@ export async function beginCheckout(prevState, formData) {
     if (!p) return false;
     const isOwner = p.user_id === userId;
     const ownerApproved =
-      p?.User?.MarketplaceKycVerification?.status === 'approved' ||
+      p?.User?.MarketplaceKycVerification?.status === "approved" ||
       User.isKycExempt(p?.User) ||
       p?.User?.merchant === true;
     return !isOwner && !ownerApproved;
   });
   if (kycBlocked.length > 0) {
-    const titles = kycBlocked.map((ci) => ci?.MarketplaceProduct?.title).filter(Boolean);
+    const titles = kycBlocked
+      .map((ci) => ci?.MarketplaceProduct?.title)
+      .filter(Boolean);
     return {
       success: false,
       message: `Some items are not available for purchase: ${titles.join(", ")}`,
@@ -423,12 +467,21 @@ export async function beginCheckout(prevState, formData) {
   const stockIssues = cartItems.filter((ci) => {
     const p = ci?.MarketplaceProduct;
     if (!p) return false;
-    const out = (p?.inStock === false) || (p?.stock !== null && typeof p?.stock !== 'undefined' && Number(p.stock) <= 0);
-    const exceeds = (p?.stock !== null && typeof p?.stock !== 'undefined' && Number(ci.quantity) > Number(p.stock));
+    const out =
+      p?.inStock === false ||
+      (p?.stock !== null &&
+        typeof p?.stock !== "undefined" &&
+        Number(p.stock) <= 0);
+    const exceeds =
+      p?.stock !== null &&
+      typeof p?.stock !== "undefined" &&
+      Number(ci.quantity) > Number(p.stock);
     return out || exceeds;
   });
   if (stockIssues.length > 0) {
-    const titles = stockIssues.map((ci) => ci?.MarketplaceProduct?.title).filter(Boolean);
+    const titles = stockIssues
+      .map((ci) => ci?.MarketplaceProduct?.title)
+      .filter(Boolean);
     return {
       success: false,
       message: `Some items are out of stock or exceed available quantity: ${titles.join(", ")}`,
@@ -447,7 +500,10 @@ export async function beginCheckout(prevState, formData) {
     // Update stored price if it differs from effective price calculation
     const storedPrice = Number(ci.price || 0);
     if (Math.abs(storedPrice - itemTotal) > 0.01) {
-      await ci.update({ price: itemTotal.toFixed(2), subtotal: itemTotal.toFixed(2) });
+      await ci.update({
+        price: itemTotal.toFixed(2),
+        subtotal: itemTotal.toFixed(2),
+      });
     }
   }
 
@@ -464,7 +520,7 @@ export async function beginCheckout(prevState, formData) {
         coupon_applied_at: null,
         discount: 0,
         subtotal: subtotal.toFixed(2),
-        total: (subtotal).toFixed(2),
+        total: subtotal.toFixed(2),
       });
       couponNotice = { code: cart.coupon_code || null, reason: "not_found" };
       coupon = null;
@@ -479,9 +535,12 @@ export async function beginCheckout(prevState, formData) {
           coupon_applied_at: null,
           discount: 0,
           subtotal: subtotal.toFixed(2),
-          total: (subtotal).toFixed(2),
+          total: subtotal.toFixed(2),
         });
-        couponNotice = { code: cart.coupon_code || coupon.code || null, reason: valid.reason };
+        couponNotice = {
+          code: cart.coupon_code || coupon.code || null,
+          reason: valid.reason,
+        };
         coupon = null;
       }
     }
@@ -496,16 +555,21 @@ export async function beginCheckout(prevState, formData) {
           coupon_applied_at: null,
           discount: 0,
           subtotal: subtotal.toFixed(2),
-          total: (subtotal).toFixed(2),
+          total: subtotal.toFixed(2),
         });
-        couponNotice = { code: cart.coupon_code || coupon.code || null, reason: "usage_limit" };
+        couponNotice = {
+          code: cart.coupon_code || coupon.code || null,
+          reason: "usage_limit",
+        };
         coupon = null;
       }
     }
 
     if (coupon) {
       const appliesTo = String(coupon.applies_to || "all").toLowerCase();
-      const ids = Array.isArray(coupon.applies_to_ids) ? coupon.applies_to_ids : [];
+      const ids = Array.isArray(coupon.applies_to_ids)
+        ? coupon.applies_to_ids
+        : [];
       const set = new Set(ids.map((v) => String(v)));
       const eligibleSubtotal = cartItems.reduce((acc, ci) => {
         const p = ci?.MarketplaceProduct;
@@ -513,27 +577,39 @@ export async function beginCheckout(prevState, formData) {
         const match =
           appliesTo === "all" ||
           (appliesTo === "product" && set.has(String(p.id))) ||
-          (appliesTo === "category" && set.has(String(p.marketplace_category_id || "")));
+          (appliesTo === "category" &&
+            set.has(String(p.marketplace_category_id || "")));
         if (!match) return acc;
         const effectivePrice = computeEffectivePrice(p);
         return acc + effectivePrice * (ci.quantity || 1);
       }, 0);
 
-      const minAmount = coupon?.min_order_amount != null ? Number(coupon.min_order_amount) : 0;
-      if (Number.isFinite(minAmount) && minAmount > 0 && eligibleSubtotal < minAmount) {
+      const minAmount =
+        coupon?.min_order_amount != null ? Number(coupon.min_order_amount) : 0;
+      if (
+        Number.isFinite(minAmount) &&
+        minAmount > 0 &&
+        eligibleSubtotal < minAmount
+      ) {
         await cart.update({
           coupon_id: null,
           coupon_code: null,
           coupon_applied_at: null,
           discount: 0,
           subtotal: subtotal.toFixed(2),
-          total: (subtotal).toFixed(2),
+          total: subtotal.toFixed(2),
         });
-        couponNotice = { code: cart.coupon_code || coupon.code || null, reason: "min_order_amount" };
+        couponNotice = {
+          code: cart.coupon_code || coupon.code || null,
+          reason: "min_order_amount",
+        };
         coupon = null;
       } else {
         discount = computeCouponDiscount(coupon, eligibleSubtotal);
-        if ((cart.coupon_code || "").toString().trim().toUpperCase() !== String(coupon.code).toUpperCase()) {
+        if (
+          (cart.coupon_code || "").toString().trim().toUpperCase() !==
+          String(coupon.code).toUpperCase()
+        ) {
           await cart.update({ coupon_code: coupon.code });
         }
       }
@@ -544,17 +620,26 @@ export async function beginCheckout(prevState, formData) {
 
   // Update cart totals if they differ
   if (Math.abs(Number(cart.subtotal) - subtotal) > 0.01) {
-    await cart.update({ subtotal: subtotal.toFixed(2), discount: discount.toFixed(2), total: total.toFixed(2) });
+    await cart.update({
+      subtotal: subtotal.toFixed(2),
+      discount: discount.toFixed(2),
+      total: total.toFixed(2),
+    });
   }
 
   const baseCurrency = "USD";
   const ipCountry = await getHeaderCountry();
   const supported = getStartButtonSupportedCurrencies();
-  const viewerCurrency = normalizeCurrency(deriveCurrencyByCountry(ipCountry)) || baseCurrency;
+  const viewerCurrency =
+    normalizeCurrency(deriveCurrencyByCountry(ipCountry)) || baseCurrency;
 
   // Choose a charge currency that StartButton supports and for which we have an FX rate.
   const candidates = Array.from(
-    new Set([viewerCurrency, baseCurrency, "GHS"].map((c) => normalizeCurrency(c)).filter(Boolean))
+    new Set(
+      [viewerCurrency, baseCurrency, "GHS"]
+        .map((c) => normalizeCurrency(c))
+        .filter(Boolean)
+    )
   );
 
   let paidCurrency = baseCurrency;
@@ -616,7 +701,8 @@ export async function beginCheckout(prevState, formData) {
       if (existing) {
         const payStatus = String(existing.paymentStatus || "").toLowerCase();
         const ordStatus = String(existing.orderStatus || "").toLowerCase();
-        const alreadySuccessful = payStatus === "successful" || ordStatus === "successful";
+        const alreadySuccessful =
+          payStatus === "successful" || ordStatus === "successful";
 
         if (alreadySuccessful) {
           return {
@@ -627,7 +713,11 @@ export async function beginCheckout(prevState, formData) {
             orderId: existing.id,
             orderNumber: existing.order_number,
             amount: Number(existing.paid_amount || paidAmount),
-            currency: (existing.paid_currency || paidCurrency || baseCurrency).toString(),
+            currency: (
+              existing.paid_currency ||
+              paidCurrency ||
+              baseCurrency
+            ).toString(),
             baseAmount: Number(existing.total || total),
             baseCurrency,
             fxRate: Number(existing.fx_rate || fxRate),
@@ -694,7 +784,8 @@ export async function beginCheckout(prevState, formData) {
             await redemption.update({
               coupon_id: coupon.id,
               cart_id: cart.id,
-              status: redemption.status === "failed" ? "pending" : redemption.status,
+              status:
+                redemption.status === "failed" ? "pending" : redemption.status,
               discount_total: discount.toFixed(2),
               currency: baseCurrency,
             });
@@ -721,7 +812,20 @@ export async function beginCheckout(prevState, formData) {
       }
     } catch (e) {
       // ignore and fall back to creating a new order
-      console.error("beginCheckout existing order reuse error", e);
+      let requestId = null;
+      try {
+        requestId = getRequestIdFromHeaders(await headers());
+      } catch {
+        requestId = null;
+      }
+      await reportError(e, {
+        tag: "begin_checkout_existing_order_reuse_error",
+        route: "server_action:checkout#beginCheckout",
+        method: "SERVER_ACTION",
+        status: 500,
+        requestId,
+        userId,
+      });
     }
   }
 
@@ -816,18 +920,25 @@ export async function beginCheckout(prevState, formData) {
         transaction: t,
       });
       const productCategoryMap = new Map(
-        productRows.map((r) => [String(r.id), String(r.marketplace_category_id || "")])
+        productRows.map((r) => [
+          String(r.id),
+          String(r.marketplace_category_id || ""),
+        ])
       );
 
       const appliesTo = String(coupon.applies_to || "all").toLowerCase();
-      const ids = Array.isArray(coupon.applies_to_ids) ? coupon.applies_to_ids : [];
+      const ids = Array.isArray(coupon.applies_to_ids)
+        ? coupon.applies_to_ids
+        : [];
       const set = new Set(ids.map((v) => String(v)));
 
       const eligibleItems = createdItems.filter((it) => {
         if (appliesTo === "all") return true;
-        if (appliesTo === "product") return set.has(String(it.marketplace_product_id));
+        if (appliesTo === "product")
+          return set.has(String(it.marketplace_product_id));
         if (appliesTo === "category") {
-          const cat = productCategoryMap.get(String(it.marketplace_product_id)) || "";
+          const cat =
+            productCategoryMap.get(String(it.marketplace_product_id)) || "";
           return set.has(String(cat));
         }
         return false;
@@ -861,7 +972,9 @@ export async function beginCheckout(prevState, formData) {
           });
         }
 
-        await MarketplaceCouponRedemptionItem.bulkCreate(rows, { transaction: t });
+        await MarketplaceCouponRedemptionItem.bulkCreate(rows, {
+          transaction: t,
+        });
       }
     }
 
@@ -934,8 +1047,10 @@ export async function finalizeOrder(prevState, formData) {
     if (status === "success") {
       const payload = payloadRaw ? safeJsonParse(payloadRaw) : null;
       const meta = payload ? extractMetadata(payload) : null;
-      const paid_amount = toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
-      const fx_rate = toFiniteNumber(meta?.fxRate) ?? toFiniteNumber(meta?.fx_rate);
+      const paid_amount =
+        toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
+      const fx_rate =
+        toFiniteNumber(meta?.fxRate) ?? toFiniteNumber(meta?.fx_rate);
       const paid_currency = (meta?.paidCurrency || meta?.paid_currency || "")
         .toString()
         .trim()
@@ -1002,15 +1117,25 @@ export async function finalizeOrder(prevState, formData) {
         lock: t.LOCK.UPDATE,
       });
       for (const it of items) {
-        const product = await db.MarketplaceProduct.findByPk(it.marketplace_product_id, { transaction: t, lock: t.LOCK.UPDATE });
-        if (product && product.stock !== null && typeof product.stock !== 'undefined') {
+        const product = await db.MarketplaceProduct.findByPk(
+          it.marketplace_product_id,
+          { transaction: t, lock: t.LOCK.UPDATE }
+        );
+        if (
+          product &&
+          product.stock !== null &&
+          typeof product.stock !== "undefined"
+        ) {
           const current = Number(product.stock);
           const qty = Number(it.quantity);
           if (current < qty) {
             throw new Error(`Insufficient stock for ${product.title}`);
           }
           const newStock = current - qty;
-          await product.update({ stock: newStock, inStock: newStock > 0 }, { transaction: t });
+          await product.update(
+            { stock: newStock, inStock: newStock > 0 },
+            { transaction: t }
+          );
         }
       }
 
@@ -1065,15 +1190,17 @@ export async function finalizeOrder(prevState, formData) {
             price: Number(it.price),
             subtotal: Number(it.subtotal),
           }));
-          const html = render(
-            OrderConfirmationEmail({
-              customerName: email,
-              orderNumber: order.order_number,
-              items: products,
-              subtotal: Number(order.subtotal),
-              discount: Number(order.discount || 0),
-              total: Number(order.total),
-            })
+          const html = await pretty(
+            await render(
+              <OrderConfirmationEmail
+                customerName={email}
+                orderNumber={order.order_number}
+                items={products}
+                subtotal={Number(order.subtotal)}
+                discount={Number(order.discount || 0)}
+                total={Number(order.total)}
+              />
+            )
           );
 
           await sendEmail({
@@ -1084,11 +1211,25 @@ export async function finalizeOrder(prevState, formData) {
           });
         }
       } catch (e) {
-        console.error("order confirmation email error", e);
+        let requestId = null;
+        try {
+          requestId = getRequestIdFromHeaders(await headers());
+        } catch {
+          requestId = null;
+        }
+        await reportError(e, {
+          tag: "order_confirmation_email_error",
+          route: "server_action:checkout#finalizeOrder",
+          method: "SERVER_ACTION",
+          status: 500,
+          requestId,
+          userId,
+        });
       }
 
       revalidatePath("/cart");
       revalidatePath("/account");
+      revalidatePath("/admin");
 
       return {
         success: true,

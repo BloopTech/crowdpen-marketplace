@@ -253,10 +253,24 @@ export function useCheckoutController() {
         const setupSbCloseHooks = () => {
           const prevOverflow = document.body.style.overflow;
           const prevBodyOverflowX = document.body.style.overflowX;
+          const prevBodyPosition = document.body.style.position;
+          const prevBodyTop = document.body.style.top;
+          const prevBodyWidth = document.body.style.width;
+          const prevBodyTouchAction = document.body.style.touchAction;
           const prevHtmlOverflowX = document.documentElement.style.overflowX;
+          const prevHtmlOverflow = document.documentElement.style.overflow;
+          const scrollY =
+            typeof window !== "undefined"
+              ? window.scrollY || window.pageYOffset || 0
+              : 0;
           document.body.style.overflow = "hidden";
           document.body.style.overflowX = "hidden";
+          document.body.style.position = "fixed";
+          document.body.style.top = `-${scrollY}px`;
+          document.body.style.width = "100%";
+          document.body.style.touchAction = "none";
           document.documentElement.style.overflowX = "hidden";
+          document.documentElement.style.overflow = "hidden";
 
           const onKey = (ev) => {
             if (ev.key === "Escape") cancelStartButton();
@@ -268,7 +282,15 @@ export function useCheckoutController() {
             cleaned = true;
             document.body.style.overflow = prevOverflow;
             document.body.style.overflowX = prevBodyOverflowX;
+            document.body.style.position = prevBodyPosition;
+            document.body.style.top = prevBodyTop;
+            document.body.style.width = prevBodyWidth;
+            document.body.style.touchAction = prevBodyTouchAction;
             document.documentElement.style.overflowX = prevHtmlOverflowX;
+            document.documentElement.style.overflow = prevHtmlOverflow;
+            try {
+              window.scrollTo(0, scrollY);
+            } catch {}
             window.removeEventListener("keydown", onKey, true);
             if (messageHandler) window.removeEventListener("message", messageHandler);
             launchedRef.current = false;

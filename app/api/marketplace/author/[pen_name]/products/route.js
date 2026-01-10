@@ -3,6 +3,7 @@ import { db } from "../../../../../models/index";
 import { Op } from "sequelize";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 const {
   User,
@@ -18,10 +19,13 @@ const {
   MarketplaceSubCategory,
 } = db;
 
+export const runtime = "nodejs";
+
 export async function GET(request, { params }) {
   const session = await getServerSession(authOptions);
 
   const userId = session?.user?.id || null;
+  const requestId = getRequestIdFromHeaders(request.headers);
 
   const getParams = await params;
   const { pen_name } = getParams;
@@ -380,7 +384,13 @@ export async function GET(request, { params }) {
       },
     });
   } catch (error) {
-    console.error("Error fetching author products:", error);
+    await reportError(error, {
+      tag: "author_products_get",
+      route: "/api/marketplace/author/[pen_name]/products",
+      method: "GET",
+      requestId,
+      userId,
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

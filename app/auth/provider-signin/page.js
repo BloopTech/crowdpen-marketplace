@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { LoaderCircle } from 'lucide-react';
+import { reportClientError } from '../../lib/observability/reportClientError';
 
 export default function ProviderSignInPage() {
   const [status, setStatus] = useState('processing');
@@ -84,7 +85,9 @@ export default function ProviderSignInPage() {
         }
         
       } catch (error) {
-        console.error('Provider sign-in error:', error);
+        await reportClientError(error, {
+          tag: 'provider_signin_error',
+        });
         setError(error.message);
         setStatus('error');
       }

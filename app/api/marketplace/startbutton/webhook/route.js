@@ -2,13 +2,22 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { Op } from "sequelize";
 import { db } from "../../../../models";
-import { render } from "@react-email/render";
+import { render, pretty } from "@react-email/render";
 import { sendEmail } from "../../../../lib/sendEmail";
 import { OrderConfirmationEmail } from "../../../../lib/emails/OrderConfirmation";
 import { PayoutReceiptEmail } from "../../../../lib/emails/PayoutReceipt";
-import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
+import {
+  getClientIpFromHeaders,
+  rateLimit,
+  rateLimitResponseHeaders,
+} from "../../../../lib/security/rateLimit";
 import { assertAnyEnvInProduction } from "../../../../lib/env";
-import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
+import {
+  getRequestIdFromHeaders,
+  reportError,
+} from "../../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 assertAnyEnvInProduction([
   "STARTBUTTON_WEBHOOK_SECRET",
@@ -97,10 +106,16 @@ function verifySignature(raw, headerSig, secret) {
 
     const digests = [];
     for (const algo of ["sha512", "sha256"]) {
-      const hex = crypto.createHmac(algo, secret).update(raw, "utf8").digest("hex");
+      const hex = crypto
+        .createHmac(algo, secret)
+        .update(raw, "utf8")
+        .digest("hex");
       digests.push(hex);
 
-      const b64 = crypto.createHmac(algo, secret).update(raw, "utf8").digest("base64");
+      const b64 = crypto
+        .createHmac(algo, secret)
+        .update(raw, "utf8")
+        .digest("base64");
       digests.push(b64);
       digests.push(b64.replace(/=+$/, ""));
     }
@@ -129,7 +144,10 @@ function isPaymentSuccess(payload) {
     p?.data?.transaction?.transactionStatus,
     p?.data?.transaction_status,
   ];
-  const joined = candidates.filter(Boolean).map((v) => String(v)).join(" |");
+  const joined = candidates
+    .filter(Boolean)
+    .map((v) => String(v))
+    .join(" |");
   const s = joined.toLowerCase();
   return [
     "success",
@@ -152,10 +170,17 @@ function getCollectionStage(payload) {
     p?.data?.transaction?.transactionStatus,
     p?.data?.transaction_status,
   ];
-  const joined = candidates.filter(Boolean).map((v) => String(v)).join(" |");
+  const joined = candidates
+    .filter(Boolean)
+    .map((v) => String(v))
+    .join(" |");
   const s = joined.toLowerCase();
 
-  if (s.includes("collection.completed") || s.includes("successful") || s.includes("completed")) {
+  if (
+    s.includes("collection.completed") ||
+    s.includes("successful") ||
+    s.includes("completed")
+  ) {
     return "completed";
   }
   if (s.includes("collection.verified") || s.includes("verified")) {
@@ -175,7 +200,10 @@ function isPaymentFailed(payload) {
     p?.data?.transaction?.transactionStatus,
     p?.data?.transaction_status,
   ];
-  const joined = candidates.filter(Boolean).map((v) => String(v)).join(" |");
+  const joined = candidates
+    .filter(Boolean)
+    .map((v) => String(v))
+    .join(" |");
   const s = joined.toLowerCase();
   return [
     "failed",
@@ -286,7 +314,10 @@ function mapTransferStatus(payload) {
     p?.event,
     p?.type,
   ];
-  const joined = candidates.filter(Boolean).map((v) => String(v)).join(" |");
+  const joined = candidates
+    .filter(Boolean)
+    .map((v) => String(v))
+    .join(" |");
   const s = joined.toLowerCase();
 
   if (s.includes("failed")) return "failed";
@@ -311,11 +342,18 @@ export async function POST(request) {
   const requestId = getRequestIdFromHeaders(request.headers) || null;
   const secret = getWebhookSecret();
   if (!secret) {
-    return NextResponse.json({ status: "error", message: "Webhook secret not configured" }, { status: 500 });
+    return NextResponse.json(
+      { status: "error", message: "Webhook secret not configured" },
+      { status: 500 }
+    );
   }
 
   const ip = getClientIpFromHeaders(request.headers) || "unknown";
-  const rl = rateLimit({ key: `sb-webhook:${ip}`, limit: 600, windowMs: 60_000 });
+  const rl = rateLimit({
+    key: `sb-webhook:${ip}`,
+    limit: 600,
+    windowMs: 60_000,
+  });
   if (!rl.ok) {
     return NextResponse.json(
       { status: "error", message: "Too many requests" },
@@ -328,7 +366,9 @@ export async function POST(request) {
   const payload = safeJsonParse(raw) || {};
 
   const authz = request.headers.get("authorization");
-  const bearer = authz?.toLowerCase().startsWith("bearer ") ? authz.split(" ")[1] : null;
+  const bearer = authz?.toLowerCase().startsWith("bearer ")
+    ? authz.split(" ")[1]
+    : null;
   const sig =
     request.headers.get("x-startbutton-signature") ||
     request.headers.get("x-webhook-signature") ||
@@ -338,7 +378,10 @@ export async function POST(request) {
   const bearerOk = bearer && bearer === secret;
 
   if (!sigOk && !bearerOk) {
-    return NextResponse.json({ status: "error", message: "Unauthorized" }, { status: 401 });
+    return NextResponse.json(
+      { status: "error", message: "Unauthorized" },
+      { status: 401 }
+    );
   }
 
   const isTransfer = looksLikeTransferEvent(payload);
@@ -365,7 +408,10 @@ export async function POST(request) {
     const references = Array.from(new Set(referenceCandidates));
 
     if (!transferStatus || !references.length) {
-      return NextResponse.json({ status: "success", message: "Transfer webhook received" });
+      return NextResponse.json({
+        status: "success",
+        message: "Transfer webhook received",
+      });
     }
 
     const payoutTx = await MarketplaceAdminTransactions.findOne({
@@ -380,7 +426,10 @@ export async function POST(request) {
     });
 
     if (!payoutTx) {
-      return NextResponse.json({ status: "success", message: "Transfer webhook received" });
+      return NextResponse.json({
+        status: "success",
+        message: "Transfer webhook received",
+      });
     }
 
     const t = await sequelize.transaction();
@@ -396,7 +445,8 @@ export async function POST(request) {
       const updates = {};
 
       const statusChanged = current !== transferStatus;
-      const becameCompleted = transferStatus === "completed" && current !== "completed";
+      const becameCompleted =
+        transferStatus === "completed" && current !== "completed";
 
       if (current !== transferStatus) {
         updates.status = transferStatus;
@@ -406,8 +456,12 @@ export async function POST(request) {
         updates.transaction_reference = references[0];
       }
 
-      if (!lockedTx.gateway_reference && (tx?.gatewayReference || tx?.gateway_reference)) {
-        updates.gateway_reference = tx?.gatewayReference || tx?.gateway_reference;
+      if (
+        !lockedTx.gateway_reference &&
+        (tx?.gatewayReference || tx?.gateway_reference)
+      ) {
+        updates.gateway_reference =
+          tx?.gatewayReference || tx?.gateway_reference;
       }
 
       if (tx?.merchantId && !lockedTx.merchant_id) {
@@ -426,10 +480,7 @@ export async function POST(request) {
         updates.currency = String(tx.currency).toUpperCase();
       }
 
-      if (
-        transferStatus === "completed" &&
-        !lockedTx.completedAt
-      ) {
+      if (transferStatus === "completed" && !lockedTx.completedAt) {
         updates.completedAt = new Date();
       }
 
@@ -494,8 +545,15 @@ export async function POST(request) {
               transaction: t2,
               lock: t2.LOCK.UPDATE,
             });
-            if (receiptRow && !receiptRow.sent_at && receiptRow.status !== "sending") {
-              await receiptRow.update({ status: "sending" }, { transaction: t2 });
+            if (
+              receiptRow &&
+              !receiptRow.sent_at &&
+              receiptRow.status !== "sending"
+            ) {
+              await receiptRow.update(
+                { status: "sending" },
+                { transaction: t2 }
+              );
               claimed = true;
             }
             await t2.commit();
@@ -505,7 +563,9 @@ export async function POST(request) {
           }
 
           if (claimed && receiptRow) {
-            const txFresh = await MarketplaceAdminTransactions.findOne({ where: { id: payoutTx.id } });
+            const txFresh = await MarketplaceAdminTransactions.findOne({
+              where: { id: payoutTx.id },
+            });
             const recipient = txFresh
               ? await User.findOne({ where: { id: txFresh.recipient_id } })
               : null;
@@ -523,11 +583,19 @@ export async function POST(request) {
               }
             );
 
-            const currency = (txFresh?.currency || "USD").toString().toUpperCase();
+            const currency = (txFresh?.currency || "USD")
+              .toString()
+              .toUpperCase();
             const amountMajor = Number(txFresh?.amount || 0) / 100;
-            const paidAtUtc = fmtDateTimeUtc(txFresh?.completedAt || new Date());
-            const settlementFrom = period?.settlementFrom ? String(period.settlementFrom) : null;
-            const settlementTo = period?.settlementTo ? String(period.settlementTo) : null;
+            const paidAtUtc = fmtDateTimeUtc(
+              txFresh?.completedAt || new Date()
+            );
+            const settlementFrom = period?.settlementFrom
+              ? String(period.settlementFrom)
+              : null;
+            const settlementTo = period?.settlementTo
+              ? String(period.settlementTo)
+              : null;
             const reference =
               txFresh?.transaction_reference ||
               txFresh?.gateway_reference ||
@@ -537,19 +605,19 @@ export async function POST(request) {
             const merchantName = recipient?.name || null;
             const merchantEmail = receiptRow.to_email;
 
-            const html = render(
-              PayoutReceiptEmail({
-                merchantName,
-                merchantEmail,
-                payoutId: payoutTx.id,
-                amount: amountMajor,
-                currency,
-                paidAt: paidAtUtc,
-                settlementFrom,
-                settlementTo,
-                reference,
-              })
-            );
+            const html = await pretty(await render(
+              <PayoutReceiptEmail
+                merchantName={merchantName}
+                merchantEmail={merchantEmail}
+                payoutId={payoutTx.id}
+                amount={amountMajor}
+                currency={currency}
+                paidAt={paidAtUtc}
+                settlementFrom={settlementFrom}
+                settlementTo={settlementTo}
+                reference={reference}
+              />
+            ));
 
             const subject = `Crowdpen payout receipt - ${amountMajor.toFixed(2)} ${currency}`;
             const bcc = receiptRow.bcc_email || getFinancePayoutBcc();
@@ -587,14 +655,26 @@ export async function POST(request) {
           }
         }
       } catch (e) {
-        console.error("payout receipt email error", e);
+        await reportError(e, {
+          route: "/api/marketplace/startbutton/webhook",
+          method: "POST",
+          status: 200,
+          requestId,
+          tag: "startbutton_webhook_payout_receipt_email",
+          extra: { stage: "payout_receipt_email" },
+        });
         try {
           await MarketplacePayoutReceipt.update(
             {
               status: "error",
               error: e?.message || "Failed to send receipt",
             },
-            { where: { marketplace_admin_transaction_id: payoutTx.id, sent_at: null } }
+            {
+              where: {
+                marketplace_admin_transaction_id: payoutTx.id,
+                sent_at: null,
+              },
+            }
           );
           await MarketplacePayoutEvent.create({
             marketplace_admin_transaction_id: payoutTx.id,
@@ -610,7 +690,10 @@ export async function POST(request) {
         }
       }
 
-      return NextResponse.json({ status: "success", message: "Payout transaction updated" });
+      return NextResponse.json({
+        status: "success",
+        message: "Payout transaction updated",
+      });
     } catch (error) {
       await t.rollback();
       await reportError(error, {
@@ -622,7 +705,10 @@ export async function POST(request) {
       });
       const isProd = process.env.NODE_ENV === "production";
       return NextResponse.json(
-        { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },
+        {
+          status: "error",
+          message: isProd ? "Server error" : error?.message || "Server error",
+        },
         { status: 500 }
       );
     }
@@ -638,10 +724,15 @@ export async function POST(request) {
     order = await MarketplaceOrder.findOne({ where: { id: orderId } });
   }
   if (!order && orderReference) {
-    order = await MarketplaceOrder.findOne({ where: { order_number: orderReference } });
+    order = await MarketplaceOrder.findOne({
+      where: { order_number: orderReference },
+    });
   }
   if (!order) {
-    return NextResponse.json({ status: "error", message: "Order not found" }, { status: 404 });
+    return NextResponse.json(
+      { status: "error", message: "Order not found" },
+      { status: 404 }
+    );
   }
 
   const t = await sequelize.transaction();
@@ -673,8 +764,10 @@ export async function POST(request) {
 
     if (ok && isSettled) {
       const meta = extractMetadata(payload) || {};
-      const paid_amount = toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
-      const fx_rate = toFiniteNumber(meta?.fxRate) ?? toFiniteNumber(meta?.fx_rate);
+      const paid_amount =
+        toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
+      const fx_rate =
+        toFiniteNumber(meta?.fxRate) ?? toFiniteNumber(meta?.fx_rate);
       const paid_currency = (meta?.paidCurrency || meta?.paid_currency || "")
         .toString()
         .trim()
@@ -712,7 +805,8 @@ export async function POST(request) {
       });
       for (const item of items) {
         if (isRevokedValue(item.downloadUrl)) continue;
-        const current = item.downloadUrl != null ? String(item.downloadUrl).trim() : "";
+        const current =
+          item.downloadUrl != null ? String(item.downloadUrl).trim() : "";
         if (current) continue;
         const productFile =
           item?.MarketplaceProduct?.file != null
@@ -729,7 +823,10 @@ export async function POST(request) {
         lock: t.LOCK.UPDATE,
       });
       if (cart) {
-        await MarketplaceCartItems.destroy({ where: { marketplace_cart_id: cart.id }, transaction: t });
+        await MarketplaceCartItems.destroy({
+          where: { marketplace_cart_id: cart.id },
+          transaction: t,
+        });
         await cart.update(
           {
             subtotal: 0,
@@ -761,7 +858,9 @@ export async function POST(request) {
       // Send email (best-effort)
       try {
         if (!alreadySuccessful) {
-          const user = await User.findOne({ where: { id: lockedOrder.user_id } });
+          const user = await User.findOne({
+            where: { id: lockedOrder.user_id },
+          });
           const toEmail = extractPayerEmail(payload) || user?.email;
           if (toEmail) {
             const items = await MarketplaceOrderItems.findAll({
@@ -773,15 +872,17 @@ export async function POST(request) {
               price: Number(it.price),
               subtotal: Number(it.subtotal),
             }));
-            const html = render(
-              OrderConfirmationEmail({
-                customerName: toEmail,
-                orderNumber: lockedOrder.order_number,
-                items: products,
-                subtotal: Number(lockedOrder.subtotal),
-                discount: Number(lockedOrder.discount || 0),
-                total: Number(lockedOrder.total),
-              })
+            const html = await pretty(
+              await render(
+                <OrderConfirmationEmail
+                  customerName={toEmail}
+                  orderNumber={lockedOrder.order_number}
+                  items={products}
+                  subtotal={Number(lockedOrder.subtotal)}
+                  discount={Number(lockedOrder.discount || 0)}
+                  total={Number(lockedOrder.total)}
+                />
+              )
             );
             await sendEmail({
               to: toEmail,
@@ -792,20 +893,31 @@ export async function POST(request) {
           }
         }
       } catch (e) {
-        console.error("webhook email error", e);
+        await reportError(e, {
+          route: "/api/marketplace/startbutton/webhook",
+          method: "POST",
+          status: 200,
+          requestId,
+          tag: "startbutton_webhook_order_email",
+          extra: { stage: "order_confirmation_email" },
+        });
       }
 
       return NextResponse.json({
         status: "success",
-        message: stage === "completed" ? "Order marked as completed" : "Order marked as paid",
+        message:
+          stage === "completed"
+            ? "Order marked as completed"
+            : "Order marked as paid",
       });
     }
 
     if (ok && isVerified) {
-      const nextOrderStatus =
-        ["successful"].includes(String(lockedOrder.orderStatus || "").toLowerCase())
-          ? "successful"
-          : "processing";
+      const nextOrderStatus = ["successful"].includes(
+        String(lockedOrder.orderStatus || "").toLowerCase()
+      )
+        ? "successful"
+        : "processing";
 
       await lockedOrder.update(
         {
@@ -816,7 +928,10 @@ export async function POST(request) {
       );
 
       await t.commit();
-      return NextResponse.json({ status: "success", message: "Order marked as processing" });
+      return NextResponse.json({
+        status: "success",
+        message: "Order marked as processing",
+      });
     }
 
     if (failed) {
@@ -839,7 +954,10 @@ export async function POST(request) {
       }
 
       await t.commit();
-      return NextResponse.json({ status: "success", message: "Order marked as failed" });
+      return NextResponse.json({
+        status: "success",
+        message: "Order marked as failed",
+      });
     }
 
     // Unrecognized status; accept to avoid retries if desired
@@ -850,7 +968,10 @@ export async function POST(request) {
       { transaction: t }
     );
     await t.commit();
-    return NextResponse.json({ status: "success", message: "Webhook received" });
+    return NextResponse.json({
+      status: "success",
+      message: "Webhook received",
+    });
   } catch (error) {
     await t.rollback();
     await reportError(error, {
@@ -862,7 +983,10 @@ export async function POST(request) {
     });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
-      { status: "error", message: isProd ? "Server error" : (error?.message || "Server error") },
+      {
+        status: "error",
+        message: isProd ? "Server error" : error?.message || "Server error",
+      },
       { status: 500 }
     );
   }

@@ -4,12 +4,17 @@ import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op } from "sequelize";
 import { getMarketplaceFeePercents } from "../../../lib/marketplaceFees";
+import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
+
+export const runtime = "nodejs";
 
 // GET /api/marketplace/account
 // Returns current user's profile and purchases
-export async function GET() {
+export async function GET(request) {
+  let session;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
 
     if (!session || !session.user?.id) {
       return NextResponse.json(
@@ -389,7 +394,14 @@ export async function GET() {
       payoutTransactions,
     });
   } catch (error) {
-    console.error("Error fetching account data:", error);
+    await reportError(error, {
+      route: "/api/marketplace/account",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "marketplace_account",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       {

@@ -3,8 +3,11 @@ import { db } from "../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 const { MarketplaceCart, MarketplaceCartItems, MarketplaceProduct, User, MarketplaceKycVerification } = db;
+
+export const runtime = "nodejs";
 
 // Helper to compute effective price respecting discount expiry
 function computeEffectivePrice(product) {
@@ -17,6 +20,9 @@ function computeEffectivePrice(product) {
 }
 
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
+  let reporterUserId = null;
   try {
     const body = await request.json().catch(() => ({}));
     const productIdsRaw = body?.productIds;
@@ -51,10 +57,12 @@ export async function POST(request) {
     }
 
     // Require session and ensure it matches userId
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
+
+    reporterUserId = session?.user?.id || null;
 
     const ip = getClientIpFromHeaders(request.headers) || "unknown";
     const userIdForRl = String(session.user.id);
@@ -240,7 +248,14 @@ export async function POST(request) {
     });
 
   } catch (error) {
-    console.error('Add products to cart API error:', error);
+    await reportError(error, {
+      route: "/api/marketplace/products/carts/addProducts",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: reporterUserId,
+      tag: "cart_add_products",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },

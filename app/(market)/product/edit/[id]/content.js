@@ -18,6 +18,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
+import { reportClientError } from "../../../../lib/observability/reportClientError";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -373,7 +374,9 @@ export default function EditProductContent(props) {
 
       toast.success(`${incomingFiles.length} image(s) added successfully`);
     } catch (error) {
-      console.error("Error handling images:", error);
+      await reportClientError(error, {
+        tag: "product_edit_handle_images_error",
+      });
       toast.error("Failed to process images");
     } finally {
       setUploadingImage(false);
@@ -472,7 +475,9 @@ export default function EditProductContent(props) {
 
       toast.success(`File "${file.name}" selected (${formattedSize})`);
     } catch (error) {
-      console.error("Error handling file:", error);
+      await reportClientError(error, {
+        tag: "product_edit_handle_file_error",
+      });
       toast.error("Failed to process file");
     } finally {
       setUploadingFile(false);

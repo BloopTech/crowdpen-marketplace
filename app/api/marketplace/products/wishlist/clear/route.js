@@ -3,12 +3,17 @@ import { db } from "../../../../../models/index";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 const { MarketplaceWishlists, User } = db;
 
+export const runtime = "nodejs";
+
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -76,7 +81,14 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("Clear wishlist API error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/wishlist/clear",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "wishlist_clear",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },

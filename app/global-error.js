@@ -1,9 +1,15 @@
 "use client";
 
+import { useEffect } from "react";
 import ErrorPage from './components/ErrorPage';
+import { reportClientError } from './lib/observability/reportClientError';
 
 export default function GlobalError({ error }) {
-  console.error(error);
+  useEffect(() => {
+    (async () => {
+      await reportClientError(error, { tag: "global_error_boundary" });
+    })();
+  }, [error]);
   return (
     <html>
       <body>

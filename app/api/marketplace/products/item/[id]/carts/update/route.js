@@ -4,8 +4,11 @@ import { authOptions } from "../../../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../../../models/index";
 import { z } from "zod";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../../../lib/security/rateLimit";
+import { getRequestIdFromHeaders, reportError } from "../../../../../../../lib/observability/reportError";
 
 const { MarketplaceProduct, MarketplaceCartItems, MarketplaceCart, User } = db;
+
+export const runtime = "nodejs";
 
 // Helper to compute effective price respecting discount expiry
 function computeEffectivePrice(product) {
@@ -25,6 +28,8 @@ const updateCartSchema = z.object({
 
 export async function POST(request, { params }) {
   const getParams = await params;
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   
   try {
     const { id } = getParams; // This is the cart item ID
@@ -52,7 +57,7 @@ export async function POST(request, { params }) {
     const { action, quantity } = validationResult.data;
     
     // Get session to verify user
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -136,7 +141,10 @@ export async function POST(request, { params }) {
       await cartItem.destroy();
       
       // Recalculate cart totals
-      await recalculateCartTotals(cartItem.MarketplaceCart.id);
+      await recalculateCartTotals(cartItem.MarketplaceCart.id, {
+        requestId,
+        userId: session?.user?.id || null,
+      });
       
       return NextResponse.json({
         success: true,
@@ -183,7 +191,10 @@ export async function POST(request, { params }) {
       });
       
       // Recalculate cart totals
-      await recalculateCartTotals(cartItem.MarketplaceCart.id);
+      await recalculateCartTotals(cartItem.MarketplaceCart.id, {
+        requestId,
+        userId: session?.user?.id || null,
+      });
       
       return NextResponse.json({
         success: true,
@@ -202,7 +213,14 @@ export async function POST(request, { params }) {
     }
     
   } catch (error) {
-    console.error("Cart Update API Error:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/carts/update",
+      method: "POST",
+      status: 500,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "cart_item_update",
+    });
     const isProd = process.env.NODE_ENV === "production";
     return NextResponse.json(
       { error: "Internal server error", ...(isProd ? {} : { details: error?.message }) },
@@ -212,7 +230,9 @@ export async function POST(request, { params }) {
 }
 
 // Helper function to recalculate cart totals
-async function recalculateCartTotals(cartId) {
+async function recalculateCartTotals(cartId, ctx) {
+  const requestId = ctx?.requestId || null;
+  const userId = ctx?.userId || null;
   try {
     const cart = await MarketplaceCart.findByPk(cartId);
     if (!cart) return;
@@ -237,6 +257,13 @@ async function recalculateCartTotals(cartId) {
     });
     
   } catch (error) {
-    console.error("Error recalculating cart totals:", error);
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]/carts/update",
+      method: "POST",
+      status: 200,
+      requestId,
+      userId,
+      tag: "cart_recalculate_totals",
+    });
   }
 }

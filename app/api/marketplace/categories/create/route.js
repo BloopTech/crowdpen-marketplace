@@ -4,8 +4,11 @@ import { categories } from "../../../../lib/data";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import slugify from "slugify";
+import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 const { MarketplaceCategory, MarketplaceSubCategory } = db;
+
+export const runtime = "nodejs";
 
 function assertAdmin(user) {
   return (
@@ -25,9 +28,11 @@ const createSlug = (name) => {
 };
 
 export async function POST(request) {
+  const requestId = getRequestIdFromHeaders(request?.headers) || null;
+  let session = null;
   try {
     // Check for admin authentication
-    const session = await getServerSession(authOptions);
+    session = await getServerSession(authOptions);
     if (!session || !assertAdmin(session.user)) {
       return NextResponse.json(
         { message: "Unauthorized. Admin access required." },
@@ -78,7 +83,15 @@ export async function POST(request) {
     }, { status: 201 });
     
   } catch (error) {
-    console.error("Error creating categories:", error);
+    const status = error?.name === "SequelizeUniqueConstraintError" ? 409 : 500;
+    await reportError(error, {
+      route: "/api/marketplace/categories/create",
+      method: "POST",
+      status,
+      requestId,
+      userId: session?.user?.id || null,
+      tag: "marketplace_categories_create",
+    });
     const isProd = process.env.NODE_ENV === "production";
     
     // Check if error is a duplicate entry
