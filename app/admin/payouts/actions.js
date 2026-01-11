@@ -5,7 +5,6 @@ import { authOptions } from "../../api/auth/[...nextauth]/route";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { db } from "../../models/index";
-import { getMarketplaceFeePercents } from "../../lib/marketplaceFees";
 import { render, pretty } from "@react-email/render";
 import { sendEmail } from "../../lib/sendEmail";
 import { PayoutReceiptEmail } from "../../lib/emails/PayoutReceipt";
@@ -74,6 +73,14 @@ function getFinancePayoutBcc() {
   return s ? s : null;
 }
 
+function normalizePayoutProvider(value) {
+  const v = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (v === "startbutton" || v === "paystack" || v === "manual") return v;
+  return null;
+}
+
 export async function createPayout(prevState, formData) {
   const session = await getServerSession(authOptions);
   if (!session || !isAdminOrSenior(session.user)) {
@@ -83,6 +90,8 @@ export async function createPayout(prevState, formData) {
   const recipient_id = String(formData.get("recipient_id") || "").trim();
   const currency = String(formData.get("currency") || "").trim() || "USD";
   const status = String(formData.get("status") || "").trim() || "pending";
+  const payoutProviderRaw = String(formData.get("payout_provider") || "").trim();
+  const payout_provider = normalizePayoutProvider(payoutProviderRaw) || "manual";
   const transaction_reference = String(formData.get("transaction_reference") || "").trim() || null;
   const note = String(formData.get("note") || "").trim() || null;
 
@@ -140,14 +149,12 @@ export async function createPayout(prevState, formData) {
   const [windowSales] = await db.sequelize.query(
     `
       SELECT
-        MIN(o."createdAt")::date AS "firstUnsettledSale",
-        MAX(o."createdAt")::date AS "lastUnsettledSale"
-      FROM "marketplace_order_items" AS oi
-      JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-      JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
-      WHERE p."user_id" = :merchantId
-        AND o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
-        AND (:lastSettledTo::date IS NULL OR (o."createdAt"::date > :lastSettledTo::date))
+        MIN(e.earned_at)::date AS "firstUnsettledSale",
+        MAX(e.earned_at)::date AS "lastUnsettledSale"
+      FROM public.marketplace_earnings_ledger_entries e
+      WHERE e.recipient_id = :merchantId
+        AND e.entry_type = 'sale_credit'
+        AND (:lastSettledTo::date IS NULL OR (e.earned_at::date > :lastSettledTo::date))
     `,
     {
       replacements: { merchantId: recipient_id, lastSettledTo: lastSettledToIso },
@@ -180,79 +187,54 @@ export async function createPayout(prevState, formData) {
     };
   }
 
-  const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
-    await getMarketplaceFeePercents({ db });
-
-  const revenueSql = `
-    SELECT
-      COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue",
-      COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",
-      COALESCE(SUM(
-        CASE
-          WHEN (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
-            THEN (ri."discount_amount")::numeric
-          ELSE 0
-        END
-      ), 0) AS "discountCrowdpenFunded",
-      COALESCE(SUM(
-        CASE
-          WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
-            THEN (ri."discount_amount")::numeric
-          ELSE 0
-        END
-      ), 0) AS "discountMerchantFunded"
-    FROM "marketplace_order_items" AS oi
-    JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-    JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
-    LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
-    LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"
-    LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"
-    LEFT JOIN "users" AS cu ON cu."id" = c."created_by"
-    WHERE p."user_id" = :merchantId
-      AND o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
-      AND o."createdAt" >= :from
-      AND o."createdAt" <= :to
-  `;
-
-  const revenueRows = await db.sequelize.query(revenueSql, {
-    replacements: { merchantId: recipient_id, from: fromDate, to: toDate },
-    type: db.Sequelize.QueryTypes.SELECT,
-  });
-  const revenue = Number(revenueRows?.[0]?.revenue || 0) || 0;
-  const discountTotal = Number(revenueRows?.[0]?.discountTotal || 0) || 0;
-  const discountMerchantFunded =
-    Number(revenueRows?.[0]?.discountMerchantFunded || 0) || 0;
-  const buyerPaid = Math.max(0, revenue - discountTotal);
-  const crowdpenFee = revenue * (CROWD_PCT || 0);
-  const startbuttonFee = buyerPaid * (SB_PCT || 0);
-  const expectedPayout = Math.max(
-    0,
-    revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+  const creditsRows = await db.sequelize.query(
+    `
+      SELECT COALESCE(SUM(e.amount_cents), 0)::bigint AS "creditsCents"
+      FROM public.marketplace_earnings_ledger_entries e
+      WHERE e.recipient_id = :merchantId
+        AND e.entry_type = 'sale_credit'
+        AND e.earned_at >= :from
+        AND e.earned_at <= :to
+    `,
+    {
+      replacements: { merchantId: recipient_id, from: fromDate, to: toDate },
+      type: db.Sequelize.QueryTypes.SELECT,
+    }
   );
+
+  const expectedCents = Number(creditsRows?.[0]?.creditsCents || 0) || 0;
 
   const key = settlementKey(fromDate, toDate);
 
-  const paidRows = await db.MarketplaceAdminTransactions.findAll({
-    where: {
-      trans_type: "payout",
-      recipient_id,
-      status: ["pending", "completed"],
-      [db.Sequelize.Op.or]: [
-        { transaction_id: key },
-        {
-          transaction_id: { [db.Sequelize.Op.is]: null },
-          createdAt: { [db.Sequelize.Op.gte]: fromDate, [db.Sequelize.Op.lte]: toDate },
-        },
-      ],
-    },
-    attributes: ["amount"],
-  });
-  const alreadyPaidCents = (paidRows || []).reduce(
-    (acc, r) => acc + (Number(r?.amount || 0) || 0),
-    0
+  const payoutLedgerRows = await db.sequelize.query(
+    `
+      SELECT COALESCE(SUM(le.amount_cents), 0)::bigint AS "payoutLedgerSum"
+      FROM public.marketplace_payout_periods pp
+      JOIN public.marketplace_admin_transactions t
+        ON t.id = pp.marketplace_admin_transaction_id
+      LEFT JOIN public.marketplace_earnings_ledger_entries le
+        ON le.marketplace_admin_transaction_id = pp.marketplace_admin_transaction_id
+        AND le.entry_type IN ('payout_debit','payout_debit_reversal')
+      WHERE pp.recipient_id = :merchantId
+        AND pp.is_active = TRUE
+        AND pp.settlement_from = :fromDay::date
+        AND pp.settlement_to = :toDay::date
+        AND t.trans_type = 'payout'
+        AND t.status IN ('pending','completed')
+    `,
+    {
+      replacements: {
+        merchantId: recipient_id,
+        fromDay: fromIso,
+        toDay: toIso,
+      },
+      type: db.Sequelize.QueryTypes.SELECT,
+    }
   );
 
-  const expectedCents = Math.round(expectedPayout * 100);
+  const payoutLedgerSum = Number(payoutLedgerRows?.[0]?.payoutLedgerSum || 0) || 0;
+  const alreadyPaidCents = Math.max(0, -payoutLedgerSum);
+
   const remainingCents = expectedCents - alreadyPaidCents;
   if (!Number.isFinite(remainingCents) || remainingCents <= 0) {
     return {
@@ -268,6 +250,7 @@ export async function createPayout(prevState, formData) {
       {
         recipient_id,
         trans_type: "payout",
+        payout_provider,
         status: normalizedStatus,
         transaction_id: key,
         amount: remainingCents,
@@ -280,6 +263,55 @@ export async function createPayout(prevState, formData) {
       },
       { transaction: t }
     );
+
+    if (isActivePeriod) {
+      await db.sequelize.query(
+        `
+          INSERT INTO public.marketplace_earnings_ledger_entries (
+            recipient_id,
+            amount_cents,
+            currency,
+            entry_type,
+            marketplace_admin_transaction_id,
+            earned_at,
+            metadata,
+            "createdAt",
+            "updatedAt"
+          ) VALUES (
+            :recipientId,
+            :amountCents,
+            :currency,
+            'payout_debit',
+            :txId,
+            now(),
+            :metadata::jsonb,
+            now(),
+            now()
+          )
+          ON CONFLICT (marketplace_admin_transaction_id)
+            WHERE entry_type = 'payout_debit'
+          DO NOTHING
+        `,
+        {
+          replacements: {
+            recipientId: recipient_id,
+            txId: payoutTx.id,
+            amountCents: -Math.abs(Number(remainingCents || 0) || 0),
+            currency: String(currency || "USD").toUpperCase(),
+            metadata: JSON.stringify({
+              settlement_from: fromIso,
+              settlement_to: toIso,
+              payout_provider,
+              created_via: "admin_single",
+              created_by: session.user.id,
+              status: normalizedStatus,
+            }),
+          },
+          transaction: t,
+          type: db.Sequelize.QueryTypes.INSERT,
+        }
+      );
+    }
 
     await db.MarketplacePayoutEvent.create(
       {

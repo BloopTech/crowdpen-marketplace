@@ -6,6 +6,7 @@ import { render, pretty } from "@react-email/render";
 import { sendEmail } from "../../../../lib/sendEmail";
 import { OrderConfirmationEmail } from "../../../../lib/emails/OrderConfirmation";
 import { PayoutReceiptEmail } from "../../../../lib/emails/PayoutReceipt";
+import { getMarketplaceFeePercents } from "../../../../lib/marketplaceFees";
 import {
   getClientIpFromHeaders,
   rateLimit,
@@ -74,6 +75,111 @@ function safeJsonParse(text) {
   } catch {
     return null;
   }
+}
+
+async function writeSaleCreditsForOrder({ order, transaction, gatewayReference }) {
+  const orderId = order?.id;
+  if (!orderId) return;
+
+  const { crowdpenPct: crowdPct, startbuttonPct: sbPct } =
+    await getMarketplaceFeePercents({ db });
+
+  const currency = String(order?.currency || order?.paid_currency || "USD")
+    .trim()
+    .toUpperCase();
+  const paymentProvider = String(order?.payment_provider || "startbutton").trim();
+  const orderNumber = order?.order_number ? String(order.order_number).trim() : null;
+  const startbuttonReferenceId = firstString(
+    gatewayReference,
+    order?.startbuttonReferenceId
+  );
+  const earnedAt = order?.createdAt ? new Date(order.createdAt) : new Date();
+
+  await sequelize.query(
+    `
+      WITH item_facts AS (
+        SELECT
+          oi.id AS order_item_id,
+          p.user_id AS merchant_id,
+          (oi.subtotal)::numeric AS revenue,
+          COALESCE(SUM(ri.discount_amount)::numeric, 0) AS discount_total,
+          COALESCE(
+            SUM(
+              CASE
+                WHEN cu.id IS NULL
+                  OR cu.crowdpen_staff = TRUE
+                  OR cu.role IN ('admin','senior_admin')
+                THEN 0
+                ELSE ri.discount_amount
+              END
+            )::numeric,
+            0
+          ) AS discount_merchant_funded
+        FROM public.marketplace_order_items oi
+        JOIN public.marketplace_products p ON p.id = oi.marketplace_product_id
+        LEFT JOIN public.marketplace_coupon_redemption_items ri ON ri.order_item_id = oi.id
+        LEFT JOIN public.marketplace_coupon_redemptions r ON r.id = ri.redemption_id
+        LEFT JOIN public.marketplace_coupons c ON c.id = r.coupon_id
+        LEFT JOIN public.users cu ON cu.id = c.created_by
+        WHERE oi.marketplace_order_id = :orderId
+        GROUP BY oi.id, p.user_id, oi.subtotal
+      )
+      INSERT INTO public.marketplace_earnings_ledger_entries (
+        recipient_id,
+        amount_cents,
+        currency,
+        entry_type,
+        marketplace_order_id,
+        marketplace_order_item_id,
+        earned_at,
+        metadata,
+        "createdAt",
+        "updatedAt"
+      )
+      SELECT
+        merchant_id,
+        ROUND(
+          GREATEST(
+            0,
+            (revenue - discount_merchant_funded)
+              - (revenue * :crowdPct::numeric)
+              - ((revenue - discount_total) * :sbPct::numeric)
+          ) * 100
+        )::bigint,
+        :currency,
+        'sale_credit',
+        :orderId,
+        order_item_id,
+        :earnedAt,
+        jsonb_build_object(
+          'order_number', :orderNumber,
+          'payment_provider', :paymentProvider,
+          'startbutton_reference', :startbuttonReferenceId,
+          'crowdpen_fee_pct', :crowdPct,
+          'startbutton_fee_pct', :sbPct
+        ),
+        now(),
+        now()
+      FROM item_facts
+      ON CONFLICT (marketplace_order_item_id)
+        WHERE entry_type = 'sale_credit'
+      DO NOTHING
+    `,
+    {
+      replacements: {
+        orderId,
+        currency,
+        paymentProvider,
+        orderNumber,
+        startbuttonReferenceId,
+        earnedAt,
+        crowdPct: Number(crowdPct || 0),
+        sbPct: Number(sbPct || 0),
+      },
+      transaction,
+      type: db.Sequelize.QueryTypes.INSERT,
+    }
+  );
 }
 
 function looksLikeHexDigest(value) {
@@ -779,9 +885,10 @@ export async function POST(request) {
         {
           paymentStatus: "successful",
           orderStatus: nextOrderStatus,
-          paystackReferenceId:
+          payment_provider: lockedOrder.payment_provider || "startbutton",
+          startbuttonReferenceId:
             gatewayReference ||
-            lockedOrder.paystackReferenceId ||
+            lockedOrder.startbuttonReferenceId ||
             orderReference ||
             null,
           notes: mergedNotes,
@@ -852,6 +959,12 @@ export async function POST(request) {
           { where: { id: redemption.coupon_id }, transaction: t }
         );
       }
+
+      await writeSaleCreditsForOrder({
+        order: lockedOrder,
+        transaction: t,
+        gatewayReference,
+      });
 
       await t.commit();
 

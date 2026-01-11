@@ -45,6 +45,8 @@ export default function AdminPayoutsContent() {
     todayIso,
     bulkMode,
     setBulkMode,
+    bulkPayoutProvider,
+    setBulkPayoutProvider,
     bulkCutoffTo,
     setBulkCutoffTo,
     bulkScope,
@@ -167,6 +169,19 @@ export default function AdminPayoutsContent() {
                 >
                   <option value="settle_all">Settle all outstanding</option>
                   <option value="cutoff">Settle up to cutoff date</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs mb-1">Payout provider</label>
+                <select
+                  value={bulkPayoutProvider}
+                  onChange={(e) => setBulkPayoutProvider(e.target.value)}
+                  className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="manual">manual</option>
+                  <option value="paystack">paystack</option>
+                  <option value="startbutton">startbutton</option>
                 </select>
               </div>
 
@@ -651,6 +666,18 @@ export default function AdminPayoutsContent() {
                 <option value="completed">completed</option>
                 <option value="failed">failed</option>
                 <option value="cancelled">cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs mb-1">Payout provider</label>
+              <select
+                name="payout_provider"
+                defaultValue="manual"
+                className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="manual">manual</option>
+                <option value="paystack">paystack</option>
+                <option value="startbutton">startbutton</option>
               </select>
             </div>
             <div>

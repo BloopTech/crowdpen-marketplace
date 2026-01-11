@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { db } from "../../../../models/index";
-import { Op } from "sequelize";
 import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 function assertAdmin(user) {
@@ -82,33 +81,61 @@ export async function GET(request) {
 
     const key = settlementKey(fromDate, toDate);
 
-    const where = {
-      trans_type: "payout",
-      recipient_id: recipientId,
-      [Op.or]: [
-        { transaction_id: key },
-        {
-          transaction_id: { [Op.is]: null },
-          createdAt: { [Op.gte]: fromDate, [Op.lte]: toDate },
+    const rows = await db.sequelize.query(
+      `
+        WITH tx AS (
+          SELECT t.id, t.amount, t.status
+          FROM public.marketplace_admin_transactions t
+          WHERE t.trans_type = 'payout'
+            AND t.recipient_id = :recipientId
+            AND (
+              t.transaction_id = :key
+              OR (
+                t.transaction_id IS NULL
+                AND t."createdAt" >= :from
+                AND t."createdAt" <= :to
+              )
+            )
+        )
+        SELECT
+          tx.id,
+          tx.amount,
+          tx.status,
+          COUNT(le.id)::bigint AS ledger_rows,
+          COALESCE(SUM(le.amount_cents), 0)::bigint AS ledger_sum_cents
+        FROM tx
+        LEFT JOIN public.marketplace_earnings_ledger_entries le
+          ON le.marketplace_admin_transaction_id = tx.id
+          AND le.entry_type IN ('payout_debit','payout_debit_reversal')
+        GROUP BY tx.id, tx.amount, tx.status
+      `,
+      {
+        replacements: {
+          recipientId,
+          key,
+          from: fromDate,
+          to: toDate,
         },
-      ],
-    };
-
-    const rows = await db.MarketplaceAdminTransactions.findAll({
-      where,
-      attributes: ["amount", "status"],
-    });
+        type: db.Sequelize.QueryTypes.SELECT,
+      }
+    );
 
     let completedCents = 0;
     let pendingCents = 0;
     let otherCents = 0;
 
     for (const r of rows || []) {
-      const amt = Number(r?.amount || 0) || 0;
       const status = String(r?.status || "").toLowerCase();
-      if (status === "completed") completedCents += amt;
-      else if (status === "pending") pendingCents += amt;
-      else otherCents += amt;
+      const hasLedger = Number(r?.ledger_rows || 0) > 0;
+      const ledgerSumCents = Number(r?.ledger_sum_cents || 0) || 0;
+      const fallbackAmountCents = Number(r?.amount || 0) || 0;
+      const paidCents = hasLedger
+        ? Math.max(0, -ledgerSumCents)
+        : Math.max(0, fallbackAmountCents);
+
+      if (status === "completed") completedCents += paidCents;
+      else if (status === "pending") pendingCents += paidCents;
+      else otherCents += paidCents;
     }
 
     const toMajor = (cents) => (Number(cents || 0) || 0) / 100;

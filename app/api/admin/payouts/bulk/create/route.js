@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { db } from "../../../../../models/index";
-import { getMarketplaceFeePercents } from "../../../../../lib/marketplaceFees";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
 import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
@@ -134,15 +133,14 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
           m.name,
           m.email,
           ls.last_settled_to,
-          MIN(o."createdAt")::date AS eligible_from,
-          MAX(o."createdAt")::date AS last_unsettled
+          MIN(e.earned_at)::date AS eligible_from,
+          MAX(e.earned_at)::date AS last_unsettled
         FROM merchants m
-        JOIN public.marketplace_products p ON p.user_id = m.id
-        JOIN public.marketplace_order_items oi ON oi.marketplace_product_id = p.id
-        JOIN public.marketplace_orders o ON o.id = oi.marketplace_order_id
+        JOIN public.marketplace_earnings_ledger_entries e
+          ON e.recipient_id = m.id
+          AND e.entry_type = 'sale_credit'
         LEFT JOIN last_settled ls ON ls.recipient_id = m.id
-        WHERE o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
-          AND (ls.last_settled_to IS NULL OR (o."createdAt"::date > ls.last_settled_to))
+        WHERE (ls.last_settled_to IS NULL OR (e.earned_at::date > ls.last_settled_to))
         GROUP BY m.id, m.name, m.email, ls.last_settled_to
       ), window AS (
         SELECT
@@ -153,6 +151,18 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
           e.eligible_from,
           LEAST(:runMaxTo::date, e.last_unsettled) AS eligible_to
         FROM eligible e
+      ), credits AS (
+        SELECT
+          w.merchant_id,
+          COALESCE(SUM(e.amount_cents), 0)::bigint AS expected_cents
+        FROM window w
+        JOIN public.marketplace_earnings_ledger_entries e
+          ON e.recipient_id = w.merchant_id
+          AND e.entry_type = 'sale_credit'
+          AND e.earned_at::date >= w.eligible_from
+          AND e.earned_at::date <= w.eligible_to
+          AND (w.last_settled_to IS NULL OR (e.earned_at::date > w.last_settled_to))
+        GROUP BY w.merchant_id
       )
       SELECT
         w.merchant_id AS "merchantId",
@@ -161,33 +171,9 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
         w.last_settled_to AS "lastSettledTo",
         w.eligible_from AS "eligibleFrom",
         w.eligible_to AS "eligibleTo",
-        COALESCE(SUM(
-          CASE WHEN o.id IS NOT NULL THEN (oi."subtotal")::numeric ELSE 0 END
-        ), 0) AS revenue,
-        COALESCE(SUM(
-          CASE WHEN o.id IS NOT NULL THEN (ri."discount_amount")::numeric ELSE 0 END
-        ), 0) AS "discountTotal",
-        COALESCE(SUM(
-          CASE
-            WHEN o.id IS NOT NULL AND NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
-              THEN (ri."discount_amount")::numeric
-            ELSE 0
-          END
-        ), 0) AS "discountMerchantFunded"
+        COALESCE(c.expected_cents, 0)::bigint AS "expectedCents"
       FROM window w
-      LEFT JOIN public.marketplace_products p ON p.user_id = w.merchant_id
-      LEFT JOIN public.marketplace_order_items oi ON oi.marketplace_product_id = p.id
-      LEFT JOIN public.marketplace_coupon_redemption_items ri ON ri.order_item_id = oi.id
-      LEFT JOIN public.marketplace_coupon_redemptions r ON r.id = ri.redemption_id
-      LEFT JOIN public.marketplace_coupons c ON c.id = r.coupon_id
-      LEFT JOIN public.users cu ON cu.id = c.created_by
-      LEFT JOIN public.marketplace_orders o
-        ON o.id = oi.marketplace_order_id
-        AND o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
-        AND o."createdAt"::date >= w.eligible_from
-        AND o."createdAt"::date <= w.eligible_to
-        AND (w.last_settled_to IS NULL OR (o."createdAt"::date > w.last_settled_to))
-      GROUP BY w.merchant_id, w.name, w.email, w.last_settled_to, w.eligible_from, w.eligible_to
+      LEFT JOIN credits c ON c.merchant_id = w.merchant_id
       ORDER BY w.name NULLS LAST, w.email
     `,
     {
@@ -199,35 +185,18 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
     }
   );
 
-  const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
-    await getMarketplaceFeePercents({ db });
-
   const periods = (rows || [])
     .map((r) => {
       const from = isoDay(r?.eligibleFrom);
       const to = isoDay(r?.eligibleTo);
       if (!from || !to || from > to) return null;
-      const revenue = Number(r?.revenue || 0) || 0;
-      const discountTotal = Number(r?.discountTotal || 0) || 0;
-      const discountMerchantFunded = Number(r?.discountMerchantFunded || 0) || 0;
-      const buyerPaid = Math.max(0, revenue - discountTotal);
-      const crowdpenFee = revenue * (CROWD_PCT || 0);
-      const startbuttonFee = buyerPaid * (SB_PCT || 0);
-      const expectedPayout = Math.max(
-        0,
-        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
-      );
-      const expectedCents = Math.round(expectedPayout * 100);
+      const expectedCents = Number(r?.expectedCents || 0) || 0;
       return {
         merchantId: r.merchantId,
         merchantName: r.merchantName || r.merchantEmail || r.merchantId,
         merchantEmail: r.merchantEmail,
         from,
         to,
-        revenue,
-        discountTotal,
-        discountMerchantFunded,
-        buyerPaid,
         expectedCents,
       };
     })
@@ -245,36 +214,30 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
           SELECT *
           FROM unnest(:merchantIds::uuid[], :froms::date[], :tos::date[])
             AS p(merchant_id, from_day, to_day)
+        ), per_tx AS (
+          SELECT
+            p.merchant_id,
+            pp.marketplace_admin_transaction_id AS tx_id
+          FROM periods p
+          JOIN public.marketplace_payout_periods pp
+            ON pp.recipient_id = p.merchant_id
+            AND pp.is_active = TRUE
+            AND pp.settlement_from = p.from_day
+            AND pp.settlement_to = p.to_day
         )
         SELECT
           p.merchant_id AS "merchantId",
-          COALESCE(
-            SUM(t.amount) FILTER (
-              WHERE t.transaction_id = ('settlement:' || p.from_day::text || ':' || p.to_day::text)
-            ),
-            0
-          )::bigint AS "keyedPaidCents",
-          COALESCE(
-            SUM(t.amount) FILTER (
-              WHERE t.transaction_id IS NULL
-                AND t."createdAt"::date >= p.from_day
-                AND t."createdAt"::date <= p.to_day
-            ),
-            0
-          )::bigint AS "legacyPaidCents"
+          COALESCE(SUM(
+            CASE
+              WHEN le.id IS NULL THEN 0
+              ELSE GREATEST(0, -le.amount_cents)
+            END
+          ), 0)::bigint AS "paidCents"
         FROM periods p
-        LEFT JOIN public.marketplace_admin_transactions t
-          ON t.recipient_id = p.merchant_id
-          AND t.trans_type = 'payout'
-          AND t.status IN ('pending','completed')
-          AND (
-            t.transaction_id = ('settlement:' || p.from_day::text || ':' || p.to_day::text)
-            OR (
-              t.transaction_id IS NULL
-              AND t."createdAt"::date >= p.from_day
-              AND t."createdAt"::date <= p.to_day
-            )
-          )
+        LEFT JOIN per_tx pt ON pt.merchant_id = p.merchant_id
+        LEFT JOIN public.marketplace_earnings_ledger_entries le
+          ON le.marketplace_admin_transaction_id = pt.tx_id
+          AND le.entry_type IN ('payout_debit','payout_debit_reversal')
         GROUP BY p.merchant_id
       `,
       {
@@ -284,9 +247,7 @@ async function computePreview({ merchantIds, mode, cutoffTo, cursor, limit }) {
     );
 
     for (const pr of paidRows || []) {
-      const keyed = Number(pr?.keyedPaidCents || 0) || 0;
-      const legacy = Number(pr?.legacyPaidCents || 0) || 0;
-      paidByMerchant.set(pr.merchantId, keyed + legacy);
+      paidByMerchant.set(pr.merchantId, Number(pr?.paidCents || 0) || 0);
     }
   }
 
@@ -351,6 +312,11 @@ export async function POST(request) {
     const transaction_reference =
       body.transaction_reference != null ? String(body.transaction_reference).trim() : null;
 
+    const payoutProviderRaw = body.payout_provider != null ? String(body.payout_provider).trim() : "";
+    const payout_provider = ["startbutton", "paystack", "manual"].includes(payoutProviderRaw.toLowerCase())
+      ? payoutProviderRaw.toLowerCase()
+      : "manual";
+
     const merchantIds = Array.isArray(body.merchantIds)
       ? body.merchantIds.map((s) => String(s).trim()).filter(Boolean)
       : [];
@@ -383,6 +349,7 @@ export async function POST(request) {
             {
               recipient_id: item.merchantId,
               trans_type: "payout",
+              payout_provider,
               status: "pending",
               transaction_id: settlementKey(fromDate, toDate),
               amount: amountCents,
@@ -394,6 +361,53 @@ export async function POST(request) {
               created_via: "admin_bulk",
             },
             { transaction: t }
+          );
+
+          await db.sequelize.query(
+            `
+              INSERT INTO public.marketplace_earnings_ledger_entries (
+                recipient_id,
+                amount_cents,
+                currency,
+                entry_type,
+                marketplace_admin_transaction_id,
+                earned_at,
+                metadata,
+                "createdAt",
+                "updatedAt"
+              ) VALUES (
+                :recipientId,
+                :amountCents,
+                :currency,
+                'payout_debit',
+                :txId,
+                now(),
+                :metadata::jsonb,
+                now(),
+                now()
+              )
+              ON CONFLICT (marketplace_admin_transaction_id)
+                WHERE entry_type = 'payout_debit'
+              DO NOTHING
+            `,
+            {
+              replacements: {
+                recipientId: item.merchantId,
+                txId: payoutTx.id,
+                amountCents: -Math.abs(Number(amountCents || 0) || 0),
+                currency: "USD",
+                metadata: JSON.stringify({
+                  settlement_from: item.from,
+                  settlement_to: item.to,
+                  payout_provider,
+                  created_via: "admin_bulk",
+                  created_by: session.user.id,
+                  status: "pending",
+                }),
+              },
+              transaction: t,
+              type: db.Sequelize.QueryTypes.INSERT,
+            }
           );
 
           await db.MarketplacePayoutEvent.create(

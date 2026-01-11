@@ -8,7 +8,10 @@ import { revalidatePath } from "next/cache";
 import { render, pretty } from "@react-email/render";
 import { sendEmail } from "../../lib/sendEmail";
 import { OrderConfirmationEmail } from "../../lib/emails/OrderConfirmation";
-import { getRequestIdFromHeaders, reportError } from "../../lib/observability/reportError";
+import {
+  getRequestIdFromHeaders,
+  reportError,
+} from "../../lib/observability/reportError";
 
 const {
   User,
@@ -27,6 +30,39 @@ function normalizeCurrency(code) {
   if (!code) return null;
   const c = String(code).trim().toUpperCase();
   return /^[A-Z]{3}$/.test(c) ? c : null;
+}
+
+function normalizePaymentProvider(value) {
+  const v = String(value || "")
+    .trim()
+    .toLowerCase();
+  if (v === "startbutton" || v === "paystack") return v;
+  return null;
+}
+
+function generatePaystackReference(orderNumber) {
+  const base = (orderNumber || "").toString().trim();
+  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
+  const ts = Date.now().toString(36).toUpperCase();
+  const parts = [base || "CP", "PS", ts, rand].filter(Boolean);
+  return parts.join("-").slice(0, 90);
+}
+
+async function getActivePaymentProvider() {
+  if (!db?.MarketplacePaymentProviderSettings) return "startbutton";
+
+  try {
+    const row = await db.MarketplacePaymentProviderSettings.findOne({
+      where: { is_active: true },
+      order: [["createdAt", "DESC"]],
+      attributes: ["active_provider"],
+    });
+    return normalizePaymentProvider(row?.active_provider) || "startbutton";
+  } catch (e) {
+    const code = e?.original?.code || e?.code;
+    if (code === "42P01") return "startbutton";
+    return "startbutton";
+  }
 }
 
 function getStartButtonSupportedCurrencies() {
@@ -56,6 +92,21 @@ function getStartButtonSupportedCurrencies() {
   ]);
 }
 
+function getPaystackSupportedCurrencies() {
+  const raw = process.env.PAYSTACK_SUPPORTED_CURRENCIES;
+  if (raw) {
+    const set = new Set(
+      raw
+        .split(",")
+        .map((s) => normalizeCurrency(s))
+        .filter(Boolean)
+    );
+    if (set.size > 0) return set;
+  }
+
+  return new Set(["NGN", "GHS", "ZAR", "USD"]);
+}
+
 function getStartButtonPublicKey() {
   return (
     process.env.NEXT_PUBLIC_STARTBUTTON_PUBLIC_KEY ||
@@ -66,6 +117,38 @@ function getStartButtonPublicKey() {
   )
     .toString()
     .trim();
+}
+
+function getPaystackPublicKey() {
+  return (process.env.PAYSTACK_PUBLICKEY || "").toString().trim();
+}
+
+function getPaystackSecretKey() {
+  return (process.env.PAYSTACK_SECRETKEY || "").toString().trim();
+}
+
+async function verifyPaystackTransaction(reference) {
+  const secret = getPaystackSecretKey();
+  if (!secret) throw new Error("Paystack secret not configured");
+  const ref = (reference || "").toString().trim();
+  if (!ref) throw new Error("Missing Paystack reference");
+
+  const url = `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`;
+  const upstream = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Content-Type": "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const json = await upstream.json().catch(() => ({}));
+  if (!upstream.ok || json?.status !== true) {
+    const msg = json?.message || "Verification failed";
+    throw new Error(msg);
+  }
+  return json?.data || null;
 }
 
 function generateOrderNumber() {
@@ -274,7 +357,11 @@ export async function beginCheckout(prevState, formData) {
     };
   }
 
-  const publicKey = getStartButtonPublicKey();
+  const paymentProvider = await getActivePaymentProvider();
+  const publicKey =
+    paymentProvider === "paystack"
+      ? getPaystackPublicKey()
+      : getStartButtonPublicKey();
   if (!publicKey) {
     return {
       success: false,
@@ -293,9 +380,7 @@ export async function beginCheckout(prevState, formData) {
   const city = (formData.get("city") || "").toString().trim();
   const zipCode = (formData.get("zipCode") || "").toString().trim();
   const country = (formData.get("country") || "").toString().trim() || "NG";
-  const paymentMethod = (
-    formData.get("paymentMethod") || "startbutton"
-  ).toString();
+  const paymentMethod = paymentProvider;
   const existingOrderId = (formData.get("existingOrderId") || "")
     .toString()
     .trim();
@@ -629,7 +714,10 @@ export async function beginCheckout(prevState, formData) {
 
   const baseCurrency = "USD";
   const ipCountry = await getHeaderCountry();
-  const supported = getStartButtonSupportedCurrencies();
+  const supported =
+    paymentProvider === "paystack"
+      ? getPaystackSupportedCurrencies()
+      : getStartButtonSupportedCurrencies();
   const viewerCurrency =
     normalizeCurrency(deriveCurrencyByCountry(ipCountry)) || baseCurrency;
 
@@ -705,11 +793,18 @@ export async function beginCheckout(prevState, formData) {
           payStatus === "successful" || ordStatus === "successful";
 
         if (alreadySuccessful) {
+          const providerReference =
+            paymentProvider === "paystack"
+              ? existing.paystackReferenceId ||
+                generatePaystackReference(existing.order_number)
+              : null;
           return {
             success: true,
             message: "Checkout started",
             coupon_notice: couponNotice,
             publicKey,
+            paymentProvider,
+            providerReference,
             orderId: existing.id,
             orderNumber: existing.order_number,
             amount: Number(existing.paid_amount || paidAmount),
@@ -735,11 +830,20 @@ export async function beginCheckout(prevState, formData) {
         }
 
         // If it's still pending, refresh totals and continue using the same order.
+        const providerReference =
+          paymentProvider === "paystack"
+            ? existing.paystackReferenceId ||
+              generatePaystackReference(existing.order_number)
+            : null;
         await existing.update({
           subtotal: subtotal.toFixed(2),
           discount: discount.toFixed(2),
           total: total.toFixed(2),
           paymentMethod: paymentMethod,
+          payment_provider: paymentProvider,
+          ...(paymentProvider === "paystack" && providerReference
+            ? { paystackReferenceId: providerReference }
+            : {}),
           currency: baseCurrency,
           couponCode: cart.coupon_code || null,
           paid_amount: paidAmount,
@@ -799,6 +903,8 @@ export async function beginCheckout(prevState, formData) {
           message: "Checkout started",
           coupon_notice: couponNotice,
           publicKey,
+          paymentProvider,
+          providerReference,
           orderId: existing.id,
           orderNumber: existing.order_number,
           amount: paidAmount,
@@ -850,6 +956,10 @@ export async function beginCheckout(prevState, formData) {
     );
 
     const orderNumber = generateOrderNumber();
+    const providerReference =
+      paymentProvider === "paystack"
+        ? generatePaystackReference(orderNumber)
+        : null;
     const order = await MarketplaceOrder.create(
       {
         user_id: userId,
@@ -859,6 +969,7 @@ export async function beginCheckout(prevState, formData) {
         discount: discount.toFixed(2),
         total: total.toFixed(2),
         paymentMethod: paymentMethod,
+        payment_provider: paymentProvider,
         paymentStatus: "pending",
         orderStatus: "pending",
         currency: baseCurrency,
@@ -866,6 +977,9 @@ export async function beginCheckout(prevState, formData) {
         paid_amount: paidAmount,
         paid_currency: paidCurrency,
         fx_rate: fxRate,
+        ...(paymentProvider === "paystack" && providerReference
+          ? { paystackReferenceId: providerReference }
+          : {}),
         notes: null,
       },
       { transaction: t }
@@ -985,6 +1099,8 @@ export async function beginCheckout(prevState, formData) {
       message: "Checkout started",
       coupon_notice: couponNotice,
       publicKey,
+      paymentProvider,
+      providerReference,
       orderId: order.id,
       orderNumber,
       amount: paidAmount,
@@ -1044,39 +1160,121 @@ export async function finalizeOrder(prevState, formData) {
         : payloadRaw
       : order.notes;
 
+    const provider =
+      normalizePaymentProvider(order.payment_provider) ||
+      normalizePaymentProvider(order.paymentMethod) ||
+      "startbutton";
+    const referenceUpdate =
+      provider === "paystack"
+        ? { paystackReferenceId: reference || order.paystackReferenceId }
+        : { startbuttonReferenceId: reference || order.startbuttonReferenceId };
+
     if (status === "success") {
       const payload = payloadRaw ? safeJsonParse(payloadRaw) : null;
       const meta = payload ? extractMetadata(payload) : null;
-      const paid_amount =
+
+      let paid_amount =
         toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
-      const fx_rate =
+      let fx_rate =
         toFiniteNumber(meta?.fxRate) ?? toFiniteNumber(meta?.fx_rate);
-      const paid_currency = (meta?.paidCurrency || meta?.paid_currency || "")
+      let paid_currency = (meta?.paidCurrency || meta?.paid_currency || "")
         .toString()
         .trim()
         .toUpperCase();
 
-      const stageParts = [
-        payload?.event,
-        payload?.status,
-        payload?.data?.status,
-        payload?.data?.transaction?.status,
-        payload?.data?.transaction?.transactionStatus,
-      ]
-        .filter(Boolean)
-        .map((v) => String(v))
-        .join(" |")
-        .toLowerCase();
-      const isSettled =
-        stageParts.includes("collection.completed") ||
-        stageParts.includes("completed");
+      let isSettled = false;
+
+      if (provider === "paystack") {
+        const verified = await verifyPaystackTransaction(
+          reference || order.paystackReferenceId
+        );
+        const vStatus = (verified?.status || "").toString().toLowerCase();
+        if (vStatus !== "success") {
+          await order.update(
+            {
+              paymentStatus: "failed",
+              orderStatus: "failed",
+              payment_provider: order.payment_provider || provider,
+              ...referenceUpdate,
+              notes,
+            },
+            { transaction: t }
+          );
+          await t.commit();
+          return {
+            success: false,
+            message: "We couldn't confirm your Paystack payment.",
+            orderNumber: order.order_number,
+          };
+        }
+
+        const vAmount = Number(verified?.amount);
+        const vCurrency = (verified?.currency || "")
+          .toString()
+          .trim()
+          .toUpperCase();
+        const vMeta = verified?.metadata || null;
+
+        if (Number.isFinite(vAmount) && vAmount > 0) {
+          paid_amount = Number((vAmount / 100).toFixed(2));
+        }
+        if (vCurrency) {
+          paid_currency = vCurrency;
+        }
+        if (vMeta) {
+          fx_rate =
+            toFiniteNumber(vMeta?.fxRate) ??
+            toFiniteNumber(vMeta?.fx_rate) ??
+            fx_rate;
+        }
+
+        const expectedMinor = Math.round(Number(order.paid_amount || 0) * 100);
+        if (
+          Number.isFinite(expectedMinor) &&
+          expectedMinor > 0 &&
+          Number.isFinite(vAmount) &&
+          vAmount > 0 &&
+          Math.abs(vAmount - expectedMinor) > 5
+        ) {
+          throw new Error("Payment amount mismatch");
+        }
+        if (order.paid_currency && vCurrency) {
+          const oCur = String(order.paid_currency).toUpperCase();
+          if (oCur && vCurrency && oCur !== vCurrency) {
+            throw new Error("Payment currency mismatch");
+          }
+        }
+
+        if (vMeta?.orderId && String(vMeta.orderId) !== String(order.id)) {
+          throw new Error("Payment verification mismatch");
+        }
+
+        isSettled = true;
+      } else {
+        const stageParts = [
+          payload?.event,
+          payload?.status,
+          payload?.data?.status,
+          payload?.data?.transaction?.status,
+          payload?.data?.transaction?.transactionStatus,
+        ]
+          .filter(Boolean)
+          .map((v) => String(v))
+          .join(" |")
+          .toLowerCase();
+        isSettled =
+          stageParts.includes("collection.completed") ||
+          stageParts.includes("completed");
+      }
+
       const nextOrderStatus = isSettled ? "successful" : "processing";
 
       if (!isSettled) {
         await order.update(
           {
             orderStatus: nextOrderStatus,
-            paystackReferenceId: reference || order.paystackReferenceId,
+            payment_provider: order.payment_provider || provider,
+            ...referenceUpdate,
             notes,
             paid_amount: paid_amount != null ? paid_amount : order.paid_amount,
             paid_currency: paid_currency || order.paid_currency,
@@ -1101,7 +1299,8 @@ export async function finalizeOrder(prevState, formData) {
         {
           paymentStatus: "successful",
           orderStatus: nextOrderStatus,
-          paystackReferenceId: reference || order.paystackReferenceId,
+          payment_provider: order.payment_provider || provider,
+          ...referenceUpdate,
           notes,
           paid_amount: paid_amount != null ? paid_amount : order.paid_amount,
           paid_currency: paid_currency || order.paid_currency,

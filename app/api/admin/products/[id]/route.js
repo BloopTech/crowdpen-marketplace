@@ -102,6 +102,20 @@ export async function GET(_request, { params }) {
       { replacements: { pid: j.id }, type: db.Sequelize.QueryTypes.SELECT }
     );
 
+    const [ledgerAgg] = await db.sequelize.query(
+      `
+        SELECT
+          COUNT(e.id)::bigint AS "ledgerRows",
+          COALESCE(SUM(e.amount_cents), 0)::bigint AS "creditsCents"
+        FROM public.marketplace_earnings_ledger_entries e
+        JOIN public.marketplace_order_items oi
+          ON oi.id = e.marketplace_order_item_id
+        WHERE e.entry_type = 'sale_credit'
+          AND oi.marketplace_product_id = :pid
+      `,
+      { replacements: { pid: j.id }, type: db.Sequelize.QueryTypes.SELECT }
+    );
+
     const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
       await getMarketplaceFeePercents({ db });
     const revenue = Number(agg?.totalRevenue || 0) || 0;
@@ -110,10 +124,13 @@ export async function GET(_request, { params }) {
     const buyerPaid = Math.max(0, revenue - discountTotal);
     const crowdpenFee = revenue * (CROWD_PCT || 0);
     const startbuttonFee = buyerPaid * (SB_PCT || 0);
-    const creatorPayout = Math.max(
-      0,
-      revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
-    );
+    const hasLedgerCredits = (Number(ledgerAgg?.ledgerRows || 0) || 0) > 0;
+    const creatorPayout = hasLedgerCredits
+      ? Math.max(0, (Number(ledgerAgg?.creditsCents || 0) || 0) / 100)
+      : Math.max(
+          0,
+          revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+        );
 
     const fileUrl = typeof j.file === "string" && j.file.trim() ? j.file : null;
     let fileName = null;

@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import { db } from "../../../models/index";
 import { Op } from "sequelize";
-import { getMarketplaceFeePercents } from "../../../lib/marketplaceFees";
 import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 export const runtime = "nodejs";
@@ -201,38 +200,6 @@ export async function GET(request) {
     const lastMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
     const lastMonthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 0, 23, 59, 59, 999));
 
-    const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
-      await getMarketplaceFeePercents({ db });
-
-    const aggSqlBase = `
-      SELECT
-        COALESCE(SUM((oi."subtotal")::numeric), 0) AS "revenue",
-        COALESCE(SUM((ri."discount_amount")::numeric), 0) AS "discountTotal",
-        COALESCE(SUM(
-          CASE
-            WHEN (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
-              THEN (ri."discount_amount")::numeric
-            ELSE 0
-          END
-        ), 0) AS "discountCrowdpenFunded",
-        COALESCE(SUM(
-          CASE
-            WHEN NOT (cu."id" IS NULL OR cu."crowdpen_staff" = true OR cu."role" IN ('admin', 'senior_admin'))
-              THEN (ri."discount_amount")::numeric
-            ELSE 0
-          END
-        ), 0) AS "discountMerchantFunded"
-      FROM "marketplace_order_items" AS oi
-      JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-      JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
-      LEFT JOIN "marketplace_coupon_redemption_items" AS ri ON ri."order_item_id" = oi."id"
-      LEFT JOIN "marketplace_coupon_redemptions" AS r ON r."id" = ri."redemption_id"
-      LEFT JOIN "marketplace_coupons" AS c ON c."id" = r."coupon_id"
-      LEFT JOIN "users" AS cu ON cu."id" = c."created_by"
-      WHERE p."user_id" = :merchantId
-        AND o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
-    `;
-
     let lastSettledTo = null;
     try {
       const [settledRow] = await db.sequelize.query(
@@ -256,52 +223,100 @@ export async function GET(request) {
       if (code !== "42P01") throw e;
     }
 
-    const settledAllTimeSql = `${aggSqlBase} AND :settledTo::date IS NOT NULL AND o."createdAt"::date <= :settledTo::date`;
-    const pendingAllTimeSql = `${aggSqlBase} AND (:settledTo::date IS NULL OR (o."createdAt"::date > :settledTo::date))`;
-    const settledMonthSql = `${settledAllTimeSql} AND o."createdAt" >= :from AND o."createdAt" <= :to`;
+    let settledCreditsCents = 0;
+    let pendingCreditsCents = 0;
+    let monthSettledCreditsCents = 0;
+    let lastMonthSettledCreditsCents = 0;
 
-    const [settledAllTimeRows, pendingAllTimeRows, settledMonthRows, settledLastMonthRows] =
-      await Promise.all([
-        db.sequelize.query(settledAllTimeSql, {
-          replacements: { merchantId: userId, settledTo: lastSettledTo },
-          type: db.Sequelize.QueryTypes.SELECT,
-        }),
-        db.sequelize.query(pendingAllTimeSql, {
-          replacements: { merchantId: userId, settledTo: lastSettledTo },
-          type: db.Sequelize.QueryTypes.SELECT,
-        }),
-        db.sequelize.query(settledMonthSql, {
-          replacements: {
-            merchantId: userId,
-            settledTo: lastSettledTo,
-            from: monthStart,
-            to: now,
-          },
-          type: db.Sequelize.QueryTypes.SELECT,
-        }),
-        db.sequelize.query(settledMonthSql, {
-          replacements: {
-            merchantId: userId,
-            settledTo: lastSettledTo,
-            from: lastMonthStart,
-            to: lastMonthEnd,
-          },
-          type: db.Sequelize.QueryTypes.SELECT,
-        }),
+    if (lastSettledTo) {
+      const [settledRow, pendingRow, monthRow, lastMonthRow] = await Promise.all([
+        db.sequelize.query(
+          `
+            SELECT COALESCE(SUM(e.amount_cents), 0)::bigint AS "cents"
+            FROM public.marketplace_earnings_ledger_entries e
+            WHERE e.recipient_id = :merchantId
+              AND e.entry_type = 'sale_credit'
+              AND e.earned_at::date <= :settledTo::date
+          `,
+          {
+            replacements: { merchantId: userId, settledTo: lastSettledTo },
+            type: db.Sequelize.QueryTypes.SELECT,
+          }
+        ),
+        db.sequelize.query(
+          `
+            SELECT COALESCE(SUM(e.amount_cents), 0)::bigint AS "cents"
+            FROM public.marketplace_earnings_ledger_entries e
+            WHERE e.recipient_id = :merchantId
+              AND e.entry_type = 'sale_credit'
+              AND e.earned_at::date > :settledTo::date
+          `,
+          {
+            replacements: { merchantId: userId, settledTo: lastSettledTo },
+            type: db.Sequelize.QueryTypes.SELECT,
+          }
+        ),
+        db.sequelize.query(
+          `
+            SELECT COALESCE(SUM(e.amount_cents), 0)::bigint AS "cents"
+            FROM public.marketplace_earnings_ledger_entries e
+            WHERE e.recipient_id = :merchantId
+              AND e.entry_type = 'sale_credit'
+              AND e.earned_at >= :from
+              AND e.earned_at <= :to
+              AND e.earned_at::date <= :settledTo::date
+          `,
+          {
+            replacements: {
+              merchantId: userId,
+              settledTo: lastSettledTo,
+              from: monthStart,
+              to: now,
+            },
+            type: db.Sequelize.QueryTypes.SELECT,
+          }
+        ),
+        db.sequelize.query(
+          `
+            SELECT COALESCE(SUM(e.amount_cents), 0)::bigint AS "cents"
+            FROM public.marketplace_earnings_ledger_entries e
+            WHERE e.recipient_id = :merchantId
+              AND e.entry_type = 'sale_credit'
+              AND e.earned_at >= :from
+              AND e.earned_at <= :to
+              AND e.earned_at::date <= :settledTo::date
+          `,
+          {
+            replacements: {
+              merchantId: userId,
+              settledTo: lastSettledTo,
+              from: lastMonthStart,
+              to: lastMonthEnd,
+            },
+            type: db.Sequelize.QueryTypes.SELECT,
+          }
+        ),
       ]);
 
-    const calcNetEarnings = (row) => {
-      const revenue = Number(row?.revenue || 0) || 0;
-      const discountTotal = Number(row?.discountTotal || 0) || 0;
-      const discountMerchantFunded = Number(row?.discountMerchantFunded || 0) || 0;
-      const buyerPaid = Math.max(0, revenue - discountTotal);
-      const crowdpenFee = revenue * (CROWD_PCT || 0);
-      const startbuttonFee = buyerPaid * (SB_PCT || 0);
-      return Math.max(
-        0,
-        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+      settledCreditsCents = Number(settledRow?.[0]?.cents || 0) || 0;
+      pendingCreditsCents = Number(pendingRow?.[0]?.cents || 0) || 0;
+      monthSettledCreditsCents = Number(monthRow?.[0]?.cents || 0) || 0;
+      lastMonthSettledCreditsCents = Number(lastMonthRow?.[0]?.cents || 0) || 0;
+    } else {
+      const [pendingRow] = await db.sequelize.query(
+        `
+          SELECT COALESCE(SUM(e.amount_cents), 0)::bigint AS "cents"
+          FROM public.marketplace_earnings_ledger_entries e
+          WHERE e.recipient_id = :merchantId
+            AND e.entry_type = 'sale_credit'
+        `,
+        {
+          replacements: { merchantId: userId },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }
       );
-    };
+      pendingCreditsCents = Number(pendingRow?.cents || 0) || 0;
+    }
 
     const payoutsRows = db?.MarketplaceAdminTransactions
       ? await db.MarketplaceAdminTransactions.findAll({
@@ -326,26 +341,60 @@ export async function GET(request) {
       return n / 100;
     };
 
-    const settledEarnings = calcNetEarnings(settledAllTimeRows?.[0]);
-    const pendingSettlement = calcNetEarnings(pendingAllTimeRows?.[0]);
+    const payoutAggRows = await db.sequelize.query(
+      `
+        WITH tx AS (
+          SELECT t.id, t.amount, t.status, t."createdAt"
+          FROM public.marketplace_admin_transactions t
+          WHERE t.trans_type = 'payout'
+            AND t.recipient_id = :merchantId
+        ), led AS (
+          SELECT
+            le.marketplace_admin_transaction_id AS tx_id,
+            COUNT(le.id)::bigint AS ledger_rows,
+            COALESCE(SUM(le.amount_cents), 0)::bigint AS ledger_sum_cents
+          FROM public.marketplace_earnings_ledger_entries le
+          WHERE le.entry_type IN ('payout_debit','payout_debit_reversal')
+          GROUP BY 1
+        ), per_tx AS (
+          SELECT
+            tx.status,
+            tx."createdAt",
+            CASE
+              WHEN COALESCE(led.ledger_rows, 0) > 0 THEN GREATEST(0, -led.ledger_sum_cents)
+              ELSE COALESCE(tx.amount, 0)
+            END::bigint AS paid_cents
+          FROM tx
+          LEFT JOIN led ON led.tx_id = tx.id
+        )
+        SELECT
+          COALESCE(SUM(CASE WHEN status = 'completed' THEN paid_cents ELSE 0 END), 0)::bigint AS "completedCents",
+          COALESCE(SUM(CASE WHEN status = 'pending' THEN paid_cents ELSE 0 END), 0)::bigint AS "pendingCents"
+        FROM per_tx
+      `,
+      {
+        replacements: { merchantId: userId },
+        type: db.Sequelize.QueryTypes.SELECT,
+      }
+    );
 
-    let totalPaidOut = 0;
-    let totalPendingPayouts = 0;
+    const completedPayoutsCents = Number(payoutAggRows?.[0]?.completedCents || 0) || 0;
+    const pendingPayoutsCents = Number(payoutAggRows?.[0]?.pendingCents || 0) || 0;
+
     let lastCompleted = null;
     for (const p of payoutsRows || []) {
       const status = String(p?.status || "").toLowerCase();
-      const amt = payoutMajorAmount(p);
       if (status === "completed") {
-        totalPaidOut += amt;
         if (!lastCompleted) lastCompleted = p;
-      } else if (status === "pending") {
-        totalPendingPayouts += amt;
       }
     }
 
-    const monthEarnings = calcNetEarnings(settledMonthRows?.[0]);
-
-    const lastMonthEarnings = calcNetEarnings(settledLastMonthRows?.[0]);
+    const settledEarnings = settledCreditsCents / 100;
+    const pendingSettlement = pendingCreditsCents / 100;
+    const totalPaidOut = completedPayoutsCents / 100;
+    const totalPendingPayouts = pendingPayoutsCents / 100;
+    const monthEarnings = monthSettledCreditsCents / 100;
+    const lastMonthEarnings = lastMonthSettledCreditsCents / 100;
 
     const growthPercent =
       lastMonthEarnings > 0

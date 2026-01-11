@@ -94,14 +94,38 @@ export async function GET(request) {
     `;
 
     const payoutsSql = `
+      WITH tx AS (
+        SELECT
+          t.id,
+          LOWER(t."status"::text) AS status,
+          t.amount
+        FROM public.marketplace_admin_transactions t
+        WHERE LOWER(t."trans_type"::text) = 'payout'
+          AND t."createdAt" >= :from
+          AND t."createdAt" <= :to
+      ), led AS (
+        SELECT
+          le.marketplace_admin_transaction_id AS tx_id,
+          COUNT(le.id)::bigint AS ledger_rows,
+          COALESCE(SUM(le.amount_cents), 0)::bigint AS ledger_sum_cents
+        FROM public.marketplace_earnings_ledger_entries le
+        WHERE le.entry_type IN ('payout_debit','payout_debit_reversal')
+        GROUP BY 1
+      ), per_tx AS (
+        SELECT
+          tx.status,
+          CASE
+            WHEN COALESCE(led.ledger_rows, 0) > 0 THEN GREATEST(0, -led.ledger_sum_cents)
+            ELSE COALESCE(tx.amount, 0)
+          END::bigint AS paid_cents
+        FROM tx
+        LEFT JOIN led ON led.tx_id = tx.id
+      )
       SELECT
-        LOWER(t."status"::text) AS status,
+        status,
         COUNT(*)::bigint AS count,
-        COALESCE(SUM(t."amount"), 0)::bigint AS amount_cents
-      FROM "marketplace_admin_transactions" AS t
-      WHERE LOWER(t."trans_type"::text) = 'payout'
-        AND t."createdAt" >= :from
-        AND t."createdAt" <= :to
+        COALESCE(SUM(paid_cents), 0)::bigint AS amount_cents
+      FROM per_tx
       GROUP BY 1
       ORDER BY 1
     `;
@@ -122,6 +146,22 @@ export async function GET(request) {
       replacements,
       type: db.Sequelize.QueryTypes.SELECT,
     });
+
+    const [ledgerCreditsAgg] = await db.sequelize.query(
+      `
+        SELECT
+          COUNT(e.id)::bigint AS "ledgerRows",
+          COALESCE(SUM(e.amount_cents), 0)::bigint AS "creditsCents"
+        FROM public.marketplace_earnings_ledger_entries e
+        WHERE e.entry_type = 'sale_credit'
+          AND e.earned_at >= :from
+          AND e.earned_at <= :to
+      `,
+      {
+        replacements,
+        type: db.Sequelize.QueryTypes.SELECT,
+      }
+    );
 
     const paidOrders = Number(paidAgg?.paidOrders || 0) || 0;
     const unitsSold = Number(paidAgg?.unitsSold || 0) || 0;
@@ -163,6 +203,11 @@ export async function GET(request) {
       netRevenue - netDiscountMerchantFunded - crowdpenFeeNet - startbuttonFeeNet
     );
 
+    const hasLedgerCredits = (Number(ledgerCreditsAgg?.ledgerRows || 0) || 0) > 0;
+    const ledgerCredits = (Number(ledgerCreditsAgg?.creditsCents || 0) || 0) / 100;
+    const creatorPayoutGrossFinal = hasLedgerCredits ? Math.max(0, ledgerCredits) : creatorPayoutGross;
+    const creatorPayoutNetFinal = hasLedgerCredits ? Math.max(0, ledgerCredits) : creatorPayoutNet;
+
     const payouts = {
       completed: { count: 0, amount: 0 },
       pending: { count: 0, amount: 0 },
@@ -181,8 +226,8 @@ export async function GET(request) {
       bucket.amount += (Number(r?.amount_cents || 0) || 0) / 100;
     }
 
-    const payoutCoverage = creatorPayoutGross > 0
-      ? Math.min(1, Math.max(0, (payouts.completed.amount || 0) / creatorPayoutGross))
+    const payoutCoverage = creatorPayoutGrossFinal > 0
+      ? Math.min(1, Math.max(0, (payouts.completed.amount || 0) / creatorPayoutGrossFinal))
       : 0;
 
     return NextResponse.json({
@@ -210,12 +255,12 @@ export async function GET(request) {
           gross: {
             crowdpenFee: crowdpenFeeGross,
             startbuttonFee: startbuttonFeeGross,
-            creatorPayout: creatorPayoutGross,
+            creatorPayout: creatorPayoutGrossFinal,
           },
           net: {
             crowdpenFee: crowdpenFeeNet,
             startbuttonFee: startbuttonFeeNet,
-            creatorPayout: creatorPayoutNet,
+            creatorPayout: creatorPayoutNetFinal,
           },
         },
         payouts,

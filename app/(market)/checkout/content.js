@@ -26,6 +26,9 @@ export default function CheckoutContent() {
     searchQuery,
     setSearchQuery,
 
+    activePaymentProvider,
+    paymentMethod,
+
     startButtonLoaded,
     processing,
 
@@ -49,6 +52,10 @@ export default function CheckoutContent() {
     total,
     fmt,
   } = useCheckout();
+
+  const providerLabel =
+    (activePaymentProvider || "startbutton") === "paystack" ? "Paystack" : "StartButton";
+  const requiresStartButton = (activePaymentProvider || "startbutton") === "startbutton";
 
   if (!session) {
     return (
@@ -223,13 +230,12 @@ export default function CheckoutContent() {
                       </div>
                     </RadioGroup> */}
                     <div className="text-xs text-muted-foreground">
-                      You&apos;ll complete your payment securely in a hosted
-                      StartButton checkout.
+                      You&apos;ll complete your payment securely in a hosted {providerLabel} checkout.
                     </div>
                     <input
                       type="hidden"
                       name="paymentMethod"
-                      value="startbutton"
+                      value={paymentMethod || activePaymentProvider || "startbutton"}
                     />
                   </div>
 
@@ -314,7 +320,7 @@ export default function CheckoutContent() {
                       processing ||
                       isLoading ||
                       !cartItems?.length ||
-                      !startButtonLoaded
+                      (requiresStartButton && !startButtonLoaded)
                     }
                   >
                     {beginPending || finalizePending ? (

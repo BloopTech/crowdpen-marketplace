@@ -105,6 +105,37 @@ export async function GET(request) {
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
+    const ledgerRows = await db.sequelize.query(
+      `
+        SELECT
+          date_trunc(:interval, e.earned_at) AS period,
+          COALESCE(SUM(e.amount_cents), 0)::bigint AS "creditsCents"
+        FROM public.marketplace_earnings_ledger_entries e
+        LEFT JOIN public.marketplace_order_items oi
+          ON oi.id = e.marketplace_order_item_id
+        WHERE e.entry_type = 'sale_credit'
+          AND e.earned_at >= :from
+          AND e.earned_at <= :to
+          AND (:merchantId::uuid IS NULL OR e.recipient_id = :merchantId::uuid)
+          AND (:productId::uuid IS NULL OR oi.marketplace_product_id = :productId::uuid)
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `,
+      {
+        replacements,
+        type: db.Sequelize.QueryTypes.SELECT,
+      }
+    );
+
+    const creditsCentsByPeriod = new Map(
+      (ledgerRows || []).map((r) => {
+        const d = r?.period ? new Date(r.period) : null;
+        const key = d && Number.isFinite(d.getTime()) ? d.toISOString() : String(r?.period || "");
+        return [key, Number(r?.creditsCents || 0) || 0];
+      })
+    );
+    const hasAnyLedgerCredits = creditsCentsByPeriod.size > 0;
+
     const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
       await getMarketplaceFeePercents({ db });
 
@@ -119,15 +150,19 @@ export async function GET(request) {
       const unitsSold = Number(r?.unitsSold || 0) || 0;
       const crowdpenFee = revenue * (CROWD_PCT || 0);
       const startbuttonFee = buyerPaid * (SB_PCT || 0);
-      const creatorPayout = Math.max(
-        0,
-        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
-      );
+      const d = r?.period ? new Date(r.period) : null;
+      const periodKey = d && Number.isFinite(d.getTime()) ? d.toISOString() : String(r?.period || "");
+      const creditsCents = creditsCentsByPeriod.get(periodKey);
+      const creatorPayout = hasAnyLedgerCredits && Number.isFinite(creditsCents)
+        ? Math.max(0, creditsCents / 100)
+        : Math.max(
+            0,
+            revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+          );
 
       totalsRevenue += revenue;
       totalsUnitsSold += unitsSold;
 
-      const d = r?.period ? new Date(r.period) : null;
       return {
         period: d && Number.isFinite(d.getTime()) ? d.toISOString() : String(r?.period || ""),
         revenue,
@@ -167,6 +202,14 @@ export async function GET(request) {
       0,
       totalsRevenue - totalsDiscountMerchantFunded - totals.crowdpenFee - totals.startbuttonFee
     );
+
+    if (hasAnyLedgerCredits) {
+      const totalCreditsCents = (ledgerRows || []).reduce(
+        (acc, r) => acc + (Number(r?.creditsCents || 0) || 0),
+        0
+      );
+      totals.creatorPayout = Math.max(0, totalCreditsCents / 100);
+    }
 
     return NextResponse.json({
       status: "success",

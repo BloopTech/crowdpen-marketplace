@@ -8,6 +8,22 @@ export function useCrowdpenSSO() {
   const [ssoAvailable, setSsoAvailable] = useState(false);
   const { data: session, status } = useSession();
 
+  const getSafeCallbackPath = (raw, origin) => {
+    if (typeof raw !== 'string' || !raw) return '/';
+    const trimmed = raw.trim();
+    if (!trimmed) return '/';
+    if (trimmed.startsWith('/')) return trimmed.slice(0, 2048);
+    try {
+      const u = new URL(trimmed);
+      if (origin && u.origin === origin) {
+        return `${u.pathname || '/'}${u.search || ''}`.slice(0, 2048);
+      }
+    } catch {
+      // ignore
+    }
+    return '/';
+  };
+
   // Check if there's an active Crowdpen session
   const checkCrowdpenSession = async () => {
     try {
@@ -46,7 +62,10 @@ export function useCrowdpenSSO() {
       // Skip session check and go directly to Crowdpen SSO endpoint
       const crowdpenUrl = 'https://crowdpen.co'; // Always use production Crowdpen
       const marketplaceUrl = window.location.origin;
-      const callbackUrl = callbackUrlOverride || window.location.href;
+      const callbackUrl = getSafeCallbackPath(
+        callbackUrlOverride || window.location.href,
+        marketplaceUrl
+      );
       const ssoCallbackUrl = `${marketplaceUrl}/api/auth/sso/callback?callbackUrl=${encodeURIComponent(callbackUrl)}`;
       
       // Use correct parameters as specified in SSO endpoint documentation

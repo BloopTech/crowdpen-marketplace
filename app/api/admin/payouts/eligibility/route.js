@@ -87,14 +87,12 @@ export async function GET(request) {
     const [windowSales] = await db.sequelize.query(
       `
         SELECT
-          MIN(o."createdAt")::date AS "firstUnsettledSale",
-          MAX(o."createdAt")::date AS "lastUnsettledSale"
-        FROM "marketplace_order_items" AS oi
-        JOIN "marketplace_orders" AS o ON o."id" = oi."marketplace_order_id"
-        JOIN "marketplace_products" AS p ON p."id" = oi."marketplace_product_id"
-        WHERE p."user_id" = :merchantId
-          AND o."paymentStatus" = 'successful'::"enum_marketplace_orders_paymentStatus"
-          AND (:lastSettledTo::date IS NULL OR (o."createdAt"::date > :lastSettledTo::date))
+          MIN(e.earned_at)::date AS "firstUnsettledSale",
+          MAX(e.earned_at)::date AS "lastUnsettledSale"
+        FROM public.marketplace_earnings_ledger_entries e
+        WHERE e.recipient_id = :merchantId
+          AND e.entry_type = 'sale_credit'
+          AND (:lastSettledTo::date IS NULL OR (e.earned_at::date > :lastSettledTo::date))
       `,
       {
         replacements: { merchantId: recipientId, lastSettledTo },

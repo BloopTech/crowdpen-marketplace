@@ -106,6 +106,37 @@ export async function GET(request) {
       type: db.Sequelize.QueryTypes.SELECT,
     });
 
+    const productIds = (rows || []).map((r) => r?.id).filter(Boolean);
+    let creditsByProductId = new Map();
+    if (productIds.length > 0) {
+      const ledgerRows = await db.sequelize.query(
+        `
+          SELECT
+            oi.marketplace_product_id AS "productId",
+            COALESCE(SUM(e.amount_cents), 0)::bigint AS "creditsCents"
+          FROM public.marketplace_earnings_ledger_entries e
+          JOIN public.marketplace_order_items oi
+            ON oi.id = e.marketplace_order_item_id
+          WHERE e.entry_type = 'sale_credit'
+            AND e.earned_at >= :from
+            AND e.earned_at <= :to
+            AND oi.marketplace_product_id IN (:productIds)
+          GROUP BY 1
+        `,
+        {
+          replacements: {
+            from: fromDate,
+            to: toDate,
+            productIds,
+          },
+          type: db.Sequelize.QueryTypes.SELECT,
+        }
+      );
+      creditsByProductId = new Map(
+        (ledgerRows || []).map((r) => [String(r?.productId || ""), r])
+      );
+    }
+
     const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
       await getMarketplaceFeePercents({ db });
 
@@ -116,10 +147,17 @@ export async function GET(request) {
       const buyerPaid = Math.max(0, revenue - discountTotal);
       const crowdpenFee = revenue * (CROWD_PCT || 0);
       const startbuttonFee = buyerPaid * (SB_PCT || 0);
-      const creatorPayout = Math.max(
-        0,
-        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
-      );
+      const productKey = String(r?.id || "");
+      const hasLedgerCredits = creditsByProductId.has(productKey);
+      const creditsCents = hasLedgerCredits
+        ? Number(creditsByProductId.get(productKey)?.creditsCents || 0)
+        : null;
+      const creatorPayout = hasLedgerCredits && Number.isFinite(creditsCents)
+        ? Math.max(0, creditsCents / 100)
+        : Math.max(
+            0,
+            revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+          );
 
       return {
         id: r?.id,

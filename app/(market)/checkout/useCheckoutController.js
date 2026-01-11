@@ -34,6 +34,7 @@ export function useCheckoutController() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("startbutton");
+  const [activePaymentProvider, setActivePaymentProvider] = useState("startbutton");
   const [startButtonLoaded, setStartButtonLoaded] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [existingOrderId, setExistingOrderId] = useState("");
@@ -96,6 +97,33 @@ export function useCheckoutController() {
         el?.getAttribute?.("nonce") || el?.getAttribute?.("content") || "";
       if (n) setCspNonce(n);
     } catch {}
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/marketplace/payment-provider", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+        const json = await res.json().catch(() => ({}));
+        const p = (json?.data?.activeProvider || "").toString().toLowerCase();
+        const next = p === "paystack" || p === "startbutton" ? p : "startbutton";
+        if (!cancelled) {
+          setActivePaymentProvider(next);
+          setPaymentMethod(next);
+        }
+      } catch {
+        if (!cancelled) {
+          setActivePaymentProvider("startbutton");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const handleInputChange = (field, value) => {
@@ -226,6 +254,78 @@ export function useCheckoutController() {
 
     return window.SBInit || null;
   }
+
+  const openPaystack = useCallback(
+    async (order) => {
+      try {
+        if (typeof window === "undefined") {
+          throw new Error("Payment gateway not available");
+        }
+
+        const mod = await import("@paystack/inline-js");
+        const PaystackPop = mod?.default || mod?.PaystackPop || mod;
+        if (!PaystackPop) throw new Error("Payment gateway not available");
+
+        const paystack = new PaystackPop();
+        const amountKobo = Math.round(Number(order?.amount || 0) * 100);
+        if (!Number.isFinite(amountKobo) || amountKobo <= 0) {
+          throw new Error("Invalid payment amount");
+        }
+
+        const reference =
+          (order?.reference || order?.providerReference || order?.orderNumber || "")
+            .toString()
+            .trim();
+        if (!reference) throw new Error("Missing payment reference");
+
+        paystack.newTransaction({
+          key: (order?.publicKey || "").toString().trim(),
+          email: (order?.customer?.email || formData.email || "").toString().trim(),
+          amount: amountKobo,
+          currency: (order?.currency || "NGN").toString().trim().toUpperCase(),
+          reference,
+          metadata: {
+            orderId: order?.orderId || "",
+            reference: order?.orderNumber || "",
+            name: `${order.customer?.firstName || formData.firstName} ${
+              order.customer?.lastName || formData.lastName
+            }`.trim(),
+            baseAmount: order?.baseAmount != null ? String(order.baseAmount) : "",
+            baseCurrency: order?.baseCurrency != null ? String(order.baseCurrency) : "",
+            paidAmount: order?.amount != null ? String(order.amount) : "",
+            paidCurrency: order?.currency != null ? String(order.currency) : "",
+            fxRate: order?.fxRate != null ? String(order.fxRate) : "",
+            viewerCurrency:
+              order?.viewerCurrency != null ? String(order.viewerCurrency) : "",
+          },
+          onSuccess: (res) => {
+            finalize("success", res);
+          },
+          onCancel: () => {
+            try {
+              trackFunnelEvent({
+                event_name: "checkout_payment_cancelled",
+                marketplace_order_id: order?.orderId || null,
+                metadata: { message: "cancel" },
+              });
+            } catch {}
+            launchedRef.current = false;
+            setProcessing(false);
+          },
+        });
+      } catch (e) {
+        setProcessing(false);
+        launchedRef.current = false;
+        setResultModal({
+          open: true,
+          type: "error",
+          title: "Payment unavailable",
+          message: e?.message || "Payment gateway not available",
+        });
+      }
+    },
+    [finalize, formData.email, formData.firstName, formData.lastName]
+  );
 
   const cancelStartButton = useCallback(() => {
     const el =
@@ -568,8 +668,13 @@ export function useCheckoutController() {
   useEffect(() => {
     if (beginState?.success && !launchedRef.current) {
       launchedRef.current = true;
+      const provider = (beginState?.paymentProvider || "startbutton")
+        .toString()
+        .toLowerCase();
       const order = {
         publicKey: beginState.publicKey,
+        paymentProvider: provider,
+        providerReference: beginState.providerReference,
         orderId: beginState.orderId,
         orderNumber: beginState.orderNumber,
         amount: beginState.amount,
@@ -596,7 +701,23 @@ export function useCheckoutController() {
       });
 
       setProcessing(true);
-      openStartButton(order);
+      if (provider === "startbutton") {
+        openStartButton(order);
+      } else if (provider === "paystack") {
+        openPaystack(order);
+      } else {
+        launchedRef.current = false;
+        activeStartButtonCleanupRef.current = null;
+        setProcessing(false);
+        setResultModal({
+          open: true,
+          type: "error",
+          title: "Payment unavailable",
+          message:
+            "Payment provider is not supported.",
+          details: null,
+        });
+      }
     } else if (beginState?.message && beginState?.success === false && !beginPending) {
       setResultModal({
         open: true,
@@ -606,7 +727,7 @@ export function useCheckoutController() {
         details: null,
       });
     }
-  }, [beginPending, beginState, cartSignature, openStartButton]);
+  }, [beginPending, beginState, cartSignature, openPaystack, openStartButton]);
 
   useEffect(() => {
     if (
@@ -670,6 +791,8 @@ export function useCheckoutController() {
 
     paymentMethod,
     setPaymentMethod,
+
+    activePaymentProvider,
 
     startButtonLoaded,
     processing,

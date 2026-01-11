@@ -35,6 +35,7 @@ MarketplaceAdminTransactions.init(
     },
     transaction_id: DataTypes.TEXT,
     trans_type: DataTypes.TEXT,
+    payout_provider: DataTypes.TEXT,
     status: {
       type: DataTypes.ENUM,
       values: [

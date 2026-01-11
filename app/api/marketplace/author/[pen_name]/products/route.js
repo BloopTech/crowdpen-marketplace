@@ -3,7 +3,10 @@ import { db } from "../../../../../models/index";
 import { Op } from "sequelize";
 import { authOptions } from "../../../../auth/[...nextauth]/route";
 import { getServerSession } from "next-auth";
-import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
+import {
+  getRequestIdFromHeaders,
+  reportError,
+} from "../../../../../lib/observability/reportError";
 
 const {
   User,
@@ -339,7 +342,9 @@ export async function GET(request, { params }) {
 
       const totalReviews = reviewTotalMap[productJson.id] || 0;
       const totalOrderItems = orderItemMap[productJson.id] || 0;
-      const canDelete = Boolean(isViewerAuthor && totalReviews === 0 && totalOrderItems === 0);
+      const canDelete = Boolean(
+        isViewerAuthor && totalReviews === 0 && totalOrderItems === 0
+      );
 
       return {
         id: productJson.id,
@@ -365,6 +370,7 @@ export async function GET(request, { params }) {
         wishlist: getWishes,
         Cart: getCart,
         product_id: productJson?.product_id,
+        user_id: productJson.user_id,
       };
     });
 
@@ -397,7 +403,7 @@ export async function GET(request, { params }) {
         status: "error",
         message: isProd
           ? "Failed to fetch products"
-          : (error?.message || "Failed to fetch products"),
+          : error?.message || "Failed to fetch products",
       },
       { status: 500 }
     );

@@ -67,6 +67,11 @@ MarketplaceOrder.init(
     paymentMethod: {
       type: DataTypes.STRING,
     },
+    payment_provider: {
+      type: DataTypes.ENUM("startbutton", "paystack"),
+      allowNull: true,
+      defaultValue: "startbutton",
+    },
     paymentStatus: {
       type: DataTypes.ENUM("pending", "successful", "failed", "refunded"),
       defaultValue: "pending",
@@ -92,6 +97,9 @@ MarketplaceOrder.init(
       type: DataTypes.STRING,
     },
     stripePaymentId: {
+      type: DataTypes.STRING,
+    },
+    startbuttonReferenceId: {
       type: DataTypes.STRING,
     },
     paystackReferenceId: {

@@ -578,7 +578,7 @@ export default function ProductDetailContent(props) {
                     size="lg"
                     disabled={
                       isCartPending ||
-                      productItemData.user_id === session?.user?.id ||
+                      productItemData?.user_id === session?.user?.id ||
                       isOutOfStock
                     }
                   >

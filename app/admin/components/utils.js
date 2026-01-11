@@ -1,5 +1,5 @@
 "use client";
-import { ShieldUser, LayoutDashboard, Users, FileCheck, CreditCard, ListOrdered, BadgeCheck, Ticket, Package, Tags, LineChart, TriangleAlert } from "lucide-react";
+import { ShieldUser, LayoutDashboard, Users, FileCheck, CreditCard, ListOrdered, BadgeCheck, Ticket, Package, Tags, LineChart, TriangleAlert, Settings } from "lucide-react";
 import { useSession } from "next-auth/react";
 
 export const useNavigationData = () => {
@@ -65,6 +65,12 @@ export const useNavigationData = () => {
         name: "Transactions",
         href: "/admin/transactions",
         icon: ListOrdered,
+        other_items: [],
+      },
+      {
+        name: "Payment Provider",
+        href: "/admin/payment-provider",
+        icon: Settings,
         other_items: [],
       },
       {

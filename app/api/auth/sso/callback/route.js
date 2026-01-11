@@ -4,6 +4,24 @@ import { getRequestIdFromHeaders, reportError } from '../../../../lib/observabil
 
 export const runtime = "nodejs";
 
+function getSafeCallbackPath(raw, requestUrl) {
+  if (typeof raw !== 'string' || !raw) return '/';
+  const trimmed = raw.trim();
+  if (!trimmed) return '/';
+  if (trimmed.startsWith('/')) return trimmed.slice(0, 2048);
+
+  try {
+    const req = new URL(requestUrl);
+    const u = new URL(trimmed);
+    if (u.origin === req.origin) {
+      return `${u.pathname || '/'}${u.search || ''}`.slice(0, 2048);
+    }
+  } catch {
+    // ignore
+  }
+  return '/';
+}
+
 function normalizeSha256SignatureToHex(sig) {
   const sigText = String(sig || "").trim();
   if (!sigText) return null;
@@ -35,9 +53,7 @@ export async function GET(request) {
     const user = searchParams.get('user'); // User data passed as JSON string from Crowdpen
     const provider = searchParams.get('provider'); // Provider used on Crowdpen (email/github/google)
     const callbackUrlRaw = searchParams.get('callbackUrl') || '/';
-    callbackUrl = typeof callbackUrlRaw === 'string' && callbackUrlRaw.startsWith('/')
-      ? callbackUrlRaw
-      : '/';
+    callbackUrl = getSafeCallbackPath(callbackUrlRaw, request.url);
 
     providerParam = provider || null;
     userPresent = Boolean(user);

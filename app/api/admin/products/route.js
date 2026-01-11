@@ -310,6 +310,43 @@ export async function GET(request) {
       }
     }
 
+    const creditsByProductId = new Map();
+    if (productIds.length > 0) {
+      const replacements = {
+        productIds,
+        from: fromDate || null,
+        to: toDate || null,
+      };
+
+      const ledgerCreditsRows = await db.sequelize.query(
+        `
+          SELECT
+            oi.marketplace_product_id AS "productId",
+            COUNT(e.id)::bigint AS "ledgerRows",
+            COALESCE(SUM(e.amount_cents), 0)::bigint AS "creditsCents"
+          FROM public.marketplace_earnings_ledger_entries e
+          JOIN public.marketplace_order_items oi
+            ON oi.id = e.marketplace_order_item_id
+          WHERE e.entry_type = 'sale_credit'
+            AND oi.marketplace_product_id IN (:productIds)
+            AND (:from::timestamptz IS NULL OR e.earned_at >= :from)
+            AND (:to::timestamptz IS NULL OR e.earned_at <= :to)
+          GROUP BY 1
+        `,
+        {
+          replacements,
+          type: db.Sequelize.QueryTypes.SELECT,
+        }
+      );
+
+      for (const r of ledgerCreditsRows || []) {
+        creditsByProductId.set(String(r.productId), {
+          ledgerRows: Number(r.ledgerRows || 0) || 0,
+          creditsCents: Number(r.creditsCents || 0) || 0,
+        });
+      }
+    }
+
     const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
       await getMarketplaceFeePercents({ db });
 
@@ -322,10 +359,14 @@ export async function GET(request) {
       const buyerPaid = Math.max(0, revenue - discountTotal);
       const crowdpenFee = revenue * (CROWD_PCT || 0);
       const startbuttonFee = buyerPaid * (SB_PCT || 0);
-      const creatorPayout = Math.max(
-        0,
-        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
-      );
+      const ledgerAgg = creditsByProductId.get(String(j.id)) || null;
+      const hasLedgerCredits = (Number(ledgerAgg?.ledgerRows || 0) || 0) > 0;
+      const creatorPayout = hasLedgerCredits
+        ? Math.max(0, (Number(ledgerAgg?.creditsCents || 0) || 0) / 100)
+        : Math.max(
+            0,
+            revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
+          );
 
       const reviewAgg = reviewAggByProductId.get(String(j.id));
       const rating = Number.isFinite(reviewAgg?.avg) ? reviewAgg.avg : 0;

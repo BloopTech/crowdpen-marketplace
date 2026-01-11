@@ -294,11 +294,11 @@ export default function MyProductCard(props) {
         >
           <Button
             type="submit"
-            className="w-full disabled:cursor-not-allowed text-white"
+            className="w-full disabled:cursor-not-allowed"
             size="sm"
             disabled={
               isCartPending ||
-              product.user_id === session.user.id ||
+              product?.user_id === session?.user?.id ||
               isOutOfStock
             }
           >

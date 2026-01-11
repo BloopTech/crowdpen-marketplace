@@ -145,6 +145,34 @@ export async function GET(request) {
       (discountRows || []).map((r) => [String(r?.merchantId || ""), r])
     );
 
+    const merchantIds = (rows || []).map((r) => r?.id).filter(Boolean);
+    const ledgerRows = merchantIds.length
+      ? await db.sequelize.query(
+          `
+            SELECT
+              e.recipient_id AS "merchantId",
+              COALESCE(SUM(e.amount_cents), 0)::bigint AS "creditsCents"
+            FROM public.marketplace_earnings_ledger_entries e
+            WHERE e.entry_type = 'sale_credit'
+              AND e.earned_at >= :from
+              AND e.earned_at <= :to
+              AND e.recipient_id IN (:merchantIds)
+            GROUP BY 1
+          `,
+          {
+            replacements: {
+              from: fromDate,
+              to: toDate,
+              merchantIds,
+            },
+            type: db.Sequelize.QueryTypes.SELECT,
+          }
+        )
+      : [];
+    const creditsByMerchantId = new Map(
+      (ledgerRows || []).map((r) => [String(r?.merchantId || ""), r])
+    );
+
     const { crowdpenPct: CROWD_PCT, startbuttonPct: SB_PCT } =
       await getMarketplaceFeePercents({ db });
 
@@ -163,10 +191,14 @@ export async function GET(request) {
         crowdpenFee - discountCrowdpenFunded
       );
 
-      const creatorPayout = Math.max(
-        0,
-        revenue - discountMerchantFunded - crowdpenFee - startbuttonFee
-      );
+      const merchantKey = String(r?.id || "");
+      const hasLedgerCredits = creditsByMerchantId.has(merchantKey);
+      const creditsCents = hasLedgerCredits
+        ? Number(creditsByMerchantId.get(merchantKey)?.creditsCents || 0)
+        : null;
+      const creatorPayout = hasLedgerCredits && Number.isFinite(creditsCents)
+        ? Math.max(0, creditsCents / 100)
+        : Math.max(0, revenue - discountMerchantFunded - crowdpenFee - startbuttonFee);
 
       return {
         id: r?.id,

@@ -54,6 +54,7 @@ export function AdminPayoutsProvider({ children }) {
   const [recipientPage, setRecipientPage] = useState(1);
   const [recipientPageSize, setRecipientPageSize] = useState(20);
   const [bulkMode, setBulkMode] = useState("settle_all");
+  const [bulkPayoutProvider, setBulkPayoutProvider] = useState("manual");
   const [bulkCutoffTo, setBulkCutoffTo] = useState("");
   const [bulkScope, setBulkScope] = useState("all");
   const [bulkSelectedIds, setBulkSelectedIds] = useState([]);
@@ -409,6 +410,7 @@ export function AdminPayoutsProvider({ children }) {
         mode: bulkMode,
         cutoffTo: bulkMode === "cutoff" ? bulkCutoffTo : undefined,
         merchantIds: bulkScope === "selected" ? bulkSelectedIds : [],
+        payout_provider: bulkPayoutProvider,
         cursor: bulkCursor || undefined,
         limit: bulkLimit || 10,
       };
@@ -423,6 +425,7 @@ export function AdminPayoutsProvider({ children }) {
     }
   }, [
     bulkMode,
+    bulkPayoutProvider,
     bulkCutoffTo,
     bulkScope,
     bulkSelectedIds,
@@ -504,6 +507,8 @@ export function AdminPayoutsProvider({ children }) {
       todayIso,
       bulkMode,
       setBulkMode,
+      bulkPayoutProvider,
+      setBulkPayoutProvider,
       bulkCutoffTo,
       setBulkCutoffTo,
       bulkScope,
@@ -564,6 +569,8 @@ export function AdminPayoutsProvider({ children }) {
       todayIso,
       bulkMode,
       setBulkMode,
+      bulkPayoutProvider,
+      setBulkPayoutProvider,
       bulkCutoffTo,
       setBulkCutoffTo,
       bulkScope,
