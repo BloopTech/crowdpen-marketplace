@@ -128,11 +128,17 @@ export default function MyPurchases() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">
-                        {["completed", "successful"].includes(
-                          (order.status || "").toString().toLowerCase()
-                        )
-                          ? "✓ Complete"
-                          : "Processing"}
+                        {(() => {
+                          const s = (order?.status || "").toString().toLowerCase();
+                          const stage = (order?.paymentStage || "")
+                            .toString()
+                            .toLowerCase();
+                          if (["completed", "successful"].includes(s)) return "✓ Complete";
+                          if (stage === "verified" || s === "verified") {
+                            return "Pending settlement";
+                          }
+                          return "Processing";
+                        })()}
                       </Badge>
                     </div>
                   </div>

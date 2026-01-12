@@ -7,6 +7,36 @@ import { getRequestIdFromHeaders, reportError } from "../../../lib/observability
 
 export const runtime = "nodejs";
 
+function isOrderSuccessful(order) {
+  const payment = (order?.paymentStatus || "").toString().toLowerCase();
+  const status = (order?.orderStatus || "").toString().toLowerCase();
+  return payment === "successful" || status === "successful";
+}
+
+function isOrderBlocked(order) {
+  const payment = (order?.paymentStatus || "").toString().toLowerCase();
+  const status = (order?.orderStatus || "").toString().toLowerCase();
+  return (
+    payment === "failed" ||
+    payment === "refunded" ||
+    status === "failed" ||
+    status === "cancelled"
+  );
+}
+
+function getOrderCollectionStage(order) {
+  if (!order) return null;
+  if (isOrderSuccessful(order)) return "completed";
+  const provider = (order?.payment_provider || "").toString().trim().toLowerCase();
+  if (provider !== "startbutton") return null;
+  const notes = (order?.notes || "").toString();
+  if (!notes) return null;
+  const matches = Array.from(notes.matchAll(/\bstage=([a-zA-Z_]+)\b/g));
+  const last = matches.length ? matches[matches.length - 1] : null;
+  const stage = last?.[1] ? String(last[1]).trim().toLowerCase() : "";
+  return stage || null;
+}
+
 // GET /api/marketplace/account
 // Returns current user's profile and purchases
 export async function GET(request) {
@@ -78,6 +108,12 @@ export async function GET(request) {
           { paymentStatus: "successful" },
           { orderStatus: "successful" },
           { orderStatus: "processing", paymentStatus: "successful" },
+          {
+            orderStatus: "processing",
+            paymentStatus: "pending",
+            payment_provider: "startbutton",
+            notes: { [Op.iLike]: "%stage=verified%" },
+          },
         ],
       },
       include: [
@@ -107,6 +143,17 @@ export async function GET(request) {
         ? createdAt.toISOString().slice(0, 10)
         : null;
 
+      const paymentStage = getOrderCollectionStage(order);
+      const status =
+        paymentStage === "verified"
+          ? "verified"
+          : order.paymentStatus || order.orderStatus || "processing";
+
+      const maxVerifiedDownloadsRaw = process.env.STARTBUTTON_VERIFIED_DOWNLOAD_LIMIT;
+      const maxVerifiedDownloads = Number.isFinite(Number(maxVerifiedDownloadsRaw))
+        ? Math.max(0, Math.floor(Number(maxVerifiedDownloadsRaw)))
+        : 3;
+
       const orderCurrency = "USD";
       const orderSubtotal = order?.subtotal != null ? Number(order.subtotal) : null;
       const orderTotal = order?.total != null ? Number(order.total) : null;
@@ -119,7 +166,20 @@ export async function GET(request) {
         const productFile =
           product?.file != null ? String(product.file).trim() : "";
         const revoked = downloadUrl.toUpperCase() === "REVOKED";
-        const canDownload = !revoked && (Boolean(downloadUrl) || Boolean(productFile));
+        const hasFile = Boolean(downloadUrl) || Boolean(productFile);
+        const downloadCount = item?.downloadCount != null ? Number(item.downloadCount) : 0;
+        const allowVerifiedDownload = paymentStage === "verified";
+        const blocked = isOrderBlocked(order);
+
+        const canDownload =
+          !blocked &&
+          !revoked &&
+          hasFile &&
+          (isOrderSuccessful(order) ||
+            (allowVerifiedDownload &&
+              maxVerifiedDownloads > 0 &&
+              Number.isFinite(downloadCount) &&
+              downloadCount < maxVerifiedDownloads));
         purchases.push({
           id: item.id,
           orderId: order.id,
@@ -130,7 +190,8 @@ export async function GET(request) {
           price: orderTotal,
           subtotal: orderSubtotal,
           currency: orderCurrency,
-          status: order.paymentStatus || order.orderStatus || "processing",
+          status,
+          paymentStage,
           canDownload,
         });
       }
