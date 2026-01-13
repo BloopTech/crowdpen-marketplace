@@ -130,6 +130,31 @@ export function createRequestId() {
   return crypto.randomUUID();
 }
 
+function isLocalhostLike(value) {
+  if (!value) return false;
+  const s = String(value).toLowerCase();
+  return (
+    s.includes("localhost") ||
+    s.includes("127.0.0.1") ||
+    s.includes("0.0.0.0")
+  );
+}
+
+function shouldPersistErrorEvents() {
+  const vercelEnv = process.env.VERCEL_ENV;
+  const isProdDeployment = vercelEnv
+    ? vercelEnv === "production"
+    : process.env.NODE_ENV === "production";
+
+  const envUrl =
+    process.env.NEXTAUTH_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.VERCEL_URL ||
+    null;
+
+  return isProdDeployment && !isLocalhostLike(envUrl);
+}
+
 export async function reportError(error, context) {
   const ctx = sanitizeContext(context);
 
@@ -165,6 +190,10 @@ export async function reportError(error, context) {
       constraintName,
     })
   );
+
+  if (!shouldPersistErrorEvents()) {
+    return { requestId, fingerprint };
+  }
 
   const sampleContext = {
     ...ctx,

@@ -415,6 +415,28 @@ const CartContextProvider = ({
     cartSummary?.coupon_notice?.code,
     cartSummary?.coupon_notice,
   ]);
+
+  const lastUnavailableNoticeRef = useRef(null);
+  useEffect(() => {
+    const notice = cartSummary?.unavailable_notice;
+    if (!notice?.reason) return;
+    const titles = Array.isArray(notice?.titles) ? notice.titles : [];
+    const keyTitles = [...titles].sort();
+    const key = `${notice.reason}:${keyTitles.join("|")}`;
+    if (lastUnavailableNoticeRef.current === key) return;
+    lastUnavailableNoticeRef.current = key;
+
+    const list = titles.filter(Boolean).join(", ");
+    toast.error(
+      list
+        ? `Some items are no longer available and were removed from your cart: ${list}`
+        : "Some items are no longer available and were removed from your cart"
+    );
+  }, [
+    cartSummary?.unavailable_notice?.reason,
+    cartSummary?.unavailable_notice?.titles,
+    cartSummary?.unavailable_notice,
+  ]);
   const contextValue = {
     // Data
     cartItems,

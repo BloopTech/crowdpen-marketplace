@@ -74,6 +74,8 @@ import { useHome } from "../../../context";
 import millify from "millify";
 import MyProductCard from "./product-card";
 import MarketplaceHeader from "../../../components/marketplace-header";
+import Link from "next/link";
+import { Skeleton } from "../../../components/ui/skeleton";
 
 export default function AuthorProfileContent({ author }) {
   const {
@@ -103,6 +105,12 @@ export default function AuthorProfileContent({ author }) {
     setReviewsSortBy,
     loadMoreReviews,
     reviewsQuery, // For error handling and manual refetching
+
+    // Author stats (client-fetched)
+    authorStats,
+    authorStatsLoading,
+    authorStatsError,
+    authorCategories,
   } = useAuthorProfile();
   const [optimisticCart, addOptimisticCart] = useOptimistic(
     products,
@@ -172,8 +180,36 @@ export default function AuthorProfileContent({ author }) {
       </div>
     );
   }
-  // Get unique categories from author stats
-  const categories = author.categories || [];
+  const categories = Array.isArray(authorCategories)
+    ? Array.from(new Set(authorCategories.filter(Boolean)))
+    : [];
+  const categoriesLoading = authorStatsLoading && categories.length === 0;
+
+  const totalProductsStat =
+    typeof authorStats?.totalProducts === "number"
+      ? authorStats.totalProducts
+      : null;
+  const totalReviewsStat =
+    typeof authorStats?.totalReviews === "number"
+      ? authorStats.totalReviews
+      : null;
+  const averageRatingStat =
+    typeof authorStats?.averageRating === "number"
+      ? authorStats.averageRating
+      : null;
+
+  const statsFetchPending = authorStatsLoading && !authorStats;
+  const formatCount = (value) =>
+    typeof value === "number" ? millify(value) : "0";
+  const formatRating = (value) =>
+    typeof value === "number" ? value.toFixed(1) : "0.0";
+
+  const totalProductsLabel = statsFetchPending
+    ? "…"
+    : formatCount(totalProductsStat ?? 0);
+  const totalReviewsLabel = statsFetchPending
+    ? "…"
+    : formatCount(totalReviewsStat ?? 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -200,7 +236,7 @@ export default function AuthorProfileContent({ author }) {
       </div>
 
       {/* Profile Card - Extended below hero */}
-      <div className="relative -mt-20 z-10">
+      <div className="relative -mt-20 z-1">
         <div className="max-w-4xl mx-auto px-6">
           <Card className="bg-card/85 backdrop-blur-sm shadow-2xl rounded-2xl">
             <CardContent className="p-8">
@@ -273,46 +309,46 @@ export default function AuthorProfileContent({ author }) {
                   <div className="flex items-center justify-center md:justify-start gap-3">
                     {author.twitter_url && (
                       <Button variant="outline" size="sm" asChild>
-                        <a
+                        <Link
                           href={author.twitter_url}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           <Twitter className="w-4 h-4" />
-                        </a>
+                        </Link>
                       </Button>
                     )}
                     {author.linkedin_url && (
                       <Button variant="outline" size="sm" asChild>
-                        <a
+                        <Link
                           href={author.linkedin_url}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           <Linkedin className="w-4 h-4" />
-                        </a>
+                        </Link>
                       </Button>
                     )}
                     {author.instagram_url && (
                       <Button variant="outline" size="sm" asChild>
-                        <a
+                        <Link
                           href={author.instagram_url}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           <Instagram className="w-4 h-4" />
-                        </a>
+                        </Link>
                       </Button>
                     )}
                     {author.website_url && (
                       <Button variant="outline" size="sm" asChild>
-                        <a
+                        <Link
                           href={author.website_url}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           <Globe className="w-4 h-4" />
-                        </a>
+                        </Link>
                       </Button>
                     )}
                   </div>
@@ -326,15 +362,23 @@ export default function AuthorProfileContent({ author }) {
       {/* Stats Section */}
       <div className="pt-28 pb-12 px-6">
         <div className="max-w-6xl mx-auto">
+          {authorStatsError ? (
+            <div className="mb-6 rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+              Failed to load creator statistics. Please refresh the page to try
+              again.
+            </div>
+          ) : null}
           <div className="grid grid-cols-3 gap-4 mb-12">
             <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200 dark:from-blue-500/10 dark:to-blue-500/5 dark:border-blue-500/20">
               <CardContent className="p-6 text-center">
                 <BookOpen className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-blue-900">
-                  {author?.stats?.totalProducts
-                    ? millify(author?.stats?.totalProducts)
-                    : 0}
-                </div>
+                {authorStatsLoading ? (
+                  <Skeleton className="h-8 w-24 mx-auto" />
+                ) : (
+                  <div className="text-2xl font-bold text-blue-900">
+                    {formatCount(totalProductsStat ?? 0)}
+                  </div>
+                )}
                 <div className="text-sm text-blue-700">Products</div>
               </CardContent>
             </Card>
@@ -342,9 +386,13 @@ export default function AuthorProfileContent({ author }) {
             <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200 dark:from-amber-500/10 dark:to-amber-500/5 dark:border-amber-500/20">
               <CardContent className="p-6 text-center">
                 <Star className="w-8 h-8 text-yellow-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-yellow-900">
-                  {author?.stats?.averageRating || 0}
-                </div>
+                {authorStatsLoading ? (
+                  <Skeleton className="h-8 w-20 mx-auto" />
+                ) : (
+                  <div className="text-2xl font-bold text-yellow-900">
+                    {formatRating(averageRatingStat ?? 0)}
+                  </div>
+                )}
                 <div className="text-sm text-yellow-700">Avg Rating</div>
               </CardContent>
             </Card>
@@ -352,11 +400,13 @@ export default function AuthorProfileContent({ author }) {
             <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200 dark:from-purple-500/10 dark:to-purple-500/5 dark:border-purple-500/20">
               <CardContent className="p-6 text-center">
                 <MessageSquare className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-purple-900">
-                  {author?.stats?.totalReviews
-                    ? millify(author?.stats?.totalReviews)
-                    : 0}
-                </div>
+                {authorStatsLoading ? (
+                  <Skeleton className="h-8 w-24 mx-auto" />
+                ) : (
+                  <div className="text-2xl font-bold text-purple-900">
+                    {formatCount(totalReviewsStat ?? 0)}
+                  </div>
+                )}
                 <div className="text-sm text-purple-700">Reviews</div>
               </CardContent>
             </Card>
@@ -367,19 +417,11 @@ export default function AuthorProfileContent({ author }) {
             <TabsList className="grid w-full grid-cols-2 mb-8">
               <TabsTrigger value="products" className="flex items-center gap-2">
                 <Grid className="w-4 h-4" />
-                Products (
-                {author?.stats?.totalProducts
-                  ? millify(author?.stats?.totalProducts)
-                  : 0}
-                )
+                Products ({totalProductsLabel})
               </TabsTrigger>
               <TabsTrigger value="reviews" className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4" />
-                Reviews (
-                {author?.stats?.totalReviews
-                  ? millify(author?.stats?.totalReviews)
-                  : 0}
-                )
+                Reviews ({totalReviewsLabel})
               </TabsTrigger>
             </TabsList>
 
@@ -397,22 +439,26 @@ export default function AuthorProfileContent({ author }) {
                   />
                 </div>
 
-                <Select
-                  value={selectedCategory}
-                  onValueChange={setSelectedCategory}
-                >
-                  <SelectTrigger className="w-full md:w-48">
-                    <SelectValue placeholder="Category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {categoriesLoading ? (
+                  <Skeleton className="h-10 w-full md:w-48" />
+                ) : (
+                  <Select
+                    value={selectedCategory}
+                    onValueChange={setSelectedCategory}
+                  >
+                    <SelectTrigger className="w-full md:w-48">
+                      <SelectValue placeholder="Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
 
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="w-full md:w-48">

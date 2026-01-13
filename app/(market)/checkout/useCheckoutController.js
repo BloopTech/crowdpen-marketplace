@@ -34,7 +34,9 @@ export function useCheckoutController() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("startbutton");
-  const [activePaymentProvider, setActivePaymentProvider] = useState("startbutton");
+  const [activePaymentProvider, setActivePaymentProvider] =
+    useState("startbutton");
+  const [paymentProviderLoaded, setPaymentProviderLoaded] = useState(false);
   const [startButtonLoaded, setStartButtonLoaded] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [existingOrderId, setExistingOrderId] = useState("");
@@ -110,14 +112,18 @@ export function useCheckoutController() {
         });
         const json = await res.json().catch(() => ({}));
         const p = (json?.data?.activeProvider || "").toString().toLowerCase();
-        const next = p === "paystack" || p === "startbutton" ? p : "startbutton";
+        const next =
+          p === "paystack" || p === "startbutton" ? p : "startbutton";
         if (!cancelled) {
           setActivePaymentProvider(next);
           setPaymentMethod(next);
+          setPaymentProviderLoaded(true);
         }
       } catch {
         if (!cancelled) {
           setActivePaymentProvider("startbutton");
+          setPaymentMethod("startbutton");
+          setPaymentProviderLoaded(true);
         }
       }
     })();
@@ -272,17 +278,24 @@ export function useCheckoutController() {
           throw new Error("Invalid payment amount");
         }
 
-        const reference =
-          (order?.reference || order?.providerReference || order?.orderNumber || "")
-            .toString()
-            .trim();
+        const reference = (
+          order?.reference ||
+          order?.providerReference ||
+          order?.orderNumber ||
+          ""
+        )
+          .toString()
+          .trim();
         if (!reference) throw new Error("Missing payment reference");
 
         paystack.newTransaction({
           key: (order?.publicKey || "").toString().trim(),
-          email: (order?.customer?.email || formData.email || "").toString().trim(),
+          email: (order?.customer?.email || formData.email || "")
+            .toString()
+            .trim(),
           amount: amountKobo,
           currency: (order?.currency || "NGN").toString().trim().toUpperCase(),
+          channels: ["card", "mobile_money", "apple_pay"],
           reference,
           metadata: {
             orderId: order?.orderId || "",
@@ -290,8 +303,10 @@ export function useCheckoutController() {
             name: `${order.customer?.firstName || formData.firstName} ${
               order.customer?.lastName || formData.lastName
             }`.trim(),
-            baseAmount: order?.baseAmount != null ? String(order.baseAmount) : "",
-            baseCurrency: order?.baseCurrency != null ? String(order.baseCurrency) : "",
+            baseAmount:
+              order?.baseAmount != null ? String(order.baseAmount) : "",
+            baseCurrency:
+              order?.baseCurrency != null ? String(order.baseCurrency) : "",
             paidAmount: order?.amount != null ? String(order.amount) : "",
             paidCurrency: order?.currency != null ? String(order.currency) : "",
             fxRate: order?.fxRate != null ? String(order.fxRate) : "",
@@ -329,7 +344,9 @@ export function useCheckoutController() {
 
   const cancelStartButton = useCallback(() => {
     const el =
-      typeof document !== "undefined" ? document.querySelector("sb-init") : null;
+      typeof document !== "undefined"
+        ? document.querySelector("sb-init")
+        : null;
     if (el) {
       el.dispatchEvent(
         new CustomEvent("cancelled", { bubbles: true, composed: true })
@@ -392,7 +409,8 @@ export function useCheckoutController() {
               window.scrollTo(0, scrollY);
             } catch {}
             window.removeEventListener("keydown", onKey, true);
-            if (messageHandler) window.removeEventListener("message", messageHandler);
+            if (messageHandler)
+              window.removeEventListener("message", messageHandler);
             launchedRef.current = false;
             if (activeStartButtonCleanupRef.current === cleanupHooks) {
               activeStartButtonCleanupRef.current = null;
@@ -418,17 +436,24 @@ export function useCheckoutController() {
 
         const inferStatus = (payload) => {
           const t = extractText(payload).toLowerCase();
-          const ev =
-            (payload?.event || payload?.type || payload?.data?.event || "")
-              .toString()
-              .toLowerCase();
+          const ev = (
+            payload?.event ||
+            payload?.type ||
+            payload?.data?.event ||
+            ""
+          )
+            .toString()
+            .toLowerCase();
           const s1 = (payload?.status || payload?.data?.status || "")
             .toString()
             .toLowerCase();
-          const s2 =
-            (payload?.data?.transaction?.status || payload?.transaction?.status || "")
-              .toString()
-              .toLowerCase();
+          const s2 = (
+            payload?.data?.transaction?.status ||
+            payload?.transaction?.status ||
+            ""
+          )
+            .toString()
+            .toLowerCase();
           const composite = `${ev} ${s1} ${s2} ${t}`;
           if (composite.includes("success") || composite.includes("successful"))
             return "success";
@@ -482,7 +507,10 @@ export function useCheckoutController() {
 
           if (kind === "close" || isCancelPayload(payload)) {
             cleanupHooks();
-            trackPaymentEvent("checkout_payment_cancelled", payload || { message: "close" });
+            trackPaymentEvent(
+              "checkout_payment_cancelled",
+              payload || { message: "close" }
+            );
             setProcessing(false);
             return;
           }
@@ -514,12 +542,15 @@ export function useCheckoutController() {
             orderId: order.orderId,
             reference: order.orderNumber,
             name: `${order.customer?.firstName || formData.firstName} ${order.customer?.lastName || formData.lastName}`.trim(),
-            baseAmount: order?.baseAmount != null ? String(order.baseAmount) : "",
-            baseCurrency: order?.baseCurrency != null ? String(order.baseCurrency) : "",
+            baseAmount:
+              order?.baseAmount != null ? String(order.baseAmount) : "",
+            baseCurrency:
+              order?.baseCurrency != null ? String(order.baseCurrency) : "",
             paidAmount: order?.amount != null ? String(order.amount) : "",
             paidCurrency: order?.currency != null ? String(order.currency) : "",
             fxRate: order?.fxRate != null ? String(order.fxRate) : "",
-            viewerCurrency: order?.viewerCurrency != null ? String(order.viewerCurrency) : "",
+            viewerCurrency:
+              order?.viewerCurrency != null ? String(order.viewerCurrency) : "",
           },
           success: (res) => {
             console.log("res success..................", res);
@@ -549,11 +580,14 @@ export function useCheckoutController() {
         let ret;
 
         if (typeof api === "function") ret = api(config, callbacks);
-        else if (typeof api.open === "function") ret = api.open(config, callbacks);
+        else if (typeof api.open === "function")
+          ret = api.open(config, callbacks);
         else if (typeof api.checkout === "function")
           ret = api.checkout(config, callbacks);
-        else if (typeof api.start === "function") ret = api.start(config, callbacks);
-        else if (typeof api.init === "function") ret = api.init(config, callbacks);
+        else if (typeof api.start === "function")
+          ret = api.start(config, callbacks);
+        else if (typeof api.init === "function")
+          ret = api.init(config, callbacks);
         else throw new Error("Unsupported payment SDK interface");
 
         if (ret && typeof ret.then === "function") {
@@ -610,7 +644,13 @@ export function useCheckoutController() {
         });
       }
     },
-    [cancelStartButton, finalize, formData.email, formData.firstName, formData.lastName]
+    [
+      cancelStartButton,
+      finalize,
+      formData.email,
+      formData.firstName,
+      formData.lastName,
+    ]
   );
 
   useEffect(() => {
@@ -642,7 +682,8 @@ export function useCheckoutController() {
       scriptEl =
         document.querySelector('script[data-startbutton-sdk="1"]') ||
         document.querySelector('script[src*="startbutton"]');
-      if (scriptEl) scriptEl.addEventListener("load", markLoaded, { once: true });
+      if (scriptEl)
+        scriptEl.addEventListener("load", markLoaded, { once: true });
     } catch {}
 
     let tries = 0;
@@ -666,11 +707,18 @@ export function useCheckoutController() {
   }, []);
 
   useEffect(() => {
+    if (beginPending) return;
     if (beginState?.success && !launchedRef.current) {
       launchedRef.current = true;
       const provider = (beginState?.paymentProvider || "startbutton")
         .toString()
         .toLowerCase();
+
+      if (provider === "startbutton" || provider === "paystack") {
+        setActivePaymentProvider(provider);
+        setPaymentMethod(provider);
+        setPaymentProviderLoaded(true);
+      }
       const order = {
         publicKey: beginState.publicKey,
         paymentProvider: provider,
@@ -688,7 +736,10 @@ export function useCheckoutController() {
       currentOrderRef.current = order;
       setExistingOrderId(beginState.orderId || "");
       orderCartSignatureRef.current = cartSignature;
-      finalizeGuardRef.current = { orderId: beginState.orderId || "", status: "" };
+      finalizeGuardRef.current = {
+        orderId: beginState.orderId || "",
+        status: "",
+      };
 
       trackFunnelEvent({
         event_name: "checkout_started",
@@ -713,12 +764,15 @@ export function useCheckoutController() {
           open: true,
           type: "error",
           title: "Payment unavailable",
-          message:
-            "Payment provider is not supported.",
+          message: "Payment provider is not supported.",
           details: null,
         });
       }
-    } else if (beginState?.message && beginState?.success === false && !beginPending) {
+    } else if (
+      beginState?.message &&
+      beginState?.success === false &&
+      !beginPending
+    ) {
       setResultModal({
         open: true,
         type: "error",
@@ -793,6 +847,7 @@ export function useCheckoutController() {
     setPaymentMethod,
 
     activePaymentProvider,
+    paymentProviderLoaded,
 
     startButtonLoaded,
     processing,

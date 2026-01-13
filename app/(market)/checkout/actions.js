@@ -48,23 +48,6 @@ function generatePaystackReference(orderNumber) {
   return parts.join("-").slice(0, 90);
 }
 
-async function getActivePaymentProvider() {
-  if (!db?.MarketplacePaymentProviderSettings) return "startbutton";
-
-  try {
-    const row = await db.MarketplacePaymentProviderSettings.findOne({
-      where: { is_active: true },
-      order: [["createdAt", "DESC"]],
-      attributes: ["active_provider"],
-    });
-    return normalizePaymentProvider(row?.active_provider) || "startbutton";
-  } catch (e) {
-    const code = e?.original?.code || e?.code;
-    if (code === "42P01") return "startbutton";
-    return "startbutton";
-  }
-}
-
 function getStartButtonSupportedCurrencies() {
   const raw = process.env.STARTBUTTON_SUPPORTED_CURRENCIES;
   if (raw) {
@@ -125,6 +108,23 @@ function getPaystackPublicKey() {
 
 function getPaystackSecretKey() {
   return (process.env.PAYSTACK_SECRETKEY || "").toString().trim();
+}
+
+async function getActivePaymentProvider() {
+  if (!db?.MarketplacePaymentProviderSettings) return "startbutton";
+
+  try {
+    const row = await db.MarketplacePaymentProviderSettings.findOne({
+      where: { is_active: true },
+      order: [["createdAt", "DESC"]],
+      attributes: ["active_provider"],
+    });
+    return normalizePaymentProvider(row?.active_provider) || "startbutton";
+  } catch (e) {
+    const code = e?.original?.code || e?.code;
+    if (code === "42P01") return "startbutton";
+    return "startbutton";
+  }
 }
 
 async function verifyPaystackTransaction(reference) {
@@ -460,13 +460,13 @@ export async function beginCheckout(prevState, formData) {
   // Product status gating: disallow checkout if any product is not published (unless viewer is owner)
   const statusBlocked = cartItems.filter((ci) => {
     const p = ci?.MarketplaceProduct;
-    if (!p) return false;
+    if (!p) return true;
     const isOwner = p.user_id === userId;
     return !isOwner && p.product_status !== "published";
   });
   if (statusBlocked.length > 0) {
     const titles = statusBlocked
-      .map((ci) => ci?.MarketplaceProduct?.title)
+      .map((ci) => ci?.MarketplaceProduct?.title || ci?.name || "Item")
       .filter(Boolean);
     const idsToRemove = statusBlocked.map((ci) => ci?.id).filter(Boolean);
     try {

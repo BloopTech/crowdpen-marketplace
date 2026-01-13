@@ -99,6 +99,32 @@ function safeJsonParse(s) {
   }
 }
 
+async function refreshProductSalesMaterializedView({ requestId }) {
+  try {
+    await sequelize.query(
+      'REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_product_sales'
+    );
+  } catch (e) {
+    const code = e?.original?.code || e?.code;
+    if (code === "42P01") return;
+    const msg = String(e?.message || "");
+    if (
+      msg.toLowerCase().includes("refresh") &&
+      msg.toLowerCase().includes("concurrently") &&
+      msg.toLowerCase().includes("transaction")
+    ) {
+      return;
+    }
+    await reportError(e, {
+      route: "/api/marketplace/paystack/webhook",
+      method: "POST",
+      status: 200,
+      requestId,
+      tag: "paystack_webhook_refresh_mv_product_sales",
+    });
+  }
+}
+
 function firstString(...values) {
   for (const v of values) {
     if (v == null) continue;
@@ -807,6 +833,9 @@ export async function POST(request) {
           { transaction: t }
         );
         await t.commit();
+
+        await refreshProductSalesMaterializedView({ requestId });
+
         return NextResponse.json({
           status: "success",
           message: "Already processed",
@@ -900,6 +929,8 @@ export async function POST(request) {
       await writeSaleCreditsForOrder({ order: locked, transaction: t });
 
       await t.commit();
+
+      await refreshProductSalesMaterializedView({ requestId });
 
       try {
         if (!alreadySuccessful) {

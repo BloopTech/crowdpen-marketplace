@@ -8,7 +8,7 @@ import { assertAnyEnvInProduction } from "./env";
 
 const getSecret = () => {
   assertAnyEnvInProduction(["BANK_ENCRYPTION_SECRET", "ENCRYPTION_KEY"]);
-  const secret = process.env.BANK_ENCRYPTION_SECRET || process.env.ENCRYPTION_KEY;
+  const secret = process.env.BANK_ENCRYPTION_SECRET || process.env.API_ENCRYPTION_KEY;
   if (!secret) {
     // In production, this MUST be set. We avoid throwing to keep dev smooth,
     // but encryption will be weak if undefined. Warn loudly.

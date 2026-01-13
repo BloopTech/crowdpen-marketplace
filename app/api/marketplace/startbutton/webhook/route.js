@@ -77,6 +77,81 @@ function safeJsonParse(text) {
   }
 }
 
+const INVENTORY_RESERVED_MARKER = "inventory=reserved";
+const INVENTORY_DECREMENTED_MARKER = "inventory=decremented";
+const INVENTORY_RELEASED_MARKER = "inventory=released";
+
+function hasInventoryMarker(notes, marker) {
+  const s = notes != null ? String(notes) : "";
+  return s.includes(marker);
+}
+
+function appendInventoryMarker(notes, marker) {
+  const s = notes != null ? String(notes) : "";
+  if (s.includes(marker)) return s;
+  return s ? `${s}\n${marker}` : marker;
+}
+
+async function adjustStockForOrder({ orderId, transaction, direction }) {
+  if (!orderId) return;
+  const dir = Number(direction);
+  if (dir !== 1 && dir !== -1) return;
+
+  const items = await MarketplaceOrderItems.findAll({
+    where: { marketplace_order_id: orderId },
+    transaction,
+    lock: transaction.LOCK.UPDATE,
+  });
+
+  for (const it of items) {
+    const product = await MarketplaceProduct.findByPk(it.marketplace_product_id, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!product || product.stock === null || typeof product.stock === "undefined") {
+      continue;
+    }
+
+    const current = Number(product.stock);
+    const qty = Number(it.quantity);
+    if (!Number.isFinite(current) || !Number.isFinite(qty) || qty <= 0) continue;
+
+    const next = current + dir * qty;
+    if (dir === -1 && next < 0) {
+      throw new Error(`Insufficient stock for ${product.title}`);
+    }
+
+    const newStock = Math.max(0, next);
+    await product.update(
+      { stock: newStock, inStock: newStock > 0 },
+      { transaction }
+    );
+  }
+}
+
+async function refreshProductSalesMaterializedView({ requestId }) {
+  try {
+    await sequelize.query(
+      'REFRESH MATERIALIZED VIEW CONCURRENTLY public.mv_product_sales'
+    );
+  } catch (e) {
+    const code = e?.original?.code || e?.code;
+    if (code === "42P01") return;
+    const msg = String(e?.message || "");
+    if (msg.toLowerCase().includes("refresh") && msg.toLowerCase().includes("concurrently") && msg.toLowerCase().includes("transaction")) {
+      return;
+    }
+    await reportError(e, {
+      route: "/api/marketplace/startbutton/webhook",
+      method: "POST",
+      status: 200,
+      requestId,
+      tag: "startbutton_webhook_refresh_mv_product_sales",
+    });
+  }
+}
+
 async function writeSaleCreditsForOrder({ order, transaction, gatewayReference }) {
   const orderId = order?.id;
   if (!orderId) return;
@@ -869,6 +944,13 @@ export async function POST(request) {
     const isVerified = stage === "verified";
 
     if (ok && isSettled) {
+      const hasReserved = hasInventoryMarker(mergedNotes, INVENTORY_RESERVED_MARKER);
+      const hasDecremented = hasInventoryMarker(
+        mergedNotes,
+        INVENTORY_DECREMENTED_MARKER
+      );
+      const shouldAdjustStock = !alreadySuccessful && !hasDecremented;
+
       const meta = extractMetadata(payload) || {};
       const paid_amount =
         toFiniteNumber(meta?.paidAmount) ?? toFiniteNumber(meta?.paid_amount);
@@ -881,6 +963,10 @@ export async function POST(request) {
 
       const nextOrderStatus = "successful";
 
+      const notesForUpdate = shouldAdjustStock
+        ? appendInventoryMarker(mergedNotes, INVENTORY_DECREMENTED_MARKER)
+        : mergedNotes;
+
       await lockedOrder.update(
         {
           paymentStatus: "successful",
@@ -891,7 +977,7 @@ export async function POST(request) {
             lockedOrder.startbuttonReferenceId ||
             orderReference ||
             null,
-          notes: mergedNotes,
+          notes: notesForUpdate,
           ...(paid_amount != null ? { paid_amount } : {}),
           ...(paid_currency ? { paid_currency } : {}),
           ...(fx_rate != null ? { fx_rate } : {}),
@@ -921,6 +1007,14 @@ export async function POST(request) {
             : "";
         if (!productFile) continue;
         await item.update({ downloadUrl: productFile }, { transaction: t });
+      }
+
+      if (shouldAdjustStock && !hasReserved) {
+        await adjustStockForOrder({
+          orderId: lockedOrder.id,
+          transaction: t,
+          direction: -1,
+        });
       }
 
       // Clear cart for this user
@@ -967,6 +1061,8 @@ export async function POST(request) {
       });
 
       await t.commit();
+
+      await refreshProductSalesMaterializedView({ requestId });
 
       // Send email (best-effort)
       try {
@@ -1026,16 +1122,35 @@ export async function POST(request) {
     }
 
     if (ok && isVerified) {
+      const hasReserved = hasInventoryMarker(mergedNotes, INVENTORY_RESERVED_MARKER);
+      const hasDecremented = hasInventoryMarker(
+        mergedNotes,
+        INVENTORY_DECREMENTED_MARKER
+      );
+      const shouldReserve = !alreadySuccessful && !hasReserved && !hasDecremented;
+
       const nextOrderStatus = ["successful"].includes(
         String(lockedOrder.orderStatus || "").toLowerCase()
       )
         ? "successful"
         : "processing";
 
+      if (shouldReserve) {
+        await adjustStockForOrder({
+          orderId: lockedOrder.id,
+          transaction: t,
+          direction: -1,
+        });
+      }
+
+      const notesForUpdate = shouldReserve
+        ? appendInventoryMarker(mergedNotes, INVENTORY_RESERVED_MARKER)
+        : mergedNotes;
+
       await lockedOrder.update(
         {
           orderStatus: nextOrderStatus,
-          notes: mergedNotes,
+          notes: notesForUpdate,
         },
         { transaction: t }
       );
@@ -1048,11 +1163,32 @@ export async function POST(request) {
     }
 
     if (failed) {
+      const hasReserved = hasInventoryMarker(mergedNotes, INVENTORY_RESERVED_MARKER);
+      const hasDecremented = hasInventoryMarker(
+        mergedNotes,
+        INVENTORY_DECREMENTED_MARKER
+      );
+      const hasReleased = hasInventoryMarker(mergedNotes, INVENTORY_RELEASED_MARKER);
+      const shouldRelease =
+        !alreadySuccessful && hasReserved && !hasDecremented && !hasReleased;
+
+      if (shouldRelease) {
+        await adjustStockForOrder({
+          orderId: lockedOrder.id,
+          transaction: t,
+          direction: 1,
+        });
+      }
+
+      const notesForUpdate = shouldRelease
+        ? appendInventoryMarker(mergedNotes, INVENTORY_RELEASED_MARKER)
+        : mergedNotes;
+
       await lockedOrder.update(
         {
           paymentStatus: "failed",
           orderStatus: "failed",
-          notes: mergedNotes,
+          notes: notesForUpdate,
         },
         { transaction: t }
       );

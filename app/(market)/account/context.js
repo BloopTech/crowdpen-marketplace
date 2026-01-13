@@ -218,6 +218,32 @@ export function AccountContextProvider({ children }) {
     return myProductsQuery?.data?.pages?.[0]?.pagination?.total || 0;
   }, [myProductsQuery?.data?.pages]);
 
+  const myDraftsQuery = useQuery({
+    queryKey: ["account", "my-product-drafts", value?.profile?.id],
+    enabled: Boolean(value?.profile?.id),
+    queryFn: async () => {
+      const res = await fetch(`/api/marketplace/products/drafts?limit=20`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.status !== "success") {
+        throw new Error(data?.message || "Failed to fetch drafts");
+      }
+      return data;
+    },
+  });
+
+  const myDrafts = useMemo(() => {
+    const list = myDraftsQuery?.data?.drafts;
+    return Array.isArray(list) ? list : [];
+  }, [myDraftsQuery?.data?.drafts]);
+
+  const myDraftsLoading = Boolean(myDraftsQuery?.isFetching && !myDraftsQuery?.data);
+  const myDraftsError = myDraftsQuery?.error
+    ? myDraftsQuery.error.message || "Failed to fetch drafts"
+    : null;
+
   const myProductsHasMore = Boolean(myProductsQuery?.hasNextPage);
   const myProductsLoading = Boolean(
     myProductsQuery?.isFetching && !myProductsQuery?.data
@@ -263,6 +289,10 @@ export function AccountContextProvider({ children }) {
         categories,
         categoriesQuery,
         categoriesLoading: categoriesQuery?.isFetching,
+        myDrafts,
+        myDraftsLoading,
+        myDraftsError,
+        refetchMyDrafts: myDraftsQuery?.refetch,
         bankListQuery,
         banks,
         loadingBanks,

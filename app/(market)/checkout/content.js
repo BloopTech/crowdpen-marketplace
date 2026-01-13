@@ -25,10 +25,8 @@ export default function CheckoutContent() {
 
     searchQuery,
     setSearchQuery,
-
     activePaymentProvider,
-    paymentMethod,
-
+    paymentProviderLoaded,
     startButtonLoaded,
     processing,
 
@@ -53,9 +51,9 @@ export default function CheckoutContent() {
     fmt,
   } = useCheckout();
 
-  const providerLabel =
-    (activePaymentProvider || "startbutton") === "paystack" ? "Paystack" : "StartButton";
-  const requiresStartButton = (activePaymentProvider || "startbutton") === "startbutton";
+  const selectedProvider = (activePaymentProvider || "startbutton").toString().toLowerCase();
+  const providerLabel = selectedProvider === "paystack" ? "Paystack" : "StartButton";
+  const requiresStartButton = selectedProvider === "startbutton";
 
   if (!session) {
     return (
@@ -235,7 +233,7 @@ export default function CheckoutContent() {
                     <input
                       type="hidden"
                       name="paymentMethod"
-                      value={paymentMethod || activePaymentProvider || "startbutton"}
+                      value={selectedProvider}
                     />
                   </div>
 
@@ -320,6 +318,7 @@ export default function CheckoutContent() {
                       processing ||
                       isLoading ||
                       !cartItems?.length ||
+                      !paymentProviderLoaded ||
                       (requiresStartButton && !startButtonLoaded)
                     }
                   >

@@ -177,6 +177,48 @@ export async function GET(request, { params }) {
       await cart.update({ currency: "USD" });
     }
 
+    let unavailableNotice = null;
+    const cleanupItems = await MarketplaceCartItems.findAll({
+      where: { marketplace_cart_id: cart.id },
+      attributes: ["id"],
+      include: [
+        {
+          model: MarketplaceProduct,
+          required: false,
+          attributes: ["id", "title", "product_status", "user_id"],
+        },
+      ],
+    });
+
+    const unavailable = cleanupItems.filter((it) => {
+      const p = it?.MarketplaceProduct;
+      if (!p) return true;
+      const isOwner = String(p.user_id) === String(user.id);
+      return !isOwner && String(p.product_status || "") !== "published";
+    });
+
+    if (unavailable.length > 0) {
+      const idsToRemove = unavailable.map((it) => it?.id).filter(Boolean);
+      const titles = unavailable
+        .map((it) => it?.MarketplaceProduct?.title)
+        .filter(Boolean);
+
+      if (idsToRemove.length > 0) {
+        await MarketplaceCartItems.destroy({
+          where: {
+            marketplace_cart_id: cart.id,
+            id: { [Op.in]: idsToRemove },
+          },
+        });
+      }
+
+      if (titles.length > 0) {
+        unavailableNotice = { reason: "removed_unavailable", titles };
+      } else {
+        unavailableNotice = { reason: "removed_unavailable", titles: [] };
+      }
+    }
+
     // Build where conditions for product search.
     // Published products are visible to everyone, and the cart owner can see their own products
     // even if they are not published (matches checkout gating logic).
@@ -280,7 +322,9 @@ export async function GET(request, { params }) {
       }
     }
 
-    let appliedDiscount = Number(parseFloat(cart.discount || 0).toFixed(2));
+    let appliedDiscount = cart.coupon_id
+      ? Number(parseFloat(cart.discount || 0).toFixed(2))
+      : 0;
     let couponNotice = null;
     if (cart.coupon_id) {
       const coupon = await MarketplaceCoupon.findByPk(cart.coupon_id);
@@ -398,7 +442,8 @@ export async function GET(request, { params }) {
           coupon_id: cart.coupon_id || null,
           coupon_code: cart.coupon_code || null,
           coupon_applied_at: cart.coupon_applied_at || null,
-          coupon_notice: couponNotice
+          coupon_notice: couponNotice,
+          unavailable_notice: unavailableNotice,
         },
         pagination: {
           page,

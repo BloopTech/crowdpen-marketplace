@@ -1,8 +1,9 @@
 "use client";
 
 import React, { createContext, useContext } from "react";
-import { useQueryState, parseAsString, parseAsInteger } from "nuqs";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useQueryState, parseAsString } from "nuqs";
+
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 
 const AuthorProfileContext = createContext();
@@ -105,6 +106,38 @@ function AuthorProfileContextProvider({ children }) {
     }
   };
 
+  // Fetch heavy statistics client-side to avoid blocking server render
+  const fetchAuthorStats = async () => {
+    const response = await fetch(`/api/marketplace/author/${authorPenName}`);
+    const data = await response.json().catch(() => null);
+
+    if (!response.ok || !data) {
+      throw new Error(
+        (data && data.message) || "Failed to fetch author stats"
+      );
+    }
+
+    if (data.status !== "success" || !data.author?.stats) {
+      throw new Error(data.message || "Failed to fetch author stats");
+    }
+
+    return data.author.stats;
+  };
+
+  const authorStatsQuery = useQuery({
+    queryKey: ["author-stats", authorPenName],
+    queryFn: fetchAuthorStats,
+    enabled: !!authorPenName,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const authorStats = authorStatsQuery.data || null;
+  const authorStatsLoading = authorStatsQuery.isLoading;
+  const authorStatsError = authorStatsQuery.error;
+  const authorCategories = Array.isArray(authorStats?.categories)
+    ? authorStats.categories
+    : [];
+
   const value = {
     // Search and filter state (URL-synchronized)
     searchQuery,
@@ -135,6 +168,10 @@ function AuthorProfileContextProvider({ children }) {
     
     // Author info
     authorPenName,
+    authorStats,
+    authorStatsLoading,
+    authorCategories,
+    authorStatsError,
   };
 
   return (

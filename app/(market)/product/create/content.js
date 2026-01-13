@@ -1,5 +1,6 @@
 "use client";
 import React, {
+  useCallback,
   useState,
   useEffect,
   useRef,
@@ -70,7 +71,7 @@ const initialStateValues = {
   data: {},
 };
 
-export default function CreateProductContent() {
+export default function CreateProductContent({ draftId }) {
   const { categoriesData } = useProductContext();
   const { data: session, status } = useSession();
   const [subCategories, setSubCategories] = useState([]);
@@ -98,11 +99,246 @@ export default function CreateProductContent() {
   const formRef = useRef(null);
   const router = useRouter();
 
+  const draftStorageKey = useMemo(() => {
+    if (!session?.user?.id) return null;
+    const base = "cp_marketplace_product_draft_v1";
+    return draftId
+      ? `${base}:${session.user.id}:${draftId}`
+      : `${base}:${session.user.id}:new`;
+  }, [session?.user?.id, draftId]);
+
+  const [isLoadingDraft, setIsLoadingDraft] = useState(Boolean(draftId));
+  const [draftServerId, setDraftServerId] = useState(draftId || null);
+  const saveTimerRef = useRef(null);
+  const lastSavedRef = useRef(0);
+  const lastSentPayloadRef = useRef("");
+  const draftKeyRef = useRef(null);
+
   useEffect(() => {
     if (typeof state?.values?.description === "string") {
       setDescription(state.values.description);
     }
   }, [state?.values?.description]);
+
+  useEffect(() => {
+    setDraftServerId(draftId || null);
+  }, [draftId]);
+
+  useEffect(() => {
+    if (draftId) return;
+    if (!draftStorageKey) return;
+    if (status !== "authenticated") return;
+
+    const metaKey = `${draftStorageKey}:meta`;
+
+    try {
+      const raw = localStorage.getItem(metaKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed?.draft_key && typeof parsed.draft_key === "string") {
+          draftKeyRef.current = parsed.draft_key.slice(0, 200);
+        }
+      }
+    } catch {
+    }
+
+    if (draftKeyRef.current) return;
+
+    try {
+      const key = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`.slice(
+        0,
+        200
+      );
+      draftKeyRef.current = key;
+      localStorage.setItem(metaKey, JSON.stringify({ draft_key: key }));
+    } catch {
+    }
+  }, [draftId, draftStorageKey, status]);
+
+  useEffect(() => {
+    if (!draftStorageKey) return;
+    if (status !== "authenticated") return;
+    try {
+      const raw = localStorage.getItem(draftStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && typeof parsed === "object") {
+          if (typeof parsed.title === "string") {
+            const el = formRef.current?.querySelector?.("input[name='title']");
+            if (el && !el.value) el.value = parsed.title;
+          }
+          if (typeof parsed.description === "string") setDescription(parsed.description);
+          if (typeof parsed.price === "string") setPrice(parsed.price);
+          if (typeof parsed.originalPrice === "string") setOriginalPrice(parsed.originalPrice);
+          if (typeof parsed.saleEndDate === "string") setSaleEndDate(parsed.saleEndDate);
+          if (typeof parsed.productStatus === "string") setProductStatus(parsed.productStatus);
+          if (typeof parsed.stock === "string") setStock(parsed.stock);
+          if (typeof parsed.categoryID === "string") setCategoryID(parsed.categoryID);
+          if (typeof parsed.whatIncluded === "string") setWhatIncluded(parsed.whatIncluded);
+          if (typeof parsed.fileType === "string") setFileType(parsed.fileType);
+          if (typeof parsed.fileSize === "string") setFileSize(parsed.fileSize);
+        }
+      }
+    } catch {
+    }
+    (async () => {
+      if (!draftId) {
+        setIsLoadingDraft(false);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/marketplace/products/drafts/${encodeURIComponent(draftId)}`,
+          { credentials: "include", cache: "no-store" }
+        );
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data?.status !== "success" || !data?.draft) {
+          setIsLoadingDraft(false);
+          return;
+        }
+        const d = data.draft;
+        if (typeof d.title === "string") {
+          const el = formRef.current?.querySelector?.("input[name='title']");
+          if (el) el.value = d.title;
+        }
+        if (typeof d.description === "string") setDescription(d.description);
+        if (d.price != null) setPrice(String(d.price));
+        if (d.originalPrice != null) setOriginalPrice(String(d.originalPrice));
+        if (d.sale_end_date) {
+          try {
+            setSaleEndDate(new Date(d.sale_end_date).toISOString().slice(0, 10));
+          } catch {
+          }
+        }
+        if (typeof d.product_status === "string") setProductStatus(d.product_status);
+        if (d.stock != null) setStock(String(d.stock));
+        if (typeof d.marketplace_category_id === "string") setCategoryID(d.marketplace_category_id);
+        if (typeof d.what_included === "string") setWhatIncluded(d.what_included);
+        if (typeof d.fileType === "string") setFileType(d.fileType);
+        if (typeof d.fileSize === "string") setFileSize(d.fileSize);
+      } catch {
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    })();
+  }, [draftStorageKey, status, draftId, formRef]);
+
+  const buildLocalDraftSnapshot = useCallback(() => {
+    const titleInput = formRef.current?.querySelector?.("input[name='title']");
+    return {
+      title: titleInput?.value || "",
+      description: description || "",
+      price: price || "",
+      originalPrice: originalPrice || "",
+      saleEndDate: saleEndDate || "",
+      productStatus: productStatus || "draft",
+      stock: stock || "",
+      categoryID: categoryID || "",
+      whatIncluded: whatIncluded || "",
+      fileType: fileType || "",
+      fileSize: fileSize || "",
+    };
+  }, [
+    categoryID,
+    description,
+    fileSize,
+    fileType,
+    originalPrice,
+    price,
+    productStatus,
+    saleEndDate,
+    stock,
+    whatIncluded,
+  ]);
+
+  const queueDraftSave = useCallback(() => {
+    if (status !== "authenticated") return;
+    if (!draftStorageKey) return;
+    if (isPending) return;
+
+    const snapshot = buildLocalDraftSnapshot();
+    try {
+      localStorage.setItem(draftStorageKey, JSON.stringify(snapshot));
+    } catch {
+    }
+
+    const hasAnyContent =
+      Boolean(snapshot.title?.trim()) ||
+      Boolean(snapshot.description?.trim()) ||
+      Boolean(snapshot.originalPrice?.trim()) ||
+      Boolean(snapshot.price?.trim()) ||
+      Boolean(snapshot.stock?.trim()) ||
+      Boolean(snapshot.categoryID?.trim()) ||
+      Boolean(snapshot.whatIncluded?.trim());
+    if (!hasAnyContent) return;
+
+    const payload = {
+      title: snapshot.title || null,
+      description: snapshot.description || null,
+      price: snapshot.price || null,
+      originalPrice: snapshot.originalPrice || null,
+      sale_end_date: snapshot.saleEndDate || null,
+      product_status: snapshot.productStatus || "draft",
+      stock: snapshot.stock || null,
+      marketplace_category_id: snapshot.categoryID || null,
+      what_included: snapshot.whatIncluded || null,
+      fileType: snapshot.fileType || null,
+      fileSize: snapshot.fileSize || null,
+    };
+
+    if (!draftServerId && !draftKeyRef.current) {
+      const metaKey = `${draftStorageKey}:meta`;
+      try {
+        const key = `draft_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`.slice(
+          0,
+          200
+        );
+        draftKeyRef.current = key;
+        localStorage.setItem(metaKey, JSON.stringify({ draft_key: key }));
+      } catch {
+      }
+    }
+
+    const body = draftServerId
+      ? payload
+      : {
+          draft_key: draftKeyRef.current || null,
+          ...payload,
+        };
+
+    const nextPayloadStr = JSON.stringify(body);
+    if (nextPayloadStr === lastSentPayloadRef.current) return;
+
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+
+    saveTimerRef.current = setTimeout(async () => {
+      try {
+        const now = Date.now();
+        if (now - lastSavedRef.current < 1500) return;
+
+        const endpoint = draftServerId
+          ? `/api/marketplace/products/drafts/${encodeURIComponent(draftServerId)}`
+          : "/api/marketplace/products/drafts";
+
+        const res = await fetch(endpoint, {
+          method: draftServerId ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.status === "success" && data?.draft?.id) {
+          lastSavedRef.current = Date.now();
+          lastSentPayloadRef.current = nextPayloadStr;
+          const returnedId = String(data.draft.id);
+          if (!draftServerId && returnedId) setDraftServerId(returnedId);
+        }
+      } catch {
+      }
+    }, 900);
+  }, [buildLocalDraftSnapshot, draftServerId, draftStorageKey, isPending, status]);
 
   useEffect(() => {
     if (
@@ -123,6 +359,15 @@ export default function CreateProductContent() {
     }
   }, [state?.message, state?.errors, state?.data, router]);
 
+  useEffect(() => {
+    if (!state?.data || Object.keys(state.data || {}).length === 0) return;
+    if (!draftStorageKey) return;
+    try {
+      localStorage.removeItem(draftStorageKey);
+    } catch {
+    }
+  }, [state?.data, draftStorageKey]);
+
   console.log("categories", categoriesData);
 
   useEffect(() => {
@@ -133,6 +378,10 @@ export default function CreateProductContent() {
       );
     }
   }, [categoriesData, categoryID]);
+
+  useEffect(() => {
+    queueDraftSave();
+  }, [queueDraftSave]);
 
   useEffect(() => {
     if (price && originalPrice && !pricesInitialized) {
@@ -349,6 +598,12 @@ export default function CreateProductContent() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">
+      {isLoadingDraft ? (
+        <div className="flex items-center gap-2 text-muted-foreground mb-4">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          Loading draft...
+        </div>
+      ) : null}
       <div className="mb-4">
         <Button asChild variant="ghost" size="sm">
           <Link href="/">
@@ -373,17 +628,14 @@ export default function CreateProductContent() {
           action={(formData) => {
             formData.delete("images");
             formData.delete("productFile");
-            // Add product file to form data if it exists
             if (productFile) {
               formData.append("productFile", productFile);
             }
-            // Add images to form data
             images.forEach((imageObj) => {
               if (imageObj.file) {
                 formData.append("images", imageObj.file);
               }
             });
-            // Call the original form action
             formAction(formData);
           }}
         >
@@ -409,6 +661,10 @@ export default function CreateProductContent() {
                       : "focus:ring-tertiary"
                   }`}
                   disabled={isPending}
+                  onChange={(e) => {
+                    // keep existing uncontrolled behavior
+                    queueDraftSave();
+                  }}
                 />
                 <span className="text-xs text-red-500">
                   {Object.keys(state?.errors).length !== 0 &&

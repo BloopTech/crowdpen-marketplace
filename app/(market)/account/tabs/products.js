@@ -64,6 +64,9 @@ export default function MyProducts() {
         myProductsLoadingMore,
         myProductsError,
         loadMoreMyProducts,
+        myDrafts,
+        myDraftsLoading,
+        myDraftsError,
         // Filters/sort
         myProductsSearch,
         setMyProductsSearch,
@@ -200,6 +203,62 @@ export default function MyProducts() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {myDraftsError ? (
+            <div className="text-sm text-red-600 mb-4">{myDraftsError}</div>
+          ) : null}
+
+          {myDraftsLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground mb-4">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Loading your drafts...
+            </div>
+          ) : null}
+
+          {!myDraftsLoading && Array.isArray(myDrafts) && myDrafts.length > 0 ? (
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold">Incomplete drafts</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {myDrafts.map((d) => (
+                  <div
+                    key={d.id}
+                    className="flex flex-col border border-border rounded-lg p-3"
+                  >
+                    <div className="relative aspect-3/2 bg-muted rounded overflow-hidden mb-3">
+                      <NextImage
+                        src={d.image || "/placeholder.svg"}
+                        alt={d.title || "Untitled draft"}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between mb-1 gap-2">
+                      <span className="text-xs text-muted-foreground">Draft</span>
+                      {getStatusBadge("draft")}
+                    </div>
+                    <h3 className="font-semibold text-sm line-clamp-2">
+                      {d.title || "Untitled draft"}
+                    </h3>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {d.updatedAt
+                        ? `Last saved ${new Date(d.updatedAt).toLocaleString()}`
+                        : null}
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <Link href={`/product/create?draftId=${encodeURIComponent(d.id)}`}>
+                        <Button size="sm">
+                          Continue
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex flex-col md:flex-row gap-4 mb-4">
             <Input
               placeholder="Search products..."
