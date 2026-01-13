@@ -44,13 +44,21 @@ sb-init [class*="max-w-[450px]"]{
 
 /* Prevent horizontal scroll when sb-init is present */
 html:has(sb-init), body:has(sb-init){overflow-x:hidden!important;}
-sb-init, sb-init *{overflow-x:hidden!important;}
+sb-init{overflow-x:hidden!important;}
+sb-init article,
+sb-init section,
+sb-init main,
+sb-init header,
+sb-init footer,
+sb-init form{overflow-x:hidden!important;}
+sb-init .overflow-x-auto,
+sb-init [class*="overflow-x-auto"]{overflow-x:hidden!important;}
 
 /* Neutralize w-screen within StartButton DOM to avoid viewport-width overflow */
 sb-init .w-screen, sb-init [class*="w-screen"]{width:100%!important;}
 
 /* Constrain images inside the StartButton card (e.g., brand badges) */
-sb-init img{height:auto!important;max-height:18px!important;width:auto!important;max-width:100%!important;}
+sb-init img{height:auto!important;max-height:14px!important;width:auto!important;max-width:100%!important;}
 
 /* Neutralize problematic negative horizontal margins observed in header rows */
 sb-init .mx-\[-25px\],

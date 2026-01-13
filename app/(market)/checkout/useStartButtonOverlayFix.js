@@ -265,18 +265,29 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
             `${sel}{width:min(94vw,560px)!important;max-width:560px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;display:block!important;margin:0 auto!important;}`
         )
         .join("");
-      const cssWrapper = "";
+      const cssWrapper = [
+        "html:has(sb-init), body:has(sb-init){overflow-x:hidden!important;}",
+        "sb-init{max-width:94vw!important;}",
+        "sb-init .w-screen, sb-init [class*=\"w-screen\"]{width:100%!important;max-width:100%!important;}",
+        "sb-init .overflow-x-auto, sb-init [class*=\"overflow-x-auto\"]{overflow-x:hidden!important;}",
+        "sb-init .mx-\\[-25px\\], sb-init [class*=\"mx-[-25px]\"]{margin-left:0!important;margin-right:0!important;}",
+      ].join("");
       const cssPointer = [
         ".cdk-overlay-container{pointer-events:auto!important;z-index:100001!important;}",
         ".cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}",
         ".cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}",
         ".cdk-overlay-backdrop{pointer-events:auto!important;}",
+        ".cdk-overlay-pane:has(.mat-mdc-select-panel){z-index:2147483647!important;}",
         ".mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}",
       ].join("");
       const cssVars = ":root{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}";
       const cssMobile = `@media (max-width: 640px), (pointer: coarse) {
   .cdk-overlay-container,.cdk-global-overlay-wrapper{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;}
-  .cdk-overlay-pane{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
+  .cdk-overlay-pane:has(.mat-mdc-dialog-surface),
+  .cdk-overlay-pane:has(.mat-dialog-container),
+  .cdk-overlay-pane:has(iframe[src*="startbutton"]),
+  .cdk-overlay-pane:has(sb-init),
+  .cdk-overlay-pane:has(dialog[open]){position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
   iframe[src*="startbutton"],iframe[src*="sb-web-sdk"],iframe[src*="startbutton.tech"]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;display:block!important;}
   dialog[open]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;}
   sb-init{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-top:env(safe-area-inset-top)!important;padding-bottom:env(safe-area-inset-bottom)!important;}
@@ -298,7 +309,7 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
         if (!linkDoc) {
           linkElDoc = document.createElement("link");
           linkElDoc.rel = "stylesheet";
-          linkElDoc.href = "/sb-override.css?v=2";
+          linkElDoc.href = "/sb-override.css?v=3";
           if (nonce) linkElDoc.setAttribute("nonce", nonce);
           linkElDoc.setAttribute("data-sb-override", "1");
           document.head.appendChild(linkElDoc);
@@ -329,12 +340,17 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
           ".cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}",
           ".cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}",
           ".cdk-overlay-backdrop{pointer-events:auto!important;}",
+          ".cdk-overlay-pane:has(.mat-mdc-select-panel){z-index:2147483647!important;}",
           ".mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}",
         ].join("");
         const shadowVars = ":host{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}";
         const shadowMobile = `@media (max-width: 640px), (pointer: coarse) {
   .cdk-overlay-container,.cdk-global-overlay-wrapper{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;}
-  .cdk-overlay-pane{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
+  .cdk-overlay-pane:has(.mat-mdc-dialog-surface),
+  .cdk-overlay-pane:has(.mat-dialog-container),
+  .cdk-overlay-pane:has(iframe[src*="startbutton"]),
+  .cdk-overlay-pane:has(sb-init),
+  .cdk-overlay-pane:has(dialog[open]){position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
   iframe[src*="startbutton"],iframe[src*="sb-web-sdk"],iframe[src*="startbutton.tech"]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;display:block!important;}
   dialog[open]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;}
   :host sb-init{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-top:env(safe-area-inset-top)!important;padding-bottom:env(safe-area-inset-bottom)!important;}
@@ -352,7 +368,7 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
           if (!linkShadow) {
             linkElShadow = document.createElement("link");
             linkElShadow.rel = "stylesheet";
-            linkElShadow.href = "/sb-override.css?v=2";
+            linkElShadow.href = "/sb-override.css?v=3";
             if (nonce) linkElShadow.setAttribute("nonce", nonce);
             linkElShadow.setAttribute("data-sb-override", "1");
             host.shadowRoot.appendChild(linkElShadow);
@@ -509,12 +525,17 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
               ".cdk-global-overlay-wrapper{pointer-events:auto!important;z-index:100002!important;}",
               ".cdk-overlay-pane{pointer-events:auto!important;z-index:100004!important;}",
               ".cdk-overlay-backdrop{pointer-events:auto!important;}",
+              ".cdk-overlay-pane:has(.mat-mdc-select-panel){z-index:2147483647!important;}",
               ".mat-mdc-select-panel{pointer-events:auto!important;z-index:2147483647!important;}",
             ].join("");
             const shadowVars = ":host{--mat-dialog-container-max-width:560px !important;--mat-dialog-container-small-max-width:560px !important;}";
             const shadowMobile = `@media (max-width: 640px), (pointer: coarse) {
   .cdk-overlay-container,.cdk-global-overlay-wrapper{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;}
-  .cdk-overlay-pane{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
+  .cdk-overlay-pane:has(.mat-mdc-dialog-surface),
+  .cdk-overlay-pane:has(.mat-dialog-container),
+  .cdk-overlay-pane:has(iframe[src*="startbutton"]),
+  .cdk-overlay-pane:has(sb-init),
+  .cdk-overlay-pane:has(dialog[open]){position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;}
   iframe[src*="startbutton"],iframe[src*="sb-web-sdk"],iframe[src*="startbutton.tech"]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;display:block!important;}
   dialog[open]{width:100vw!important;height:100dvh!important;max-width:100vw!important;max-height:100dvh!important;left:0!important;transform:none!important;margin:0!important;}
   :host sb-init{position:fixed!important;inset:0!important;width:100vw!important;height:100dvh!important;max-height:100dvh!important;overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-top:env(safe-area-inset-top)!important;padding-bottom:env(safe-area-inset-bottom)!important;}
@@ -538,7 +559,7 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
           if (!linkShadow) {
             const link = document.createElement("link");
             link.rel = "stylesheet";
-            link.href = "/sb-override.css?v=2";
+            link.href = "/sb-override.css?v=3";
             const nonceEl2 = document.querySelector(
               'style[nonce],link[rel="stylesheet"][nonce],script[nonce],meta[name="csp-nonce"],meta[property="csp-nonce"]'
             );
@@ -551,10 +572,22 @@ export function useStartButtonOverlayFix(processing, setClosePos) {
         }
         // While a mat-select panel is open, temporarily disable pointer events on the card surfaces
         try {
-          const panelDoc = document.querySelector(".mat-mdc-select-panel");
-          const panelShadow = host?.shadowRoot?.querySelector?.(
-            ".mat-mdc-select-panel"
-          );
+          const isVisible = (el) => {
+            if (!el) return false;
+            const r = el.getBoundingClientRect?.();
+            if (!r || r.width < 2 || r.height < 2) return false;
+            const s = window.getComputedStyle?.(el);
+            if (!s) return true;
+            if (s.display === "none" || s.visibility === "hidden") return false;
+            if (Number(s.opacity || "1") === 0) return false;
+            return true;
+          };
+          const panelDoc = Array.from(
+            document.querySelectorAll(".mat-mdc-select-panel")
+          ).find(isVisible);
+          const panelShadow = Array.from(
+            host?.shadowRoot?.querySelectorAll?.(".mat-mdc-select-panel") || []
+          ).find(isVisible);
           const hasPanel = !!(panelDoc || panelShadow);
           const docSurfaces = document.querySelectorAll(
             ".cdk-overlay-pane .mat-mdc-dialog-surface, .cdk-overlay-pane .mat-dialog-container, sb-init section.bg-white"
