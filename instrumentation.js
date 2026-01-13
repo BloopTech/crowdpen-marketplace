@@ -8,10 +8,22 @@ export async function register() {
   await registerNodeInstrumentation();
 
   if (process.env.ENABLE_PG_BOSS === "true") {
-    const [{ registerCleanupProductDraftsWorker }] = await Promise.all([
-      import("./workers/cleanupProductDraftsWorker.js"),
-    ]);
-
-    await registerCleanupProductDraftsWorker();
+    Promise.all([import("./workers/cleanupProductDraftsWorker.js")])
+      .then(([workerModule]) => {
+        if (!workerModule?.registerCleanupProductDraftsWorker) {
+          throw new Error("registerCleanupProductDraftsWorker export not found");
+        }
+        return workerModule.registerCleanupProductDraftsWorker();
+      })
+      .catch((error) => {
+        console.error(
+          JSON.stringify({
+            level: "error",
+            event: "instrumentation.worker_start_failed",
+            worker: "cleanupProductDrafts",
+            message: error?.message || String(error),
+          })
+        );
+      });
   }
 }
