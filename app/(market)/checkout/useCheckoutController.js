@@ -534,7 +534,8 @@ export function useCheckoutController() {
             "mobile_money",
           ],
           standard: false,
-          env: process.env.NODE_ENV === "production" ? "prod" : "prod",
+          //process.env.NODE_ENV === "production" ? "prod" : 
+          env: "prod",
           email: order.customer?.email || formData.email,
           currency: order.currency,
           key: order?.publicKey,
@@ -666,7 +667,7 @@ export function useCheckoutController() {
     return () => clearTimeout(id);
   }, [processing]);
 
-  useStartButtonOverlayFix(processing, setClosePos);
+  // useStartButtonOverlayFix(processing, setClosePos);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
