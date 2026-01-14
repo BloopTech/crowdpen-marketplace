@@ -92,6 +92,8 @@ export default function CreateProductContent({ draftId }) {
   const [priceError, setPriceError] = useState("");
   const [hasDiscount, setHasDiscount] = useState(false);
   const [pricesInitialized, setPricesInitialized] = useState(false);
+  const [uploadReady, setUploadReady] = useState(null); // null = unknown, true/false
+  const [uploadCheckPending, setUploadCheckPending] = useState(false);
   const [state, formAction, isPending] = useActionState(
     createProduct,
     initialStateValues
@@ -339,6 +341,35 @@ export default function CreateProductContent({ draftId }) {
       }
     }, 900);
   }, [buildLocalDraftSnapshot, draftServerId, draftStorageKey, isPending, status]);
+
+  const runUploadPrecheck = useCallback(async () => {
+    setUploadCheckPending(true);
+    try {
+      const res = await fetch("/api/marketplace/products/upload-capabilities", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      const ok = res.ok && data?.status === "success";
+      if (!ok) {
+        toast.error(data?.message || "Uploads unavailable. Please retry shortly.");
+        setUploadReady(false);
+        return false;
+      }
+      setUploadReady(true);
+      return true;
+    } catch {
+      toast.error("Uploads unavailable. Please check your connection and retry.");
+      setUploadReady(false);
+      return false;
+    } finally {
+      setUploadCheckPending(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void runUploadPrecheck();
+  }, [runUploadPrecheck]);
 
   useEffect(() => {
     if (state?.message) {
@@ -620,9 +651,11 @@ export default function CreateProductContent({ draftId }) {
 
         <form
           ref={formRef}
-          action={(formData) => {
+          action={async (formData) => {
             formData.delete("images");
             formData.delete("productFile");
+            const ready = uploadReady === true || (await runUploadPrecheck());
+            if (!ready) return;
             if (productFile) {
               formData.append("productFile", productFile);
             }
@@ -655,7 +688,7 @@ export default function CreateProductContent({ draftId }) {
                       ? "border-red-500 focus:ring-red-500"
                       : "focus:ring-tertiary"
                   }`}
-                  disabled={isPending}
+                  disabled={isPending || uploadReady === false}
                   onChange={(e) => {
                     // keep existing uncontrolled behavior
                     queueDraftSave();
@@ -678,7 +711,7 @@ export default function CreateProductContent({ draftId }) {
                   value={description}
                   onChange={setDescription}
                   placeholder="Enter detailed product description"
-                  disabled={isPending}
+                  disabled={isPending || uploadReady === false}
                   error={
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.description?.length
@@ -703,7 +736,7 @@ export default function CreateProductContent({ draftId }) {
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.what_included?.length
                   }
-                  disabled={isPending}
+                  disabled={isPending || uploadReady === false}
                 />
                 {/* Hidden input for form submission */}
                 <input
@@ -729,7 +762,7 @@ export default function CreateProductContent({ draftId }) {
                     }}
                     name="marketplace_category_id"
                     required
-                    disabled={isPending}
+                    disabled={isPending || uploadReady === false}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a category" />
@@ -763,7 +796,7 @@ export default function CreateProductContent({ draftId }) {
                     }
                     name="marketplace_subcategory_id"
                     required
-                    disabled={isPending || !categoryID}
+                    disabled={isPending || !categoryID || uploadReady === false}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a subcategory" />
@@ -798,7 +831,7 @@ export default function CreateProductContent({ draftId }) {
                   <Select
                     value={productStatus}
                     onValueChange={setProductStatus}
-                    disabled={isPending}
+                    disabled={isPending || uploadReady === false}
                   >
                     <SelectTrigger id="product_status">
                       <SelectValue placeholder="Select status" />
@@ -836,7 +869,7 @@ export default function CreateProductContent({ draftId }) {
                           setPrice("");
                         }
                       }}
-                      disabled={isPending}
+                      disabled={isPending || uploadReady === false}
                     />
                   </div>
                   <div className="text-xs text-muted-foreground dark:text-slate-400">
@@ -868,7 +901,7 @@ export default function CreateProductContent({ draftId }) {
                           ? "border-red-500 dark:border-red-500 focus:ring-red-500 dark:focus:ring-red-500"
                           : ""
                       }`}
-                      disabled={isPending}
+                      disabled={isPending || uploadReady === false}
                     />
                     <span className="text-xs text-red-500">
                       {Object.keys(state?.errors).length !== 0 &&
@@ -912,7 +945,7 @@ export default function CreateProductContent({ draftId }) {
                               ? "border-red-500 focus:ring-red-500"
                               : "focus:ring-tertiary"
                           }`}
-                          disabled={isPending}
+                          disabled={isPending || uploadReady === false}
                         />
                         <span className="text-xs text-red-500">
                           {Object.keys(state?.errors).length !== 0 &&
@@ -934,7 +967,7 @@ export default function CreateProductContent({ draftId }) {
                                 ? "border-red-500 focus:ring-red-500"
                                 : "focus:ring-tertiary"
                             }`}
-                            disabled={isPending}
+                            disabled={isPending || uploadReady === false}
                           />
                           <span className="text-xs text-red-500">
                             {Object.keys(state?.errors).length !== 0 &&
@@ -983,7 +1016,7 @@ export default function CreateProductContent({ draftId }) {
                     value={stock}
                     onChange={(e) => setStock(e.target.value)}
                     className="w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
-                    disabled={isPending}
+                    disabled={isPending || uploadReady === false}
                   />
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 && state?.errors?.stock?.length
@@ -1048,7 +1081,7 @@ export default function CreateProductContent({ draftId }) {
                       multiple
                       className="hidden"
                       onChange={handleImageUpload}
-                      disabled={uploadingImage || isPending}
+                      disabled={uploadingImage || isPending || uploadReady === false}
                     />
                   </label>
                 </div>
@@ -1088,7 +1121,7 @@ export default function CreateProductContent({ draftId }) {
                         type="button"
                         onClick={removeFile}
                         className="text-red-500 hover:text-red-700 p-1"
-                        disabled={uploadingFile || isPending}
+                        disabled={uploadingFile || isPending || uploadReady === false}
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -1118,7 +1151,7 @@ export default function CreateProductContent({ draftId }) {
                         accept=".pdf,.psd,.ai,.fig,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                         className="hidden"
                         onChange={handleFileUpload}
-                        disabled={uploadingFile || isPending}
+                        disabled={uploadingFile || isPending || uploadReady === false}
                       />
                     </label>
                   )}
@@ -1205,7 +1238,7 @@ export default function CreateProductContent({ draftId }) {
                 {/* License */}
                 <div className="space-y-2">
                   <Label htmlFor="license">License</Label>
-                  <Select name="license" disabled={isPending}>
+                  <Select name="license" disabled={isPending || uploadReady === false}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select license type" />
                     </SelectTrigger>
@@ -1222,7 +1255,7 @@ export default function CreateProductContent({ draftId }) {
                 {/* Delivery Time */}
                 <div className="space-y-2">
                   <Label htmlFor="deliveryTime">Delivery Time</Label>
-                  <Select name="deliveryTime" disabled={isPending}>
+                  <Select name="deliveryTime" disabled={isPending || uploadReady === false}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select delivery time" />
                     </SelectTrigger>
@@ -1248,7 +1281,7 @@ export default function CreateProductContent({ draftId }) {
             </Button>
             <Button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || uploadReady === false}
               className="bg-black text-white disabled:cursor-not-allowed cursor-pointer border border-black hover:bg-white hover:text-black"
             >
               {isPending ? (

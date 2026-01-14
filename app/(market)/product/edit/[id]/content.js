@@ -83,6 +83,8 @@ export default function EditProductContent(props) {
   const [productFile, setProductFile] = useState(null);
   const [existingProductFile, setExistingProductFile] = useState(null);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadReady, setUploadReady] = useState(null); // null = unknown, true/false
+  const [uploadCheckPending, setUploadCheckPending] = useState(false);
   const [fileSize, setFileSize] = useState("");
   const [fileType, setFileType] = useState("");
   const [categoryID, setCategoryID] = useState("");
@@ -259,6 +261,35 @@ export default function EditProductContent(props) {
     }
     return null;
   }, [price, originalPrice, hasDiscount]);
+
+  const runUploadPrecheck = useCallback(async () => {
+    setUploadCheckPending(true);
+    try {
+      const res = await fetch("/api/marketplace/products/upload-capabilities", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const data = await res.json().catch(() => ({}));
+      const ok = res.ok && data?.status === "success";
+      if (!ok) {
+        toast.error(data?.message || "Uploads unavailable. Please retry shortly.");
+        setUploadReady(false);
+        return false;
+      }
+      setUploadReady(true);
+      return true;
+    } catch {
+      toast.error("Uploads unavailable. Please check your connection and retry.");
+      setUploadReady(false);
+      return false;
+    } finally {
+      setUploadCheckPending(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void runUploadPrecheck();
+  }, [runUploadPrecheck]);
 
   // Validate price relationship
   const validatePrices = (currentPrice, currentOriginalPrice) => {
@@ -523,9 +554,11 @@ export default function EditProductContent(props) {
 
         <form
           ref={formRef}
-          action={(formData) => {
+          action={async (formData) => {
             formData.delete("images");
             formData.delete("productFile");
+            const ready = uploadReady === true || (await runUploadPrecheck());
+            if (!ready) return;
             const missingProductFile = !productFile && !existingProductFile;
             if (missingProductFile) {
               setClientErrors((prev) => ({
@@ -595,7 +628,7 @@ export default function EditProductContent(props) {
                       ? "border-red-500 focus:ring-red-500"
                       : "focus:ring-tertiary"
                   }`}
-                  disabled={isPending}
+                  disabled={isPending || uploadReady === false}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -621,7 +654,7 @@ export default function EditProductContent(props) {
                     value={stock}
                     onChange={(e) => setStock(e.target.value)}
                     className="w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
-                    disabled={isPending}
+                    disabled={isPending || uploadReady === false}
                   />
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
@@ -641,7 +674,7 @@ export default function EditProductContent(props) {
                   value={description}
                   onChange={setDescription}
                   placeholder="Enter detailed product description"
-                  disabled={isPending}
+                  disabled={isPending || uploadReady === false}
                   error={
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.description?.length
@@ -671,7 +704,7 @@ export default function EditProductContent(props) {
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.what_included?.length
                   }
-                  disabled={isPending}
+                  disabled={isPending || uploadReady === false}
                 />
                 {/* Hidden input for form submission */}
                 <input
@@ -697,7 +730,7 @@ export default function EditProductContent(props) {
                     }}
                     name="marketplace_category_id"
                     required
-                    disabled={isPending}
+                    disabled={isPending || uploadReady === false}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a category" />
@@ -737,7 +770,7 @@ export default function EditProductContent(props) {
                     }}
                     name="marketplace_subcategory_id"
                     required
-                    disabled={isPending || !categoryID}
+                    disabled={isPending || !categoryID || uploadReady === false}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a subcategory" />
@@ -777,7 +810,7 @@ export default function EditProductContent(props) {
                   <Select
                     value={productStatus}
                     onValueChange={setProductStatus}
-                    disabled={isPending}
+                    disabled={isPending || uploadReady === false}
                   >
                     <SelectTrigger id="product_status">
                       <SelectValue placeholder="Select status" />
@@ -819,7 +852,7 @@ export default function EditProductContent(props) {
                           setPrice("");
                         }
                       }}
-                      disabled={isPending}
+                      disabled={isPending || uploadReady === false}
                     />
                   </div>
                   <div className="text-xs text-muted-foreground dark:text-slate-400">
@@ -851,7 +884,7 @@ export default function EditProductContent(props) {
                           ? "border-red-500 dark:border-red-500 focus:ring-red-500 dark:focus:ring-red-500"
                           : ""
                       }`}
-                      disabled={isPending}
+                      disabled={isPending || uploadReady === false}
                     />
                     <span className="text-xs text-red-500">
                       {Object.keys(state?.errors).length !== 0 &&
@@ -895,7 +928,7 @@ export default function EditProductContent(props) {
                               ? "border-red-500 focus:ring-red-500"
                               : "focus:ring-tertiary"
                           }`}
-                          disabled={isPending}
+                          disabled={isPending || uploadReady === false}
                         />
                         <span className="text-xs text-red-500">
                           {Object.keys(state?.errors).length !== 0 &&
@@ -917,7 +950,7 @@ export default function EditProductContent(props) {
                                 ? "border-red-500 focus:ring-red-500"
                                 : "focus:ring-tertiary"
                             }`}
-                            disabled={isPending}
+                            disabled={isPending || uploadReady === false}
                           />
                           <span className="text-xs text-red-500">
                             {Object.keys(state?.errors).length !== 0 &&
@@ -978,7 +1011,7 @@ export default function EditProductContent(props) {
                           type="button"
                           onClick={() => removeExistingImage(index)}
                           className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                          disabled={isPending}
+                          disabled={isPending || uploadReady === false}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -1019,7 +1052,7 @@ export default function EditProductContent(props) {
                         type="button"
                         onClick={() => removeImage(index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                        disabled={isPending}
+                        disabled={isPending || uploadReady === false}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1051,7 +1084,7 @@ export default function EditProductContent(props) {
                       multiple
                       className="hidden"
                       onChange={handleImageUpload}
-                      disabled={uploadingImage || isPending}
+                      disabled={uploadingImage || isPending || uploadReady === false}
                     />
                   </label>
                 </div>
@@ -1105,7 +1138,7 @@ export default function EditProductContent(props) {
                         type="button"
                         onClick={removeExistingFile}
                         className="text-red-500 hover:text-red-700 p-1"
-                        disabled={isPending}
+                        disabled={isPending || uploadReady === false}
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -1134,7 +1167,7 @@ export default function EditProductContent(props) {
                         type="button"
                         onClick={removeFile}
                         className="text-red-500 hover:text-red-700 p-1"
-                        disabled={uploadingFile || isPending}
+                        disabled={uploadingFile || isPending || uploadReady === false}
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -1169,7 +1202,7 @@ export default function EditProductContent(props) {
                         accept=".pdf,.psd,.ai,.fig,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                         className="hidden"
                         onChange={handleFileUpload}
-                        disabled={uploadingFile || isPending}
+                        disabled={uploadingFile || isPending || uploadReady === false}
                       />
                     </label>
                   )}
@@ -1267,7 +1300,7 @@ export default function EditProductContent(props) {
                   <Label htmlFor="license">License</Label>
                   <Select
                     name="license"
-                    disabled={isPending}
+                    disabled={isPending || uploadReady === false}
                     value={license}
                     onValueChange={(value) => setLicense(value)}
                   >
@@ -1290,7 +1323,7 @@ export default function EditProductContent(props) {
                   <Label htmlFor="deliveryTime">Delivery Time</Label>
                   <Select
                     name="deliveryTime"
-                    disabled={isPending}
+                    disabled={isPending || uploadReady === false}
                     value={deliveryTime}
                     onValueChange={(value) => setDeliveryTime(value)}
                   >
@@ -1324,7 +1357,7 @@ export default function EditProductContent(props) {
             </Button>
             <Button
               type="submit"
-              disabled={isPending}
+              disabled={isPending || uploadReady === false}
               className="bg-black text-white disabled:cursor-not-allowed cursor-pointer border border-black hover:bg-white hover:text-black"
             >
               {isPending ? (
