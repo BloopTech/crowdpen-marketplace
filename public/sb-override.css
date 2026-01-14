@@ -1,22 +1,57 @@
-/* Minimal StartButton SDK fixes for critical UI issues */
+/* Minimal StartButton SDK fixes - Dropdown, Brand/Email, and Tabs only */
 
-/* 1. Brand name and email visibility - ensure header content is visible */
+/* 1. Fix mat-select dropdowns to be clickable and functional */
+mat-select,
+.mat-mdc-select {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  position: relative !important;
+}
+
+mat-select .mat-mdc-select-trigger,
+.mat-mdc-select .mat-mdc-select-trigger {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+
+/* Ensure dropdown panels can appear and be interacted with */
+.cdk-overlay-container,
+.cdk-global-overlay-wrapper {
+  pointer-events: auto !important;
+  z-index: 2147483647 !important;
+}
+
+/* Allow dropdown overlay panels to be clickable */
+.cdk-overlay-container .cdk-overlay-pane,
+.cdk-global-overlay-wrapper .cdk-overlay-pane {
+  pointer-events: auto !important;
+}
+
+/* 2. Brand name and email visibility - ensure header content is visible */
 .cdk-overlay-pane .flex.items-center.justify-between,
 [role="dialog"] .flex.items-center.justify-between,
-[aria-modal="true"] .flex.items-center.justify-between {
-  display: flex !important;
+[aria-modal="true"] .flex.items-center.justify-between,
+.cdk-overlay-pane .border-b,
+[role="dialog"] .border-b,
+[aria-modal="true"] .border-b {
   opacity: 1 !important;
   visibility: visible !important;
 }
 
-/* 2. Tab visibility - ensure tab buttons are visible and clickable */
+/* 3. Tab styling and content visibility */
 .cdk-overlay-pane sb-tabs,
 [role="dialog"] sb-tabs,
-[aria-modal="true"] sb-tabs,
-.cdk-overlay-pane [class*="tab"],
-[role="dialog"] [class*="tab"],
-[aria-modal="true"] [class*="tab"] {
-  display: flex !important;
+[aria-modal="true"] sb-tabs {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.cdk-overlay-pane sb-tabs .grid,
+[role="dialog"] sb-tabs .grid,
+[aria-modal="true"] sb-tabs .grid,
+.cdk-overlay-pane sb-tabs .flex,
+[role="dialog"] sb-tabs .flex,
+[aria-modal="true"] sb-tabs .flex {
   opacity: 1 !important;
   visibility: visible !important;
 }
@@ -24,51 +59,65 @@
 .cdk-overlay-pane sb-tabs button,
 [role="dialog"] sb-tabs button,
 [aria-modal="true"] sb-tabs button {
-  display: flex !important;
   opacity: 1 !important;
   visibility: visible !important;
   pointer-events: auto !important;
+  cursor: pointer !important;
 }
 
-/* 3. Dropdown functionality - ensure mat-select overlays work */
-.cdk-overlay-container,
-.cdk-global-overlay-wrapper {
-  pointer-events: auto !important;
-  z-index: 2147483647 !important;
+.cdk-overlay-pane sb-tabs button.activeClass,
+[role="dialog"] sb-tabs button.activeClass,
+[aria-modal="true"] sb-tabs button.activeClass,
+.cdk-overlay-pane sb-tabs button[class*="active"],
+[role="dialog"] sb-tabs button[class*="active"],
+[aria-modal="true"] sb-tabs button[class*="active"] {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
-.cdk-overlay-pane:has(mat-select),
-[role="dialog"]:has(mat-select),
-[aria-modal="true"]:has(mat-select) {
-  pointer-events: auto !important;
-}
-
-/* 4. Bank transfer content visibility - ensure tab content panels are visible */
+/* Tab content visibility */
+.cdk-overlay-pane section,
+[role="dialog"] section,
+[aria-modal="true"] section,
 .cdk-overlay-pane [class*="ng-star-inserted"],
 [role="dialog"] [class*="ng-star-inserted"],
 [aria-modal="true"] [class*="ng-star-inserted"] {
-  display: block !important;
   opacity: 1 !important;
   visibility: visible !important;
 }
 
-/* 5. General modal container fixes - ensure proper sizing */
-.cdk-overlay-pane,
-[role="dialog"],
-[aria-modal="true"] {
-  width: min(560px, 94vw) !important;
-  max-width: 94vw !important;
-  height: auto !important;
-  max-height: 94vh !important;
-  overflow: visible !important;
+/* Form elements visibility */
+.cdk-overlay-pane sb-input,
+[role="dialog"] sb-input,
+[aria-modal="true"] sb-input,
+.cdk-overlay-pane input,
+[role="dialog"] input,
+[aria-modal="true"] input {
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
-/* 6. Mobile responsive */
-@media (max-width: 640px) {
-  .cdk-overlay-pane,
-  [role="dialog"],
-  [aria-modal="true"] {
-    width: 94vw !important;
-    max-width: 94vw !important;
-  }
+/* Button visibility */
+.cdk-overlay-pane sb-button,
+[role="dialog"] sb-button,
+[aria-modal="true"] sb-button,
+.cdk-overlay-pane button,
+[role="dialog"] button,
+[aria-modal="true"] button {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* Text readability */
+.cdk-overlay-pane span,
+[role="dialog"] span,
+[aria-modal="true"] span,
+.cdk-overlay-pane h4,
+[role="dialog"] h4,
+[aria-modal="true"] h4,
+.cdk-overlay-pane p,
+[role="dialog"] p,
+[aria-modal="true"] p {
+  opacity: 1 !important;
+  visibility: visible !important;
 }

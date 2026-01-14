@@ -86,7 +86,7 @@ export default function CheckoutContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full">
       {(beginPending || processing) && (
         <>
           <button
