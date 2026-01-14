@@ -553,7 +553,7 @@ export async function POST(request, { params }) {
               status: "error",
               message: "Product file size must be 25MB or less",
             },
-            { status: 400 }
+            { status: 413 }
           );
         }
 

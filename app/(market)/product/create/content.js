@@ -341,23 +341,18 @@ export default function CreateProductContent({ draftId }) {
   }, [buildLocalDraftSnapshot, draftServerId, draftStorageKey, isPending, status]);
 
   useEffect(() => {
-    if (
-      state?.message &&
-      Object.keys(state?.errors || {}).length > 0 &&
-      Object.keys(state?.errors?.credentials || {}).length > 0
-    ) {
-      toast.error(state?.message);
-    }
-
-    if (state?.message && Object.keys(state?.data || {}).length > 0) {
-      toast.success(state?.message);
-      console.log("state.data", state?.data);
-      const destinationId = state?.data?.product_id || state?.data?.id;
-      if (destinationId) {
-        router.push(`/product/${destinationId}`);
+    if (state?.message) {
+      if (state?.success === false || Object.keys(state?.errors || {}).length > 0) {
+        toast.error(state.message);
+      } else if (Object.keys(state?.data || {}).length > 0) {
+        toast.success(state.message);
+        const destinationId = state?.data?.product_id || state?.data?.id;
+        if (destinationId) {
+          router.push(`/product/${destinationId}`);
+        }
       }
     }
-  }, [state?.message, state?.errors, state?.data, router]);
+  }, [state?.message, state?.errors, state?.data, state?.success, router]);
 
   useEffect(() => {
     if (!state?.data || Object.keys(state.data || {}).length === 0) return;

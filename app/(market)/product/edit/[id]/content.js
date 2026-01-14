@@ -403,17 +403,19 @@ export default function EditProductContent(props) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setUploadingFile(true);
     const file = files[0]; // Only take the first file (single file upload)
+    // Pre-flight size check before we toggle UI states
+    const maxSize = 25 * 1024 * 1024; // 25MB
+    if (file && typeof file.size === "number" && file.size > maxSize) {
+      toast.error("Product file size must be 25MB or less");
+      const inputEl = e.target;
+      if (inputEl) inputEl.value = "";
+      return;
+    }
+
+    setUploadingFile(true);
 
     try {
-      // Validate file size (max 25MB)
-      const maxSize = 25 * 1024 * 1024; // 25MB
-      if (file.size > maxSize) {
-        toast.error("Product file size must be 25MB or less");
-        return;
-      }
-
       // Validate file type
       const allowedExtensions = [
         "pdf",

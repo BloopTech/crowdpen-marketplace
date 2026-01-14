@@ -358,39 +358,59 @@ export async function createProduct(prevState, queryData) {
 
   const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
-  const response = await fetch(url, {
-    method: "POST",
-    // Do not set Content-Type header for multipart/form-data
-    // The browser will set it automatically with the boundary
-    body: formData,
-    headers: {
-      ...(cookieHeader ? { cookie: cookieHeader } : {}),
-    },
-    credentials: "include",
-  });
+  let response;
   let result;
   try {
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      result = await response.json();
-    } else {
-      const text = await response.text();
-      result = {
-        status: response.ok ? "success" : "error",
-        message: text || undefined,
-      };
+    response = await fetch(url, {
+      method: "POST",
+      // Do not set Content-Type header for multipart/form-data
+      // The browser will set it automatically with the boundary
+      body: formData,
+      headers: {
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
+      credentials: "include",
+    });
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        result = {
+          status: response.ok ? "success" : "error",
+          message: text || undefined,
+        };
+      }
+    } catch (error) {
+      const hdrs = await getServerActionHeaders();
+      const requestId = getRequestIdFromHeaders(hdrs);
+      await reportError(error, {
+        tag: "product_create_parse_response_error",
+        route: "server_action:product/create#createProduct",
+        method: "SERVER_ACTION",
+        status: 500,
+        requestId,
+        userId,
+      });
+      return buildErrorState("Failed to read upload response");
     }
   } catch (error) {
     const hdrs = await getServerActionHeaders();
     const requestId = getRequestIdFromHeaders(hdrs);
     await reportError(error, {
-      tag: "product_create_parse_response_error",
+      tag: "product_create_fetch_error",
       route: "server_action:product/create#createProduct",
       method: "SERVER_ACTION",
       status: 500,
       requestId,
       userId,
     });
+    return buildErrorState(
+      error?.message === "fetch failed"
+        ? "Failed to upload files. Please check your connection and file sizes (images ≤ 3MB total, file ≤ 25MB)."
+        : "Failed to upload files. Please try again."
+    );
   }
 
   const responseMessage =
