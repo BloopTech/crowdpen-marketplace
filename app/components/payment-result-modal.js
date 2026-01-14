@@ -12,6 +12,7 @@ import {
 } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { CheckCircle, XCircle, Loader2, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 export default function PaymentResultModal({
   open,
@@ -88,7 +89,16 @@ export default function PaymentResultModal({
             ))
           ) : (
             <DialogClose asChild>
-              <Button variant={isError ? "destructive" : "default"}>{isError ? "Close" : "Continue"}</Button>
+              <Button variant={isError ? "destructive" : "default"} asChild>
+                {isError ? (
+                  "Close"
+                ) : (
+                  <Link href="/account" className="flex items-center">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Account
+                  </Link>
+                )}
+              </Button>
             </DialogClose>
           )}
         </DialogFooter>

@@ -273,8 +273,8 @@ export function useCheckoutController() {
         if (!PaystackPop) throw new Error("Payment gateway not available");
 
         const paystack = new PaystackPop();
-        const amountKobo = Math.round(Number(order?.amount || 0) * 100);
-        if (!Number.isFinite(amountKobo) || amountKobo <= 0) {
+        const amountInSubunits = Math.round(Number(order?.amount || 0) * 100);
+        if (!Number.isFinite(amountInSubunits) || amountInSubunits <= 0) {
           throw new Error("Invalid payment amount");
         }
 
@@ -293,8 +293,8 @@ export function useCheckoutController() {
           email: (order?.customer?.email || formData.email || "")
             .toString()
             .trim(),
-          amount: amountKobo,
-          currency: (order?.currency || "NGN").toString().trim().toUpperCase(),
+          amount: amountInSubunits,
+          currency: (order?.currency).toString().trim().toUpperCase(),
           channels: ["card", "mobile_money", "apple_pay"],
           reference,
           metadata: {
@@ -667,7 +667,7 @@ export function useCheckoutController() {
     return () => clearTimeout(id);
   }, [processing]);
 
-  // useStartButtonOverlayFix(processing, setClosePos);
+  useStartButtonOverlayFix(processing, setClosePos);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
