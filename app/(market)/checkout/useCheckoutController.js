@@ -667,7 +667,7 @@ export function useCheckoutController() {
     return () => clearTimeout(id);
   }, [processing]);
 
-  //useStartButtonOverlayFix(processing, setClosePos);
+  //// useStartButtonOverlayFix(processing, setClosePos);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
