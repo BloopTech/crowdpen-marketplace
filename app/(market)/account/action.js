@@ -63,16 +63,35 @@ export async function deleteOrArchiveProduct(prevState, formData) {
     .map((c) => `${c.name}=${c.value}`)
     .join("; ");
 
-  const response = await fetch(url, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      ...(cookieHeader ? { cookie: cookieHeader } : {}),
-    },
-    credentials: "include",
-  });
+  let response;
+  let result;
+  try {
+    response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
+      credentials: "include",
+    });
 
-  const result = await response.json().catch(() => ({}));
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      result = {
+        status: response.ok ? "success" : "error",
+        message: text || undefined,
+      };
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: "Failed to connect to server. Please check your connection and try again.",
+      errors: { network: ["Network error occurred"] },
+    };
+  }
   if (!response.ok || result?.status !== "success") {
     return {
       success: false,
@@ -134,17 +153,37 @@ export async function upsertBank(prevState, formData) {
       .map((c) => `${c.name}=${c.value}`)
       .join("; ");
 
-    const response = await fetch(url, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(cookieHeader ? { cookie: cookieHeader } : {}),
-      },
-      body: JSON.stringify(payload),
-      credentials: "include",
-    });
+    let response;
+    let result;
+    try {
+      response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(cookieHeader ? { cookie: cookieHeader } : {}),
+        },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
 
-    const result = await response.json().catch(() => ({}));
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        result = {
+          status: response.ok ? "success" : "error",
+          message: text || undefined,
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to connect to server. Please check your connection and try again.",
+        errors: { network: ["Network error occurred"] },
+        data: {}
+      };
+    }
     if (!response.ok || result?.status !== "success") {
       return {
         success: false,
@@ -265,17 +304,37 @@ export async function upsertKyc(prevState, formData) {
       .map((c) => `${c.name}=${c.value}`)
       .join("; ");
 
-    const response = await fetch(url, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        ...(cookieHeader ? { cookie: cookieHeader } : {}),
-      },
-      body: JSON.stringify(payload),
-      credentials: "include",
-    });
+    let response;
+    let result;
+    try {
+      response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...(cookieHeader ? { cookie: cookieHeader } : {}),
+        },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
 
-    const result = await response.json().catch(() => ({}));
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        result = {
+          status: response.ok ? "success" : "error",
+          message: text || undefined,
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: "Failed to connect to server. Please check your connection and try again.",
+        errors: { network: ["Network error occurred"] },
+        data: {}
+      };
+    }
     if (!response.ok || result?.status !== "success") {
       return {
         success: false,

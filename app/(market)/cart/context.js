@@ -74,12 +74,12 @@ const CartContextProvider = ({
         `/api/marketplace/products/carts/${session.user.pen_name}?${params}`
       );
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to fetch cart data");
+        throw new Error(data?.error || data?.message || "Failed to fetch cart data");
       }
 
-      return response.json();
+      return data;
     },
     getNextPageParam: (lastPage) => {
       return lastPage.data.pagination.hasNextPage
@@ -116,12 +116,12 @@ const CartContextProvider = ({
         }
       );
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update cart item");
+        throw new Error(data?.error || data?.message || "Failed to update cart item");
       }
 
-      return response.json();
+      return data;
     },
     onMutate: async ({ itemId, quantity }) => {
       // Cancel any outgoing refetches
@@ -223,12 +223,12 @@ const CartContextProvider = ({
         }
       );
 
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to remove cart item");
+        throw new Error(data?.error || data?.message || "Failed to remove cart item");
       }
 
-      return response.json();
+      return data;
     },
     onMutate: async (itemId) => {
       // Cancel any outgoing refetches

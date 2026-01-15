@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Button } from "../../components/ui/button";
@@ -31,6 +31,7 @@ import { useCart } from "./context";
 import { useHome } from "../../context";
 import { useSession } from "next-auth/react";
 import { useViewerCurrency } from "../../hooks/use-viewer-currency";
+import { toast } from "sonner";
 
 export default function CartContent() {
   const { openLoginDialog } = useHome();
@@ -67,6 +68,16 @@ export default function CartContent() {
   } = useCart();
 
   const { data: session } = useSession();
+
+  const lastQueryErrorRef = useRef("");
+  useEffect(() => {
+    if (!isError) return;
+    const msg = String(error?.message || "Failed to load cart items");
+    if (msg && msg !== lastQueryErrorRef.current) {
+      lastQueryErrorRef.current = msg;
+      toast.error(msg);
+    }
+  }, [isError, error]);
 
   const baseCurrency = (cartSummary?.currency || "USD").toString().toUpperCase();
   const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);

@@ -95,7 +95,7 @@ export function AccountContextProvider({ children }) {
       const res = await fetch(`/api/marketplace/account`, {
         credentials: "include",
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.status !== "success") {
         throw new Error(data?.message || "Failed to fetch account");
       }
@@ -123,7 +123,7 @@ export function AccountContextProvider({ children }) {
         `/api/marketplace/startbutton/bank-list?${qs.toString()}`,
         { cache: "no-store" }
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.status !== "success") {
         throw new Error(data?.message || "Failed to fetch bank list");
       }
@@ -148,7 +148,7 @@ export function AccountContextProvider({ children }) {
     queryKey: ["marketplace", "categories"],
     queryFn: async () => {
       const res = await fetch(`/api/marketplace/categories`, { cache: "no-store" });
-      const data = await res.json();
+      const data = await res.json().catch(() => ([]));
       if (!res.ok) {
         throw new Error(data?.message || "Failed to fetch categories");
       }
@@ -196,7 +196,7 @@ export function AccountContextProvider({ children }) {
         )}/products?${params.toString()}`,
         { credentials: "include", cache: "no-store" }
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.status !== "success") {
         throw new Error(data?.message || "Failed to fetch products");
       }

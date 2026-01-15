@@ -6,19 +6,18 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client
 import crypto from "crypto";
 import sharp from "sharp";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
-import { assertRequiredEnvInProduction } from "../../../../lib/env";
 import { PRODUCT_ID_REGEX, generateUniqueProductId } from "../../../../lib/products/productId";
 import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 export const runtime = "nodejs";
 
-assertRequiredEnvInProduction([
+const REQUIRED_R2_ENV = [
   "CLOUDFLARE_R2_ENDPOINT",
   "CLOUDFLARE_R2_ACCESS_KEY_ID",
   "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
   "CLOUDFLARE_R2_BUCKET_NAME",
   "CLOUDFLARE_R2_PUBLIC_URL",
-]);
+];
 
 // Configure S3 client for Cloudflare R2
 const s3Client = new S3Client({
@@ -56,6 +55,27 @@ const deleteR2ObjectByKey = async (key) => {
       Key: key,
     })
   );
+};
+
+const getR2KeyFromPublicUrl = (url) => {
+  const base = process.env.CLOUDFLARE_R2_PUBLIC_URL;
+  if (!base || !url) return null;
+  const normalizedBase = String(base).replace(/\/+$/, "");
+  const normalizedUrl = String(url);
+  if (!normalizedUrl.startsWith(`${normalizedBase}/`)) return null;
+  return normalizedUrl.slice(normalizedBase.length + 1);
+};
+
+const parseFileSizeBytesFromString = (value) => {
+  const raw = value == null ? "" : String(value).trim();
+  if (!raw) return 0;
+  const match = raw.match(/^([\d.]+)\s*(Bytes|KB|MB|GB)$/i);
+  if (!match) return 0;
+  const num = parseFloat(match[1]);
+  if (!Number.isFinite(num)) return 0;
+  const unit = match[2].toUpperCase();
+  const multipliers = { BYTES: 1, KB: 1024, MB: 1024 * 1024, GB: 1024 * 1024 * 1024 };
+  return Math.round(num * (multipliers[unit] || 1));
 };
 
 const formatFileSize = (bytes) => {
@@ -146,6 +166,13 @@ export async function POST(request) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
 
   try {
+    if (REQUIRED_R2_ENV.some((k) => !process.env[k])) {
+      return NextResponse.json(
+        { status: "error", message: "Uploads unavailable. Please retry shortly." },
+        { status: 503 }
+      );
+    }
+
     // Process form data
     const formData = await request.formData();
 
@@ -398,11 +425,43 @@ export async function POST(request) {
       }
     }
 
+    if (!hasFileObjects) {
+      const base = String(publicUrlBase).replace(/\/+$/, "");
+      const expectedPrefix = `${base}/marketplace/uploads/${userId}/images/`;
+      const rawUrls = Array.isArray(imageUrls) ? imageUrls : [];
+      const filtered = Array.from(new Set(rawUrls))
+        .filter((u) => typeof u === "string" && u.startsWith(expectedPrefix));
+      imageUrls = filtered;
+      uploadedKeys = imageUrls
+        .map((u) => getR2KeyFromPublicUrl(u))
+        .filter(Boolean);
+    }
+
     // Upload product file to Cloudflare R2 if provided
     let productFileUrl = null;
     let calculatedFileSize = "";
+    let productFileBytes = 0;
+    const productFileUrlFromForm = formData.get("productFileUrl");
+    const isDirectProductFile =
+      !productFile && typeof productFileUrlFromForm === "string" && productFileUrlFromForm;
     
-    if (productFile && productFile.size > 0) {
+    if (isDirectProductFile) {
+      const base = String(publicUrlBase).replace(/\/+$/, "");
+      const expectedPrefix = `${base}/marketplace/uploads/${userId}/files/`;
+      if (!String(productFileUrlFromForm).startsWith(expectedPrefix)) {
+        return NextResponse.json(
+          {
+            status: "error",
+            message: "Invalid product file",
+          },
+          { status: 400 }
+        );
+      }
+      productFileUrl = String(productFileUrlFromForm);
+      uploadedProductKey = getR2KeyFromPublicUrl(productFileUrl);
+      calculatedFileSize = productData.fileSize || "";
+      productFileBytes = parseFileSizeBytesFromString(calculatedFileSize);
+    } else if (productFile && productFile.size > 0) {
       try {
         // Validate file size (max 25MB)
         const maxSize = 25 * 1024 * 1024; // 25MB
@@ -418,6 +477,7 @@ export async function POST(request) {
         
         // Calculate file size
         calculatedFileSize = formatFileSize(productFile.size);
+        productFileBytes = productFile.size;
         
         // Generate unique filename
         const fileCode = randomImageName();
@@ -633,7 +693,7 @@ export async function POST(request) {
     // Calculate content_length based on file type and size
     const contentLength = calculateContentLength(
       productData.fileType,
-      productFile ? productFile.size : 0
+      productFileBytes
     );
 
     let createdProduct;

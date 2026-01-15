@@ -19,7 +19,11 @@ function ProductContextProvider({ children }) {
           "Content-Type": "application/json",
         },
       });
-      return response.json();
+      const data = await response.json().catch(() => ([]));
+      if (!response.ok) {
+        throw new Error(data?.message || data?.error || "Failed to fetch categories");
+      }
+      return data;
     },
   });
 

@@ -93,7 +93,9 @@ const productSchema = z.object({
   // Images and files are optional for editing - can be existing URLs or new uploads
   images: z.any().optional(),
   existingImages: z.string().optional(),
+  imageUrls: z.string().optional(),
   productFile: z.any().optional(),
+  productFileUrl: z.string().optional(),
   existingProductFile: z.string().optional(),
   fileType: z.string().optional(),
   fileSize: z.string().optional(),
@@ -121,14 +123,31 @@ const getZodErrorMessage = (error) => {
 
 export async function EditProduct(prevState, queryData) {
   // Get current user from session
-  const session = await getServerSession(authOptions);
+  let session;
+  try {
+    session = await getServerSession(authOptions);
+  } catch {
+    return {
+      success: false,
+      message: "Authentication is currently unavailable. Please try again.",
+      errors: {
+        ...defaultProductValues,
+        credentials: ["Authentication unavailable"],
+      },
+      values: {},
+      data: {},
+    };
+  }
   if (!session || !session.user) {
     return {
       success: false,
-      message: "You must be logged in to create a product",
+      message: "You must be logged in to edit a product",
       errors: {
-        credentials: !!session,
+        ...defaultProductValues,
+        credentials: ["Authentication required"],
       },
+      values: {},
+      data: {},
     };
   }
 
@@ -153,10 +172,12 @@ export async function EditProduct(prevState, queryData) {
   // Handle images - both new uploads and existing URLs
   const getNewImages = queryData.getAll("images"); // New uploaded images
   const getExistingImages = normalize(queryData.get("existingImages")); // Existing image URLs as JSON
+  const getImageUrls = normalize(queryData.get("imageUrls")); // New direct-upload image URLs as JSON
 
   // Handle product file - both new upload and existing URL
   const getNewProductFile = normalize(queryData.get("productFile")); // New uploaded file
   const getExistingProductFile = normalize(queryData.get("existingProductFile")); // Existing file URL
+  const getProductFileUrl = normalize(queryData.get("productFileUrl")); // New direct-upload file URL
 
   const getFileType = normalize(queryData.get("fileType"));
   const getFileSize = normalize(queryData.get("fileSize"));
@@ -167,10 +188,11 @@ export async function EditProduct(prevState, queryData) {
   // Validate that we have at least one image (either existing or new)
   const hasImages =
     (getExistingImages && getExistingImages !== "[]") ||
+    (getImageUrls && getImageUrls !== "[]") ||
     (getNewImages && getNewImages.length > 0);
 
   // Validate that we have at least one product file (either existing or new)
-  const hasProductFile = getExistingProductFile || getNewProductFile;
+  const hasProductFile = getExistingProductFile || getProductFileUrl || getNewProductFile;
 
   const persistedValues = {
     title: getTitle,
@@ -182,10 +204,6 @@ export async function EditProduct(prevState, queryData) {
     stock: getStock,
     marketplace_category_id: getMarketplaceCategoryId,
     marketplace_subcategory_id: getMarketplaceSubcategoryId,
-    images: getNewImages,
-    existingImages: getExistingImages,
-    productFile: getNewProductFile,
-    existingProductFile: getExistingProductFile,
     fileType: getFileType,
     fileSize: getFileSize,
     license: getLicense,
@@ -229,7 +247,9 @@ export async function EditProduct(prevState, queryData) {
     marketplace_subcategory_id: getMarketplaceSubcategoryId,
     images: getNewImages,
     existingImages: getExistingImages,
+    imageUrls: getImageUrls,
     productFile: getNewProductFile,
+    productFileUrl: getProductFileUrl,
     existingProductFile: getExistingProductFile,
     fileType: getFileType,
     fileSize: getFileSize,
@@ -256,10 +276,6 @@ export async function EditProduct(prevState, queryData) {
         stock: getStock,
         marketplace_category_id: getMarketplaceCategoryId,
         marketplace_subcategory_id: getMarketplaceSubcategoryId,
-        images: getNewImages,
-        existingImages: getExistingImages,
-        productFile: getNewProductFile,
-        existingProductFile: getExistingProductFile,
         fileType: getFileType,
         fileSize: getFileSize,
         license: getLicense,
@@ -283,7 +299,9 @@ export async function EditProduct(prevState, queryData) {
     marketplace_subcategory_id,
     images,
     existingImages,
+    imageUrls,
     productFile,
+    productFileUrl,
     existingProductFile,
     fileType,
     fileSize,
@@ -319,9 +337,17 @@ export async function EditProduct(prevState, queryData) {
     formData.append("existingImages", existingImages);
   }
 
+  if (imageUrls) {
+    formData.append("imageUrls", imageUrls);
+  }
+
   // Add existing product file if it exists
   if (existingProductFile) {
     formData.append("existingProductFile", existingProductFile);
+  }
+
+  if (productFileUrl) {
+    formData.append("productFileUrl", productFileUrl);
   }
 
   // Append new image files to form data
@@ -352,22 +378,49 @@ export async function EditProduct(prevState, queryData) {
 
   const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
-  const response = await fetch(url, {
-    method: "POST",
-    // Do not set Content-Type header for multipart/form-data
-    // The browser will set it automatically with the boundary
-    body: formData,
-    headers: {
-      ...(cookieHeader ? { cookie: cookieHeader } : {}),
-    },
-    credentials: "include",
-  });
-  const result = await response.json();
+  let response;
+  let result;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      // Do not set Content-Type header for multipart/form-data
+      // The browser will set it automatically with the boundary
+      body: formData,
+      headers: {
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
+      credentials: "include",
+    });
 
-  if (result.status === "error") {
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        result = {
+          status: response.ok ? "success" : "error",
+          message: text || undefined,
+        };
+      }
+    } catch (error) {
+      return buildErrorState("Failed to read server response", {
+        credentials: ["Failed to read server response"],
+      });
+    }
+  } catch (error) {
+    return buildErrorState(
+      "Failed to connect to server. Please check your connection and try again.",
+      {
+        credentials: ["Network error occurred"],
+      }
+    );
+  }
+
+  if (!response.ok || result?.status === "error") {
     return {
       success: false,
-      message: result.message || "Failed to update product",
+      message: result?.message || "Failed to update product",
       errors: {
         ...defaultProductValues,
         credentials: result?.message,
@@ -379,7 +432,6 @@ export async function EditProduct(prevState, queryData) {
         originalPrice: getOriginalPrice,
         marketplace_category_id: getMarketplaceCategoryId,
         marketplace_subcategory_id: getMarketplaceSubcategoryId,
-        images: getNewImages,
         fileType: getFileType,
         fileSize: getFileSize,
         license: getLicense,

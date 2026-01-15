@@ -33,7 +33,12 @@ export async function GET(request, { params }) {
       );
     }
 
-    const { fingerprint } = (await params) || {};
+    let fingerprint;
+    try {
+      ({ fingerprint } = (await params) || {});
+    } catch {
+      fingerprint = null;
+    }
     const fp = normalizeFingerprint(fingerprint);
     if (!fp) {
       return NextResponse.json(

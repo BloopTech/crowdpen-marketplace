@@ -27,7 +27,12 @@ export const runtime = "nodejs";
 
 export async function GET(request, { params }) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
-  const { slug } = await params;
+  let slug;
+  try {
+    ({ slug } = await params);
+  } catch {
+    slug = null;
+  }
   const slugRaw = slug == null ? "" : String(slug).trim();
   if (!slugRaw || slugRaw.length > 100) {
     await reportError(new Error("Category slug is required"), { requestId });
@@ -40,7 +45,19 @@ export async function GET(request, { params }) {
   }
   const normalizedSlug = slugRaw.replace(/&/g, "and").slice(0, 100);
 
-  const session = await getServerSession(authOptions);
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    await reportError(error, {
+      route: "/api/marketplace/categories/[slug]/products",
+      method: "GET",
+      status: 500,
+      requestId,
+      tag: "marketplace_category_products_session",
+    });
+    session = null;
+  }
 
   const userId = session?.user?.id || null;
 

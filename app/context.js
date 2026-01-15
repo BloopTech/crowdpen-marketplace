@@ -27,12 +27,12 @@ const fetchProducts = async (params = {}) => {
       `/api/marketplace/products?${queryParams.toString()}`
     );
 
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch products");
+      throw new Error(data?.error || data?.message || "Failed to fetch products");
     }
 
-    return response.json();
+    return data;
   } catch (error) {
     await reportClientError(error, {
       tag: "home_products_fetch_error",
@@ -46,12 +46,12 @@ const fetchCategories = async () => {
   try {
     const response = await fetch("/api/marketplace/categories");
 
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch categories");
+      throw new Error(data?.error || data?.message || "Failed to fetch categories");
     }
 
-    return response.json();
+    return data;
   } catch (error) {
     await reportClientError(error, {
       tag: "home_categories_fetch_error",
@@ -64,12 +64,12 @@ const fetchTags = async () => {
   try {
     const response = await fetch("/api/marketplace/tags");
 
+    const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || "Failed to fetch tags");
+      throw new Error(data?.error || data?.message || "Failed to fetch tags");
     }
 
-    return response.json();
+    return data;
   } catch (error) {
     await reportClientError(error, {
       tag: "home_tags_fetch_error",
@@ -201,7 +201,11 @@ const HomeProvider = ({ children }) => {
           "Content-Type": "application/json",
         },
       });
-      return response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to fetch wishlist count");
+      }
+      return data;
     },
     enabled: !!session?.user?.id,
   });
@@ -220,7 +224,11 @@ const HomeProvider = ({ children }) => {
           "Content-Type": "application/json",
         },
       });
-      return response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.error || data?.message || "Failed to fetch cart count");
+      }
+      return data;
     },
     enabled: !!session?.user?.id,
   });

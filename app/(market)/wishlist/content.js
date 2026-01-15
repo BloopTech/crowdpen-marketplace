@@ -92,6 +92,16 @@ export default function WishlistContent() {
   );
 
   const [showFilters, setShowFilters] = useState(false);
+  const lastQueryErrorRef = React.useRef("");
+
+  useEffect(() => {
+    if (!isError) return;
+    const msg = String(error?.message || "Failed to load wishlist");
+    if (msg && msg !== lastQueryErrorRef.current) {
+      lastQueryErrorRef.current = msg;
+      toast.error(msg);
+    }
+  }, [isError, error]);
 
   // Update local state when server action completes
   useEffect(() => {

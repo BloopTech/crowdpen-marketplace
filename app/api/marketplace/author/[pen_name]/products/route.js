@@ -25,13 +25,31 @@ const {
 export const runtime = "nodejs";
 
 export async function GET(request, { params }) {
-  const session = await getServerSession(authOptions);
+  const requestId = getRequestIdFromHeaders(request.headers);
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    await reportError(error, {
+      route: "/api/marketplace/author/[pen_name]/products",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: null,
+      tag: "author_products_get_session",
+    });
+    session = null;
+  }
 
   const userId = session?.user?.id || null;
-  const requestId = getRequestIdFromHeaders(request.headers);
 
-  const getParams = await params;
-  const { pen_name } = getParams;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
+  const { pen_name } = getParams || {};
   const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
   const { searchParams } = new URL(request.url);
 

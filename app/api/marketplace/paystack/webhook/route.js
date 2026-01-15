@@ -12,15 +12,12 @@ import {
   rateLimit,
   rateLimitResponseHeaders,
 } from "../../../../lib/security/rateLimit";
-import { assertAnyEnvInProduction } from "../../../../lib/env";
 import {
   getRequestIdFromHeaders,
   reportError,
 } from "../../../../lib/observability/reportError";
 
 export const runtime = "nodejs";
-
-assertAnyEnvInProduction(["PAYSTACK_SECRETKEY"]);
 
 const {
   MarketplaceOrder,
@@ -381,6 +378,13 @@ export async function POST(request) {
       .toString()
       .trim();
     const secret = (process.env.PAYSTACK_SECRETKEY || "").toString().trim();
+
+    if (process.env.NODE_ENV === "production" && !secret) {
+      return NextResponse.json(
+        { status: "error", message: "Webhook secret not configured" },
+        { status: 500 }
+      );
+    }
 
     const rawBodyBuf = await request.arrayBuffer();
     const rawBody = bufferToString(rawBodyBuf);

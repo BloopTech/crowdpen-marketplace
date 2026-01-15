@@ -59,6 +59,7 @@ const initialStateValues = {
     marketplace_category_id: [],
     marketplace_subcategory_id: [],
     images: [],
+    productFile: [],
     fileType: [],
     fileSize: [],
     license: [],
@@ -367,6 +368,54 @@ export default function CreateProductContent({ draftId }) {
     }
   }, []);
 
+  const uploadDirect = useCallback(async (file, kind) => {
+    const res = await fetch("/api/marketplace/uploads/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        kind,
+        filename: file?.name,
+        contentType: file?.type,
+        size: file?.size,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.status !== "success") {
+      throw new Error(data?.message || "Unable to prepare upload");
+    }
+    const uploadUrl = data?.data?.uploadUrl;
+    const publicUrl = data?.data?.publicUrl;
+    const key = data?.data?.key;
+    const headers = data?.data?.headers || {};
+    if (!uploadUrl || !publicUrl || !key) {
+      throw new Error("Unable to prepare upload");
+    }
+    const putRes = await fetch(uploadUrl, {
+      method: "PUT",
+      headers,
+      body: file,
+    });
+    if (!putRes.ok) {
+      throw new Error("Upload failed");
+    }
+    return { publicUrl, key };
+  }, []);
+
+  const deleteDirect = useCallback(async (key) => {
+    if (!key) return;
+    const res = await fetch("/api/marketplace/uploads/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ key }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.status !== "success") {
+      throw new Error(data?.message || "Unable to delete upload");
+    }
+  }, []);
+
   useEffect(() => {
     void runUploadPrecheck();
   }, [runUploadPrecheck]);
@@ -471,6 +520,12 @@ export default function CreateProductContent({ draftId }) {
     const files = inputEl.files;
     if (!files || files.length === 0) return;
 
+    const ready = uploadReady === true || (await runUploadPrecheck());
+    if (!ready) {
+      if (inputEl) inputEl.value = "";
+      return;
+    }
+
     setUploadingImage(true);
 
     try {
@@ -495,11 +550,11 @@ export default function CreateProductContent({ draftId }) {
       }
       const incomingNames = new Set(validIncoming.map((file) => file.name));
       const existingAdjustedTotal = images.reduce((acc, imageObj) => {
-        const name = imageObj?.file?.name;
+        const name = imageObj?.name;
         if (name && incomingNames.has(name)) {
           return acc;
         }
-        return acc + (imageObj.file?.size || 0);
+        return acc + (imageObj?.bytes || 0);
       }, 0);
 
       const incomingTotal = validIncoming.reduce((acc, file) => acc + file.size, 0);
@@ -509,14 +564,21 @@ export default function CreateProductContent({ draftId }) {
         return;
       }
 
+      const uploadJobs = [];
       setImages((prev) => {
         const next = [...prev];
 
         for (const file of validIncoming) {
-          const existingIndex = next.findIndex(
-            (img) => img?.file?.name && img.file.name === file.name
-          );
-          const nextObj = { file, previewUrl: URL.createObjectURL(file) };
+          const existingIndex = next.findIndex((img) => img?.name === file.name);
+          const nextObj = {
+            name: file.name,
+            bytes: file.size,
+            contentType: file.type,
+            previewUrl: URL.createObjectURL(file),
+            uploadedUrl: null,
+            uploadedKey: null,
+            uploading: true,
+          };
 
           if (existingIndex >= 0) {
             const prevUrl = next[existingIndex]?.previewUrl;
@@ -525,14 +587,46 @@ export default function CreateProductContent({ draftId }) {
           } else {
             next.push(nextObj);
           }
+          uploadJobs.push({ file, name: file.name });
         }
 
         return next;
       });
+
+      for (const job of uploadJobs) {
+        try {
+          const uploaded = await uploadDirect(job.file, "image");
+          setImages((prev) =>
+            prev.map((img) =>
+              img?.name === job.name
+                ? {
+                    ...img,
+                    uploadedUrl: uploaded.publicUrl,
+                    uploadedKey: uploaded.key,
+                    uploading: false,
+                  }
+                : img
+            )
+          );
+        } catch (err) {
+          setImages((prev) => {
+            const idx = prev.findIndex((img) => img?.name === job.name);
+            if (idx < 0) return prev;
+            const url = prev[idx]?.previewUrl;
+            if (url) URL.revokeObjectURL(url);
+            return prev.filter((_, i) => i !== idx);
+          });
+          toast.error(err?.message || "Failed to upload image");
+          return;
+        }
+      }
     } catch (error) {
-      await reportClientError(error, {
-        tag: "product_create_handle_image_error",
-      });
+      try {
+        await reportClientError(error, {
+          tag: "product_create_handle_image_error",
+        });
+      } catch {
+      }
       toast.error("Failed to process image");
     } finally {
       setUploadingImage(false);
@@ -541,7 +635,15 @@ export default function CreateProductContent({ draftId }) {
   };
 
   // Remove an image
-  const removeImage = (index) => {
+  const removeImage = async (index) => {
+    const selected = images?.[index];
+    const key = selected?.uploadedKey;
+    try {
+      if (key) await deleteDirect(key);
+    } catch (err) {
+      toast.error(err?.message || "Unable to delete image");
+      return;
+    }
     setImages((prev) => {
       const url = prev?.[index]?.previewUrl;
       if (url) URL.revokeObjectURL(url);
@@ -551,8 +653,15 @@ export default function CreateProductContent({ draftId }) {
 
   // Handle product file upload
   const handleFileUpload = async (e) => {
-    const files = e.target.files;
+    const inputEl = e.target;
+    const files = inputEl.files;
     if (!files || files.length === 0) return;
+
+    const ready = uploadReady === true || (await runUploadPrecheck());
+    if (!ready) {
+      if (inputEl) inputEl.value = "";
+      return;
+    }
 
     setUploadingFile(true);
     const file = files[0];
@@ -599,25 +708,44 @@ export default function CreateProductContent({ draftId }) {
 
       const detectedFileType = getFileType(file.name);
       setFileType(detectedFileType);
-      setProductFile(file);
 
-      toast.success(`File "${file.name}" selected (${formattedSize})`);
-    } catch (error) {
-      await reportClientError(error, {
-        tag: "product_create_handle_file_error",
+      const uploaded = await uploadDirect(file, "productFile");
+
+      setProductFile({
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        uploadedUrl: uploaded.publicUrl,
+        uploadedKey: uploaded.key,
       });
-      toast.error("Failed to process file");
+
+      toast.success(`File "${file.name}" uploaded (${formattedSize})`);
+    } catch (error) {
+      try {
+        await reportClientError(error, {
+          tag: "product_create_handle_file_error",
+        });
+      } catch {
+      }
+      toast.error(error?.message || "Failed to upload file");
     } finally {
       setUploadingFile(false);
+      if (inputEl) inputEl.value = "";
     }
   };
 
   // Remove product file
-  const removeFile = () => {
+  const removeFile = async () => {
+    const key = productFile?.uploadedKey;
+    try {
+      if (key) await deleteDirect(key);
+    } catch (err) {
+      toast.error(err?.message || "Unable to delete file");
+      return;
+    }
     setProductFile(null);
     setFileSize("");
     setFileType("");
-    // Reset file input
     const fileInput = document.getElementById("productFile");
     if (fileInput) fileInput.value = "";
   };
@@ -656,14 +784,23 @@ export default function CreateProductContent({ draftId }) {
             formData.delete("productFile");
             const ready = uploadReady === true || (await runUploadPrecheck());
             if (!ready) return;
-            if (productFile) {
-              formData.append("productFile", productFile);
+            if (!productFile?.uploadedUrl) {
+              toast.error("Product file is required");
+              return;
             }
-            images.forEach((imageObj) => {
-              if (imageObj.file) {
-                formData.append("images", imageObj.file);
-              }
-            });
+            if (!Array.isArray(images) || images.length === 0) {
+              toast.error("At least one image is required");
+              return;
+            }
+            if (images.some((img) => img?.uploading || !img?.uploadedUrl)) {
+              toast.error("Please wait for uploads to finish");
+              return;
+            }
+            formData.append(
+              "imageUrls",
+              JSON.stringify(images.map((img) => img.uploadedUrl))
+            );
+            formData.append("productFileUrl", productFile.uploadedUrl);
             formAction(formData);
           }}
         >

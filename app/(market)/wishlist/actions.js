@@ -57,9 +57,20 @@ export async function addAllProductsCarts(prevState, queryData) {
   // Get product IDs from form data (JSON string)
   const productIdsString = queryData.get('productIds');
 
+  let parsedProductIds;
+  try {
+    parsedProductIds = JSON.parse(productIdsString);
+  } catch {
+    return {
+      message: "Validation failed",
+      errors: { productIds: ["Invalid productIds payload"] },
+      success: false,
+    };
+  }
+
   // Validate the product IDs
   const validatedFields = addAllToCartSchema.safeParse({
-    productIds: JSON.parse(productIdsString)
+    productIds: parsedProductIds
   });
 
   if (!validatedFields.success) {
@@ -88,36 +99,58 @@ export async function addAllProductsCarts(prevState, queryData) {
 
   const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(cookieHeader ? { cookie: cookieHeader } : {}),
-    },
-    body: JSON.stringify(body),
-    credentials: "include",
-  });
+  let response;
+  let result;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
+      body: JSON.stringify(body),
+      credentials: "include",
+    });
 
-  if (!response.ok) {
-    const errorResult = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      result = {
+        status: response.ok ? "success" : "error",
+        message: text || undefined,
+      };
+    }
+  } catch {
     return {
-      message: errorResult.error || "Failed to add items to cart",
-      errors: { server: [errorResult.error || "Failed to add items to cart"] },
-      success: false
+      message: "Failed to connect to server. Please check your connection and try again.",
+      errors: { server: ["Network error occurred"] },
+      success: false,
     };
   }
 
-  const result = await response.json();
+  if (!response.ok || result?.status === "error") {
+    return {
+      message: result?.error || result?.message || "Failed to add items to cart",
+      errors: { server: [result?.error || result?.message || "Failed to add items to cart"] },
+      success: false
+    };
+  }
 
   // Revalidate paths to refresh the UI
   revalidatePath('/wishlist');
   revalidatePath('/cart');
 
   return {
-    message: result.message || `Successfully added ${result.data.addedCount} items to cart`,
+    message:
+      result?.message ||
+      (result?.data?.addedCount != null
+        ? `Successfully added ${result.data.addedCount} items to cart`
+        : "Successfully added items to cart"),
     errors: {},
     success: true,
-    data: result.data
+    data: result?.data
   };
 
 }
@@ -155,34 +188,52 @@ export async function clearAllWishlist(prevState, queryData) {
 
   const cookieHeader = hdrs?.get("cookie") || buildCookieHeader();
 
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(cookieHeader ? { cookie: cookieHeader } : {}),
-    },
-    body: JSON.stringify({ userId: session.user.id }),
-    credentials: "include",
-  });
+  let response;
+  let result;
+  try {
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
+      body: JSON.stringify({ userId: session.user.id }),
+      credentials: "include",
+    });
 
-  if (!response.ok) {
-    const errorResult = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      result = {
+        status: response.ok ? "success" : "error",
+        message: text || undefined,
+      };
+    }
+  } catch {
     return {
-      message: errorResult.error || "Failed to clear wishlist",
-      errors: { server: [errorResult.error || "Failed to clear wishlist"] },
+      message: "Failed to connect to server. Please check your connection and try again.",
+      errors: { server: ["Network error occurred"] },
+      success: false,
+    };
+  }
+
+  if (!response.ok || result?.status === "error") {
+    return {
+      message: result?.error || result?.message || "Failed to clear wishlist",
+      errors: { server: [result?.error || result?.message || "Failed to clear wishlist"] },
       success: false
     };
   }
 
-  const result = await response.json();
-
   revalidatePath('/wishlist');
 
   return {
-    message: result.message || "Successfully cleared wishlist",
+    message: result?.message || "Successfully cleared wishlist",
     errors: {},
     success: true,
-    data: result.data
+    data: result?.data
   };
 
 }

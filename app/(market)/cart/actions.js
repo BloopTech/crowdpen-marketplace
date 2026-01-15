@@ -101,16 +101,29 @@ export async function updateCartItemQuantity(prevState, formData) {
       credentials: "include",
     });
 
+    let payload = {};
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        payload = await response.json();
+      } else {
+        const text = await response.text();
+        payload = { message: text || undefined };
+      }
+    } catch {
+      payload = {};
+    }
+
     if (!response.ok) {
-      const errorResult = await response.json();
+      const msg = payload?.error || payload?.message || "Failed to update cart item";
       return {
         success: false,
-        message: errorResult.error || "Failed to update cart item",
-        errors: { server: [errorResult.error || "Failed to update cart item"] }
+        message: msg,
+        errors: { server: [msg] }
       };
     }
 
-    const result = await response.json();
+    const result = payload;
 
     // Revalidate the cart page
     revalidatePath('/cart');
@@ -192,16 +205,29 @@ export async function removeCartItem(prevState, formData) {
       credentials: "include",
     });
 
+    let payload = {};
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        payload = await response.json();
+      } else {
+        const text = await response.text();
+        payload = { message: text || undefined };
+      }
+    } catch {
+      payload = {};
+    }
+
     if (!response.ok) {
-      const errorResult = await response.json();
+      const msg = payload?.error || payload?.message || "Failed to remove cart item";
       return {
         success: false,
-        message: errorResult.error || "Failed to remove cart item",
-        errors: { server: [errorResult.error || "Failed to remove cart item"] }
+        message: msg,
+        errors: { server: [msg] }
       };
     }
 
-    const result = await response.json();
+    const result = payload;
 
     // Revalidate the cart page
     revalidatePath('/cart');
@@ -292,16 +318,29 @@ export async function clearCart(prevState, formData) {
       credentials: "include",
     });
 
+    let payload = {};
+    try {
+      const contentType = response.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        payload = await response.json();
+      } else {
+        const text = await response.text();
+        payload = { message: text || undefined };
+      }
+    } catch {
+      payload = {};
+    }
+
     if (!response.ok) {
-      const errorResult = await response.json();
+      const msg = payload?.error || payload?.message || "Failed to clear cart";
       return {
         success: false,
-        message: errorResult.error || "Failed to clear cart",
-        errors: { server: [errorResult.error || "Failed to clear cart"] }
+        message: msg,
+        errors: { server: [msg] }
       };
     }
 
-    const result = await response.json();
+    const result = payload;
 
     // Revalidate the cart page
     revalidatePath('/cart');

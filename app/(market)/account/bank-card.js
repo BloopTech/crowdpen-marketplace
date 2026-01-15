@@ -157,7 +157,7 @@ export default function BankDetailsCard() {
         `/api/marketplace/startbutton/verify?${qs.toString()}`,
         { cache: "no-store" }
       );
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (res.ok && data?.status === "success" && data?.data?.account_name) {
         setVerifiedName(data.data.account_name);
         setVerified(true);
@@ -170,7 +170,11 @@ export default function BankDetailsCard() {
     } catch (err) {
       setVerified(false);
       setVerifiedName("");
-      toast.error(err?.message || "Unable to verify account");
+      toast.error(
+        err?.message === "Failed to fetch"
+          ? "Unable to verify account. Please check your connection and try again."
+          : (err?.message || "Unable to verify account")
+      );
     } finally {
       setVerifying(false);
     }

@@ -24,7 +24,12 @@ export const runtime = "nodejs";
  * @returns {NextResponse} - JSON response with reviews data
  */
 export async function GET(request, { params }) {
-  const getParams = await params;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session = null;
   try {
@@ -276,7 +281,12 @@ export async function GET(request, { params }) {
  * PATCH handler to mark/unmark helpful votes
  */
 export async function PATCH(request, { params }) {
-  const getParams = await params;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session = null;
   try {
@@ -467,7 +477,12 @@ export async function PATCH(request, { params }) {
  * PUT handler to upsert (create or update) the current user's review for a product
  */
 export async function PUT(request, { params }) {
-  const getParams = await params;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session = null;
   try {

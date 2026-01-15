@@ -53,35 +53,45 @@ export async function addProductWishlist(prevState, queryData) {
     origin
   ).toString();
 
-  const response = await fetch(url, {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: {
-      "Content-Type": "application/json",
-      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
-    },
-    credentials: "include",
-  });
-  console.log("response..........................", response);
-  if (!response.ok) {
-    const errorResult = await response.json();
+  let response;
+  let result;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+        ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
+      },
+      credentials: "include",
+    });
+
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      result = {
+        status: response.ok ? "success" : "error",
+        message: text || undefined,
+      };
+    }
+  } catch (error) {
     return {
       success: false,
-      message: errorResult.message || "Failed to update wishlist",
+      message: "Failed to connect to server. Please check your connection and try again.",
       errors: {
-        productId: [errorResult.message || "Failed to update wishlist"],
+        productId: ["Network error occurred"],
       },
     };
   }
 
-  const result = await response.json();
-
-  if (result.status === "error") {
+  if (!response.ok || result?.status === "error") {
     return {
       success: false,
-      message: result.message,
+      message: result?.message || "Failed to update wishlist",
       errors: {
-        productId: [result.message],
+        productId: [result?.message || "Failed to update wishlist"],
       },
     };
   }
@@ -139,35 +149,45 @@ export async function addProductToCart(prevState, queryData) {
     origin
   ).toString();
 
-  const response = await fetch(url, {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: {
-      "Content-Type": "application/json",
-      ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
-    },
-    credentials: "include",
-  });
+  let response;
+  let result;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+        ...(hdrs?.get("cookie") ? { cookie: hdrs.get("cookie") } : {}),
+      },
+      credentials: "include",
+    });
 
-  if (!response.ok) {
-    const errorResult = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      result = await response.json();
+    } else {
+      const text = await response.text();
+      result = {
+        status: response.ok ? "success" : "error",
+        message: text || undefined,
+      };
+    }
+  } catch (error) {
     return {
       success: false,
-      message: errorResult.message || "Failed to add item to cart",
+      message: "Failed to connect to server. Please check your connection and try again.",
       errors: {
-        productId: [errorResult.message || "Failed to add item to cart"],
+        productId: ["Network error occurred"],
       },
     };
   }
 
-  const result = await response.json();
-
-  if (result.status === "error") {
+  if (!response.ok || result?.status === "error") {
     return {
       success: false,
-      message: result.message,
+      message: result?.message || "Failed to add item to cart",
       errors: {
-        productId: [result.message],
+        productId: [result?.message || "Failed to add item to cart"],
       },
     };
   }

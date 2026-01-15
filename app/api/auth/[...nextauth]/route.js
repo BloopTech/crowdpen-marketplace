@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import { NextResponse } from "next/server";
 import SequelizeAdapter from "@auth/sequelize-adapter";
 import sequelize from "../../../models/database";
 import { getUserId } from "../../../cacher";
@@ -9,7 +10,6 @@ import Google from "next-auth/providers/google";
 import sendVerificationRequest from "../../../lib/EmailVerification";
 import axios from "axios";
 import { cookies } from "next/headers";
-import { assertRequiredEnvInProduction } from "../../../lib/env";
 import crypto from "crypto";
 import { reportError } from "../../../lib/observability/reportError";
 
@@ -18,7 +18,11 @@ export const runtime = "nodejs";
 // Determine the absolute URL for the app
 const absoluteUrl = process.env.NEXTAUTH_URL;
 
-assertRequiredEnvInProduction(["NEXTAUTH_URL", "NEXTAUTH_SECRET", "DB_URL"]);
+const REQUIRED_AUTH_ENV = ["NEXTAUTH_URL", "NEXTAUTH_SECRET", "DB_URL"];
+
+function getMissingAuthEnv() {
+  return REQUIRED_AUTH_ENV.filter((k) => !process.env[k]);
+}
 
 // Helper function for SSO user data authentication
 export async function handleUserData(userData) {

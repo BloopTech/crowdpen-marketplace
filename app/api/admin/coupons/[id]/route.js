@@ -45,7 +45,12 @@ export async function GET(request, { params }) {
       );
     }
 
-    const { id } = await params;
+    let id;
+    try {
+      ({ id } = await params);
+    } catch {
+      id = null;
+    }
     const couponId = String(id || "").trim().slice(0, 128);
     if (!couponId) {
       return NextResponse.json(
@@ -119,7 +124,12 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const { id } = await params;
+    let id;
+    try {
+      ({ id } = await params);
+    } catch {
+      id = null;
+    }
     const couponId = String(id || "").trim().slice(0, 128);
     if (!couponId) {
       return NextResponse.json(
@@ -379,7 +389,12 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const { id } = await params;
+    let id;
+    try {
+      ({ id } = await params);
+    } catch {
+      id = null;
+    }
     const couponId = String(id || "").trim().slice(0, 128);
     if (!couponId) {
       return NextResponse.json(

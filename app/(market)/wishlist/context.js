@@ -79,12 +79,12 @@ const WishlistContextProvider = ({ children, penName }) => {
         },
         body: JSON.stringify({ productIds })
       });
-      
+
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error('Failed to add products to cart');
+        throw new Error(data?.error || data?.message || 'Failed to add products to cart');
       }
-      
-      return response.json();
+      return data;
     },
     onSuccess: () => {
       // Invalidate cart queries to refresh cart data
@@ -101,12 +101,12 @@ const WishlistContextProvider = ({ children, penName }) => {
           'Content-Type': 'application/json',
         }
       });
-      
+
+      const data = await response.json().catch(() => ({}));
       if (!response.ok) {
-        throw new Error('Failed to clear wishlist');
+        throw new Error(data?.error || data?.message || 'Failed to clear wishlist');
       }
-      
-      return response.json();
+      return data;
     },
     onSuccess: () => {
       // Invalidate wishlist queries to refresh data

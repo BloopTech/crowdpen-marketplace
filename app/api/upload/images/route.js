@@ -5,18 +5,17 @@ import sharp from "sharp";
 import { authOptions } from "../../auth/[...nextauth]/route";
 import crypto from "crypto";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../lib/security/rateLimit";
-import { assertRequiredEnvInProduction } from "../../../lib/env";
 import { getRequestIdFromHeaders, reportError } from "../../../lib/observability/reportError";
 
 export const runtime = "nodejs";
 
-assertRequiredEnvInProduction([
+const REQUIRED_R2_ENV = [
   "CLOUDFLARE_R2_ENDPOINT",
   "CLOUDFLARE_R2_ACCESS_KEY_ID",
   "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
   "CLOUDFLARE_R2_BUCKET_NAME",
   "CLOUDFLARE_R2_PUBLIC_URL",
-]);
+];
 
 // Configure S3 client for Cloudflare R2
 const s3Client = new S3Client({
@@ -43,6 +42,13 @@ const randomImageName = (bytes = 32) =>
 export async function POST(request) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   try {
+    if (REQUIRED_R2_ENV.some((k) => !process.env[k])) {
+      return NextResponse.json(
+        { message: "Uploads unavailable. Please retry shortly." },
+        { status: 503 }
+      );
+    }
+
     // Verify authentication
     const session = await getServerSession(authOptions);
     if (!session || !session.user) {

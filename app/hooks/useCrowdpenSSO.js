@@ -36,7 +36,7 @@ export function useCrowdpenSSO() {
       });
       
       if (response.ok) {
-        const data = await response.json();
+        const data = await response.json().catch(() => ({}));
         setSsoAvailable(data.hasSession || false);
         return data.hasSession ? data : null;
       } else {

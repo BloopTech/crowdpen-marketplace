@@ -27,9 +27,30 @@ export const runtime = "nodejs";
 
 export async function GET(request, { params }) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
-  const session = await getServerSession(authOptions);
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]",
+      method: "GET",
+      status: 500,
+      requestId,
+      userId: null,
+      tag: "marketplace_product_item_get_session",
+    });
+    session = null;
+  }
 
-  const { id } = await params;
+  let id;
+  try {
+    ({ id } = await params);
+  } catch {
+    return NextResponse.json(
+      { error: "Product ID is required" },
+      { status: 400 }
+    );
+  }
 
   const idRaw = id == null ? "" : String(id).trim();
   if (!idRaw) {
@@ -226,7 +247,27 @@ export async function GET(request, { params }) {
 
 export async function DELETE(request, { params }) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
-  const session = await getServerSession(authOptions);
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    await reportError(error, {
+      route: "/api/marketplace/products/item/[id]",
+      method: "DELETE",
+      status: 500,
+      requestId,
+      userId: null,
+      tag: "marketplace_product_item_delete_session",
+    });
+    return NextResponse.json(
+      {
+        status: "error",
+        message: "Failed to authenticate",
+      },
+      { status: 500 }
+    );
+  }
+
   if (!session?.user?.id) {
     return NextResponse.json(
       {
@@ -237,7 +278,18 @@ export async function DELETE(request, { params }) {
     );
   }
 
-  const { id } = await params;
+  let id;
+  try {
+    ({ id } = await params);
+  } catch {
+    return NextResponse.json(
+      {
+        status: "error",
+        message: "Product ID is required",
+      },
+      { status: 400 }
+    );
+  }
   const idRaw = id == null ? "" : String(id).trim();
   if (!idRaw || idRaw.length > 128) {
     return NextResponse.json(

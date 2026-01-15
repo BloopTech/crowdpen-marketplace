@@ -11,7 +11,6 @@ import {
   rateLimit,
   rateLimitResponseHeaders,
 } from "../../../../lib/security/rateLimit";
-import { assertRequiredEnvInProduction } from "../../../../lib/env";
 import {
   getRequestIdFromHeaders,
   reportError,
@@ -19,13 +18,13 @@ import {
 
 export const runtime = "nodejs";
 
-assertRequiredEnvInProduction([
+const REQUIRED_R2_ENV = [
   "CLOUDFLARE_R2_ENDPOINT",
   "CLOUDFLARE_R2_ACCESS_KEY_ID",
   "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
   "CLOUDFLARE_R2_BUCKET_NAME",
   "CLOUDFLARE_R2_PUBLIC_URL",
-]);
+];
 
 const s3Client = new S3Client({
   region: "auto",
@@ -58,6 +57,13 @@ export async function GET(request) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session;
   try {
+    if (REQUIRED_R2_ENV.some((k) => !process.env[k])) {
+      return NextResponse.json(
+        { status: "error", message: "Uploads unavailable. Please retry shortly." },
+        { status: 503 }
+      );
+    }
+
     session = await getServerSession(authOptions);
     if (!session?.user?.id) {
       return NextResponse.json(

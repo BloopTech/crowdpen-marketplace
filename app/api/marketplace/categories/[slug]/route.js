@@ -9,7 +9,12 @@ export const runtime = "nodejs";
 
 export async function GET(request, { params }) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
-  const { slug } = await params;
+  let slug;
+  try {
+    ({ slug } = await params);
+  } catch {
+    slug = null;
+  }
   const slugRaw = slug == null ? "" : String(slug).trim();
   const normalizedSlug = slugRaw.replace(/&/g, "and").slice(0, 100);
 

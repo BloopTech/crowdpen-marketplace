@@ -8,19 +8,18 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client
 import crypto from "crypto";
 import sharp from "sharp";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../../lib/security/rateLimit";
-import { assertRequiredEnvInProduction } from "../../../../../lib/env";
 import { ensureProductHasProductId } from "../../../../../lib/products/productId";
 import { getRequestIdFromHeaders, reportError } from "../../../../../lib/observability/reportError";
 
 export const runtime = "nodejs";
 
-assertRequiredEnvInProduction([
+const REQUIRED_R2_ENV = [
   "CLOUDFLARE_R2_ENDPOINT",
   "CLOUDFLARE_R2_ACCESS_KEY_ID",
   "CLOUDFLARE_R2_SECRET_ACCESS_KEY",
   "CLOUDFLARE_R2_BUCKET_NAME",
   "CLOUDFLARE_R2_PUBLIC_URL",
-]);
+];
 
 const { MarketplaceProduct } = db;
 
@@ -79,6 +78,23 @@ const uniqueStrings = (arr) => {
     out.push(val);
   }
   return out;
+};
+
+const parseFileSizeBytesFromString = (value) => {
+  const raw = value == null ? "" : String(value).trim();
+  if (!raw) return 0;
+  const match = raw.match(/^([\d.]+)\s*(Bytes|KB|MB|GB)$/i);
+  if (!match) return 0;
+  const num = parseFloat(match[1]);
+  if (!Number.isFinite(num)) return 0;
+  const unit = match[2].toUpperCase();
+  const multipliers = {
+    BYTES: 1,
+    KB: 1024,
+    MB: 1024 * 1024,
+    GB: 1024 * 1024 * 1024,
+  };
+  return Math.round(num * (multipliers[unit] || 1));
 };
 
 const formatFileSize = (bytes) => {
@@ -155,8 +171,13 @@ const calculateContentLength = (fileType, fileSizeBytes) => {
 };
 
 export async function GET(request, { params }) {
-  const getParams = await params;
-  const { id } = getParams;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
+  const { id } = getParams || {};
   try {
     // Add your GET logic here
   } catch (error) {
@@ -183,7 +204,19 @@ export async function POST(request, { params }) {
   let session;
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   try {
-    const { id } = await params;
+    if (REQUIRED_R2_ENV.some((k) => !process.env[k])) {
+      return NextResponse.json(
+        { status: "error", message: "Uploads unavailable. Please retry shortly." },
+        { status: 503 }
+      );
+    }
+
+    let id;
+    try {
+      ({ id } = await params);
+    } catch {
+      id = null;
+    }
 
     // Process form data
     const formData = await request.formData();
@@ -418,6 +451,37 @@ export async function POST(request, { params }) {
       }
     }
 
+    const imageUrlsJson = formData.get("imageUrls");
+    if (imageUrlsJson) {
+      try {
+        const parsed =
+          typeof imageUrlsJson === "string" ? JSON.parse(imageUrlsJson) : null;
+        if (Array.isArray(parsed)) {
+          const base = String(process.env.CLOUDFLARE_R2_PUBLIC_URL || "").replace(
+            /\/+$/,
+            ""
+          );
+          const expectedPrefix = `${base}/marketplace/uploads/${user_id}/images/`;
+          const filtered = parsed.filter(
+            (u) => typeof u === "string" && u.startsWith(expectedPrefix)
+          );
+          finalImages.push(...filtered);
+        }
+      } catch (e) {
+        await reportError(e, {
+          route: "/api/marketplace/products/[id]/edit",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "product_edit",
+          extra: { stage: "parse_image_urls" },
+        });
+      }
+    }
+
+    finalImages = uniqueStrings(finalImages);
+
     // Get new image files from form data
     const newImageFiles = formData.getAll("images");
 
@@ -540,6 +604,23 @@ export async function POST(request, { params }) {
       finalProductFile = existingProductFile;
     }
 
+    const productFileUrl = formData.get("productFileUrl");
+    if (typeof productFileUrl === "string" && productFileUrl) {
+      const base = String(process.env.CLOUDFLARE_R2_PUBLIC_URL || "").replace(
+        /\/+$/,
+        ""
+      );
+      const expectedPrefix = `${base}/marketplace/uploads/${user_id}/files/`;
+      if (String(productFileUrl).startsWith(expectedPrefix)) {
+        finalProductFile = String(productFileUrl);
+      } else {
+        return NextResponse.json(
+          { status: "error", message: "Invalid product file" },
+          { status: 400 }
+        );
+      }
+    }
+
     // Check for new product file (overrides existing)
     const newProductFile = formData.get("productFile");
     const previousProductFileUrl = existingProduct?.file ? String(existingProduct.file) : null;
@@ -635,14 +716,7 @@ export async function POST(request, { params }) {
     if (newProductFile && newProductFile.size > 0) {
       fileSizeBytes = newProductFile.size;
     } else if (finalFileSize) {
-      // Try to parse existing file size string (e.g., "1.5 MB")
-      const match = finalFileSize.match(/^([\d.]+)\s*(Bytes|KB|MB|GB)$/i);
-      if (match) {
-        const value = parseFloat(match[1]);
-        const unit = match[2].toUpperCase();
-        const multipliers = { BYTES: 1, KB: 1024, MB: 1024 * 1024, GB: 1024 * 1024 * 1024 };
-        fileSizeBytes = value * (multipliers[unit] || 1);
-      }
+      fileSizeBytes = parseFileSizeBytesFromString(finalFileSize);
     }
     const contentLength = calculateContentLength(finalFileType, fileSizeBytes);
 
@@ -690,6 +764,28 @@ export async function POST(request, { params }) {
     }
 
     if (newProductFile && newProductFile.size > 0 && previousProductFileUrl) {
+      try {
+        const oldKey = getR2KeyFromPublicUrl(previousProductFileUrl);
+        if (oldKey) await deleteR2ObjectByKey(oldKey);
+      } catch (cleanupError) {
+        await reportError(cleanupError, {
+          route: "/api/marketplace/products/[id]/edit",
+          method: "POST",
+          status: 500,
+          requestId,
+          userId: session?.user?.id || null,
+          tag: "product_edit",
+          extra: { stage: "cleanup_replaced_product_file" },
+        });
+      }
+    }
+
+    if (
+      typeof productFileUrl === "string" &&
+      productFileUrl &&
+      previousProductFileUrl &&
+      String(productFileUrl) !== String(previousProductFileUrl)
+    ) {
       try {
         const oldKey = getR2KeyFromPublicUrl(previousProductFileUrl);
         if (oldKey) await deleteR2ObjectByKey(oldKey);

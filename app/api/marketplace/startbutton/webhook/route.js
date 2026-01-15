@@ -12,20 +12,12 @@ import {
   rateLimit,
   rateLimitResponseHeaders,
 } from "../../../../lib/security/rateLimit";
-import { assertAnyEnvInProduction } from "../../../../lib/env";
 import {
   getRequestIdFromHeaders,
   reportError,
 } from "../../../../lib/observability/reportError";
 
 export const runtime = "nodejs";
-
-assertAnyEnvInProduction([
-  "STARTBUTTON_WEBHOOK_SECRET",
-  "STARTBUTTON_SECRET_KEY",
-  "STARTBUTTON_SECRET",
-  "STARTBUTTON_API_KEY",
-]);
 
 const {
   MarketplaceOrder,

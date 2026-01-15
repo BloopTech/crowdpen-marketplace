@@ -23,7 +23,13 @@ function ProductItemContextProvider({ children, id }) {
           "Content-Type": "application/json",
         },
       });
-      return response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          data?.message || data?.error || "Failed to fetch product"
+        );
+      }
+      return data;
     },
     enabled: !!id,
   });
@@ -50,7 +56,13 @@ function ProductItemContextProvider({ children, id }) {
           },
         }
       );
-      return response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          data?.message || data?.error || "Failed to fetch reviews"
+        );
+      }
+      return data;
     },
     getNextPageParam: (lastPage) => {
       if (lastPage?.data?.pagination?.hasNextPage) {
@@ -78,7 +90,13 @@ function ProductItemContextProvider({ children, id }) {
           "Content-Type": "application/json",
         },
       });
-      return response.json();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(
+          data?.message || data?.error || "Failed to fetch related products"
+        );
+      }
+      return data;
     },
     enabled: !!id && !!productItemData?.MarketplaceCategory?.name && !productItemLoading, // Only fetch when we have the product data
   });

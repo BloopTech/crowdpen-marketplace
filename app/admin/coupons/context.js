@@ -39,8 +39,9 @@ export function AdminCouponsProvider({ children }) {
       if (statusFilter && statusFilter !== "all")
         params.set("status", statusFilter);
       const res = await fetch(`/api/admin/coupons?${params.toString()}`);
-      const json = await res.json();
-      if (!res.ok || json.status !== "success") throw new Error(json.message);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.status !== "success")
+        throw new Error(json?.message || "Failed to fetch coupons");
       return json;
     },
   });
@@ -52,8 +53,9 @@ export function AdminCouponsProvider({ children }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const json = await res.json();
-      if (!res.ok || json.status !== "success") throw new Error(json.message);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.status !== "success")
+        throw new Error(json?.message || "Failed to create coupon");
       return json;
     },
     onSuccess: () => {
@@ -74,8 +76,9 @@ export function AdminCouponsProvider({ children }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      const json = await res.json();
-      if (!res.ok || json.status !== "success") throw new Error(json.message);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.status !== "success")
+        throw new Error(json?.message || "Failed to update coupon");
       return json;
     },
     onSuccess: () => {
@@ -94,8 +97,9 @@ export function AdminCouponsProvider({ children }) {
       const res = await fetch(`/api/admin/coupons/${id}`, {
         method: "DELETE",
       });
-      const json = await res.json();
-      if (!res.ok || json.status !== "success") throw new Error(json.message);
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json?.status !== "success")
+        throw new Error(json?.message || "Failed to delete coupon");
       return json;
     },
     onSuccess: () => {

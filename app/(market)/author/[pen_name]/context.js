@@ -30,10 +30,10 @@ function AuthorProfileContextProvider({ children }) {
     });
     
     const response = await fetch(`/api/marketplace/author/${authorPenName}/products?${params}`);
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     
-    if (data.status !== 'success') {
-      throw new Error(data.message || 'Failed to fetch products');
+    if (!response.ok || data?.status !== 'success') {
+      throw new Error(data?.message || 'Failed to fetch products');
     }
     
     return {
@@ -74,10 +74,10 @@ function AuthorProfileContextProvider({ children }) {
     });
     
     const response = await fetch(`/api/marketplace/author/${authorPenName}/reviews?${params}`);
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
     
-    if (data.status !== 'success') {
-      throw new Error(data.message || 'Failed to fetch reviews');
+    if (!response.ok || data?.status !== 'success') {
+      throw new Error(data?.message || 'Failed to fetch reviews');
     }
     
     return {

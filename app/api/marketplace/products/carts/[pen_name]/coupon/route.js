@@ -110,7 +110,12 @@ export async function POST(request, { params }) {
       );
     }
 
-    const getParams = await params;
+    let getParams = null;
+    try {
+      getParams = await params;
+    } catch {
+      getParams = null;
+    }
     const penNameRaw = String(getParams?.pen_name || "").trim();
     if (!penNameRaw || penNameRaw.length > 80) {
       return NextResponse.json({ error: "Pen name is required" }, { status: 400 });
@@ -338,7 +343,12 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const getParams = await params;
+    let getParams = null;
+    try {
+      getParams = await params;
+    } catch {
+      getParams = null;
+    }
     const penNameRaw = String(getParams?.pen_name || "").trim();
     if (!penNameRaw || penNameRaw.length > 80) {
       return NextResponse.json({ error: "Pen name is required" }, { status: 400 });

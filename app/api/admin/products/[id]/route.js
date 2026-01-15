@@ -28,7 +28,12 @@ export async function GET(_request, { params }) {
       );
     }
 
-    const { id } = await params || {};
+    let id;
+    try {
+      ({ id } = (await params) || {});
+    } catch {
+      id = null;
+    }
     const pid = String(id || "").trim().slice(0, 128);
     if (!pid) {
       return NextResponse.json({ status: "error", message: "Missing id" }, { status: 400 });

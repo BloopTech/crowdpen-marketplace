@@ -244,7 +244,12 @@ export async function GET(request, { params }) {
       );
     }
 
-    const { orderItemId } = await params;
+    let orderItemId;
+    try {
+      ({ orderItemId } = await params);
+    } catch {
+      orderItemId = null;
+    }
     const itemId = (orderItemId || "").toString().trim();
     if (!itemId) {
       return NextResponse.json(

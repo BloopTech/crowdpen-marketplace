@@ -60,6 +60,7 @@ const initialStateValues = {
     marketplace_category_id: [],
     marketplace_subcategory_id: [],
     images: [],
+    productFile: [],
     fileType: [],
     fileSize: [],
     license: [],
@@ -287,6 +288,54 @@ export default function EditProductContent(props) {
     }
   }, []);
 
+  const uploadDirect = useCallback(async (file, kind) => {
+    const res = await fetch("/api/marketplace/uploads/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        kind,
+        filename: file?.name,
+        contentType: file?.type,
+        size: file?.size,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.status !== "success") {
+      throw new Error(data?.message || "Unable to prepare upload");
+    }
+    const uploadUrl = data?.data?.uploadUrl;
+    const publicUrl = data?.data?.publicUrl;
+    const key = data?.data?.key;
+    const headers = data?.data?.headers || {};
+    if (!uploadUrl || !publicUrl || !key) {
+      throw new Error("Unable to prepare upload");
+    }
+    const putRes = await fetch(uploadUrl, {
+      method: "PUT",
+      headers,
+      body: file,
+    });
+    if (!putRes.ok) {
+      throw new Error("Upload failed");
+    }
+    return { publicUrl, key };
+  }, []);
+
+  const deleteDirect = useCallback(async (key) => {
+    if (!key) return;
+    const res = await fetch("/api/marketplace/uploads/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ key }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.status !== "success") {
+      throw new Error(data?.message || "Unable to delete upload");
+    }
+  }, []);
+
   useEffect(() => {
     void runUploadPrecheck();
   }, [runUploadPrecheck]);
@@ -341,55 +390,65 @@ export default function EditProductContent(props) {
     const files = inputEl.files;
     if (!files || files.length === 0) return;
 
+    const ready = uploadReady === true || (await runUploadPrecheck());
+    if (!ready) {
+      if (inputEl) inputEl.value = "";
+      return;
+    }
+
     setUploadingImage(true);
 
     try {
-      const maxPerImageSize = 3 * 1024 * 1024;
+      const maxTotalSize = 3 * 1024 * 1024;
+      const maxCombinedSize = 3 * 1024 * 1024;
+      const incomingFiles = Array.from(files);
 
-      const incomingFiles = Array.from(files).filter((file) => {
+      const validIncoming = incomingFiles.filter((file) => {
         if (!file?.type?.startsWith?.("image/")) {
           toast.error(`${file?.name || "File"} is not a valid image file`);
           return false;
         }
-        if (typeof file.size === "number" && file.size > maxPerImageSize) {
+        if (typeof file.size === "number" && file.size > maxTotalSize) {
           toast.error(`${file.name} must be 3MB or less.`);
           return false;
         }
         return true;
       });
 
-      if (incomingFiles.length === 0) {
+      if (validIncoming.length === 0) {
         return;
       }
-
-      const maxCombinedSize = 3 * 1024 * 1024; // 3MB total
-      const incomingNames = new Set(incomingFiles.map((file) => file.name));
+      const incomingNames = new Set(validIncoming.map((file) => file.name));
       const existingAdjustedTotal = images.reduce((acc, imageObj) => {
-        const name = imageObj?.file?.name;
+        const name = imageObj?.name;
         if (name && incomingNames.has(name)) {
           return acc;
         }
-        return acc + (imageObj.file?.size || 0);
+        return acc + (imageObj?.bytes || 0);
       }, 0);
 
-      const incomingTotal = incomingFiles.reduce(
-        (acc, file) => acc + (file.size || 0),
-        0
-      );
+      const incomingTotal = validIncoming.reduce((acc, file) => acc + file.size, 0);
 
       if (existingAdjustedTotal + incomingTotal > maxCombinedSize) {
         toast.error("Total images size must not exceed 3MB.");
         return;
       }
 
+      const uploadJobs = [];
       setImages((prev) => {
         const next = [...prev];
 
-        for (const file of incomingFiles) {
-          const existingIndex = next.findIndex(
-            (img) => img?.file?.name && img.file.name === file.name
-          );
-          const nextObj = { file, previewUrl: URL.createObjectURL(file) };
+        for (const file of validIncoming) {
+          const existingIndex = next.findIndex((img) => img?.name === file.name);
+          const nextObj = {
+            name: file.name,
+            bytes: file.size,
+            contentType: file.type,
+            previewUrl: URL.createObjectURL(file),
+            uploadedUrl: null,
+            uploadedKey: null,
+            uploading: true,
+          };
 
           if (existingIndex >= 0) {
             const prevUrl = next[existingIndex]?.previewUrl;
@@ -398,16 +457,46 @@ export default function EditProductContent(props) {
           } else {
             next.push(nextObj);
           }
+          uploadJobs.push({ file, name: file.name });
         }
 
         return next;
       });
 
-      toast.success(`${incomingFiles.length} image(s) added successfully`);
+      for (const job of uploadJobs) {
+        try {
+          const uploaded = await uploadDirect(job.file, "image");
+          setImages((prev) =>
+            prev.map((img) =>
+              img?.name === job.name
+                ? {
+                    ...img,
+                    uploadedUrl: uploaded.publicUrl,
+                    uploadedKey: uploaded.key,
+                    uploading: false,
+                  }
+                : img
+            )
+          );
+        } catch (err) {
+          setImages((prev) => {
+            const idx = prev.findIndex((img) => img?.name === job.name);
+            if (idx < 0) return prev;
+            const url = prev[idx]?.previewUrl;
+            if (url) URL.revokeObjectURL(url);
+            return prev.filter((_, i) => i !== idx);
+          });
+          toast.error(err?.message || "Failed to upload image");
+          return;
+        }
+      }
     } catch (error) {
-      await reportClientError(error, {
-        tag: "product_edit_handle_images_error",
-      });
+      try {
+        await reportClientError(error, {
+          tag: "product_edit_handle_images_error",
+        });
+      } catch {
+      }
       toast.error("Failed to process images");
     } finally {
       setUploadingImage(false);
@@ -416,7 +505,15 @@ export default function EditProductContent(props) {
   };
 
   // Remove a new uploaded image
-  const removeImage = (index) => {
+  const removeImage = async (index) => {
+    const selected = images?.[index];
+    const key = selected?.uploadedKey;
+    try {
+      if (key) await deleteDirect(key);
+    } catch (err) {
+      toast.error(err?.message || "Unable to delete image");
+      return;
+    }
     setImages((prev) => {
       const url = prev?.[index]?.previewUrl;
       if (url) URL.revokeObjectURL(url);
@@ -431,15 +528,21 @@ export default function EditProductContent(props) {
 
   // Handle single product file upload
   const handleFileUpload = async (e) => {
-    const files = e.target.files;
+    const inputEl = e.target;
+    const files = inputEl.files;
     if (!files || files.length === 0) return;
+
+    const ready = uploadReady === true || (await runUploadPrecheck());
+    if (!ready) {
+      if (inputEl) inputEl.value = "";
+      return;
+    }
 
     const file = files[0]; // Only take the first file (single file upload)
     // Pre-flight size check before we toggle UI states
     const maxSize = 25 * 1024 * 1024; // 25MB
     if (file && typeof file.size === "number" && file.size > maxSize) {
       toast.error("Product file size must be 25MB or less");
-      const inputEl = e.target;
       if (inputEl) inputEl.value = "";
       return;
     }
@@ -504,25 +607,44 @@ export default function EditProductContent(props) {
 
       const detectedFileType = getFileType(file.name);
       setFileType(detectedFileType);
-      setProductFile(file);
 
-      toast.success(`File "${file.name}" selected (${formattedSize})`);
-    } catch (error) {
-      await reportClientError(error, {
-        tag: "product_edit_handle_file_error",
+      const uploaded = await uploadDirect(file, "productFile");
+
+      setProductFile({
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        uploadedUrl: uploaded.publicUrl,
+        uploadedKey: uploaded.key,
       });
-      toast.error("Failed to process file");
+
+      toast.success(`File "${file.name}" uploaded (${formattedSize})`);
+    } catch (error) {
+      try {
+        await reportClientError(error, {
+          tag: "product_edit_handle_file_error",
+        });
+      } catch {
+      }
+      toast.error(error?.message || "Failed to upload file");
     } finally {
       setUploadingFile(false);
+      if (inputEl) inputEl.value = "";
     }
   };
 
   // Remove new product file
-  const removeFile = () => {
+  const removeFile = async () => {
+    const key = productFile?.uploadedKey;
+    try {
+      if (key) await deleteDirect(key);
+    } catch (err) {
+      toast.error(err?.message || "Unable to delete file");
+      return;
+    }
     setProductFile(null);
     setFileSize("");
     setFileType("");
-    // Reset file input
     const fileInput = document.getElementById("productFile");
     if (fileInput) fileInput.value = "";
   };
@@ -573,25 +695,34 @@ export default function EditProductContent(props) {
                 productFile: "",
               }));
             }
+            const hasAnyImages =
+              (Array.isArray(existingImages) && existingImages.length > 0) ||
+              (Array.isArray(images) && images.length > 0);
+            if (!hasAnyImages) {
+              toast.error("At least one image is required");
+              return;
+            }
+            if (images.some((img) => img?.uploading || !img?.uploadedUrl)) {
+              toast.error("Please wait for uploads to finish");
+              return;
+            }
             // Add product ID for editing
             formData.append("productId", product.id);
 
-            // Add new product file to form data if it exists
-            if (productFile) {
-              formData.append("productFile", productFile);
+            if (productFile?.uploadedUrl) {
+              formData.append("productFileUrl", productFile.uploadedUrl);
             }
 
-            // Add existing product file URL if it exists and no new file
-            if (existingProductFile && !productFile) {
+            if (existingProductFile && !productFile?.uploadedUrl) {
               formData.append("existingProductFile", existingProductFile);
             }
 
-            // Add new images to form data
-            images.forEach((imageObj) => {
-              if (imageObj.file) {
-                formData.append("images", imageObj.file);
-              }
-            });
+            if (images.length > 0) {
+              formData.append(
+                "imageUrls",
+                JSON.stringify(images.map((img) => img.uploadedUrl))
+              );
+            }
 
             // Add existing images as JSON
             if (existingImages.length > 0) {

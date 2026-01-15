@@ -134,16 +134,32 @@ async function verifyPaystackTransaction(reference) {
   if (!ref) throw new Error("Missing Paystack reference");
 
   const url = `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`;
-  const upstream = await fetch(url, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${secret}`,
-      "Content-Type": "application/json",
-    },
-    cache: "no-store",
-  });
+  let upstream;
+  try {
+    upstream = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error("Payment verification unavailable. Please try again.");
+  }
 
-  const json = await upstream.json().catch(() => ({}));
+  let json = {};
+  try {
+    const contentType = upstream.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      json = await upstream.json();
+    } else {
+      const text = await upstream.text();
+      json = { message: text || undefined };
+    }
+  } catch {
+    json = {};
+  }
   if (!upstream.ok || json?.status !== true) {
     const msg = json?.message || "Verification failed";
     throw new Error(msg);

@@ -18,7 +18,12 @@ export const runtime = "nodejs";
  * @returns {NextResponse} - JSON response with created review
  */
 export async function POST(request, { params }) {
-  const getParams = await params;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session = null;
   try {

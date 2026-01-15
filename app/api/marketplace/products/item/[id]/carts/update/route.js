@@ -27,12 +27,17 @@ const updateCartSchema = z.object({
 });
 
 export async function POST(request, { params }) {
-  const getParams = await params;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session = null;
   
   try {
-    const { id } = getParams; // This is the cart item ID
+    const { id } = getParams || {}; // This is the cart item ID
     const cartItemId = id == null ? "" : String(id).trim().slice(0, 128);
     if (!cartItemId) {
       return NextResponse.json(

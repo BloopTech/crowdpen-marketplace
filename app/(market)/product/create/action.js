@@ -45,6 +45,7 @@ const defaultProductValues = {
   marketplace_category_id: [],
   marketplace_subcategory_id: [],
   images: [],
+  productFile: [],
   fileType: [],
   fileSize: [],
   license: [],
@@ -88,12 +89,8 @@ const productSchema = z.object({
   marketplace_subcategory_id: z.uuid({
     message: "Valid subcategory is required",
   }),
-  images: z.any().refine((val) => val !== undefined && val !== null, {
-    message: "At least one image is required",
-  }),
-  productFile: z.any().refine((val) => val !== undefined && val !== null, {
-    message: "Product file is required",
-  }),
+  images: z.string().min(1, { message: "At least one image is required" }),
+  productFile: z.string().min(1, { message: "Product file is required" }),
   fileType: z.string().min(1, { message: "File type is required" }),
   fileSize: z.string().optional(),
   license: z.string().optional(),
@@ -120,14 +117,31 @@ const getZodErrorMessage = (error) => {
 
 export async function createProduct(prevState, queryData) {
   // Get current user from session
-  const session = await getServerSession(authOptions);
+  let session;
+  try {
+    session = await getServerSession(authOptions);
+  } catch {
+    return {
+      success: false,
+      message: "Authentication is currently unavailable. Please try again.",
+      errors: {
+        ...defaultProductValues,
+        credentials: ["Authentication unavailable"],
+      },
+      values: {},
+      data: {},
+    };
+  }
   if (!session || !session.user) {
     return {
       success: false,
       message: "You must be logged in to create a product",
       errors: {
-        credentials: !!session,
+        ...defaultProductValues,
+        credentials: ["Authentication required"],
       },
+      values: {},
+      data: {},
     };
   }
 
@@ -144,8 +158,8 @@ export async function createProduct(prevState, queryData) {
   const getMarketplaceSubcategoryId = queryData.get(
     "marketplace_subcategory_id"
   );
-  const getImages = queryData.getAll("images");
-  const getProductFile = queryData.get("productFile");
+  const getImageUrls = queryData.get("imageUrls");
+  const getProductFileUrl = queryData.get("productFileUrl");
   const getFileType = queryData.get("fileType");
   const getFileSize = queryData.get("fileSize");
   const getLicense = queryData.get("license");
@@ -163,8 +177,8 @@ export async function createProduct(prevState, queryData) {
     stock: getStock,
     marketplace_category_id: getMarketplaceCategoryId,
     marketplace_subcategory_id: getMarketplaceSubcategoryId,
-    images: getImages,
-    productFile: getProductFile,
+    images: getImageUrls,
+    productFile: getProductFileUrl,
     fileType: getFileType,
     fileSize: getFileSize,
     license: getLicense,
@@ -190,7 +204,6 @@ export async function createProduct(prevState, queryData) {
         stock: getStock,
         marketplace_category_id: getMarketplaceCategoryId,
         marketplace_subcategory_id: getMarketplaceSubcategoryId,
-        images: getImages,
         fileType: getFileType,
         fileSize: getFileSize,
         license: getLicense,
@@ -210,8 +223,8 @@ export async function createProduct(prevState, queryData) {
     product_status,
     marketplace_category_id,
     marketplace_subcategory_id,
-    images,
-    productFile,
+    images: imageUrls,
+    productFile: productFileUrl,
     fileType,
     fileSize,
     license,
@@ -230,7 +243,6 @@ export async function createProduct(prevState, queryData) {
     stock: getStock,
     marketplace_category_id: getMarketplaceCategoryId,
     marketplace_subcategory_id: getMarketplaceSubcategoryId,
-    images: getImages,
     fileType: getFileType,
     fileSize: getFileSize,
     license: getLicense,
@@ -271,76 +283,8 @@ export async function createProduct(prevState, queryData) {
   formData.append("what_included", what_included);
   formData.append("user_id", userId);
 
-  // Append image files to form data - server side version
-  console.log("Images type in server:", {
-    type: typeof images,
-    isArray: Array.isArray(images),
-    value: images,
-  });
-
-  if (images) {
-    try {
-      // Handle different types of image values
-      if (Array.isArray(images)) {
-        // If images is an array, append each item
-        images.forEach((image, index) => {
-          // If it has name and size properties, it's probably a File-like object
-          if (image && image.name && image.size) {
-            formData.append("images", image);
-          } else if (typeof image === "string") {
-            // If it's a URL string, append it
-            formData.append("images", image);
-          }
-        });
-      } else if (typeof images === "object" && images !== null) {
-        // Check if it's an object that might contain files (could be from FormData)
-        // Try to iterate if it has entries or forEach methods
-        if (typeof images.forEach === "function") {
-          images.forEach((image) => {
-            formData.append("images", image);
-          });
-        } else if (images.name && images.size) {
-          // If it has name and size properties, it's probably a single File-like object
-          formData.append("images", images);
-        }
-      } else if (typeof images === "string") {
-        // Single URL string
-        formData.append("images", images);
-      }
-    } catch (error) {
-      const hdrs = await getServerActionHeaders();
-      const requestId = getRequestIdFromHeaders(hdrs);
-      await reportError(error, {
-        tag: "product_create_process_images_error",
-        route: "server_action:product/create#createProduct",
-        method: "SERVER_ACTION",
-        status: 500,
-        requestId,
-        userId,
-      });
-    }
-  }
-
-  // Handle product file
-  if (productFile) {
-    try {
-      if (productFile.name && productFile.size) {
-        // If it's a File-like object, append it directly
-        formData.append("productFile", productFile);
-      }
-    } catch (error) {
-      const hdrs = await getServerActionHeaders();
-      const requestId = getRequestIdFromHeaders(hdrs);
-      await reportError(error, {
-        tag: "product_create_process_file_error",
-        route: "server_action:product/create#createProduct",
-        method: "SERVER_ACTION",
-        status: 500,
-        requestId,
-        userId,
-      });
-    }
-  }
+  formData.append("imageUrls", imageUrls);
+  formData.append("productFileUrl", productFileUrl);
 
   // Create the product in the database using the API
   // Include the user ID from the session directly in the form data

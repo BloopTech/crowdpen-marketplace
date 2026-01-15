@@ -160,7 +160,12 @@ export async function GET(request, { params }) {
       );
     }
 
-    const { id } = await params;
+    let id;
+    try {
+      ({ id } = await params);
+    } catch {
+      id = null;
+    }
     const draftId = String(id || "").trim();
     if (!draftId) {
       return NextResponse.json(
@@ -217,7 +222,12 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const { id } = await params;
+    let id;
+    try {
+      ({ id } = await params);
+    } catch {
+      id = null;
+    }
     const draftId = String(id || "").trim();
     if (!draftId) {
       return NextResponse.json(
@@ -276,7 +286,12 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    const { id } = await params;
+    let id;
+    try {
+      ({ id } = await params);
+    } catch {
+      id = null;
+    }
     const draftId = String(id || "").trim();
     if (!draftId) {
       return NextResponse.json(

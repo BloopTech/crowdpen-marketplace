@@ -81,7 +81,12 @@ export async function GET(request) {
  * @returns {NextResponse} - JSON response indicating success or error
  */
 export async function POST(request, { params }) {
-  const getParams = await params;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session = null;
 

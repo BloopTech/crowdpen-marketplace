@@ -11,8 +11,13 @@ export const runtime = "nodejs";
 
 export async function GET(request, { params }) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
-  const getParams = await params;
-  const { pen_name } = getParams;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
+  const { pen_name } = getParams || {};
   const penNameRaw = pen_name == null ? "" : String(pen_name).trim();
 
   if (!penNameRaw || penNameRaw.length > 80) {

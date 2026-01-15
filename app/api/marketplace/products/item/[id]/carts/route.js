@@ -28,7 +28,12 @@ function computeEffectivePrice(product) {
 }
 
 export async function POST(request, { params }) {
-  const getParams = await params;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session = null;
 
@@ -65,7 +70,7 @@ export async function POST(request, { params }) {
 
     const userId = session.user.id;
 
-    const productId = getParams.id;
+    const productId = getParams?.id;
 
     // Validate input
     if (!productId) {

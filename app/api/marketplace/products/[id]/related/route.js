@@ -24,14 +24,19 @@ const {
 } = db;
 
 export async function GET(request, { params }) {
-  const getParams = await params;
+  let getParams = null;
+  try {
+    getParams = await params;
+  } catch {
+    getParams = null;
+  }
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session = null;
   let userId = null;
   try {
     session = await getServerSession(authOptions);
     userId = session?.user?.id || null;
-    const { id } = getParams;
+    const { id } = getParams || {};
     const idRaw = id == null ? "" : String(id).trim();
     if (!idRaw) {
       return NextResponse.json(

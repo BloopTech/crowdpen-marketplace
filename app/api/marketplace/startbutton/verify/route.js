@@ -3,16 +3,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "../../../auth/[...nextauth]/route";
 import { getClientIpFromHeaders, rateLimit, rateLimitResponseHeaders } from "../../../../lib/security/rateLimit";
 import { assertSafeExternalUrl } from "../../../../lib/security/ssrf";
-import { assertAnyEnvInProduction } from "../../../../lib/env";
 import { getRequestIdFromHeaders, reportError } from "../../../../lib/observability/reportError";
 
 export const runtime = "nodejs";
-
-assertAnyEnvInProduction([
-  "STARTBUTTON_SECRET_KEY",
-  "STARTBUTTON_SECRET",
-  "STARTBUTTON_API_KEY",
-]);
 
 const getBaseUrl = () =>
   process.env.STARTBUTTON_BASE_URL ||
