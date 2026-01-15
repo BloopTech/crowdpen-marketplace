@@ -1414,6 +1414,11 @@ export async function finalizeOrder(prevState, formData) {
                 subtotal={Number(order.subtotal)}
                 discount={Number(order.discount || 0)}
                 total={Number(order.total)}
+                currencyCode={
+                  String(order.paid_currency || order.currency || "USD")
+                    .trim()
+                    .toUpperCase()
+                }
               />
             )
           );

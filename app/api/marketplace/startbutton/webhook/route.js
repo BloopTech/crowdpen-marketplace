@@ -1082,6 +1082,13 @@ export async function POST(request) {
                   subtotal={Number(lockedOrder.subtotal)}
                   discount={Number(lockedOrder.discount || 0)}
                   total={Number(lockedOrder.total)}
+                  currencyCode={
+                    String(
+                      lockedOrder.paid_currency || lockedOrder.currency || "USD"
+                    )
+                      .trim()
+                      .toUpperCase()
+                  }
                 />
               )
             );
