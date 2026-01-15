@@ -87,6 +87,7 @@ export default function EditProductContent(props) {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadReady, setUploadReady] = useState(null); // null = unknown, true/false
   const [uploadCheckPending, setUploadCheckPending] = useState(false);
+  const [submitQueued, setSubmitQueued] = useState(false);
   const [fileSize, setFileSize] = useState("");
   const [fileType, setFileType] = useState("");
   const [categoryID, setCategoryID] = useState("");
@@ -289,7 +290,52 @@ export default function EditProductContent(props) {
     }
   }, []);
 
-  const uploadDirect = useCallback(async (file, kind) => {
+  const deleteDirect = useCallback(async (key) => {
+    if (!key) return;
+    const res = await fetch("/api/marketplace/uploads/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ key }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data?.status !== "success") {
+      throw new Error(data?.message || "Unable to delete upload");
+    }
+  }, []);
+
+  const putWithProgress = useCallback((uploadUrl, headers, file, onProgress) => {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", uploadUrl);
+      if (headers && typeof headers === "object") {
+        for (const [key, value] of Object.entries(headers)) {
+          if (value != null) xhr.setRequestHeader(String(key), String(value));
+        }
+      }
+      xhr.upload.onprogress = (evt) => {
+        if (!onProgress) return;
+        if (evt && evt.lengthComputable) {
+          const pct = Math.max(
+            0,
+            Math.min(100, Math.round((evt.loaded / evt.total) * 100))
+          );
+          onProgress(pct);
+        }
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+        } else {
+          reject(new Error("Upload failed"));
+        }
+      };
+      xhr.onerror = () => reject(new Error("Upload failed"));
+      xhr.send(file);
+    });
+  }, []);
+
+  const uploadDirect = useCallback(async (file, kind, onProgress) => {
     const res = await fetch("/api/marketplace/uploads/presign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -312,30 +358,17 @@ export default function EditProductContent(props) {
     if (!uploadUrl || !publicUrl || !key) {
       throw new Error("Unable to prepare upload");
     }
-    const putRes = await fetch(uploadUrl, {
-      method: "PUT",
-      headers,
-      body: file,
-    });
-    if (!putRes.ok) {
-      throw new Error("Upload failed");
+    try {
+      await putWithProgress(uploadUrl, headers, file, onProgress);
+    } catch (err) {
+      try {
+        if (key) await deleteDirect(key);
+      } catch {
+      }
+      throw err;
     }
     return { publicUrl, key };
-  }, []);
-
-  const deleteDirect = useCallback(async (key) => {
-    if (!key) return;
-    const res = await fetch("/api/marketplace/uploads/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ key }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data?.status !== "success") {
-      throw new Error(data?.message || "Unable to delete upload");
-    }
-  }, []);
+  }, [deleteDirect, putWithProgress]);
 
   useEffect(() => {
     void runUploadPrecheck();
@@ -435,20 +468,24 @@ export default function EditProductContent(props) {
         return;
       }
 
-      const uploadJobs = [];
+      const uploadJobs = validIncoming.map((file) => ({ file, name: file.name }));
       setImages((prev) => {
         const next = [...prev];
 
-        for (const file of validIncoming) {
-          const existingIndex = next.findIndex((img) => img?.name === file.name);
+        for (const job of uploadJobs) {
+          const file = job.file;
+          const existingIndex = next.findIndex((img) => img?.name === job.name);
           const nextObj = {
             name: file.name,
             bytes: file.size,
             contentType: file.type,
             previewUrl: URL.createObjectURL(file),
+            file,
             uploadedUrl: null,
             uploadedKey: null,
             uploading: true,
+            progress: 0,
+            error: "",
           };
 
           if (existingIndex >= 0) {
@@ -458,7 +495,6 @@ export default function EditProductContent(props) {
           } else {
             next.push(nextObj);
           }
-          uploadJobs.push({ file, name: file.name });
         }
 
         return next;
@@ -466,7 +502,18 @@ export default function EditProductContent(props) {
 
       for (const job of uploadJobs) {
         try {
-          const uploaded = await uploadDirect(job.file, "image");
+          const uploaded = await uploadDirect(job.file, "image", (pct) => {
+            setImages((prev) =>
+              prev.map((img) =>
+                img?.name === job.name
+                  ? {
+                      ...img,
+                      progress: pct,
+                    }
+                  : img
+              )
+            );
+          });
           setImages((prev) =>
             prev.map((img) =>
               img?.name === job.name
@@ -475,20 +522,27 @@ export default function EditProductContent(props) {
                     uploadedUrl: uploaded.publicUrl,
                     uploadedKey: uploaded.key,
                     uploading: false,
+                    progress: 100,
+                    error: "",
+                    file: null,
                   }
                 : img
             )
           );
         } catch (err) {
-          setImages((prev) => {
-            const idx = prev.findIndex((img) => img?.name === job.name);
-            if (idx < 0) return prev;
-            const url = prev[idx]?.previewUrl;
-            if (url) URL.revokeObjectURL(url);
-            return prev.filter((_, i) => i !== idx);
-          });
+          setImages((prev) =>
+            prev.map((img) =>
+              img?.name === job.name
+                ? {
+                    ...img,
+                    uploading: false,
+                    error: err?.message || "Upload failed",
+                    progress: 0,
+                  }
+                : img
+            )
+          );
           toast.error(err?.message || "Failed to upload image");
-          return;
         }
       }
     } catch (error) {
@@ -502,6 +556,73 @@ export default function EditProductContent(props) {
     } finally {
       setUploadingImage(false);
       if (inputEl) inputEl.value = "";
+    }
+  };
+
+  const retryImageUpload = async (index) => {
+    const item = images?.[index];
+    const file = item?.file;
+    if (!file) {
+      toast.error("Please re-upload the image");
+      return;
+    }
+    setImages((prev) =>
+      prev.map((img, i) =>
+        i === index
+          ? {
+              ...img,
+              uploading: true,
+              progress: 0,
+              error: "",
+              uploadedUrl: null,
+              uploadedKey: null,
+            }
+          : img
+      )
+    );
+    try {
+      const uploaded = await uploadDirect(file, "image", (pct) => {
+        setImages((prev) =>
+          prev.map((img, i) =>
+            i === index
+              ? {
+                  ...img,
+                  progress: pct,
+                }
+              : img
+          )
+        );
+      });
+      setImages((prev) =>
+        prev.map((img, i) =>
+          i === index
+            ? {
+                ...img,
+                uploading: false,
+                uploadedUrl: uploaded.publicUrl,
+                uploadedKey: uploaded.key,
+                progress: 100,
+                error: "",
+                file: null,
+              }
+            : img
+        )
+      );
+      toast.success("Image uploaded");
+    } catch (err) {
+      setImages((prev) =>
+        prev.map((img, i) =>
+          i === index
+            ? {
+                ...img,
+                uploading: false,
+                error: err?.message || "Upload failed",
+                progress: 0,
+              }
+            : img
+        )
+      );
+      toast.error(err?.message || "Failed to upload image");
     }
   };
 
@@ -609,14 +730,39 @@ export default function EditProductContent(props) {
       const detectedFileType = getFileType(file.name);
       setFileType(detectedFileType);
 
-      const uploaded = await uploadDirect(file, "productFile");
+      setProductFile({
+        name: file.name,
+        type: file.type || "application/octet-stream",
+        size: file.size,
+        file,
+        uploadedUrl: null,
+        uploadedKey: null,
+        uploading: true,
+        progress: 0,
+        error: "",
+      });
+
+      const uploaded = await uploadDirect(file, "productFile", (pct) => {
+        setProductFile((prev) =>
+          prev
+            ? {
+                ...prev,
+                progress: pct,
+              }
+            : prev
+        );
+      });
 
       setProductFile({
         name: file.name,
         type: file.type || "application/octet-stream",
         size: file.size,
+        file: null,
         uploadedUrl: uploaded.publicUrl,
         uploadedKey: uploaded.key,
+        uploading: false,
+        progress: 100,
+        error: "",
       });
 
       toast.success(`File "${file.name}" uploaded (${formattedSize})`);
@@ -627,10 +773,81 @@ export default function EditProductContent(props) {
         });
       } catch {
       }
+      setProductFile((prev) =>
+        prev
+          ? {
+              ...prev,
+              uploading: false,
+              progress: 0,
+              error: error?.message || "Upload failed",
+            }
+          : prev
+      );
       toast.error(error?.message || "Failed to upload file");
     } finally {
       setUploadingFile(false);
       if (inputEl) inputEl.value = "";
+    }
+  };
+
+  const retryFileUpload = async () => {
+    const file = productFile?.file;
+    if (!file) {
+      toast.error("Please re-upload the file");
+      return;
+    }
+    setUploadingFile(true);
+    setProductFile((prev) =>
+      prev
+        ? {
+            ...prev,
+            uploading: true,
+            progress: 0,
+            error: "",
+            uploadedUrl: null,
+            uploadedKey: null,
+          }
+        : prev
+    );
+    try {
+      const uploaded = await uploadDirect(file, "productFile", (pct) => {
+        setProductFile((prev) =>
+          prev
+            ? {
+                ...prev,
+                progress: pct,
+              }
+            : prev
+        );
+      });
+      setProductFile((prev) =>
+        prev
+          ? {
+              ...prev,
+              file: null,
+              uploadedUrl: uploaded.publicUrl,
+              uploadedKey: uploaded.key,
+              uploading: false,
+              progress: 100,
+              error: "",
+            }
+          : prev
+      );
+      toast.success("File uploaded");
+    } catch (err) {
+      setProductFile((prev) =>
+        prev
+          ? {
+              ...prev,
+              uploading: false,
+              progress: 0,
+              error: err?.message || "Upload failed",
+            }
+          : prev
+      );
+      toast.error(err?.message || "Failed to upload file");
+    } finally {
+      setUploadingFile(false);
     }
   };
 
@@ -654,6 +871,31 @@ export default function EditProductContent(props) {
   const removeExistingFile = () => {
     setExistingProductFile(null);
   };
+
+  const hasPendingUploads =
+    uploadingImage ||
+    uploadingFile ||
+    (Array.isArray(images) && images.some((img) => img?.uploading)) ||
+    productFile?.uploading;
+
+  const hasUploadErrors =
+    (Array.isArray(images) && images.some((img) => img?.error)) ||
+    Boolean(productFile?.error);
+
+  useEffect(() => {
+    if (!submitQueued) return;
+    if (hasPendingUploads) return;
+    if (hasUploadErrors) {
+      setSubmitQueued(false);
+      toast.error("Some uploads failed. Please retry.");
+      return;
+    }
+    setSubmitQueued(false);
+    try {
+      formRef.current?.requestSubmit?.();
+    } catch {
+    }
+  }, [submitQueued, hasPendingUploads, hasUploadErrors]);
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-5xl">
@@ -682,6 +924,15 @@ export default function EditProductContent(props) {
             formData.delete("productFile");
             const ready = uploadReady === true || (await runUploadPrecheck());
             if (!ready) return;
+            if (hasUploadErrors) {
+              toast.error("Some uploads failed. Please retry.");
+              return;
+            }
+            if (hasPendingUploads) {
+              setSubmitQueued(true);
+              toast("Uploads in progress. We'll save your changes automatically when done.");
+              return;
+            }
             const missingProductFile = !productFile && !existingProductFile;
             if (missingProductFile) {
               setClientErrors((prev) => ({
@@ -703,8 +954,8 @@ export default function EditProductContent(props) {
               toast.error("At least one image is required");
               return;
             }
-            if (images.some((img) => img?.uploading || !img?.uploadedUrl)) {
-              toast.error("Please wait for uploads to finish");
+            if (images.some((img) => !img?.uploadedUrl)) {
+              toast.error("Some images did not finish uploading. Please re-upload.");
               return;
             }
             // Add product ID for editing
@@ -1180,11 +1431,41 @@ export default function EditProductContent(props) {
                         sizes="(max-width: 767px) 100vw, (max-width: 1023px) 50vw, 33vw"
                         priority
                       />
+                      {imageObj?.uploadedUrl && !imageObj?.uploading && !imageObj?.error ? (
+                        <div className="absolute left-1 top-1 rounded bg-green-600 px-1 py-0.5 text-[10px] text-white">
+                          Uploaded
+                        </div>
+                      ) : null}
+                      {imageObj?.uploading ? (
+                        <div className="absolute inset-x-0 bottom-0 bg-black/60 p-1 text-white">
+                          <div className="h-1 w-full rounded bg-white/30">
+                            <div
+                              className="h-1 rounded bg-white"
+                              style={{ width: `${imageObj?.progress || 0}%` }}
+                            />
+                          </div>
+                          <div className="mt-0.5 text-center text-[10px]">
+                            {imageObj?.progress || 0}%
+                          </div>
+                        </div>
+                      ) : null}
+                      {imageObj?.error && !imageObj?.uploading ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-red-600/70 p-1 text-white">
+                          <div className="text-[10px]">Upload failed</div>
+                          <button
+                            type="button"
+                            onClick={() => retryImageUpload(index)}
+                            className="text-[10px] underline"
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : null}
                       <button
                         type="button"
                         onClick={() => removeImage(index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                        disabled={isPending || uploadReady === false}
+                        disabled={imageObj?.uploading || isPending || uploadReady === false}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1293,6 +1574,32 @@ export default function EditProductContent(props) {
                           <p className="text-sm text-gray-500">
                             {fileSize} • {productFile.type || "Unknown type"}
                           </p>
+                          {productFile?.uploading ? (
+                            <div className="mt-2">
+                              <div className="h-1.5 w-56 rounded bg-blue-200">
+                                <div
+                                  className="h-1.5 rounded bg-blue-600"
+                                  style={{ width: `${productFile?.progress || 0}%` }}
+                                />
+                              </div>
+                              <div className="mt-1 text-xs text-gray-600">
+                                Uploading... {productFile?.progress || 0}%
+                              </div>
+                            </div>
+                          ) : null}
+                          {productFile?.error ? (
+                            <div className="mt-2 text-xs text-red-600">
+                              {productFile.error}{" "}
+                              <button
+                                type="button"
+                                onClick={retryFileUpload}
+                                className="underline"
+                                disabled={uploadingFile || isPending || uploadReady === false}
+                              >
+                                Retry
+                              </button>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
                       <button
@@ -1487,20 +1794,38 @@ export default function EditProductContent(props) {
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={isPending || uploadReady === false}
-              className="bg-black text-white disabled:cursor-not-allowed cursor-pointer border border-black hover:bg-white hover:text-black"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Edit Product"
-              )}
-            </Button>
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                type="submit"
+                disabled={isPending || uploadReady === false}
+                className="bg-black text-white disabled:cursor-not-allowed cursor-pointer border border-black hover:bg-white hover:text-black"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : submitQueued ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Edit Product"
+                )}
+              </Button>
+              {submitQueued || hasPendingUploads ? (
+                <div className="text-xs text-gray-600">
+                  Uploads in progress, will submit automatically.
+                </div>
+              ) : null}
+              {uploadCheckPending ? (
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Checking upload availability...
+                </div>
+              ) : null}
+            </div>
           </CardFooter>
         </form>
       </Card>
