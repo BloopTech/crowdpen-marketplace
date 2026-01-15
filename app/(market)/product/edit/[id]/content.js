@@ -87,6 +87,7 @@ export default function EditProductContent(props) {
   const [uploadingFile, setUploadingFile] = useState(false);
   const [uploadReady, setUploadReady] = useState(null); // null = unknown, true/false
   const [uploadCheckPending, setUploadCheckPending] = useState(false);
+  const [uploadRetryCount, setUploadRetryCount] = useState(0);
   const [submitQueued, setSubmitQueued] = useState(false);
   const [fileSize, setFileSize] = useState("");
   const [fileType, setFileType] = useState("");
@@ -114,6 +115,8 @@ export default function EditProductContent(props) {
     initialStateValues
   );
   const formRef = useRef(null);
+  const uploadRetryTimeoutRef = useRef(null);
+  const uploadCheckCooldownRef = useRef(0);
   const router = useRouter();
 
   const hasFieldErrors = useMemo(() => {
@@ -265,7 +268,12 @@ export default function EditProductContent(props) {
     return null;
   }, [price, originalPrice, hasDiscount]);
 
-  const runUploadPrecheck = useCallback(async () => {
+  const runUploadPrecheck = useCallback(async ({ silent = false } = {}) => {
+    if (uploadCheckPending) return uploadReady === true;
+    const now = Date.now();
+    if (uploadCheckCooldownRef.current && now < uploadCheckCooldownRef.current) {
+      return uploadReady === true;
+    }
     setUploadCheckPending(true);
     try {
       const res = await fetch("/api/marketplace/products/upload-capabilities", {
@@ -275,20 +283,34 @@ export default function EditProductContent(props) {
       const data = await res.json().catch(() => ({}));
       const ok = res.ok && data?.status === "success";
       if (!ok) {
-        toast.error(data?.message || "Uploads unavailable. Please retry shortly.");
+        if (!silent) {
+          toast.error(data?.message || "Uploads unavailable. Please retry shortly.");
+        }
         setUploadReady(false);
+        setUploadRetryCount((count) => count + 1);
+        const nextAttempt = Math.min(uploadRetryCount + 1, 5);
+        const delayMs = Math.min(30000, 2000 * 2 ** nextAttempt);
+        uploadCheckCooldownRef.current = Date.now() + delayMs;
         return false;
       }
       setUploadReady(true);
+      setUploadRetryCount(0);
+      uploadCheckCooldownRef.current = 0;
       return true;
     } catch {
-      toast.error("Uploads unavailable. Please check your connection and retry.");
+      if (!silent) {
+        toast.error("Uploads unavailable. Please check your connection and retry.");
+      }
       setUploadReady(false);
+      setUploadRetryCount((count) => count + 1);
+      const nextAttempt = Math.min(uploadRetryCount + 1, 5);
+      const delayMs = Math.min(30000, 2000 * 2 ** nextAttempt);
+      uploadCheckCooldownRef.current = Date.now() + delayMs;
       return false;
     } finally {
       setUploadCheckPending(false);
     }
-  }, []);
+  }, [uploadCheckPending, uploadReady, uploadRetryCount]);
 
   const deleteDirect = useCallback(async (key) => {
     if (!key) return;
@@ -371,8 +393,41 @@ export default function EditProductContent(props) {
   }, [deleteDirect, putWithProgress]);
 
   useEffect(() => {
-    void runUploadPrecheck();
-  }, [runUploadPrecheck]);
+    if (status !== "authenticated") return;
+    void runUploadPrecheck({ silent: true });
+  }, [runUploadPrecheck, status]);
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      if (uploadRetryTimeoutRef.current) {
+        clearTimeout(uploadRetryTimeoutRef.current);
+        uploadRetryTimeoutRef.current = null;
+      }
+      return;
+    }
+    if (uploadReady !== false || uploadCheckPending) {
+      if (uploadRetryTimeoutRef.current) {
+        clearTimeout(uploadRetryTimeoutRef.current);
+        uploadRetryTimeoutRef.current = null;
+      }
+      return;
+    }
+    if (uploadRetryTimeoutRef.current) return;
+    const cappedAttempt = Math.min(uploadRetryCount, 5);
+    const delayMs = Math.min(30000, 2000 * 2 ** cappedAttempt);
+    uploadRetryTimeoutRef.current = setTimeout(() => {
+      uploadRetryTimeoutRef.current = null;
+      void runUploadPrecheck({ silent: true });
+    }, delayMs);
+  }, [status, uploadReady, uploadCheckPending, uploadRetryCount, runUploadPrecheck]);
+
+  useEffect(() => {
+    return () => {
+      if (uploadRetryTimeoutRef.current) {
+        clearTimeout(uploadRetryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Validate price relationship
   const validatePrices = (currentPrice, currentOriginalPrice) => {
@@ -1011,7 +1066,7 @@ export default function EditProductContent(props) {
                       ? "border-red-500 focus:ring-red-500"
                       : "focus:ring-tertiary"
                   }`}
-                  disabled={isPending || uploadReady === false}
+                  disabled={isPending}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                 />
@@ -1037,7 +1092,7 @@ export default function EditProductContent(props) {
                     value={stock}
                     onChange={(e) => setStock(e.target.value)}
                     className="w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
-                    disabled={isPending || uploadReady === false}
+                    disabled={isPending}
                   />
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
@@ -1057,7 +1112,7 @@ export default function EditProductContent(props) {
                   value={description}
                   onChange={setDescription}
                   placeholder="Enter detailed product description"
-                  disabled={isPending || uploadReady === false}
+                  disabled={isPending}
                   error={
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.description?.length
@@ -1087,7 +1142,7 @@ export default function EditProductContent(props) {
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.what_included?.length
                   }
-                  disabled={isPending || uploadReady === false}
+                  disabled={isPending}
                 />
                 {/* Hidden input for form submission */}
                 <input
@@ -1113,7 +1168,7 @@ export default function EditProductContent(props) {
                     }}
                     name="marketplace_category_id"
                     required
-                    disabled={isPending || uploadReady === false}
+                    disabled={isPending}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a category" />
@@ -1153,7 +1208,7 @@ export default function EditProductContent(props) {
                     }}
                     name="marketplace_subcategory_id"
                     required
-                    disabled={isPending || !categoryID || uploadReady === false}
+                    disabled={isPending || !categoryID}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select a subcategory" />
@@ -1193,7 +1248,7 @@ export default function EditProductContent(props) {
                   <Select
                     value={productStatus}
                     onValueChange={setProductStatus}
-                    disabled={isPending || uploadReady === false}
+                    disabled={isPending}
                   >
                     <SelectTrigger id="product_status">
                       <SelectValue placeholder="Select status" />
@@ -1235,7 +1290,7 @@ export default function EditProductContent(props) {
                           setPrice("");
                         }
                       }}
-                      disabled={isPending || uploadReady === false}
+                      disabled={isPending}
                     />
                   </div>
                   <div className="text-xs text-muted-foreground dark:text-slate-400">
@@ -1267,7 +1322,7 @@ export default function EditProductContent(props) {
                           ? "border-red-500 dark:border-red-500 focus:ring-red-500 dark:focus:ring-red-500"
                           : ""
                       }`}
-                      disabled={isPending || uploadReady === false}
+                      disabled={isPending}
                     />
                     <span className="text-xs text-red-500">
                       {Object.keys(state?.errors).length !== 0 &&
@@ -1311,7 +1366,7 @@ export default function EditProductContent(props) {
                               ? "border-red-500 focus:ring-red-500"
                               : "focus:ring-tertiary"
                           }`}
-                          disabled={isPending || uploadReady === false}
+                          disabled={isPending}
                         />
                         <span className="text-xs text-red-500">
                           {Object.keys(state?.errors).length !== 0 &&
@@ -1333,7 +1388,7 @@ export default function EditProductContent(props) {
                                 ? "border-red-500 focus:ring-red-500"
                                 : "focus:ring-tertiary"
                             }`}
-                            disabled={isPending || uploadReady === false}
+                            disabled={isPending}
                           />
                           <span className="text-xs text-red-500">
                             {Object.keys(state?.errors).length !== 0 &&
@@ -1394,7 +1449,7 @@ export default function EditProductContent(props) {
                           type="button"
                           onClick={() => removeExistingImage(index)}
                           className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                          disabled={isPending || uploadReady === false}
+                          disabled={isPending}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -1465,7 +1520,7 @@ export default function EditProductContent(props) {
                         type="button"
                         onClick={() => removeImage(index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
-                        disabled={imageObj?.uploading || isPending || uploadReady === false}
+                        disabled={imageObj?.uploading || isPending}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1497,7 +1552,7 @@ export default function EditProductContent(props) {
                       multiple
                       className="hidden"
                       onChange={handleImageUpload}
-                      disabled={uploadingImage || isPending || uploadReady === false}
+                      disabled={uploadingImage || isPending}
                     />
                   </label>
                 </div>
@@ -1551,7 +1606,7 @@ export default function EditProductContent(props) {
                         type="button"
                         onClick={removeExistingFile}
                         className="text-red-500 hover:text-red-700 p-1"
-                        disabled={isPending || uploadReady === false}
+                        disabled={isPending}
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -1594,7 +1649,7 @@ export default function EditProductContent(props) {
                                 type="button"
                                 onClick={retryFileUpload}
                                 className="underline"
-                                disabled={uploadingFile || isPending || uploadReady === false}
+                                disabled={uploadingFile || isPending}
                               >
                                 Retry
                               </button>
@@ -1606,7 +1661,7 @@ export default function EditProductContent(props) {
                         type="button"
                         onClick={removeFile}
                         className="text-red-500 hover:text-red-700 p-1"
-                        disabled={uploadingFile || isPending || uploadReady === false}
+                        disabled={uploadingFile || isPending}
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -1641,7 +1696,7 @@ export default function EditProductContent(props) {
                         accept=".pdf,.psd,.ai,.fig,.zip,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                         className="hidden"
                         onChange={handleFileUpload}
-                        disabled={uploadingFile || isPending || uploadReady === false}
+                        disabled={uploadingFile || isPending}
                       />
                     </label>
                   )}
@@ -1739,7 +1794,7 @@ export default function EditProductContent(props) {
                   <Label htmlFor="license">License</Label>
                   <Select
                     name="license"
-                    disabled={isPending || uploadReady === false}
+                    disabled={isPending}
                     value={license}
                     onValueChange={(value) => setLicense(value)}
                   >
@@ -1762,7 +1817,7 @@ export default function EditProductContent(props) {
                   <Label htmlFor="deliveryTime">Delivery Time</Label>
                   <Select
                     name="deliveryTime"
-                    disabled={isPending || uploadReady === false}
+                    disabled={isPending}
                     value={deliveryTime}
                     onValueChange={(value) => setDeliveryTime(value)}
                   >
@@ -1797,7 +1852,7 @@ export default function EditProductContent(props) {
             <div className="flex flex-col items-end gap-1">
               <Button
                 type="submit"
-                disabled={isPending || uploadReady === false}
+                disabled={isPending}
                 className="bg-black text-white disabled:cursor-not-allowed cursor-pointer border border-black hover:bg-white hover:text-black"
               >
                 {isPending ? (
@@ -1823,6 +1878,11 @@ export default function EditProductContent(props) {
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <Loader2 className="h-3 w-3 animate-spin" />
                   Checking upload availability...
+                </div>
+              ) : null}
+              {uploadReady === false ? (
+                <div className="text-xs text-amber-600">
+                  Uploads unavailable. Retrying automatically...
                 </div>
               ) : null}
             </div>
