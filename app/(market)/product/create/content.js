@@ -608,12 +608,6 @@ export default function CreateProductContent({ draftId }) {
     const files = inputEl.files;
     if (!files || files.length === 0) return;
 
-    const ready = uploadReady === true || (await runUploadPrecheck());
-    if (!ready) {
-      if (inputEl) inputEl.value = "";
-      return;
-    }
-
     setUploadingImage(true);
 
     try {
@@ -832,12 +826,6 @@ export default function CreateProductContent({ draftId }) {
     const inputEl = e.target;
     const files = inputEl.files;
     if (!files || files.length === 0) return;
-
-    const ready = uploadReady === true || (await runUploadPrecheck());
-    if (!ready) {
-      if (inputEl) inputEl.value = "";
-      return;
-    }
 
     setUploadingFile(true);
     const file = files[0];
@@ -1079,8 +1067,6 @@ export default function CreateProductContent({ draftId }) {
           action={async (formData) => {
             formData.delete("images");
             formData.delete("productFile");
-            const ready = uploadReady === true || (await runUploadPrecheck());
-            if (!ready) return;
             if (hasUploadErrors) {
               toast.error("Some uploads failed. Please retry.");
               return;

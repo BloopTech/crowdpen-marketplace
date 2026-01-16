@@ -42,12 +42,12 @@ const randomImageName = (bytes = 32) =>
 export async function POST(request) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   try {
-    if (REQUIRED_R2_ENV.some((k) => !process.env[k])) {
-      return NextResponse.json(
-        { message: "Uploads unavailable. Please retry shortly." },
-        { status: 503 }
-      );
-    }
+    // if (REQUIRED_R2_ENV.some((k) => !process.env[k])) {
+    //   return NextResponse.json(
+    //     { message: "Uploads unavailable. Please retry shortly." },
+    //     { status: 503 }
+    //   );
+    // }
 
     // Verify authentication
     const session = await getServerSession(authOptions);

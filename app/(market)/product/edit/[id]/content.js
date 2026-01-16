@@ -479,12 +479,6 @@ export default function EditProductContent(props) {
     const files = inputEl.files;
     if (!files || files.length === 0) return;
 
-    const ready = uploadReady === true || (await runUploadPrecheck());
-    if (!ready) {
-      if (inputEl) inputEl.value = "";
-      return;
-    }
-
     setUploadingImage(true);
 
     try {
@@ -709,25 +703,16 @@ export default function EditProductContent(props) {
     const files = inputEl.files;
     if (!files || files.length === 0) return;
 
-    const ready = uploadReady === true || (await runUploadPrecheck());
-    if (!ready) {
-      if (inputEl) inputEl.value = "";
-      return;
-    }
-
-    const file = files[0]; // Only take the first file (single file upload)
-    // Pre-flight size check before we toggle UI states
-    const maxSize = 25 * 1024 * 1024; // 25MB
-    if (file && typeof file.size === "number" && file.size > maxSize) {
-      toast.error("Product file size must be 25MB or less");
-      if (inputEl) inputEl.value = "";
-      return;
-    }
-
     setUploadingFile(true);
+    const file = files[0];
 
     try {
-      // Validate file type
+      const maxSize = 25 * 1024 * 1024;
+      if (file.size > maxSize) {
+        toast.error("File size must be 25MB or less");
+        return;
+      }
+
       const allowedExtensions = [
         "pdf",
         "psd",
@@ -750,7 +735,6 @@ export default function EditProductContent(props) {
         return;
       }
 
-      // Calculate and format file size
       const formatFileSize = (bytes) => {
         if (bytes === 0) return "0 Bytes";
         const k = 1024;
@@ -762,7 +746,6 @@ export default function EditProductContent(props) {
       const formattedSize = formatFileSize(file.size);
       setFileSize(formattedSize);
 
-      // Detect and set file type based on extension
       const getFileType = (fileName) => {
         const extension = fileName.split(".").pop().toLowerCase();
         const fileTypeMap = {
@@ -779,7 +762,7 @@ export default function EditProductContent(props) {
           ppt: "PPT",
           pptx: "PPT",
         };
-        return fileTypeMap[extension] || "PDF"; // Default to PDF if unknown
+        return fileTypeMap[extension] || "PDF";
       };
 
       const detectedFileType = getFileType(file.name);
@@ -977,8 +960,6 @@ export default function EditProductContent(props) {
           action={async (formData) => {
             formData.delete("images");
             formData.delete("productFile");
-            const ready = uploadReady === true || (await runUploadPrecheck());
-            if (!ready) return;
             if (hasUploadErrors) {
               toast.error("Some uploads failed. Please retry.");
               return;

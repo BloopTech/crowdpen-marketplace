@@ -57,12 +57,12 @@ export async function GET(request) {
   const requestId = getRequestIdFromHeaders(request?.headers) || null;
   let session;
   try {
-    if (REQUIRED_R2_ENV.some((k) => !process.env[k])) {
-      return NextResponse.json(
-        { status: "error", message: "Uploads unavailable. Please retry shortly." },
-        { status: 503 }
-      );
-    }
+    // if (REQUIRED_R2_ENV.some((k) => !process.env[k])) {
+    //   return NextResponse.json(
+    //     { status: "error", message: "Uploads unavailable. Please retry shortly." },
+    //     { status: 503 }
+    //   );
+    // }
 
     session = await getServerSession(authOptions);
     if (!session?.user?.id) {
@@ -85,13 +85,13 @@ export async function GET(request) {
       );
     }
 
-    const reachable = await checkBucketReachable();
-    if (!reachable) {
-      return NextResponse.json(
-        { status: "error", message: "Uploads unavailable. Please retry shortly." },
-        { status: 503 }
-      );
-    }
+    // const reachable = await checkBucketReachable();
+    // if (!reachable) {
+    //   return NextResponse.json(
+    //     { status: "error", message: "Uploads unavailable. Please retry shortly." },
+    //     { status: 503 }
+    //   );
+    // }
 
     return NextResponse.json(
       {

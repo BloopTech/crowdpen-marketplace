@@ -121,9 +121,11 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
+    "@playwright/test": "^1.57.0",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/postcss": "^4.1.18",
     "@tailwindcss/typography": "^0.5.19",
+    "@types/node": "^25.0.9",
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4.1.18"
