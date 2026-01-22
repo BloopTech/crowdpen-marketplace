@@ -72,28 +72,45 @@ export default async function AdminMerchantPayoutsPage({
     if (!Number.isFinite(v)) return 0;
     return v / 100;
   };
-
   return (
-    <div className="space-y-4 pb-8">
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-        <div className="text-base font-semibold">Payouts</div>
-        <div className="text-xs text-muted-foreground">
+    <div className="space-y-4 pb-8" data-testid="admin-merchant-payouts">
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+        data-testid="admin-merchant-payouts-summary"
+      >
+        <div className="text-base font-semibold" data-testid="admin-merchant-payouts-title">
+          Payouts
+        </div>
+        <div className="text-xs text-muted-foreground" data-testid="admin-merchant-payouts-description">
           All payouts for this merchant (USD).
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left p-3">Date</th>
-              <th className="text-left p-3">Status</th>
-              <th className="text-right p-3">Amount (USD)</th>
-              <th className="text-left p-3">Settlement Window</th>
-              <th className="text-left p-3">Reference</th>
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm overflow-x-auto"
+        data-testid="admin-merchant-payouts-table-card"
+      >
+        <table className="w-full text-sm" data-testid="admin-merchant-payouts-table">
+          <thead data-testid="admin-merchant-payouts-head">
+            <tr className="border-b" data-testid="admin-merchant-payouts-head-row">
+              <th className="text-left p-3" data-testid="admin-merchant-payouts-head-date">
+                Date
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-payouts-head-status">
+                Status
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-payouts-head-amount">
+                Amount (USD)
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-payouts-head-settlement">
+                Settlement Window
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-payouts-head-reference">
+                Reference
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-testid="admin-merchant-payouts-body">
             {(rows || []).map((r) => {
               const amount = fmtUsd(toMajor(r.amountCents));
               const window =
@@ -101,20 +118,38 @@ export default async function AdminMerchantPayoutsPage({
                   ? `${r.settlementFrom} → ${r.settlementTo}`
                   : "-";
               return (
-                <tr key={r.id} className="border-b last:border-0">
-                  <td className="p-3">{fmtDateTimeUtc(r.createdAt)}</td>
-                  <td className="p-3 capitalize">{r.status}</td>
-                  <td className="p-3 text-right tabular-nums">{amount}</td>
-                  <td className="p-3">{window}</td>
-                  <td className="p-3">{r.reference || "-"}</td>
+                <tr
+                  key={r.id}
+                  className="border-b last:border-0"
+                  data-testid={`admin-merchant-payouts-row-${r.id}`}
+                >
+                  <td className="p-3" data-testid={`admin-merchant-payouts-row-${r.id}-date`}>
+                    {fmtDateTimeUtc(r.createdAt)}
+                  </td>
+                  <td className="p-3 capitalize" data-testid={`admin-merchant-payouts-row-${r.id}-status`}>
+                    {r.status}
+                  </td>
+                  <td
+                    className="p-3 text-right tabular-nums"
+                    data-testid={`admin-merchant-payouts-row-${r.id}-amount`}
+                  >
+                    {amount}
+                  </td>
+                  <td className="p-3" data-testid={`admin-merchant-payouts-row-${r.id}-settlement`}>
+                    {window}
+                  </td>
+                  <td className="p-3" data-testid={`admin-merchant-payouts-row-${r.id}-reference`}>
+                    {r.reference || "-"}
+                  </td>
                 </tr>
               );
             })}
             {(rows || []).length === 0 ? (
-              <tr>
+              <tr data-testid="admin-merchant-payouts-empty">
                 <td
                   className="p-6 text-center text-muted-foreground"
                   colSpan={5}
+                  data-testid="admin-merchant-payouts-empty-cell"
                 >
                   No payouts found.
                 </td>
@@ -124,15 +159,13 @@ export default async function AdminMerchantPayoutsPage({
         </table>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
-          Page {getPage.toLocaleString("en-US")} of{" "}
-          {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")}{" "}
-          payouts)
+      <div className="flex items-center justify-between" data-testid="admin-merchant-payouts-page">
+        <div className="text-xs text-muted-foreground" data-testid="admin-merchant-payouts-page-info">
+          Page {getPage.toLocaleString("en-US")} of {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")} payouts)
         </div>
       </div>
 
-      <div>
+      <div data-testid="admin-merchant-payouts-pagination">
         <MerchantSubpagePagination currentPage={getPage} totalPages={totalPages} />
       </div>
     </div>

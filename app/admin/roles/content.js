@@ -26,22 +26,30 @@ export default function AdminRolesContent() {
   const { sessionUserId, isSenior, users, loading, error, refetch } = useAdminRoles();
 
   return (
-    <div className="px-4">
-      <Card>
+    <div className="px-4" data-testid="admin-roles-page">
+      <Card data-testid="admin-roles-card">
         <CardHeader>
           <div className="flex items-center justify-between gap-2">
             <CardTitle>User Roles</CardTitle>
             <div className="flex items-center gap-2">
               <AddRoleDialog isSenior={isSenior} onDone={() => refetch?.()} />
-              <Button onClick={() => refetch?.()} disabled={loading}>
+              <Button
+                onClick={() => refetch?.()}
+                disabled={loading}
+                data-testid="admin-roles-refresh"
+              >
                 {loading ? "Refreshing..." : "Refresh"}
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          {error ? <div className="text-destructive text-sm">{error}</div> : null}
-          <Table>
+          {error ? (
+            <div className="text-destructive text-sm" data-testid="admin-roles-error">
+              {error}
+            </div>
+          ) : null}
+          <Table data-testid="admin-roles-table">
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
@@ -58,7 +66,7 @@ export default function AdminRolesContent() {
                 const initials = (u?.name || u?.email || "").trim().slice(0, 2).toUpperCase();
 
                 return (
-                  <TableRow key={u.id}>
+                  <TableRow key={u.id} data-testid={`admin-role-row-${u.id}`}>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar imageUrl={u.image} color={u.color}>
@@ -77,14 +85,20 @@ export default function AdminRolesContent() {
                         {!isSelf && u.role === "user" && (
                           <form action={promoteToAdmin}>
                             <input type="hidden" name="userId" value={u.id} />
-                            <Button size="sm">Make Admin</Button>
+                            <Button size="sm" data-testid={`admin-role-make-admin-${u.id}`}>
+                              Make Admin
+                            </Button>
                           </form>
                         )}
 
                         {!isSelf && isAdmin && (
                           <form action={demoteAdminToUser}>
                             <input type="hidden" name="userId" value={u.id} />
-                            <Button size="sm" variant="outline">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              data-testid={`admin-role-remove-admin-${u.id}`}
+                            >
                               Remove Admin
                             </Button>
                           </form>
@@ -93,7 +107,11 @@ export default function AdminRolesContent() {
                         {!isSelf && isSenior && !isSeniorAdmin && (
                           <form action={promoteToSeniorAdmin}>
                             <input type="hidden" name="userId" value={u.id} />
-                            <Button size="sm" variant="secondary">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              data-testid={`admin-role-make-senior-${u.id}`}
+                            >
                               Make Senior Admin
                             </Button>
                           </form>
@@ -102,7 +120,11 @@ export default function AdminRolesContent() {
                         {!isSelf && isSenior && isSeniorAdmin && (
                           <form action={demoteSeniorAdminToAdmin}>
                             <input type="hidden" name="userId" value={u.id} />
-                            <Button size="sm" variant="destructive">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              data-testid={`admin-role-remove-senior-${u.id}`}
+                            >
                               Remove Senior Admin
                             </Button>
                           </form>
@@ -119,7 +141,7 @@ export default function AdminRolesContent() {
                 );
               })}
               {!loading && users.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-roles-empty">
                   <TableCell colSpan={4} className="text-center text-sm text-muted-foreground">
                     No users found.
                   </TableCell>
@@ -157,13 +179,15 @@ function AddRoleDialog({ isSenior, onDone }) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={setOpen} data-testid="admin-roles-dialog">
       <DialogTrigger asChild>
-        <Button variant="outline">Add Role</Button>
+        <Button variant="outline" data-testid="admin-roles-add-trigger">
+          Add Role
+        </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent data-testid="admin-roles-dialog-content">
         <DialogHeader>
-          <DialogTitle>Search users</DialogTitle>
+          <DialogTitle data-testid="admin-roles-dialog-title">Search users</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="flex gap-2">
@@ -172,17 +196,26 @@ function AddRoleDialog({ isSenior, onDone }) {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search by name or email"
               className="flex-1 border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              data-testid="admin-roles-search-input"
             />
-            <Button onClick={doSearch} disabled={loading}>
+            <Button onClick={doSearch} disabled={loading} data-testid="admin-roles-search-submit">
               {loading ? "Searching..." : "Search"}
             </Button>
           </div>
-          {error ? <div className="text-sm text-destructive">{error}</div> : null}
-          <div className="max-h-80 overflow-auto divide-y">
+          {error ? (
+            <div className="text-sm text-destructive" data-testid="admin-roles-search-error">
+              {error}
+            </div>
+          ) : null}
+          <div className="max-h-80 overflow-auto divide-y" data-testid="admin-roles-search-results">
             {results.map((u) => {
               const initials = (u?.name || u?.email || "").trim().slice(0, 2).toUpperCase();
               return (
-                <div key={u.id} className="flex items-center justify-between py-2 gap-3">
+                <div
+                  key={u.id}
+                  className="flex items-center justify-between py-2 gap-3"
+                  data-testid={`admin-roles-search-row-${u.id}`}
+                >
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar imageUrl={u.image} color={u.color}>
                       <AvatarFallback>{initials}</AvatarFallback>
@@ -196,7 +229,11 @@ function AddRoleDialog({ isSenior, onDone }) {
                     {u.role === "admin" ? (
                       <form action={demoteAdminToUser} onSubmit={() => onDone?.()}>
                         <input type="hidden" name="userId" value={u.id} />
-                        <Button size="sm" variant="outline">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid={`admin-roles-search-remove-admin-${u.id}`}
+                        >
                           Remove Admin
                         </Button>
                       </form>
@@ -204,7 +241,11 @@ function AddRoleDialog({ isSenior, onDone }) {
                       isSenior ? (
                         <form action={demoteSeniorAdminToAdmin} onSubmit={() => onDone?.()}>
                           <input type="hidden" name="userId" value={u.id} />
-                          <Button size="sm" variant="destructive">
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            data-testid={`admin-roles-search-remove-senior-${u.id}`}
+                          >
                             Remove Senior Admin
                           </Button>
                         </form>
@@ -215,12 +256,18 @@ function AddRoleDialog({ isSenior, onDone }) {
                       <>
                         <form action={promoteToAdmin} onSubmit={() => onDone?.()}>
                           <input type="hidden" name="userId" value={u.id} />
-                          <Button size="sm">Make Admin</Button>
+                          <Button size="sm" data-testid={`admin-roles-search-make-admin-${u.id}`}>
+                            Make Admin
+                          </Button>
                         </form>
                         {isSenior && (
                           <form action={promoteToSeniorAdmin} onSubmit={() => onDone?.()}>
                             <input type="hidden" name="userId" value={u.id} />
-                            <Button size="sm" variant="secondary">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              data-testid={`admin-roles-search-make-senior-${u.id}`}
+                            >
                               Make Senior Admin
                             </Button>
                           </form>
@@ -232,13 +279,20 @@ function AddRoleDialog({ isSenior, onDone }) {
               );
             })}
             {results.length === 0 && !loading && (
-              <div className="text-sm text-muted-foreground py-6 text-center">No results.</div>
+              <div
+                className="text-sm text-muted-foreground py-6 text-center"
+                data-testid="admin-roles-search-empty"
+              >
+                No results.
+              </div>
             )}
           </div>
         </div>
         <DialogFooter>
           <DialogClose asChild>
-            <Button variant="outline">Close</Button>
+            <Button variant="outline" data-testid="admin-roles-dialog-close">
+              Close
+            </Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

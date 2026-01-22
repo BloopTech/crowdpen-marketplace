@@ -34,12 +34,12 @@ export default function AdminLicensesContent() {
   } = useAdminLicenses();
 
   return (
-    <div className="px-4 space-y-6">
-      <Card>
+    <div className="px-4 space-y-6" data-testid="admin-licenses-page">
+      <Card data-testid="admin-licenses-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Licenses</CardTitle>
-            <Button onClick={() => refetch()} disabled={loading}>
+            <Button onClick={() => refetch()} disabled={loading} data-testid="admin-licenses-refresh">
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
@@ -55,6 +55,7 @@ export default function AdminLicensesContent() {
                   setPageSize(v);
                 }}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-licenses-page-size"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -62,11 +63,11 @@ export default function AdminLicensesContent() {
                 <option value={100}>100</option>
               </select>
             </div>
-            <Button variant="outline" onClick={() => refetch()}>
+            <Button variant="outline" onClick={() => refetch()} data-testid="admin-licenses-apply">
               Apply
             </Button>
           </div>
-          <Table>
+          <Table data-testid="admin-licenses-table">
             <TableHeader>
               <TableRow>
                 <TableHead>User</TableHead>
@@ -79,7 +80,7 @@ export default function AdminLicensesContent() {
             </TableHeader>
             <TableBody>
               {items.map((it) => (
-                <TableRow key={it.id}>
+                <TableRow key={it.id} data-testid={`admin-license-row-${it.id}`}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar
@@ -125,6 +126,7 @@ export default function AdminLicensesContent() {
                           (it?.downloadUrl || "").toString().toUpperCase() ===
                           "REVOKED"
                         }
+                        data-testid={`admin-license-revoke-${it.id}`}
                       >
                         Revoke
                       </Button>
@@ -133,7 +135,7 @@ export default function AdminLicensesContent() {
                 </TableRow>
               ))}
               {items.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-licenses-empty">
                   <TableCell
                     colSpan={6}
                     className="text-center text-sm text-muted-foreground"
@@ -145,7 +147,7 @@ export default function AdminLicensesContent() {
             </TableBody>
           </Table>
 
-          <div className="mt-4">
+          <div className="mt-4" data-testid="admin-licenses-pagination">
             <PaginationSmart
               currentPage={page}
               totalPages={totalPages}

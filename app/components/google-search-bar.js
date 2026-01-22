@@ -15,9 +15,11 @@ export default function GoogleSearchBar({
   suggestions,
   showSuggestions,
   onSuggestionClick,
+  dataTestId,
 }) {
   const [showHelp, setShowHelp] = useState(false)
   const inputRef = useRef(null)
+  const testId = dataTestId || "google-search"
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter") {
@@ -29,7 +31,10 @@ export default function GoogleSearchBar({
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto relative">
+    <div
+      className="w-full max-w-2xl mx-auto relative"
+      data-testid={testId}
+    >
       {/* Main Search Bar */}
       <div className="relative">
         <div className="relative flex items-center">
@@ -42,6 +47,7 @@ export default function GoogleSearchBar({
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             className="pl-12 pr-20 h-14 text-lg border-2 rounded-full shadow-sm focus:shadow-md transition-shadow"
+            data-testid={`${testId}-input`}
           />
           <div className="absolute right-2 flex items-center gap-2">
             <Button
@@ -49,11 +55,17 @@ export default function GoogleSearchBar({
               size="sm"
               onClick={() => setShowHelp(!showHelp)}
               className="text-xs text-muted-foreground hover:text-foreground"
+              data-testid={`${testId}-tips`}
             >
               <Zap className="h-3 w-3 mr-1" />
               Tips
             </Button>
-            <Button onClick={() => onSearch(value)} size="sm" className="rounded-full">
+            <Button
+              onClick={() => onSearch(value)}
+              size="sm"
+              className="rounded-full"
+              data-testid={`${testId}-submit`}
+            >
               Search
             </Button>
           </div>
@@ -61,7 +73,10 @@ export default function GoogleSearchBar({
 
         {/* Search Help Tooltip */}
         {showHelp && (
-          <div className="absolute top-full mt-2 right-0 bg-popover border rounded-lg shadow-lg p-4 w-80 z-50">
+          <div
+            className="absolute top-full mt-2 right-0 bg-popover border rounded-lg shadow-lg p-4 w-80 z-50"
+            data-testid={`${testId}-tips-panel`}
+          >
             <h4 className="font-semibold mb-2">Search Tips</h4>
             <div className="space-y-2 text-sm">
               {searchOperators.map((op) => (
@@ -77,7 +92,10 @@ export default function GoogleSearchBar({
 
       {/* Suggestions Dropdown */}
       {showSuggestions && (value.length > 0 || suggestions.length > 0) && (
-        <div className="absolute top-full mt-2 w-full bg-popover border rounded-lg shadow-lg z-40 max-h-96 overflow-y-auto">
+        <div
+          className="absolute top-full mt-2 w-full bg-popover border rounded-lg shadow-lg z-40 max-h-96 overflow-y-auto"
+          data-testid={`${testId}-suggestions`}
+        >
           {/* Auto-complete suggestions */}
           {suggestions.length > 0 && (
             <div className="p-2">
@@ -87,6 +105,7 @@ export default function GoogleSearchBar({
                   key={index}
                   onClick={() => onSuggestionClick(suggestion)}
                   className="w-full text-left px-3 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                  data-testid={`${testId}-suggestion-${index}`}
                 >
                   <Search className="h-4 w-4 text-muted-foreground" />
                   <span>{suggestion}</span>
@@ -107,6 +126,7 @@ export default function GoogleSearchBar({
                   key={index}
                   onClick={() => onSuggestionClick(trend)}
                   className="w-full text-left px-3 py-2 hover:bg-muted rounded-md flex items-center gap-2"
+                  data-testid={`${testId}-trend-${index}`}
                 >
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                   <span>{trend}</span>

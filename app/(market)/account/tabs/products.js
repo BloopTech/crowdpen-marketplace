@@ -187,43 +187,52 @@ export default function MyProducts() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card data-testid="account-products-card">
+        <CardHeader data-testid="account-products-header">
           <CardTitle className="flex items-center justify-between">
             <span className="flex items-center gap-2">
               <User className="h-5 w-5" />
               My Products ({myProductsTotal || myProducts.length})
             </span>
             <Link href="/product/create">
-              <Button size="sm">
+              <Button size="sm" data-testid="account-products-create">
                 <Upload className="h-4 w-4 mr-2" />
                 Create Product
               </Button>
             </Link>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent data-testid="account-products-content">
           {myDraftsError ? (
-            <div className="text-sm text-red-600 mb-4">{myDraftsError}</div>
+            <div className="text-sm text-red-600 mb-4" data-testid="account-drafts-error">
+              {myDraftsError}
+            </div>
           ) : null}
 
           {myDraftsLoading ? (
-            <div className="flex items-center gap-2 text-muted-foreground mb-4">
+            <div
+              className="flex items-center gap-2 text-muted-foreground mb-4"
+              data-testid="account-drafts-loading"
+            >
               <Loader2 className="h-5 w-5 animate-spin" />
               Loading your drafts...
             </div>
           ) : null}
 
           {!myDraftsLoading && Array.isArray(myDrafts) && myDrafts.length > 0 ? (
-            <div className="mb-6">
+            <div className="mb-6" data-testid="account-drafts">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold">Incomplete drafts</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                data-testid="account-drafts-grid"
+              >
                 {myDrafts.map((d) => (
                   <div
                     key={d.id}
                     className="flex flex-col border border-border rounded-lg p-3"
+                    data-testid={`account-draft-${d.id}`}
                   >
                     <div className="relative aspect-3/2 bg-muted rounded overflow-hidden mb-3">
                       <NextImage
@@ -248,7 +257,7 @@ export default function MyProducts() {
                     </div>
                     <div className="mt-3 flex items-center gap-2">
                       <Link href={`/product/create?draftId=${encodeURIComponent(d.id)}`}>
-                        <Button size="sm">
+                        <Button size="sm" data-testid={`account-draft-continue-${d.id}`}>
                           Continue
                         </Button>
                       </Link>
@@ -259,18 +268,19 @@ export default function MyProducts() {
             </div>
           ) : null}
 
-          <div className="flex flex-col md:flex-row gap-4 mb-4">
+          <div className="flex flex-col md:flex-row gap-4 mb-4" data-testid="account-products-filters">
             <Input
               placeholder="Search products..."
               value={myProductsSearch}
               onChange={(e) => setMyProductsSearch(e.target.value)}
               className="md:flex-1"
+              data-testid="account-products-search"
             />
             <Select
               value={myProductsSelectedCategory}
               onValueChange={setMyProductsSelectedCategory}
             >
-              <SelectTrigger className="w-full md:w-48">
+              <SelectTrigger className="w-full md:w-48" data-testid="account-products-category">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
@@ -286,7 +296,7 @@ export default function MyProducts() {
               value={myProductsStatus || 'all'}
               onValueChange={setMyProductsStatus}
             >
-              <SelectTrigger className="w-full md:w-36">
+              <SelectTrigger className="w-full md:w-36" data-testid="account-products-status">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -300,7 +310,7 @@ export default function MyProducts() {
               value={myProductsSortBy}
               onValueChange={setMyProductsSortBy}
             >
-              <SelectTrigger className="w-full md:w-48">
+              <SelectTrigger className="w-full md:w-48" data-testid="account-products-sort">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
@@ -314,21 +324,24 @@ export default function MyProducts() {
             </Select>
           </div>
           {myProductsError ? (
-            <div className="text-sm text-red-600 mb-4">{myProductsError}</div>
+            <div className="text-sm text-red-600 mb-4" data-testid="account-products-error">
+              {myProductsError}
+            </div>
           ) : null}
 
           {myProductsLoading && myProducts.length === 0 ? (
-            <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-2 text-muted-foreground" data-testid="account-products-loading">
               <Loader2 className="h-5 w-5 animate-spin" />
               Loading your products...
             </div>
           ) : null}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4" data-testid="account-products-list">
             {myProducts.map((p) => (
               <div
                 key={p.id}
                 className="flex flex-col border border-border rounded-lg p-3"
+                data-testid={`account-product-${p.id}`}
               >
                 <div className="relative aspect-3/2 bg-muted rounded overflow-hidden mb-3">
                   <NextImage
@@ -382,12 +395,16 @@ export default function MyProducts() {
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <Link href={`/product/${p.id}`}>
-                    <Button variant="outline" size="sm">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      data-testid={`account-product-preview-${p.id}`}
+                    >
                       Preview
                     </Button>
                   </Link>
                   <Link href={`/product/edit/${p.id}`}>
-                    <Button size="sm">
+                    <Button size="sm" data-testid={`account-product-edit-${p.id}`}>
                       <Pencil className="h-4 w-4 mr-2" /> Edit
                     </Button>
                   </Link>
@@ -399,6 +416,7 @@ export default function MyProducts() {
                       setSelectedProduct(p);
                       setIsConfirmOpen(true);
                     }}
+                    data-testid={`account-product-delete-${p.id}`}
                   >
                     <Trash2 className="h-4 w-4 mr-2" /> Delete
                   </Button>
@@ -408,22 +426,28 @@ export default function MyProducts() {
           </div>
 
           {!myProductsLoading && myProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center p-8 border border-dashed rounded-lg">
+            <div
+              className="flex flex-col items-center justify-center text-center p-8 border border-dashed rounded-lg"
+              data-testid="account-products-empty"
+            >
               <p className="text-sm text-muted-foreground mb-4">
                 You have not created any products yet.
               </p>
               <Link href="/product/create">
-                <Button size="sm">Create your first product</Button>
+                <Button size="sm" data-testid="account-products-empty-create">
+                  Create your first product
+                </Button>
               </Link>
             </div>
           ) : null}
 
-          <div className="flex justify-center mt-6">
+          <div className="flex justify-center mt-6" data-testid="account-products-pagination">
             {myProductsHasMore ? (
               <Button
                 onClick={() => loadMoreMyProducts?.()}
                 disabled={myProductsLoadingMore}
                 variant="outline"
+                data-testid="account-products-load-more"
               >
                 {myProductsLoadingMore ? (
                   <span className="inline-flex items-center">
@@ -447,13 +471,15 @@ export default function MyProducts() {
           if (!open) setSelectedProduct(null);
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent data-testid="account-product-delete-dialog">
           <AlertDialogHeader>
             <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
             <AlertDialogDescription>{confirmDescription}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletePending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeletePending} data-testid="account-product-delete-cancel">
+              Cancel
+            </AlertDialogCancel>
             <form action={deleteFormAction}>
               <input
                 type="hidden"
@@ -465,6 +491,7 @@ export default function MyProducts() {
                 variant={selectedIsDeletable ? "destructive" : "default"}
                 size="sm"
                 disabled={isDeletePending || !selectedProduct?.id}
+                data-testid="account-product-delete-confirm"
               >
                 {isDeletePending ? (
                   <span className="inline-flex items-center">

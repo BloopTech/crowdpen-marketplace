@@ -40,44 +40,103 @@ export default async function AdminMerchantProductsPage({ params, searchParams }
   const totalPages = Math.max(1, Math.ceil((Number(count) || 0) / getPageSize));
 
   return (
-    <div className="space-y-4 pb-8">
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-        <div className="text-base font-semibold">Products</div>
-        <div className="text-xs text-muted-foreground">
+    <div className="space-y-4 pb-8" data-testid="admin-merchant-products">
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+        data-testid="admin-merchant-products-summary"
+      >
+        <div className="text-base font-semibold" data-testid="admin-merchant-products-title">
+          Products
+        </div>
+        <div className="text-xs text-muted-foreground" data-testid="admin-merchant-products-count">
           Showing {rows.length.toLocaleString("en-US")} of {Number(count || 0).toLocaleString("en-US")}
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left p-3">Title</th>
-              <th className="text-left p-3">Status</th>
-              <th className="text-right p-3">Flagged</th>
-              <th className="text-right p-3">Stock</th>
-              <th className="text-right p-3">Price (USD)</th>
-              <th className="text-left p-3">Created</th>
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm overflow-x-auto"
+        data-testid="admin-merchant-products-table-card"
+      >
+        <table className="w-full text-sm" data-testid="admin-merchant-products-table">
+          <thead data-testid="admin-merchant-products-head">
+            <tr className="border-b" data-testid="admin-merchant-products-head-row">
+              <th className="text-left p-3" data-testid="admin-merchant-products-head-title">
+                Title
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-products-head-status">
+                Status
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-products-head-flagged">
+                Flagged
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-products-head-stock">
+                Stock
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-products-head-price">
+                Price (USD)
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-products-head-created">
+                Created
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-testid="admin-merchant-products-body">
             {rows.map((p) => {
               const j = p.toJSON();
               return (
-                <tr key={j.id} className="border-b last:border-0">
-                  <td className="p-3">
-                    <div className="font-medium">{j.title}</div>
-                    <div className="text-xs text-muted-foreground">{j.product_id}</div>
-                    <div className="text-xs text-muted-foreground">
-                      <Link href="/admin/products" className="underline text-primary">
+                <tr
+                  key={j.id}
+                  className="border-b last:border-0"
+                  data-testid={`admin-merchant-products-row-${j.id}`}
+                >
+                  <td className="p-3" data-testid={`admin-merchant-products-row-${j.id}-title`}>
+                    <div
+                      className="font-medium"
+                      data-testid={`admin-merchant-products-row-${j.id}-title-text`}
+                    >
+                      {j.title}
+                    </div>
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid={`admin-merchant-products-row-${j.id}-product-id`}
+                    >
+                      {j.product_id}
+                    </div>
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid={`admin-merchant-products-row-${j.id}-link`}
+                    >
+                      <Link
+                        href="/admin/products"
+                        className="underline text-primary"
+                        data-testid={`admin-merchant-products-row-${j.id}-open-products`}
+                      >
                         Open in Products
                       </Link>
                     </div>
                   </td>
-                  <td className="p-3 capitalize">{j.product_status}</td>
-                  <td className="p-3 text-right tabular-nums">{j.flagged ? "Yes" : "No"}</td>
-                  <td className="p-3 text-right tabular-nums">{j.stock == null ? "-" : Number(j.stock).toLocaleString("en-US")}</td>
-                  <td className="p-3 text-right tabular-nums">
+                  <td
+                    className="p-3 capitalize"
+                    data-testid={`admin-merchant-products-row-${j.id}-status`}
+                  >
+                    {j.product_status}
+                  </td>
+                  <td
+                    className="p-3 text-right tabular-nums"
+                    data-testid={`admin-merchant-products-row-${j.id}-flagged`}
+                  >
+                    {j.flagged ? "Yes" : "No"}
+                  </td>
+                  <td
+                    className="p-3 text-right tabular-nums"
+                    data-testid={`admin-merchant-products-row-${j.id}-stock`}
+                  >
+                    {j.stock == null ? "-" : Number(j.stock).toLocaleString("en-US")}
+                  </td>
+                  <td
+                    className="p-3 text-right tabular-nums"
+                    data-testid={`admin-merchant-products-row-${j.id}-price`}
+                  >
                     {new Intl.NumberFormat("en-US", {
                       style: "currency",
                       currency: "USD",
@@ -85,13 +144,22 @@ export default async function AdminMerchantProductsPage({ params, searchParams }
                       maximumFractionDigits: 2,
                     }).format(Number(j.price || 0))}
                   </td>
-                  <td className="p-3">{fmtDateTimeUtc(j.createdAt)}</td>
+                  <td
+                    className="p-3"
+                    data-testid={`admin-merchant-products-row-${j.id}-created`}
+                  >
+                    {fmtDateTimeUtc(j.createdAt)}
+                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 ? (
-              <tr>
-                <td className="p-6 text-center text-muted-foreground" colSpan={6}>
+              <tr data-testid="admin-merchant-products-empty">
+                <td
+                  className="p-6 text-center text-muted-foreground"
+                  colSpan={6}
+                  data-testid="admin-merchant-products-empty-cell"
+                >
                   No products found.
                 </td>
               </tr>
@@ -100,13 +168,13 @@ export default async function AdminMerchantProductsPage({ params, searchParams }
         </table>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
+      <div className="flex items-center justify-between" data-testid="admin-merchant-products-page">
+        <div className="text-xs text-muted-foreground" data-testid="admin-merchant-products-page-info">
           Page {getPage.toLocaleString("en-US")} of {totalPages.toLocaleString("en-US")}
         </div>
       </div>
 
-      <div>
+      <div data-testid="admin-merchant-products-pagination">
         <MerchantSubpagePagination currentPage={getPage} totalPages={totalPages} />
       </div>
     </div>

@@ -70,15 +70,18 @@ export default function MyPurchases() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card data-testid="purchases-card">
+        <CardHeader data-testid="purchases-header">
+          <CardTitle
+            className="flex items-center gap-2"
+            data-testid="purchases-title"
+          >
             <Download className="h-5 w-5" />
             My Purchases ({orders.length})
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
+        <CardContent data-testid="purchases-content">
+          <div className="space-y-4" data-testid="purchases-list">
             {orders.map((order) => {
               const usdAmount =
                 order?.price != null
@@ -96,29 +99,51 @@ export default function MyPurchases() {
                 <div
                   key={key}
                   className="border border-border rounded-lg overflow-hidden"
+                  data-testid={`purchase-order-${key}`}
                 >
-                  <div className="flex items-start justify-between p-4">
+                  <div
+                    className="flex items-start justify-between p-4"
+                    data-testid={`purchase-order-header-${key}`}
+                  >
                     <div className="flex-1">
-                      <h3 className="font-semibold">
+                      <h3
+                        className="font-semibold"
+                        data-testid={`purchase-order-title-${key}`}
+                      >
                         {order.orderNumber
                           ? `Order ${order.orderNumber}`
                           : "Order"}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p
+                        className="text-sm text-muted-foreground"
+                        data-testid={`purchase-order-count-${key}`}
+                      >
                         {order.items.length} item
                         {order.items.length === 1 ? "" : "s"}
                       </p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
+                      <div
+                        className="flex items-center gap-4 mt-2 text-xs text-muted-foreground"
+                        data-testid={`purchase-order-meta-${key}`}
+                      >
+                        <div
+                          className="flex items-center gap-1"
+                          data-testid={`purchase-order-date-${key}`}
+                        >
                           <Calendar className="h-3 w-3" />
                           <span>Purchased {order.purchaseDate || "-"}</span>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div
+                          className="flex items-center gap-1"
+                          data-testid={`purchase-order-amount-${key}`}
+                        >
                           <DollarSign className="h-3 w-3" />
                           <div className="flex flex-col leading-tight">
                             <span>{fmtOriginal(orderCurrency, usdAmount)}</span>
                             {showConverted && orderCurrency === "USD" ? (
-                              <span className="text-[11px] text-muted-foreground">
+                              <span
+                                className="text-[11px] text-muted-foreground"
+                                data-testid={`purchase-order-amount-converted-${key}`}
+                              >
                                 ≈ {fmtViewerFromUsd(usdAmount)}
                               </span>
                             ) : null}
@@ -126,8 +151,8 @@ export default function MyPurchases() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary">
+                    <div className="flex items-center gap-2" data-testid={`purchase-order-status-${key}`}>
+                      <Badge variant="secondary" data-testid={`purchase-order-badge-${key}`}>
                         {(() => {
                           const s = (order?.status || "").toString().toLowerCase();
                           const stage = (order?.paymentStage || "")
@@ -143,13 +168,17 @@ export default function MyPurchases() {
                     </div>
                   </div>
 
-                  <div className="border-t border-border">
+                  <div className="border-t border-border" data-testid={`purchase-order-items-${key}`}>
                     {order.items.map((item) => (
                       <div
                         key={item.id}
                         className="flex items-center gap-4 p-4"
+                        data-testid={`purchase-item-${item.id}`}
                       >
-                        <div className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                        <div
+                          className="relative w-16 h-16 md:w-20 md:h-20 rounded-lg overflow-hidden bg-muted shrink-0"
+                          data-testid={`purchase-item-image-${item.id}`}
+                        >
                           <NextImage
                             src={item.image || "/placeholder.svg"}
                             alt={item.title || "Product"}
@@ -158,9 +187,17 @@ export default function MyPurchases() {
                             sizes="80px"
                           />
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-medium truncate">{item.title}</h4>
-                          <p className="text-sm text-muted-foreground truncate">
+                        <div className="flex-1 min-w-0" data-testid={`purchase-item-details-${item.id}`}>
+                          <h4
+                            className="font-medium truncate"
+                            data-testid={`purchase-item-title-${item.id}`}
+                          >
+                            {item.title}
+                          </h4>
+                          <p
+                            className="text-sm text-muted-foreground truncate"
+                            data-testid={`purchase-item-author-${item.id}`}
+                          >
                             by {item.author}
                           </p>
                         </div>
@@ -175,6 +212,7 @@ export default function MyPurchases() {
                               "noopener,noreferrer"
                             );
                           }}
+                          data-testid={`purchase-download-${item.id}`}
                         >
                           <Download className="h-4 w-4 mr-2" />
                           Download

@@ -23,12 +23,12 @@ export default function AdminTicketsContent() {
   } = useAdminTickets();
 
   return (
-    <div className="px-4 space-y-6">
-      <Card>
+    <div className="px-4 space-y-6" data-testid="admin-tickets-page">
+      <Card data-testid="admin-tickets-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Tickets</CardTitle>
-            <Button onClick={refetch} disabled={loading}>
+            <Button onClick={refetch} disabled={loading} data-testid="admin-tickets-refresh">
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
@@ -43,6 +43,7 @@ export default function AdminTicketsContent() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm min-w-56 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-tickets-search"
               />
             </div>
             <div>
@@ -51,6 +52,7 @@ export default function AdminTicketsContent() {
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-tickets-page-size"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -58,11 +60,11 @@ export default function AdminTicketsContent() {
                 <option value={100}>100</option>
               </select>
             </div>
-            <Button variant="outline" onClick={refetch}>
+            <Button variant="outline" onClick={refetch} data-testid="admin-tickets-apply">
               Apply
             </Button>
           </div>
-          <Table>
+          <Table data-testid="admin-tickets-table">
             <TableHeader>
               <TableRow>
                 <TableHead>ID</TableHead>
@@ -74,7 +76,7 @@ export default function AdminTicketsContent() {
             </TableHeader>
             <TableBody>
               {list.map((t) => (
-                <TableRow key={t.id}>
+                <TableRow key={t.id} data-testid={`admin-ticket-row-${t.id}`}>
                   <TableCell>{t.id}</TableCell>
                   <TableCell>{t.subject || "-"}</TableCell>
                   <TableCell>
@@ -101,7 +103,7 @@ export default function AdminTicketsContent() {
                 </TableRow>
               ))}
               {list.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-tickets-empty">
                   <TableCell colSpan={5} className="text-center text-sm text-muted-foreground">
                     No tickets yet.
                   </TableCell>
@@ -110,7 +112,7 @@ export default function AdminTicketsContent() {
             </TableBody>
           </Table>
 
-          <div className="mt-4">
+          <div className="mt-4" data-testid="admin-tickets-pagination">
             <PaginationSmart
               currentPage={page}
               totalPages={totalPages}

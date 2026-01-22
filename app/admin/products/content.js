@@ -47,18 +47,22 @@ export default function AdminProductsContent() {
   };
 
   return (
-    <div className="px-4 space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Products</CardTitle>
-            <Button onClick={() => refetch()} disabled={loading}>
+    <div className="px-4 space-y-6" data-testid="admin-products-page">
+      <Card data-testid="admin-products-card">
+        <CardHeader data-testid="admin-products-header">
+          <div className="flex items-center justify-between" data-testid="admin-products-title-row">
+            <CardTitle data-testid="admin-products-title">Products</CardTitle>
+            <Button
+              onClick={() => refetch()}
+              disabled={loading}
+              data-testid="admin-products-refresh"
+            >
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-3 mb-4">
+          <div className="flex flex-wrap items-end gap-3 mb-4" data-testid="admin-products-filters">
             <div>
               <label className="block text-xs mb-1">Search</label>
               <Input
@@ -70,6 +74,7 @@ export default function AdminProductsContent() {
                   setQs({ q: v, page: 1 });
                 }}
                 className="min-w-56"
+                data-testid="admin-products-search"
               />
             </div>
             <div>
@@ -82,6 +87,7 @@ export default function AdminProductsContent() {
                   setQs({ from: v, page: 1 });
                 }}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-products-from"
               />
             </div>
             <div>
@@ -94,12 +100,13 @@ export default function AdminProductsContent() {
                   setQs({ to: v, page: 1 });
                 }}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-products-to"
               />
             </div>
             <div>
               <label className="block text-xs mb-1">Featured</label>
               <Select value={qs.featured} onValueChange={(v) => setQs({ featured: v, page: 1 })}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-40" data-testid="admin-products-featured">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
@@ -112,7 +119,7 @@ export default function AdminProductsContent() {
             <div>
               <label className="block text-xs mb-1">Flagged</label>
               <Select value={qs.flagged} onValueChange={(v) => setQs({ flagged: v, page: 1 })}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-40" data-testid="admin-products-flagged">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
@@ -125,7 +132,7 @@ export default function AdminProductsContent() {
             <div>
               <label className="block text-xs mb-1">Sort</label>
               <Select value={qs.sort} onValueChange={(v) => setQs({ sort: v, page: 1 })}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48" data-testid="admin-products-sort">
                   <SelectValue placeholder="Rank" />
                 </SelectTrigger>
                 <SelectContent>
@@ -145,7 +152,7 @@ export default function AdminProductsContent() {
                 value={String(pageSize)}
                 onValueChange={(v) => setQs({ pageSize: Number(v), page: 1 })}
               >
-                <SelectTrigger className="w-28">
+                <SelectTrigger className="w-28" data-testid="admin-products-page-size">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -156,84 +163,125 @@ export default function AdminProductsContent() {
                 </SelectContent>
               </Select>
             </div>
-            <Button variant="outline" onClick={() => refetch()}>
+            <Button
+              variant="outline"
+              onClick={() => refetch()}
+              data-testid="admin-products-apply"
+            >
               Apply
             </Button>
           </div>
 
-          <Table stickyFirstColumn>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Author</TableHead>
-                <TableHead>Featured</TableHead>
-                <TableHead>Flagged</TableHead>
-                <TableHead>Units Sold</TableHead>
-                <TableHead>Revenue</TableHead>
-                <TableHead>Crowdpen</TableHead>
-                <TableHead>Gateway</TableHead>
-                <TableHead>Payout</TableHead>
-                <TableHead>Rating</TableHead>
-                <TableHead>Author Rating</TableHead>
-                <TableHead>Downloads</TableHead>
-                <TableHead>In Stock</TableHead>
-                <TableHead>Stock</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Rank</TableHead>
-                <TableHead>Created</TableHead>
+          <Table stickyFirstColumn data-testid="admin-products-table">
+            <TableHeader data-testid="admin-products-head">
+              <TableRow data-testid="admin-products-head-row">
+                <TableHead data-testid="admin-products-head-title">Title</TableHead>
+                <TableHead data-testid="admin-products-head-author">Author</TableHead>
+                <TableHead data-testid="admin-products-head-featured">Featured</TableHead>
+                <TableHead data-testid="admin-products-head-flagged">Flagged</TableHead>
+                <TableHead data-testid="admin-products-head-units">Units Sold</TableHead>
+                <TableHead data-testid="admin-products-head-revenue">Revenue</TableHead>
+                <TableHead data-testid="admin-products-head-crowdpen">Crowdpen</TableHead>
+                <TableHead data-testid="admin-products-head-gateway">Gateway</TableHead>
+                <TableHead data-testid="admin-products-head-payout">Payout</TableHead>
+                <TableHead data-testid="admin-products-head-rating">Rating</TableHead>
+                <TableHead data-testid="admin-products-head-author-rating">
+                  Author Rating
+                </TableHead>
+                <TableHead data-testid="admin-products-head-downloads">Downloads</TableHead>
+                <TableHead data-testid="admin-products-head-in-stock">In Stock</TableHead>
+                <TableHead data-testid="admin-products-head-stock">Stock</TableHead>
+                <TableHead data-testid="admin-products-head-price">Price</TableHead>
+                <TableHead data-testid="admin-products-head-rank">Rank</TableHead>
+                <TableHead data-testid="admin-products-head-created">Created</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody data-testid="admin-products-body">
               {list.map((p) => (
                 <TableRow
                   key={p.id}
                   onClick={() => openDetails(p.id)}
                   className="cursor-pointer hover:bg-muted/30"
+                  data-testid={`admin-product-row-${p.id}`}
                 >
-                  <TableCell>
-                    <div className="max-w-[320px] truncate" title={p.title}>
+                  <TableCell data-testid={`admin-product-row-${p.id}-title`}>
+                    <div
+                      className="max-w-[320px] truncate"
+                      title={p.title}
+                      data-testid={`admin-product-row-${p.id}-title-text`}
+                    >
                       {p.title}
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid={`admin-product-row-${p.id}-category`}
+                    >
                       {p.category?.name || "-"}
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell
+                    className="text-sm"
+                    data-testid={`admin-product-row-${p.id}-author`}
+                  >
                     {p.author?.pen_name || p.author?.name || p.author?.id || "-"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-featured`}>
                     <Switch
                       checked={Boolean(p.featured)}
                       onCheckedChange={(checked) => onToggleFeatured(p.id, checked)}
                       disabled={togglePending}
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
+                      data-testid={`admin-product-featured-${p.id}`}
                     />
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-flagged`}>
                     <Switch
                       checked={Boolean(p.flagged)}
                       onCheckedChange={(checked) => onToggleFlagged(p.id, checked)}
                       disabled={togglePending}
                       onClick={(e) => e.stopPropagation()}
                       onKeyDown={(e) => e.stopPropagation()}
+                      data-testid={`admin-product-flagged-${p.id}`}
                     />
                   </TableCell>
-                  <TableCell>{Number(p.unitsSold || 0).toLocaleString("en-US")}</TableCell>
-                  <TableCell>{fmtMoney(p.totalRevenue, p.currency)}</TableCell>
-                  <TableCell>{fmtMoney(p.crowdpenFee, p.currency)}</TableCell>
-                  <TableCell>{fmtMoney(p.startbuttonFee, p.currency)}</TableCell>
-                  <TableCell>{fmtMoney(p.creatorPayout, p.currency)}</TableCell>
-                  <TableCell>{Number(p.rating || 0).toFixed(1)}</TableCell>
-                  <TableCell>{Number(p.authorRating || 0).toFixed(1)}</TableCell>
-                  <TableCell>{Number(p.downloads || 0)}</TableCell>
-                  <TableCell>{p.inStock ? "Yes" : "No"}</TableCell>
-                  <TableCell>{typeof p.stock === "number" ? p.stock : p.stock ?? "-"}</TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-units`}>
+                    {Number(p.unitsSold || 0).toLocaleString("en-US")}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-revenue`}>
+                    {fmtMoney(p.totalRevenue, p.currency)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-crowdpen`}>
+                    {fmtMoney(p.crowdpenFee, p.currency)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-gateway`}>
+                    {fmtMoney(p.startbuttonFee, p.currency)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-payout`}>
+                    {fmtMoney(p.creatorPayout, p.currency)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-rating`}>
+                    {Number(p.rating || 0).toFixed(1)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-author-rating`}>
+                    {Number(p.authorRating || 0).toFixed(1)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-downloads`}>
+                    {Number(p.downloads || 0)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-in-stock`}>
+                    {p.inStock ? "Yes" : "No"}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-stock`}>
+                    {typeof p.stock === "number" ? p.stock : p.stock ?? "-"}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-price`}>
                     {isNaN(Number(p.price)) ? "-" : Number(p.price).toFixed(2)}
                   </TableCell>
-                  <TableCell>{Number(p.rankScore || 0).toFixed(2)}</TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-rank`}>
+                    {Number(p.rankScore || 0).toFixed(2)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-product-row-${p.id}-created`}>
                     {p.createdAt
                       ? new Date(p.createdAt).toLocaleDateString("en-US", { timeZone: "UTC" })
                       : "-"}
@@ -241,10 +289,11 @@ export default function AdminProductsContent() {
                 </TableRow>
               ))}
               {list.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-products-empty">
                   <TableCell
                     colSpan={17}
                     className="text-center text-sm text-muted-foreground"
+                    data-testid="admin-products-empty-cell"
                   >
                     No products found.
                   </TableCell>
@@ -253,7 +302,7 @@ export default function AdminProductsContent() {
             </TableBody>
           </Table>
 
-          <div className="mt-4">
+          <div className="mt-4" data-testid="admin-products-pagination">
             <PaginationSmart
               currentPage={page}
               totalPages={totalPages}

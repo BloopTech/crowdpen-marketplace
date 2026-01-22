@@ -63,18 +63,22 @@ export default function AdminMerchantsContent() {
   };
 
   return (
-    <div className="px-4 space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Merchants & Applicants</CardTitle>
-            <Button onClick={refresh} disabled={loading}>
+    <div className="px-4 space-y-6" data-testid="admin-merchants-page">
+      <Card data-testid="admin-merchants-card">
+        <CardHeader data-testid="admin-merchants-header">
+          <div className="flex items-center justify-between" data-testid="admin-merchants-title-row">
+            <CardTitle data-testid="admin-merchants-title">Merchants & Applicants</CardTitle>
+            <Button
+              onClick={refresh}
+              disabled={loading}
+              data-testid="admin-merchants-refresh"
+            >
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-3 mb-4">
+          <div className="flex flex-wrap items-end gap-3 mb-4" data-testid="admin-merchants-filters">
             <div>
               <label className="block text-xs mb-1">Search</label>
               <input
@@ -83,6 +87,7 @@ export default function AdminMerchantsContent() {
                 value={searchValue}
                 onChange={(e) => setSearch(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm min-w-56 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-merchants-search"
               />
             </div>
             <div>
@@ -91,6 +96,7 @@ export default function AdminMerchantsContent() {
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-merchants-page-size"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -98,38 +104,58 @@ export default function AdminMerchantsContent() {
                 <option value={100}>100</option>
               </select>
             </div>
-            <Button variant="outline" onClick={refresh}>
+            <Button
+              variant="outline"
+              onClick={refresh}
+              data-testid="admin-merchants-apply"
+            >
               Apply
             </Button>
           </div>
           {error ? (
-            <div className="text-destructive text-sm">{error}</div>
+            <div className="text-destructive text-sm" data-testid="admin-merchants-error">{error}</div>
           ) : null}
-          <Tabs value={tab} onValueChange={setTab}>
-            <TabsList>
-              <TabsTrigger value="merchants">Merchants</TabsTrigger>
-              <TabsTrigger value="applicants">Applicants</TabsTrigger>
+          <Tabs value={tab} onValueChange={setTab} data-testid="admin-merchants-tabs">
+            <TabsList data-testid="admin-merchants-tabs-list">
+              <TabsTrigger value="merchants" data-testid="admin-merchants-tab-merchants">
+                Merchants
+              </TabsTrigger>
+              <TabsTrigger value="applicants" data-testid="admin-merchants-tab-applicants">
+                Applicants
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="merchants">
-              <Table stickyFirstColumn>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>KYC</TableHead>
-                    <TableHead className="text-right">Products</TableHead>
-                    <TableHead className="text-right">Flagged</TableHead>
-                    <TableHead className="text-right">Stock Risk</TableHead>
-                    <TableHead className="text-right">Buyer Paid (30d)</TableHead>
-                    <TableHead className="text-right">Units (30d)</TableHead>
-                    <TableHead className="text-right">Payouts (Owed)</TableHead>
-                    <TableHead>Last Paid</TableHead>
-                    <TableHead>Last Settled To</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+            <TabsContent value="merchants" data-testid="admin-merchants-tab-content">
+              <Table stickyFirstColumn data-testid="admin-merchants-table">
+                <TableHeader data-testid="admin-merchants-head">
+                  <TableRow data-testid="admin-merchants-head-row">
+                    <TableHead data-testid="admin-merchants-head-name">Name</TableHead>
+                    <TableHead data-testid="admin-merchants-head-kyc">KYC</TableHead>
+                    <TableHead className="text-right" data-testid="admin-merchants-head-products">
+                      Products
+                    </TableHead>
+                    <TableHead className="text-right" data-testid="admin-merchants-head-flagged">
+                      Flagged
+                    </TableHead>
+                    <TableHead className="text-right" data-testid="admin-merchants-head-stock-risk">
+                      Stock Risk
+                    </TableHead>
+                    <TableHead className="text-right" data-testid="admin-merchants-head-buyer-paid">
+                      Buyer Paid (30d)
+                    </TableHead>
+                    <TableHead className="text-right" data-testid="admin-merchants-head-units">
+                      Units (30d)
+                    </TableHead>
+                    <TableHead className="text-right" data-testid="admin-merchants-head-payouts">
+                      Payouts (Owed)
+                    </TableHead>
+                    <TableHead data-testid="admin-merchants-head-last-paid">Last Paid</TableHead>
+                    <TableHead data-testid="admin-merchants-head-settled">Last Settled To</TableHead>
+                    <TableHead data-testid="admin-merchants-head-status">Status</TableHead>
+                    <TableHead data-testid="admin-merchants-head-actions">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-merchants-body">
                   {merchants.map((u) => {
                     const kpi = u?.kpi;
                     const kycLabel = kpi?.kycStatus
@@ -163,13 +189,14 @@ export default function AdminMerchantsContent() {
                           : "success";
 
                     return (
-                      <TableRow key={u.id}>
-                        <TableCell>
+                      <TableRow key={u.id} data-testid={`admin-merchant-row-${u.id}`}>
+                        <TableCell data-testid={`admin-merchant-row-${u.id}-user`}>
                           <div className="flex items-center gap-3">
                             <Avatar
                               imageUrl={u.image}
                               color={u.color}
                               className="h-8 w-8"
+                              data-testid={`admin-merchant-row-${u.id}-avatar`}
                             >
                               <AvatarFallback>
                                 {(u?.name || u?.email || "")
@@ -181,81 +208,134 @@ export default function AdminMerchantsContent() {
                               <Link
                                 href={`/admin/merchants/${u.id}`}
                                 className="font-medium hover:underline"
+                                data-testid={`admin-merchant-view-${u.id}`}
                               >
                                 {u.name || "Unnamed"}
                               </Link>
-                              <div className="text-xs text-muted-foreground">
+                              <div
+                                className="text-xs text-muted-foreground"
+                                data-testid={`admin-merchant-row-${u.id}-email`}
+                              >
                                 {u.email}
                               </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell data-testid={`admin-merchant-row-${u.id}-kyc`}>
                           <div className="space-y-1">
-                            <Badge variant={kycVariant}>{kycLabel}</Badge>
+                            <Badge variant={kycVariant} data-testid={`admin-merchant-row-${u.id}-kyc-badge`}>
+                              {kycLabel}
+                            </Badge>
                             {kpi?.kycReviewedAt ? (
-                              <div className="text-[11px] text-muted-foreground">
+                              <div
+                                className="text-[11px] text-muted-foreground"
+                                data-testid={`admin-merchant-row-${u.id}-kyc-reviewed`}
+                              >
                                 Reviewed: {fmtDateTimeUtc(kpi.kycReviewedAt)}
                               </div>
                             ) : null}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" data-testid={`admin-merchant-row-${u.id}-products`}>
                           <div className="tabular-nums">
-                            <div className="font-medium">
+                            <div
+                              className="font-medium"
+                              data-testid={`admin-merchant-row-${u.id}-products-value`}
+                            >
                               {productsPublished}/{productsTotal}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
+                            <div
+                              className="text-[11px] text-muted-foreground"
+                              data-testid={`admin-merchant-row-${u.id}-products-label`}
+                            >
                               Published/Total
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell
+                          className="text-right tabular-nums"
+                          data-testid={`admin-merchant-row-${u.id}-flagged`}
+                        >
                           {productsFlagged}
                         </TableCell>
                         {/* outOfStock counts products where inStock = false or stock ≤ 0.
 lowStock counts products with a positive stock level that’s at or below the low-stock threshold (currently 5 units). */}
-                        <TableCell className="text-right">
-                          <Badge variant={stockRiskVariant}>
+                        <TableCell className="text-right" data-testid={`admin-merchant-row-${u.id}-stock-risk`}>
+                          <Badge
+                            variant={stockRiskVariant}
+                            data-testid={`admin-merchant-row-${u.id}-stock-risk-badge`}
+                          >
                             {stockRiskLabel}
                           </Badge>
-                          <div className="text-[11px] text-muted-foreground tabular-nums mt-1">
+                          <div
+                            className="text-[11px] text-muted-foreground tabular-nums mt-1"
+                            data-testid={`admin-merchant-row-${u.id}-stock-risk-meta`}
+                          >
                             {outOfStock} out, {lowStock} low
                           </div>
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell
+                          className="text-right tabular-nums"
+                          data-testid={`admin-merchant-row-${u.id}-buyer-paid`}
+                        >
                           {fmtUsd(kpi?.revenue30d || 0)}
                         </TableCell>
-                        <TableCell className="text-right tabular-nums">
+                        <TableCell
+                          className="text-right tabular-nums"
+                          data-testid={`admin-merchant-row-${u.id}-units`}
+                        >
                           {Number(kpi?.unitsSold30d || 0) || 0}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" data-testid={`admin-merchant-row-${u.id}-payouts`}>
                           <div className="tabular-nums">
-                            <div className="font-medium">
+                            <div
+                              className="font-medium"
+                              data-testid={`admin-merchant-row-${u.id}-payouts-owed`}
+                            >
                               {fmtUsd(kpi?.payoutsOwed || 0)}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
+                            <div
+                              className="text-[11px] text-muted-foreground"
+                              data-testid={`admin-merchant-row-${u.id}-payouts-paid`}
+                            >
                               Paid: {fmtUsd(kpi?.payoutsCompleted || 0)}
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
+                            <div
+                              className="text-[11px] text-muted-foreground"
+                              data-testid={`admin-merchant-row-${u.id}-payouts-pending`}
+                            >
                               In-flight: {fmtUsd(kpi?.payoutsPending || 0)}
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell
+                          className="text-sm"
+                          data-testid={`admin-merchant-row-${u.id}-last-paid`}
+                        >
                           {fmtDateTimeUtc(kpi?.lastPaidAt)}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell
+                          className="text-sm"
+                          data-testid={`admin-merchant-row-${u.id}-settlement`}
+                        >
                           {kpi?.lastSettlementTo || "-"}
                         </TableCell>
-                        <TableCell>
-                          <Badge variant={u.merchant ? "success" : "neutral"}>
+                        <TableCell data-testid={`admin-merchant-row-${u.id}-status`}>
+                          <Badge
+                            variant={u.merchant ? "success" : "neutral"}
+                            data-testid={`admin-merchant-row-${u.id}-status-badge`}
+                          >
                             {u.merchant ? "Merchant" : "Not Merchant"}
                           </Badge>
                         </TableCell>
-                        <TableCell>
+                        <TableCell data-testid={`admin-merchant-row-${u.id}-actions`}>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="secondary" asChild>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              asChild
+                              data-testid={`admin-merchant-details-${u.id}`}
+                            >
                               <Link href={`/admin/merchants/${u.id}`}>
                                 View
                               </Link>
@@ -270,6 +350,7 @@ lowStock counts products with a positive stock level that’s at or below the lo
                               <Button
                                 size="sm"
                                 variant={u.merchant ? "outline" : "default"}
+                                data-testid={`admin-merchant-toggle-${u.id}`}
                               >
                                 {u.merchant
                                   ? "Remove Merchant"
@@ -282,10 +363,11 @@ lowStock counts products with a positive stock level that’s at or below the lo
                     );
                   })}
                   {!loading && merchants.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-merchants-empty">
                       <TableCell
                         colSpan={12}
                         className="text-center text-sm text-muted-foreground"
+                        data-testid="admin-merchants-empty-cell"
                       >
                         No merchants yet.
                       </TableCell>
@@ -294,7 +376,7 @@ lowStock counts products with a positive stock level that’s at or below the lo
                 </TableBody>
               </Table>
 
-              <div className="mt-4">
+              <div className="mt-4" data-testid="admin-merchants-pagination">
                 <PaginationSmart
                   currentPage={page}
                   totalPages={totalPages}
@@ -303,26 +385,27 @@ lowStock counts products with a positive stock level that’s at or below the lo
               </div>
             </TabsContent>
 
-            <TabsContent value="applicants">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Level</TableHead>
-                    <TableHead>Submitted</TableHead>
-                    <TableHead>Actions</TableHead>
+            <TabsContent value="applicants" data-testid="admin-applicants-tab-content">
+              <Table data-testid="admin-applicants-table">
+                <TableHeader data-testid="admin-applicants-head">
+                  <TableRow data-testid="admin-applicants-head-row">
+                    <TableHead data-testid="admin-applicants-head-user">User</TableHead>
+                    <TableHead data-testid="admin-applicants-head-status">Status</TableHead>
+                    <TableHead data-testid="admin-applicants-head-level">Level</TableHead>
+                    <TableHead data-testid="admin-applicants-head-submitted">Submitted</TableHead>
+                    <TableHead data-testid="admin-applicants-head-actions">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-applicants-body">
                   {applicants.map((k) => (
-                    <TableRow key={k.id}>
-                      <TableCell>
+                    <TableRow key={k.id} data-testid={`admin-applicant-row-${k.id}`}>
+                      <TableCell data-testid={`admin-applicant-row-${k.id}-user`}>
                         <div className="flex items-center gap-3">
                           <Avatar
                             imageUrl={k?.User?.image}
                             color={k?.User?.color}
                             className="h-8 w-8"
+                            data-testid={`admin-applicant-row-${k.id}-avatar`}
                           >
                             <AvatarFallback>
                               {(k?.User?.name || k?.User?.email || "")
@@ -331,16 +414,22 @@ lowStock counts products with a positive stock level that’s at or below the lo
                             </AvatarFallback>
                           </Avatar>
                           <div>
-                            <div className="font-medium">
+                            <div
+                              className="font-medium"
+                              data-testid={`admin-applicant-row-${k.id}-user-name`}
+                            >
                               {k?.User?.name || k?.User?.email}
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            <div
+                              className="text-xs text-muted-foreground"
+                              data-testid={`admin-applicant-row-${k.id}-user-email`}
+                            >
                               {k?.User?.email}
                             </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`admin-applicant-row-${k.id}-status`}>
                         <Badge
                           variant={
                             k.status === "approved"
@@ -353,18 +442,24 @@ lowStock counts products with a positive stock level that’s at or below the lo
                           {k.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="capitalize">{k.level}</TableCell>
-                      <TableCell>
+                      <TableCell
+                        className="capitalize"
+                        data-testid={`admin-applicant-row-${k.id}-level`}
+                      >
+                        {k.level}
+                      </TableCell>
+                      <TableCell data-testid={`admin-applicant-row-${k.id}-submitted`}>
                         {k.submitted_at
                           ? new Date(k.submitted_at).toLocaleString("en-US", {
                               timeZone: "UTC",
                             })
                           : "-"}
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`admin-applicant-row-${k.id}-actions`}>
                         <Link
                           className="text-primary underline text-xs"
                           href="/admin/kyc"
+                          data-testid={`admin-applicant-review-${k.id}`}
                         >
                           Review KYC
                         </Link>
@@ -372,10 +467,11 @@ lowStock counts products with a positive stock level that’s at or below the lo
                     </TableRow>
                   ))}
                   {!loading && applicants.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-applicants-empty">
                       <TableCell
                         colSpan={5}
                         className="text-center text-sm text-muted-foreground"
+                        data-testid="admin-applicants-empty-cell"
                       >
                         No applicants yet.
                       </TableCell>
@@ -383,7 +479,7 @@ lowStock counts products with a positive stock level that’s at or below the lo
                   )}
                 </TableBody>
               </Table>
-              <div className="mt-4">
+              <div className="mt-4" data-testid="admin-applicants-pagination">
                 <PaginationSmart
                   currentPage={page}
                   totalPages={totalPages}

@@ -21,11 +21,14 @@ export default function RelatedProducts() {
   // Loading state
   if (relatedProductsLoading) {
     return (
-      <div className="mt-12">
+      <div className="mt-12" data-testid="related-products-loading">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
           Related Products
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6"
+          data-testid="related-products-loading-grid"
+        >
           {Array.from({ length: 5 }).map((_, index) => (
             <div key={index} className="space-y-4">
               <Skeleton className="h-48 w-full rounded-lg" />
@@ -42,11 +45,14 @@ export default function RelatedProducts() {
   // Error state
   if (relatedProductsError) {
     return (
-      <div className="mt-12">
+      <div className="mt-12" data-testid="related-products-error">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">
           Related Products
         </h2>
-        <div className="flex items-center justify-center p-8 bg-red-50 rounded-lg">
+        <div
+          className="flex items-center justify-center p-8 bg-red-50 rounded-lg"
+          data-testid="related-products-error-card"
+        >
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <p className="text-red-700 font-medium">
@@ -67,7 +73,7 @@ export default function RelatedProducts() {
     relatedProductsData.data.products.length === 0
   ) {
     return (
-      <div className="mt-12">
+      <div className="mt-12" data-testid="related-products-empty">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
           Related Products
         </h2>
@@ -85,24 +91,36 @@ export default function RelatedProducts() {
   const category = relatedProductsData.data.category;
 
   return (
-    <div className="mt-12 w-full md:px-10">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mt-12 w-full md:px-10" data-testid="related-products">
+      <div
+        className="flex items-center justify-between mb-6"
+        data-testid="related-products-header"
+      >
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
           Related Products
         </h2>
-        <span className="text-sm text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-900 px-3 py-1 rounded-full">
+        <span
+          className="text-sm text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-900 px-3 py-1 rounded-full"
+          data-testid="related-products-category"
+        >
           {category}
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+        data-testid="related-products-grid"
+      >
         {relatedProducts.map((product) => (
           <ProductCard key={product.id} resource={product} />
         ))}
       </div>
 
       {relatedProducts.length > 0 && (
-        <p className="text-center text-gray-500 dark:text-slate-400 text-sm mt-6">
+        <p
+          className="text-center text-gray-500 dark:text-slate-400 text-sm mt-6"
+          data-testid="related-products-footer"
+        >
           Showing {relatedProducts.length} related product
           {relatedProducts.length !== 1 ? "s" : ""} from the {category} category
         </p>

@@ -23,14 +23,15 @@ export default function AuthErrorPage() {
   };
   
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center max-w-md">
+    <div className="min-h-screen flex items-center justify-center" data-testid="auth-error">
+      <div className="text-center max-w-md" data-testid="auth-error-content">
         <h1 className="text-2xl font-bold mb-4 text-red-600">Authentication Error</h1>
         <p className="text-gray-600 mb-6">{getErrorMessage(error)}</p>
         <div className="space-y-3">
           <Button 
             onClick={() => router.push('/')}
             className="w-full"
+            data-testid="auth-error-home"
           >
             Return to Home
           </Button>
@@ -38,6 +39,7 @@ export default function AuthErrorPage() {
             variant="outline"
             onClick={() => router.push('/auth/signin')}
             className="w-full"
+            data-testid="auth-error-try-again"
           >
             Try Again
           </Button>

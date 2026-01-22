@@ -40,9 +40,11 @@ export default function MyBillings() {
       const entry = byOrder.get(key);
       entry.items.push(p);
       if (entry.status == null && p?.status != null) entry.status = p.status;
-      if (entry.currency == null && p?.currency != null) entry.currency = p.currency;
+      if (entry.currency == null && p?.currency != null)
+        entry.currency = p.currency;
       if (entry.price == null && p?.price != null) entry.price = p.price;
-      if (entry.subtotal == null && p?.subtotal != null) entry.subtotal = p.subtotal;
+      if (entry.subtotal == null && p?.subtotal != null)
+        entry.subtotal = p.subtotal;
     }
     return Array.from(byOrder.values());
   }, [purchases]);
@@ -67,14 +69,17 @@ export default function MyBillings() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card data-testid="billing-card">
+        <CardHeader data-testid="billing-header">
+          <CardTitle
+            className="flex items-center gap-2"
+            data-testid="billing-title"
+          >
             <CreditCard className="h-5 w-5" />
             Billing & Payment Methods
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4" data-testid="billing-content">
           {/* <div className="p-4 border rounded-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -93,9 +98,11 @@ export default function MyBillings() {
 
           <Separator /> */}
 
-          <div>
-            <h3 className="font-semibold mb-3">Recent Transactions</h3>
-            <div className="space-y-2">
+          <div data-testid="billing-transactions">
+            <h3 className="font-semibold mb-3" data-testid="billing-transactions-title">
+              Recent Transactions
+            </h3>
+            <div className="space-y-2" data-testid="billing-transactions-list">
               {orders.map((order) => {
                 const usdAmount =
                   order?.price != null
@@ -116,12 +123,21 @@ export default function MyBillings() {
                     : `${firstTitle} +${order.items.length - 1} more`;
 
                 return (
-                  <div key={key} className="flex justify-between text-sm">
-                    <span>{title}</span>
+                  <div
+                    key={key}
+                    className="flex justify-between text-sm"
+                    data-testid={`billing-transaction-${key}`}
+                  >
+                    <span data-testid={`billing-transaction-title-${key}`}>{title}</span>
                     <div className="flex flex-col items-end leading-tight">
-                      <span>{fmtOriginal(orderCurrency, usdAmount)}</span>
+                      <span data-testid={`billing-transaction-amount-${key}`}>
+                        {fmtOriginal(orderCurrency, usdAmount)}
+                      </span>
                       {showConverted && orderCurrency === "USD" ? (
-                        <span className="text-[11px] text-muted-foreground">
+                        <span
+                          className="text-[11px] text-muted-foreground"
+                          data-testid={`billing-transaction-amount-converted-${key}`}
+                        >
                           ≈ {fmtViewerFromUsd(usdAmount)}
                         </span>
                       ) : null}

@@ -14,9 +14,17 @@ import { useHome } from "../context"
 import { useSession } from "next-auth/react"
 
 
-export default function SearchResults({ resources, query, searchTime, viewMode, setViewMode }) {
+export default function SearchResults({
+  resources,
+  query,
+  searchTime,
+  viewMode,
+  setViewMode,
+  dataTestId,
+}) {
   const { openLoginDialog } = useHome()
   const { data: session } = useSession()
+  const testId = dataTestId || "search-results"
   const { viewerCurrency, viewerFxRate } = useViewerCurrency("USD")
   const displayCurrency = (viewerCurrency || "USD").toString().toUpperCase()
   const displayRate = Number.isFinite(viewerFxRate) && viewerFxRate > 0 ? viewerFxRate : 1
@@ -31,7 +39,10 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
 
   if (resources.length === 0) {
     return (
-      <div className="text-center py-12">
+      <div
+        className="text-center py-12"
+        data-testid={`${testId}-empty`}
+      >
         <div className="text-6xl mb-4">🔍</div>
         <h3 className="text-xl font-semibold mb-2">No results found</h3>
         <p className="text-muted-foreground mb-4">Try different keywords or check your spelling</p>
@@ -43,9 +54,12 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
   }
 
   return (
-    <div className="space-y-4">
+    <div
+      className="space-y-4"
+      data-testid={testId}
+    >
       {/* Search Stats */}
-      <div className="text-sm text-muted-foreground">
+      <div className="text-sm text-muted-foreground" data-testid={`${testId}-stats`}>
         About {resources.length.toLocaleString("en-US")} results ({searchTime}ms)
         {query && (
           <span className="ml-2">
@@ -61,6 +75,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
             size="sm"
             onClick={() => setViewMode("list")}
             className="h-8 w-8 p-0"
+            data-testid={`${testId}-view-list`}
           >
             <LayoutList className="h-4 w-4" />
             <span className="sr-only">List view</span>
@@ -70,6 +85,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
             size="sm"
             onClick={() => setViewMode("grid")}
             className="h-8 w-8 p-0"
+            data-testid={`${testId}-view-grid`}
           >
             <LayoutGrid className="h-4 w-4" />
             <span className="sr-only">Grid view</span>
@@ -79,13 +95,17 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
 
       {/* Results View - Conditional rendering based on viewMode */}
       {viewMode === "list" ? (
-        <div className="space-y-4">
+        <div className="space-y-4" data-testid={`${testId}-list`}>
           {resources.map((resource) => {
             const isOutOfStock =
               resource?.inStock === false ||
               (resource?.stock !== null && typeof resource?.stock !== "undefined" && Number(resource?.stock) <= 0);
             return (
-            <Card key={resource.id} className="hover:shadow-md transition-shadow">
+            <Card
+              key={resource.id}
+              className="hover:shadow-md transition-shadow"
+              data-testid={`${testId}-item-${resource.id}`}
+            >
               <CardContent className="p-0">
                 <div className="flex gap-4 p-4">
                   {/* Thumbnail */}
@@ -120,8 +140,14 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
-                        <Link href={`/product/${resource.id}`}>
-                          <h3 className="text-lg font-semibold text-foreground hover:text-tertiary hover:underline cursor-pointer mb-1">
+                        <Link
+                          href={`/product/${resource.id}`}
+                          data-testid={`${testId}-item-link-${resource.id}`}
+                        >
+                          <h3
+                            className="text-lg font-semibold text-foreground hover:text-tertiary hover:underline cursor-pointer mb-1"
+                            data-testid={`${testId}-item-title-${resource.id}`}
+                          >
                             {resource.title}
                           </h3>
                         </Link>
@@ -129,6 +155,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                           <Link
                             href={`/author/${resource.author.toLowerCase().replace(/\s+/g, "-")}`}
                             className="hover:text-tertiary hover:underline"
+                            data-testid={`${testId}-author-${resource.id}`}
                           >
                             {resource.author}
                           </Link>
@@ -137,10 +164,20 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-2xl font-bold">{fmt(resource.price)}</div>
-                        <div className="text-xs mt-1">
+                        <div
+                          className="text-2xl font-bold"
+                          data-testid={`${testId}-price-${resource.id}`}
+                        >
+                          {fmt(resource.price)}
+                        </div>
+                        <div className="text-xs mt-1" data-testid={`${testId}-stock-${resource.id}`}>
                           {isOutOfStock ? (
-                            <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
+                            <Badge
+                              className="bg-red-800/90 text-white text-xs"
+                              data-testid={`${testId}-stock-badge-${resource.id}`}
+                            >
+                              Out of stock
+                            </Badge>
                           ) : typeof resource?.stock !== "undefined" && resource?.stock !== null ? (
                             `In stock: ${resource?.stock}`
                           ) : null}
@@ -155,6 +192,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                               openLoginDialog("login")
                             }
                           }}
+                          data-testid={`${testId}-add-${resource.id}`}
                         >
                           {isOutOfStock ? "Out of Stock" : "Add to Cart"}
                         </Button>
@@ -164,7 +202,10 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{htmlToText(resource.description)}</p>
 
                     {/* Metadata */}
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <div
+                      className="flex items-center gap-4 text-xs text-muted-foreground"
+                      data-testid={`${testId}-meta-${resource.id}`}
+                    >
                       <div className="flex items-center gap-1">
                         <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                         <span>{resource.rating}</span>
@@ -199,7 +240,7 @@ export default function SearchResults({ resources, query, searchTime, viewMode, 
           })}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" data-testid={`${testId}-grid`}>
           {resources.map((resource) => (
             <GridCard key={resource.id} resource={resource} />
           ))}

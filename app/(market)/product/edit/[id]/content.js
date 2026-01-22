@@ -936,10 +936,10 @@ export default function EditProductContent(props) {
   }, [submitQueued, hasPendingUploads, hasUploadErrors]);
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
+    <div className="container mx-auto py-8 px-4 max-w-5xl" data-testid="product-edit-page">
       <div className="mb-4">
         <Button asChild variant="ghost" size="sm">
-          <Link href="/">
+          <Link href="/" data-testid="product-edit-back">
             <span className="inline-flex items-center">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Home
@@ -947,8 +947,8 @@ export default function EditProductContent(props) {
           </Link>
         </Button>
       </div>
-      <Card>
-        <CardHeader>
+      <Card data-testid="product-edit-card">
+        <CardHeader data-testid="product-edit-header">
           <CardTitle className="text-2xl font-bold">Edit Product</CardTitle>
           <CardDescription>
             Update your product information below.
@@ -1020,6 +1020,7 @@ export default function EditProductContent(props) {
             // Call the original form action
             formAction(formData);
           }}
+          data-testid="product-edit-form"
         >
           <CardContent className="space-y-6">
             {state?.message && hasFieldErrors && (
@@ -1050,6 +1051,7 @@ export default function EditProductContent(props) {
                   disabled={isPending}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
+                  data-testid="product-edit-title"
                 />
                 <span className="text-xs text-red-500">
                   {Object.keys(state?.errors).length !== 0 &&
@@ -1074,6 +1076,7 @@ export default function EditProductContent(props) {
                     onChange={(e) => setStock(e.target.value)}
                     className="w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
                     disabled={isPending}
+                    data-testid="product-edit-stock"
                   />
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 &&
@@ -1094,6 +1097,7 @@ export default function EditProductContent(props) {
                   onChange={setDescription}
                   placeholder="Enter detailed product description"
                   disabled={isPending}
+                  dataTestId="product-edit-description"
                   error={
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.description?.length
@@ -1124,6 +1128,7 @@ export default function EditProductContent(props) {
                     state?.errors?.what_included?.length
                   }
                   disabled={isPending}
+                  dataTestId="product-edit-what-included"
                 />
                 {/* Hidden input for form submission */}
                 <input
@@ -1151,7 +1156,7 @@ export default function EditProductContent(props) {
                     required
                     disabled={isPending}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="product-edit-category">
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1191,7 +1196,7 @@ export default function EditProductContent(props) {
                     required
                     disabled={isPending || !categoryID}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="product-edit-subcategory">
                       <SelectValue placeholder="Select a subcategory" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1231,7 +1236,7 @@ export default function EditProductContent(props) {
                     onValueChange={setProductStatus}
                     disabled={isPending}
                   >
-                    <SelectTrigger id="product_status">
+                    <SelectTrigger id="product_status" data-testid="product-edit-status">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1272,6 +1277,7 @@ export default function EditProductContent(props) {
                         }
                       }}
                       disabled={isPending}
+                      data-testid="product-edit-discount-toggle"
                     />
                   </div>
                   <div className="text-xs text-muted-foreground dark:text-slate-400">
@@ -1304,6 +1310,7 @@ export default function EditProductContent(props) {
                           : ""
                       }`}
                       disabled={isPending}
+                      data-testid="product-edit-original-price"
                     />
                     <span className="text-xs text-red-500">
                       {Object.keys(state?.errors).length !== 0 &&
@@ -1348,6 +1355,7 @@ export default function EditProductContent(props) {
                               : "focus:ring-tertiary"
                           }`}
                           disabled={isPending}
+                          data-testid="product-edit-sale-price"
                         />
                         <span className="text-xs text-red-500">
                           {Object.keys(state?.errors).length !== 0 &&
@@ -1370,6 +1378,7 @@ export default function EditProductContent(props) {
                                 : "focus:ring-tertiary"
                             }`}
                             disabled={isPending}
+                            data-testid="product-edit-sale-end"
                           />
                           <span className="text-xs text-red-500">
                             {Object.keys(state?.errors).length !== 0 &&
@@ -1431,6 +1440,7 @@ export default function EditProductContent(props) {
                           onClick={() => removeExistingImage(index)}
                           className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
                           disabled={isPending}
+                          data-testid={`product-edit-existing-image-remove-${index}`}
                         >
                           <X className="h-3 w-3" />
                         </button>
@@ -1492,6 +1502,7 @@ export default function EditProductContent(props) {
                             type="button"
                             onClick={() => retryImageUpload(index)}
                             className="text-[10px] underline"
+                            data-testid={`product-edit-image-retry-${index}`}
                           >
                             Retry
                           </button>
@@ -1502,6 +1513,7 @@ export default function EditProductContent(props) {
                         onClick={() => removeImage(index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
                         disabled={imageObj?.uploading || isPending}
+                        data-testid={`product-edit-image-remove-${index}`}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1516,6 +1528,7 @@ export default function EditProductContent(props) {
                   <label
                     htmlFor="images"
                     className="h-24 w-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50"
+                    data-testid="product-edit-images-trigger"
                   >
                     {uploadingImage ? (
                       <Loader2 className="h-6 w-6 animate-spin" />
@@ -1534,6 +1547,7 @@ export default function EditProductContent(props) {
                       className="hidden"
                       onChange={handleImageUpload}
                       disabled={uploadingImage || isPending}
+                      data-testid="product-edit-images"
                     />
                   </label>
                 </div>
@@ -1588,6 +1602,7 @@ export default function EditProductContent(props) {
                         onClick={removeExistingFile}
                         className="text-red-500 hover:text-red-700 p-1"
                         disabled={isPending}
+                        data-testid="product-edit-existing-file-remove"
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -1631,6 +1646,7 @@ export default function EditProductContent(props) {
                                 onClick={retryFileUpload}
                                 className="underline"
                                 disabled={uploadingFile || isPending}
+                                data-testid="product-edit-file-retry"
                               >
                                 Retry
                               </button>
@@ -1643,6 +1659,7 @@ export default function EditProductContent(props) {
                         onClick={removeFile}
                         className="text-red-500 hover:text-red-700 p-1"
                         disabled={uploadingFile || isPending}
+                        data-testid="product-edit-file-remove"
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -1651,6 +1668,7 @@ export default function EditProductContent(props) {
                     <label
                       htmlFor="productFile"
                       className="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded-lg p-4"
+                      data-testid="product-edit-file-trigger"
                     >
                       {uploadingFile ? (
                         <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
@@ -1678,6 +1696,7 @@ export default function EditProductContent(props) {
                         className="hidden"
                         onChange={handleFileUpload}
                         disabled={uploadingFile || isPending}
+                        data-testid="product-edit-file"
                       />
                     </label>
                   )}
@@ -1729,6 +1748,7 @@ export default function EditProductContent(props) {
                     placeholder="Auto-detected from uploaded file"
                     readOnly
                     className="border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-md"
+                    data-testid="product-edit-file-type"
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400">
                     File type is automatically detected from the uploaded file
@@ -1756,6 +1776,7 @@ export default function EditProductContent(props) {
                     placeholder="Auto-calculated from uploaded file"
                     readOnly
                     className="border border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 rounded-md"
+                    data-testid="product-edit-file-size"
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400">
                     File size is automatically calculated when you upload a file
@@ -1779,7 +1800,7 @@ export default function EditProductContent(props) {
                     value={license}
                     onValueChange={(value) => setLicense(value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="product-edit-license">
                       <SelectValue placeholder="Select license type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1802,7 +1823,7 @@ export default function EditProductContent(props) {
                     value={deliveryTime}
                     onValueChange={(value) => setDeliveryTime(value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="product-edit-delivery">
                       <SelectValue placeholder="Select delivery time" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1827,6 +1848,7 @@ export default function EditProductContent(props) {
               variant="outline"
               type="button"
               onClick={() => router.back()}
+              data-testid="product-edit-cancel"
             >
               Cancel
             </Button>
@@ -1835,6 +1857,7 @@ export default function EditProductContent(props) {
                 type="submit"
                 disabled={isPending}
                 className="bg-black text-white disabled:cursor-not-allowed cursor-pointer border border-black hover:bg-white hover:text-black"
+                data-testid="product-edit-submit"
               >
                 {isPending ? (
                   <>

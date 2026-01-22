@@ -30,12 +30,12 @@ export default function AdminTransactionsContent() {
   } = useAdminTransactions();
 
   return (
-    <div className="px-4 space-y-6">
-      <Card>
+    <div className="px-4 space-y-6" data-testid="admin-transactions-page">
+      <Card data-testid="admin-transactions-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Admin Transactions</CardTitle>
-            <Button onClick={refetch} disabled={loading}>
+            <Button onClick={refetch} disabled={loading} data-testid="admin-transactions-refresh">
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
@@ -49,6 +49,7 @@ export default function AdminTransactionsContent() {
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search id, reference, recipient, email…"
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-transactions-search"
               />
             </div>
             <div>
@@ -58,6 +59,7 @@ export default function AdminTransactionsContent() {
                 value={params.from || ""}
                 onChange={(e) => setFrom(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-transactions-from"
               />
             </div>
             <div>
@@ -67,6 +69,7 @@ export default function AdminTransactionsContent() {
                 value={params.to || ""}
                 onChange={(e) => setTo(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-transactions-to"
               />
             </div>
             <div>
@@ -75,6 +78,7 @@ export default function AdminTransactionsContent() {
                 value={params.status || ""}
                 onChange={(e) => setStatus(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-transactions-status"
               >
                 <option value="">All</option>
                 <option value="pending">pending</option>
@@ -92,6 +96,7 @@ export default function AdminTransactionsContent() {
                 value={params.type || ""}
                 onChange={(e) => setType(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-transactions-type"
               >
                 <option value="">All</option>
                 <option value="payout">payout</option>
@@ -108,6 +113,7 @@ export default function AdminTransactionsContent() {
                 onChange={(e) => setRecipientId(e.target.value)}
                 placeholder="UUID"
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-transactions-recipient"
               />
             </div>
             <div>
@@ -117,6 +123,7 @@ export default function AdminTransactionsContent() {
                 onChange={(e) => setCurrency(e.target.value)}
                 placeholder="USD"
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-transactions-currency"
               />
             </div>
             <div>
@@ -125,6 +132,7 @@ export default function AdminTransactionsContent() {
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-transactions-page-size"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -132,7 +140,7 @@ export default function AdminTransactionsContent() {
                 <option value={100}>100</option>
               </select>
             </div>
-            <Button variant="outline" onClick={refetch}>
+            <Button variant="outline" onClick={refetch} data-testid="admin-transactions-apply">
               Apply
             </Button>
             <Button
@@ -149,11 +157,12 @@ export default function AdminTransactionsContent() {
                 qs.set("format", "csv");
                 window.open(`/api/admin/transactions?${qs.toString()}`, "_blank");
               }}
+              data-testid="admin-transactions-export"
             >
               Export CSV
             </Button>
           </div>
-          <Table>
+          <Table data-testid="admin-transactions-table">
             <TableHeader>
               <TableRow>
                 <TableHead>Type</TableHead>
@@ -167,7 +176,7 @@ export default function AdminTransactionsContent() {
             </TableHeader>
             <TableBody>
               {list.map((tx) => (
-                <TableRow key={tx.id}>
+                <TableRow key={tx.id} data-testid={`admin-transaction-row-${tx.id}`}>
                   <TableCell className="capitalize">{tx.trans_type}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -196,7 +205,7 @@ export default function AdminTransactionsContent() {
                 </TableRow>
               ))}
               {list.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-transactions-empty">
                   <TableCell colSpan={7} className="text-center text-sm text-muted-foreground">
                     No transactions.
                   </TableCell>
@@ -205,7 +214,7 @@ export default function AdminTransactionsContent() {
             </TableBody>
           </Table>
 
-          <div className="mt-4">
+          <div className="mt-4" data-testid="admin-transactions-pagination">
             <PaginationSmart currentPage={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         </CardContent>

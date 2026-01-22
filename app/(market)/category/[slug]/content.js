@@ -49,7 +49,7 @@ export default function CategoryContentPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background" data-testid="category-page">
         <MarketplaceHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -102,7 +102,12 @@ export default function CategoryContentPage() {
                   {/* Mobile Filter Button */}
                   <Sheet>
                     <SheetTrigger asChild>
-                      <Button variant="outline" size="sm" className="lg:hidden">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="lg:hidden"
+                        data-testid="category-filters-toggle"
+                      >
                         <Filter className="h-4 w-4 mr-2" />
                         Filters
                       </Button>
@@ -123,7 +128,7 @@ export default function CategoryContentPage() {
                     value={filters.sort}
                     onValueChange={(value) => updateFilters({ sort: value })}
                   >
-                    <SelectTrigger className="w-48">
+                    <SelectTrigger className="w-48" data-testid="category-sort">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -149,6 +154,7 @@ export default function CategoryContentPage() {
                       size="sm"
                       onClick={() => setViewMode("grid")}
                       className="h-8 w-8 p-0"
+                      data-testid="category-view-grid"
                     >
                       <LayoutGrid className="h-4 w-4" />
                     </Button>
@@ -157,6 +163,7 @@ export default function CategoryContentPage() {
                       size="sm"
                       onClick={() => setViewMode("list")}
                       className="h-8 w-8 p-0"
+                      data-testid="category-view-list"
                     >
                       <List className="h-4 w-4" />
                     </Button>
@@ -182,7 +189,10 @@ export default function CategoryContentPage() {
                   <p className="text-muted-foreground mb-4">
                     {productsError.message || 'Something went wrong while fetching products'}
                   </p>
-                  <Button onClick={() => window.location.reload()}>
+                  <Button
+                    onClick={() => window.location.reload()}
+                    data-testid="category-retry"
+                  >
                     Try again
                   </Button>
                 </div>
@@ -200,7 +210,7 @@ export default function CategoryContentPage() {
                       <p className="text-muted-foreground mb-4">
                         Try adjusting your search or filters
                       </p>
-                      <Button onClick={clearFilters}>
+                      <Button onClick={clearFilters} data-testid="category-clear-filters">
                         Clear all filters
                       </Button>
                     </div>
@@ -226,7 +236,7 @@ export default function CategoryContentPage() {
                       
                       {/* Pagination */}
                       {totalPages > 1 && (
-                        <div className="mt-8">
+                        <div className="mt-8" data-testid="category-pagination">
                           <PaginationSmart
                             currentPage={currentPage}
                             totalPages={totalPages}

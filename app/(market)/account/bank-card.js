@@ -185,14 +185,20 @@ export default function BankDetailsCard() {
     : "No payout method on file";
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <Card data-testid="bank-details-card">
+      <CardHeader data-testid="bank-details-header">
+        <CardTitle
+          className="flex items-center gap-2"
+          data-testid="bank-details-title"
+        >
           <Banknote className="h-5 w-5" /> Payout Bank Details
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-5">
-        <div className="p-3 rounded-md border border-border bg-muted/50 text-muted-foreground text-sm flex items-start gap-3">
+      <CardContent className="space-y-5" data-testid="bank-details-content">
+        <div
+          className="p-3 rounded-md border border-border bg-muted/50 text-muted-foreground text-sm flex items-start gap-3"
+          data-testid="bank-details-info"
+        >
           <Shield className="h-4 w-4 mt-0.5 text-emerald-600" />
           <div>
             Your bank details are encrypted at rest and only used when we
@@ -200,20 +206,25 @@ export default function BankDetailsCard() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-foreground">
+        <div className="flex items-center justify-between" data-testid="bank-details-summary">
+          <div className="text-sm text-foreground" data-testid="bank-details-current">
             <span className="font-medium">Current:</span> {summary}
           </div>
           <div className="flex items-center gap-2">
             {bank?.verified ? (
-              <Badge variant="secondary">Verified</Badge>
+              <Badge variant="secondary" data-testid="bank-details-verified">
+                Verified
+              </Badge>
             ) : bank ? (
-              <Badge variant="outline">Unverified</Badge>
+              <Badge variant="outline" data-testid="bank-details-unverified">
+                Unverified
+              </Badge>
             ) : null}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setEditing((v) => !v)}
+              data-testid="bank-details-toggle"
             >
               {editing ? "Close" : bank ? "Edit" : "Add"}
             </Button>
@@ -221,7 +232,7 @@ export default function BankDetailsCard() {
         </div>
 
         {editing && (
-          <form action={formAction} className="space-y-5">
+          <form action={formAction} className="space-y-5" data-testid="bank-details-form">
             <input
               type="hidden"
               name="verified"
@@ -233,27 +244,34 @@ export default function BankDetailsCard() {
               value={verified && verifiedName ? verifiedName : ""}
             />
             <div className="grid sm:grid-cols-3 gap-4">
-              <div>
-                <Label>Payout Type</Label>
+              <div data-testid="bank-details-payout-type-field">
+                <Label data-testid="bank-details-payout-type-label">Payout Type</Label>
                 <Select
                   value={payoutType}
                   onValueChange={(v) => setPayoutType(v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger data-testid="bank-details-payout-type">
                     <SelectValue placeholder="Select payout type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="bank">Bank</SelectItem>
-                    <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                    <SelectItem value="bank" data-testid="bank-details-payout-option-bank">
+                      Bank
+                    </SelectItem>
+                    <SelectItem
+                      value="mobile_money"
+                      data-testid="bank-details-payout-option-mobile-money"
+                    >
+                      Mobile Money
+                    </SelectItem>
                   </SelectContent>
                 </Select>
                 <input type="hidden" name="payout_type" value={payoutType} />
               </div>
-              <div className="sm:col-span-2">
-                <Label>Detected Region</Label>
-                <div className="text-sm text-muted-foreground mt-2">
+              <div className="sm:col-span-2" data-testid="bank-details-region">
+                <Label data-testid="bank-details-region-label">Detected Region</Label>
+                <div className="text-sm text-muted-foreground mt-2" data-testid="bank-details-region-status">
                   {currency ? (
-                    <span>
+                    <span data-testid="bank-details-region-values">
                       Currency: <span className="font-medium">{currency}</span>
                       {countryCode ? (
                         <span className="ml-2">
@@ -263,11 +281,16 @@ export default function BankDetailsCard() {
                       ) : null}
                     </span>
                   ) : loadingBanks ? (
-                    <span className="text-muted-foreground flex items-center gap-2">
+                    <span
+                      className="text-muted-foreground flex items-center gap-2"
+                      data-testid="bank-details-region-loading"
+                    >
                       <Loader2 className="h-3 w-3 animate-spin" /> Detecting region...
                     </span>
                   ) : (
-                    <span className="text-amber-600">Region not detected. Using default (NGN).</span>
+                    <span className="text-amber-600" data-testid="bank-details-region-fallback">
+                      Region not detected. Using default (NGN).
+                    </span>
                   )}
                 </div>
                 <input type="hidden" name="currency" value={currency} />
@@ -277,8 +300,8 @@ export default function BankDetailsCard() {
 
             {(payoutType === "bank" || payoutType === "mobile_money") && (
               <div className="grid sm:grid-cols-2 gap-4">
-                <div>
-                  <Label>
+                <div data-testid="bank-details-bank-field">
+                  <Label data-testid="bank-details-bank-label">
                     {payoutType === "bank" ? "Bank" : "Operator (MoMo)"}
                   </Label>
                   <Select
@@ -296,12 +319,12 @@ export default function BankDetailsCard() {
                       }
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="bank-details-bank-select">
                       <SelectValue
                         placeholder={loadingBanks ? "Loading..." : "Select"}
                       />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent data-testid="bank-details-bank-options">
                       <div className="sticky top-0 z-10 p-2 bg-popover border-b border-border">
                         <Input
                           autoFocus
@@ -311,10 +334,15 @@ export default function BankDetailsCard() {
                             setBankFilter(e.target.value);
                             setVisibleCount(10);
                           }}
+                          data-testid="bank-details-bank-search"
                         />
                       </div>
                       {filteredBanks.slice(0, visibleCount).map((b) => (
-                        <SelectItem key={String(b.code)} value={String(b.code)}>
+                        <SelectItem
+                          key={String(b.code)}
+                          value={String(b.code)}
+                          data-testid={`bank-details-bank-option-${b.code}`}
+                        >
                           {b.name} ({b.code})
                         </SelectItem>
                       ))}
@@ -326,6 +354,7 @@ export default function BankDetailsCard() {
                             e.stopPropagation();
                             setVisibleCount((c) => c + 10);
                           }}
+                          data-testid="bank-details-bank-show-more"
                         >
                           Show more ({filteredBanks.length - visibleCount} more)
                         </div>
@@ -350,8 +379,8 @@ export default function BankDetailsCard() {
                 </div>
 
                 {payoutType === "bank" ? (
-                  <div>
-                    <Label>Account Number</Label>
+                  <div data-testid="bank-details-account-number-field">
+                    <Label data-testid="bank-details-account-number-label">Account Number</Label>
                     <Input
                       value={accountNumber}
                       onChange={(e) => setAccountNumber(e.target.value)}
@@ -362,6 +391,7 @@ export default function BankDetailsCard() {
                       }
                       inputMode="numeric"
                       maxLength={16}
+                      data-testid="bank-details-account-number"
                     />
                     <input
                       type="hidden"
@@ -370,12 +400,15 @@ export default function BankDetailsCard() {
                     />
                   </div>
                 ) : (
-                  <div>
-                    <Label>MSISDN (Mobile Number)</Label>
+                  <div data-testid="bank-details-msisdn-field">
+                    <Label data-testid="bank-details-msisdn-label">
+                      MSISDN (Mobile Number)
+                    </Label>
                     <Input
                       value={msisdn}
                       onChange={(e) => setMsisdn(e.target.value)}
                       placeholder="e.g., 0551234567"
+                      data-testid="bank-details-msisdn"
                     />
                     <input type="hidden" name="msisdn" value={msisdn} />
                   </div>
@@ -390,6 +423,7 @@ export default function BankDetailsCard() {
                   variant="secondary"
                   onClick={handleVerify}
                   disabled={!canVerify || verifying}
+                  data-testid="bank-details-verify"
                 >
                   {verifying ? (
                     <span className="inline-flex items-center">
@@ -401,7 +435,10 @@ export default function BankDetailsCard() {
                   )}
                 </Button>
                 {verified && (
-                  <span className="inline-flex items-center text-emerald-700 text-sm">
+                  <span
+                    className="inline-flex items-center text-emerald-700 text-sm"
+                    data-testid="bank-details-verified-name"
+                  >
                     <Check className="h-4 w-4 mr-1" />{" "}
                     {verifiedName || "Verified"}
                   </span>
@@ -418,6 +455,7 @@ export default function BankDetailsCard() {
                 variant="outline"
                 onClick={() => setEditing(false)}
                 disabled={isPending}
+                data-testid="bank-details-cancel"
               >
                 Cancel
               </Button>
@@ -426,6 +464,7 @@ export default function BankDetailsCard() {
                 disabled={
                   isPending || (payoutType === "bank" && !selectedBank?.code)
                 }
+                data-testid="bank-details-save"
               >
                 {isPending ? (
                   <span className="inline-flex items-center">

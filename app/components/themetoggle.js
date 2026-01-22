@@ -30,26 +30,26 @@ export default function ThemeToggle() {
   return (
     <>
       <DropdownMenuSubMenu>
-        <DropdownMenuSubMenuTrigger>
+        <DropdownMenuSubMenuTrigger data-testid="theme-toggle-trigger">
           <span className="font-poynterroman font-semibold">Theme</span>
         </DropdownMenuSubMenuTrigger>
 
-        <DropdownMenuSubMenuContent>
-          <DropdownMenuItem onClick={() => setTheme("light")}>
+        <DropdownMenuSubMenuContent data-testid="theme-toggle-menu">
+          <DropdownMenuItem onClick={() => setTheme("light")} data-testid="theme-toggle-light">
             <span className="flex w-full items-center gap-2 cursor-pointer font-poynterroman py-1.5 pl-2 pr-1">
               <Sun className="size-4 text-inherit" />
               <span>Light</span>
             </span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => setTheme("dark")}>
+          <DropdownMenuItem onClick={() => setTheme("dark")} data-testid="theme-toggle-dark">
             <span className="flex w-full items-center gap-2 cursor-pointer font-poynterroman py-1.5 pl-2 pr-1">
               <Moon className="size-4 text-inherit" />
               <span>Dark</span>
             </span>
           </DropdownMenuItem>
 
-          <DropdownMenuItem onClick={() => setTheme("system")}>
+          <DropdownMenuItem onClick={() => setTheme("system")} data-testid="theme-toggle-system">
             <span className="flex w-full items-center gap-2 cursor-pointer font-poynterroman py-1.5 pl-2 pr-1">
               <Monitor className="size-4 text-inherit" />
               <span>System</span>

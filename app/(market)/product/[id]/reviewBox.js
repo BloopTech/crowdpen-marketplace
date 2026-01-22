@@ -259,6 +259,7 @@ export default function ReviewBox() {
           onClick={openLoginDialog}
           className="bg-tertiary hover:bg-tertiary/90 text-white font-medium px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
           size="lg"
+          data-testid="review-signin"
         >
           <MessageSquare className="h-5 w-5 mr-2" />
           Sign in to Write a Review
@@ -282,18 +283,23 @@ export default function ReviewBox() {
           <Button 
             className="bg-tertiary hover:bg-tertiary/90 text-white font-medium px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
             size="lg"
+            data-testid="review-open"
           >
             <MessageSquare className="h-5 w-5 mr-2" />
             {(isEditing || !!currentUserReview) ? 'Edit your review' : 'Rate this product'}
           </Button>
         </DialogTrigger>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-950 border border-gray-100 dark:border-slate-800 shadow-2xl text-gray-900 dark:text-slate-100">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-950 border border-gray-100 dark:border-slate-800 shadow-2xl text-gray-900 dark:text-slate-100"
+          data-testid="review-dialog"
+        >
           <DialogHeader className="space-y-3 pb-6 border-b border-gray-100 dark:border-slate-800 relative">
             <DialogClose asChild>
               <Button
                 variant="ghost"
                 size="icon"
                 className="absolute right-0 top-0 h-8 w-8 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                data-testid="review-close"
               >
                 <X className="h-4 w-4" />
                 <span className="sr-only">Close</span>
@@ -340,6 +346,7 @@ export default function ReviewBox() {
                       onClick={() => setRating(star)}
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(0)}
+                      data-testid={`review-star-${star}`}
                     >
                       <Star
                         className={`h-8 w-8 transition-all duration-200 ${
@@ -371,6 +378,7 @@ export default function ReviewBox() {
               <div className="flex items-center gap-3">
                 <form
                   action={session?.user?.id ? formAction : openLoginDialog}
+                  data-testid="review-rating-form"
                 >
                   <input type="hidden" name="productId" value={params?.id} />
                   <input type="hidden" name="rating" value={rating} />
@@ -381,6 +389,7 @@ export default function ReviewBox() {
                     onClick={() => setLastIntent('rating_only')}
                     disabled={isPending}
                     className="bg-tertiary hover:bg-tertiary/90 text-white"
+                    data-testid="review-submit-rating"
                   >
                     {isPending ? 'Saving rating...' : (isEditing ? 'Update rating' : 'Submit rating')}
                   </Button>
@@ -390,6 +399,7 @@ export default function ReviewBox() {
                   variant="outline"
                   onClick={() => { setShowEditor(true); setPromptToWrite(false); }}
                   className="dark:border-slate-600 dark:text-slate-100 dark:hover:bg-white/10"
+                  data-testid="review-write-toggle"
                 >
                   Write a review
                 </Button>
@@ -405,10 +415,21 @@ export default function ReviewBox() {
                     Thanks! Your rating has been saved. Would you like to add a written review?
                   </p>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" disabled={isPending} onClick={() => { setShowEditor(true); setPromptToWrite(false); }}>
+                    <Button
+                      size="sm"
+                      disabled={isPending}
+                      onClick={() => { setShowEditor(true); setPromptToWrite(false); }}
+                      data-testid="review-write-now"
+                    >
                       Write now
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={() => { setOpen(false); setPromptToWrite(false); }} className="dark:text-slate-300 dark:hover:bg-white/10">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => { setOpen(false); setPromptToWrite(false); }}
+                      className="dark:text-slate-300 dark:hover:bg-white/10"
+                      data-testid="review-not-now"
+                    >
                       Not now
                     </Button>
                   </div>
@@ -430,10 +451,14 @@ export default function ReviewBox() {
                     onChange={(e) => setTitle(e.target.value)}
                     maxLength={100}
                     className="h-12 text-base border-2 border-gray-200 rounded-xl focus:border-tertiary focus:ring-2 focus:ring-tertiary/20 transition-all duration-200 bg-white/80 dark:bg-slate-900/70 dark:border-slate-700 dark:text-slate-100"
+                    data-testid="review-title-input"
                   />
                 </div>
                 {/* Editor Toolbar */}
-                <div className="flex items-center gap-2 p-3 bg-white/80 dark:bg-slate-900/70 rounded-xl border-2 border-gray-100 dark:border-slate-700 shadow-sm">
+                <div
+                  className="flex items-center gap-2 p-3 bg-white/80 dark:bg-slate-900/70 rounded-xl border-2 border-gray-100 dark:border-slate-700 shadow-sm"
+                  data-testid="review-editor-toolbar"
+                >
                   <span className="text-sm font-medium text-gray-600 dark:text-slate-300 mr-2">Format:</span>
                   <Button
                     type="button"
@@ -445,6 +470,7 @@ export default function ReviewBox() {
                         ? "bg-tertiary text-white shadow-sm" 
                         : "hover:bg-tertiary/10 hover:text-tertiary dark:hover:bg-white/10"
                     }`}
+                    data-testid="review-editor-bold"
                   >
                     <BoldIcon className="h-4 w-4" />
                   </Button>
@@ -458,6 +484,7 @@ export default function ReviewBox() {
                         ? "bg-tertiary text-white shadow-sm" 
                         : "hover:bg-tertiary/10 hover:text-tertiary dark:hover:bg-white/10"
                     }`}
+                    data-testid="review-editor-italic"
                   >
                     <ItalicIcon className="h-4 w-4" />
                   </Button>
@@ -473,6 +500,7 @@ export default function ReviewBox() {
                         ? "bg-tertiary text-white shadow-sm" 
                         : "hover:bg-tertiary/10 hover:text-tertiary dark:hover:bg-white/10"
                     }`}
+                    data-testid="review-editor-bullets"
                   >
                     <List className="h-4 w-4" />
                   </Button>
@@ -488,6 +516,7 @@ export default function ReviewBox() {
                         ? "bg-tertiary text-white shadow-sm" 
                         : "hover:bg-tertiary/10 hover:text-tertiary dark:hover:bg-white/10"
                     }`}
+                    data-testid="review-editor-ordered"
                   >
                     <ListOrdered className="h-4 w-4" />
                   </Button>
@@ -499,6 +528,7 @@ export default function ReviewBox() {
                     editor={editor}
                     className="min-h-[150px] p-4 text-gray-900 dark:text-slate-100"
                     placeholder="Share your experience with this product..."
+                    data-testid="review-editor"
                   />
                 </div>
               </div>
@@ -509,6 +539,7 @@ export default function ReviewBox() {
               <form
                 action={session?.user?.id ? formAction : openLoginDialog}
                 className="space-y-6 pt-6 border-t border-gray-100 dark:border-slate-800"
+                data-testid="review-form"
               >
                 <div className="flex items-center gap-4">
                   <Button
@@ -517,6 +548,7 @@ export default function ReviewBox() {
                     disabled={rating === 0 || isPending || disabled}
                     className="flex-1 bg-tertiary hover:bg-tertiary/90 text-white font-semibold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                     size="lg"
+                    data-testid="review-submit"
                   >
                     {isPending ? (
                       <>
@@ -536,6 +568,7 @@ export default function ReviewBox() {
                     onClick={handleCancel}
                     className="border-2 border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-white/10 font-medium py-3 px-6 rounded-xl transition-all duration-200"
                     size="lg"
+                    data-testid="review-cancel"
                   >
                     Cancel
                   </Button>

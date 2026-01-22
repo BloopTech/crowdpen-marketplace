@@ -34,7 +34,11 @@ export default function ResourceCard({ resource }) {
       maximumFractionDigits: 2,
     }).format(Number(v || 0) * displayRate);
   return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-shadow duration-300">
+    <Card
+      className="group overflow-hidden hover:shadow-lg transition-shadow duration-300"
+      data-testid={`resource-card-${resource.id}`}
+      data-product-id={resource.id}
+    >
       <div className="relative aspect-[4/3] overflow-hidden">
         <Image
           src={resource.image || "/placeholder.svg"}
@@ -113,6 +117,7 @@ export default function ResourceCard({ resource }) {
               openLoginDialog("login");
             }
           }}
+          data-testid="resource-card-cart"
         >
           {isOutOfStock ? "Out of Stock" : "Add to Cart"}
         </Button>

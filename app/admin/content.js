@@ -42,20 +42,31 @@ export default function AdminContent() {
   ];
 
   return (
-    <div className="px-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {items.map((it) => (
-          <Card key={it.label}>
-            <CardHeader>
-              <CardTitle className="text-base">{it.label}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-semibold">
-                {loading ? "…" : (it.value ?? 0)}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+    <div className="px-4" data-testid="admin-dashboard">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" data-testid="admin-dashboard-grid">
+        {items.map((it) => {
+          const cardSlug = it.label.toLowerCase().replace(/\s+/g, "-");
+          return (
+            <Card key={it.label} data-testid={`admin-dashboard-card-${cardSlug}`}>
+              <CardHeader data-testid={`admin-dashboard-card-${cardSlug}-header`}>
+                <CardTitle
+                  className="text-base"
+                  data-testid={`admin-dashboard-card-${cardSlug}-label`}
+                >
+                  {it.label}
+                </CardTitle>
+              </CardHeader>
+              <CardContent data-testid={`admin-dashboard-card-${cardSlug}-content`}>
+                <div
+                  className="text-3xl font-semibold"
+                  data-testid={`admin-dashboard-card-${cardSlug}-value`}
+                >
+                  {loading ? "…" : (it.value ?? 0)}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

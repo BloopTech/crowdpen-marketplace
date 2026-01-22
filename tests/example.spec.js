@@ -1,19 +1,21 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
 
-test('has title', async ({ page }) => {
-  await page.goto('https://playwright.dev/');
+test.describe('Marketplace public pages @smoke', () => {
+  test('homepage renders header and search @smoke', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByTestId('marketplace-header')).toBeVisible();
+    await expect(page.getByTestId('marketplace-search-input')).toBeVisible();
+  });
 
-  // Expect a title "to contain" a substring.
-  await expect(page).toHaveTitle(/Playwright/);
-});
+  test('wishlist prompts login for guests @smoke', async ({ page }) => {
+    await page.goto('/wishlist');
+    await expect(page.getByTestId('wishlist-login-card')).toBeVisible();
+    await expect(page.getByTestId('wishlist-login')).toBeVisible();
+  });
 
-test('get started link', async ({ page }) => {
-  await page.goto('https://playwright.dev/');
-
-  // Click the get started link.
-  await page.getByRole('link', { name: 'Get started' }).click();
-
-  // Expects page to have a heading with the name of Installation.
-  await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
+  test('cart prompts login for guests @smoke', async ({ page }) => {
+    await page.goto('/cart');
+    await expect(page.getByTestId('cart-signin')).toBeVisible();
+  });
 });

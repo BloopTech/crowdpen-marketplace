@@ -285,9 +285,15 @@ export default function MarketplaceHeader(props) {
   };
 
   return (
-    <header className="sticky top-0 z-10 w-full border-b border-border bg-background">
+    <header
+      className="sticky top-0 z-10 w-full border-b border-border bg-background"
+      data-testid="marketplace-header"
+    >
       {shouldShowKycBanner && (
-        <div className="w-full bg-amber-50 border-b border-amber-100 text-amber-900 px-5 md:px-10 py-2.5 text-sm relative">
+        <div
+          className="w-full bg-amber-50 border-b border-amber-100 text-amber-900 px-5 md:px-10 py-2.5 text-sm relative"
+          data-testid="marketplace-kyc-banner"
+        >
           <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
             <div className="flex-1 flex flex-wrap items-center gap-2">
               <span className="font-medium">Complete your KYC verification</span>
@@ -306,6 +312,7 @@ export default function MarketplaceHeader(props) {
               onClick={() => setShowKycBanner(false)}
               className="cursor-pointer text-amber-800 hover:text-amber-600 p-1 rounded-md hover:bg-amber-100 transition-colors shrink-0"
               aria-label="Close banner"
+              data-testid="marketplace-kyc-banner-close"
             >
               <X className="h-4 w-4" />
             </button>
@@ -313,7 +320,10 @@ export default function MarketplaceHeader(props) {
         </div>
       )}
       {/* Top Bar */}
-      <div className="w-full bg-gray-900 text-white text-xs py-1 px-5 md:px-10 dark:bg-black">
+      <div
+        className="w-full bg-gray-900 text-white text-xs py-1 px-5 md:px-10 dark:bg-black"
+        data-testid="marketplace-topbar"
+      >
         <div className="flex justify-between items-center gap-3 w-full min-w-0">
           <Link
             href="https://crowdpen.co"
@@ -331,7 +341,7 @@ export default function MarketplaceHeader(props) {
             {/* <Link href="/creator/apply" className="hover:text-gray-300">
               <span>Become a Merchant</span>
             </Link> */}
-            <Link href="/help" className="hover:text-gray-300">
+            <Link href="/help" className="hover:text-gray-300" data-testid="marketplace-help-link">
               <span>Help & Support</span>
             </Link>
           </div>
@@ -344,6 +354,7 @@ export default function MarketplaceHeader(props) {
           <Link
             href="/"
             className="flex items-center hover:opacity-80 transition-opacity space-x-1 shrink-0"
+            data-testid="marketplace-logo"
           >
             <div>
               <Image
@@ -371,26 +382,42 @@ export default function MarketplaceHeader(props) {
                 className="pr-12 h-10"
                 onKeyDown={handleKeyDown}
                 onFocus={() => setShowSuggestions(true)}
+                data-testid="marketplace-search-input"
               />
               <Button
                 onClick={handleSearch}
                 size="sm"
                 className="absolute right-1 top-1 h-8"
+                data-testid="marketplace-search-submit"
               >
                 <Search className="h-4 w-4" />
               </Button>
 
               {showSuggestions && (searchQueryTrimmed || isSuggestionsLoading) && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-50 max-h-80 overflow-auto">
+                <div
+                  className="absolute top-full left-0 right-0 mt-1 bg-popover border rounded-lg shadow-lg z-50 max-h-80 overflow-auto"
+                  data-testid="marketplace-search-suggestions"
+                >
                   {isSuggestionsLoading ? (
-                    <div className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
+                    <div
+                      className="px-3 py-2 text-sm text-muted-foreground flex items-center gap-2"
+                      data-testid="marketplace-search-loading"
+                    >
+                      <LoaderCircle
+                        className="h-4 w-4 animate-spin"
+                        data-testid="marketplace-search-loading-spinner"
+                      />
                       <span>Searching...</span>
                     </div>
                   ) : null}
 
                   {!isSuggestionsLoading && suggestions.length === 0 && searchQueryTrimmed.length >= 2 ? (
-                    <div className="px-3 py-2 text-sm text-muted-foreground">No matches</div>
+                    <div
+                      className="px-3 py-2 text-sm text-muted-foreground"
+                      data-testid="marketplace-search-empty"
+                    >
+                      No matches
+                    </div>
                   ) : null}
 
                   {suggestions.map((s, idx) => (
@@ -408,6 +435,7 @@ export default function MarketplaceHeader(props) {
                         setActiveSuggestionIndex(-1);
                         router.push(`/product/${s.id}`);
                       }}
+                      data-testid={`marketplace-search-suggestion-${s.id || idx}`}
                     >
                       <div className="min-w-0">
                         <div className="text-sm font-medium truncate">{s.title}</div>
@@ -425,6 +453,7 @@ export default function MarketplaceHeader(props) {
                       className="w-full text-left px-3 py-2 border-t hover:bg-muted text-sm"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={handleSearch}
+                      data-testid="marketplace-search-submit-query"
                     >
                       Search for &quot;{searchQueryTrimmed}&quot;
                     </button>
@@ -440,14 +469,20 @@ export default function MarketplaceHeader(props) {
               <>
                 <UserId />
 
-                <Link href="/wishlist">
-                  <Button variant="ghost" size="sm" className="relative px-2 sm:px-3">
+                <Link href="/wishlist" data-testid="marketplace-wishlist-link">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="relative px-2 sm:px-3"
+                    data-testid="marketplace-wishlist-button"
+                  >
                     <Heart className="h-4 w-4" />
                     <span className="hidden sm:inline">Wishlist</span>
                     {wishlistCountData?.count > 0 && (
                       <Badge
                         variant="error"
                         className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                        data-testid="marketplace-wishlist-count"
                       >
                         {wishlistCountData?.count > 9
                           ? "9+"
@@ -457,14 +492,20 @@ export default function MarketplaceHeader(props) {
                   </Button>
                 </Link>
 
-                <Link href="/cart">
-                  <Button variant="ghost" size="sm" className="relative px-2 sm:px-3">
+                <Link href="/cart" data-testid="marketplace-cart-link">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="relative px-2 sm:px-3"
+                    data-testid="marketplace-cart-button"
+                  >
                     <ShoppingCart className="h-4 w-4" />
                     <span className="hidden sm:inline">Cart</span>
                     {cartCountData?.count > 0 && (
                       <Badge
                         variant="error"
                         className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                        data-testid="marketplace-cart-count"
                       >
                         {cartCountData?.count > 9
                           ? "9+"
@@ -479,6 +520,7 @@ export default function MarketplaceHeader(props) {
                   className="relative rounded-md border border-input bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
                   onClick={handleCreateClick}
                   //onClick={createCategory}
+                  data-testid="marketplace-create-button"
                 >
                   Create
                 </Button>
@@ -491,6 +533,7 @@ export default function MarketplaceHeader(props) {
                     aria-label="Log in"
                     onClick={() => openLoginDialog("login")}
                     className="bg-background text-foreground border border-input hover:bg-accent hover:text-accent-foreground"
+                    data-testid="marketplace-login-button"
                   >
                     <LogIn className="h-4 w-4 sm:mr-2" />
                     <span className="hidden sm:inline">Log in</span>
@@ -502,6 +545,7 @@ export default function MarketplaceHeader(props) {
                     aria-label="Join"
                     onClick={() => openLoginDialog("signup")}
                     className="bg-tertiary text-black shadow-sm hover:bg-primary hover:text-primary-foreground"
+                    data-testid="marketplace-join-button"
                   >
                     <UserPlus className="h-4 w-4 sm:mr-2" />
 
@@ -516,16 +560,21 @@ export default function MarketplaceHeader(props) {
         {/* Navigation */}
         {!hideFilters && (
         <div className="mt-4">
-          <NavigationMenu>
-            <NavigationMenuList className="flex-wrap">
+          <NavigationMenu data-testid="marketplace-nav">
+            <NavigationMenuList className="flex-wrap" data-testid="marketplace-nav-list">
               <NavigationMenuItem>
-                <NavigationMenuTrigger>All Categories</NavigationMenuTrigger>
+                <NavigationMenuTrigger data-testid="marketplace-nav-all-categories">
+                  All Categories
+                </NavigationMenuTrigger>
                 <NavigationMenuContent>
                   <div className="grid w-[calc(100vw-2rem)] sm:w-96 gap-3 p-4 bg-popover text-popover-foreground h-auto max-h-[30rem] overflow-y-auto">
                     {availableCategories.map((category) => {
                       const normalizedSubcategories = getSubcategories(category);
                       const categoryKey =
                         category.id ?? category.slug ?? category.name;
+                      const categoryTestId = String(categoryKey)
+                        .toLowerCase()
+                        .replace(/\s+/g, "-");
                       return (
                       <div key={categoryKey}>
                         <button
@@ -536,26 +585,33 @@ export default function MarketplaceHeader(props) {
                               : "text-foreground"
                           }`}
                           onClick={() => handleCategorySelect(category.name)}
+                          data-testid={`marketplace-category-${categoryTestId}`}
                         >
                           {category.name}
                         </button>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                          {normalizedSubcategories.map((sub) => (
-                            <button
-                              key={sub.id}
-                              type="button"
-                              onClick={() =>
-                                handleSubcategorySelect(category.name, sub.name)
-                              }
-                              className={`cursor-pointer text-left text-xs p-1 transition-colors ${
-                                isSubcategoryActive(category.name, sub.name)
-                                  ? "text-primary"
-                                  : "text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              {sub.name}
-                            </button>
-                          ))}
+                          {normalizedSubcategories.map((sub) => {
+                            const subKey = String(sub.id ?? sub.name)
+                              .toLowerCase()
+                              .replace(/\s+/g, "-");
+                            return (
+                              <button
+                                key={sub.id}
+                                type="button"
+                                onClick={() =>
+                                  handleSubcategorySelect(category.name, sub.name)
+                                }
+                                className={`cursor-pointer text-left text-xs p-1 transition-colors ${
+                                  isSubcategoryActive(category.name, sub.name)
+                                    ? "text-primary"
+                                    : "text-muted-foreground hover:text-foreground"
+                                }`}
+                                data-testid={`marketplace-subcategory-${categoryTestId}-${subKey}`}
+                              >
+                                {sub.name}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     )})}
@@ -566,10 +622,12 @@ export default function MarketplaceHeader(props) {
               {availableCategories?.map((category) => {
                 const categorySlug = category.name.toLowerCase().replace(/\s+/g, "-");
                 const isActive = pathname === `/category/${categorySlug}`;
+                const categoryTestId = `marketplace-nav-category-${categorySlug}`;
                 return (
                   <NavigationMenuItem key={category.name}>
                     <Link
                       href={`/category/${categorySlug}`}
+                      data-testid={categoryTestId}
                     >
                       <Button 
                         variant="ghost" 

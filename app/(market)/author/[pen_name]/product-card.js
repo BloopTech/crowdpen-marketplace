@@ -70,6 +70,7 @@ export default function MyProductCard(props) {
     (product?.stock !== null &&
       typeof product?.stock !== "undefined" &&
       Number(product?.stock) <= 0);
+  const testId = `author-product-card-${product.id}`;
 
   const wishes = product?.wishlist?.find(
     (wish) =>
@@ -142,7 +143,11 @@ export default function MyProductCard(props) {
   }, [cartState, refetchCartCount]);
 
   return (
-    <Card className="group hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-1">
+    <Card
+      className="group hover:shadow-xl transition-all duration-300 border-0 shadow-md hover:-translate-y-1"
+      data-testid={testId}
+      data-product-id={product.id}
+    >
       <div className="relative overflow-hidden rounded-t-lg">
         <Image
           src={product.image || "/placeholder.svg"}
@@ -184,6 +189,7 @@ export default function MyProductCard(props) {
                 openLoginDialog("login");
               }
             }}
+            data-testid={`${testId}-wishlist-form`}
           >
             <Button
               variant="ghost"
@@ -198,6 +204,7 @@ export default function MyProductCard(props) {
                 isPending ||
                 product?.user_id === session?.user?.id
               }
+              data-testid={`${testId}-wishlist`}
               title={
                 !session?.user
                   ? "Please login to add to wishlist"
@@ -219,8 +226,13 @@ export default function MyProductCard(props) {
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
           <Link
             href={`/product/${product.product_id ? product.product_id : product.id}`}
+            data-testid={`${testId}-preview`}
           >
-            <Button variant="secondary" size="sm">
+            <Button
+              variant="secondary"
+              size="sm"
+              data-testid={`${testId}-preview-button`}
+            >
               Preview
             </Button>
           </Link>
@@ -232,11 +244,15 @@ export default function MyProductCard(props) {
           <Link
             href={`/category/${product?.categorySlug}`}
             className="hover:underline"
+            data-testid={`${testId}-category`}
           >
             {product.category} › {product?.subCategory}
           </Link>
         </div>
-        <h3 className="font-semibold text-lg mb-2 line-clamp-2">
+        <h3
+          className="font-semibold text-lg mb-2 line-clamp-2"
+          data-testid={`${testId}-title`}
+        >
           {product.title}
         </h3>
         <p className="text-sm text-slate-600 mb-3 line-clamp-2">
@@ -291,6 +307,7 @@ export default function MyProductCard(props) {
             }
           }}
           className="w-full"
+          data-testid={`${testId}-cart-form`}
         >
           <Button
             type="submit"
@@ -301,6 +318,7 @@ export default function MyProductCard(props) {
               product?.user_id === session?.user?.id ||
               isOutOfStock
             }
+            data-testid={`${testId}-cart`}
           >
             <ShoppingCart className="h-4 w-4 mr-2" />
             {isCartPending ? (

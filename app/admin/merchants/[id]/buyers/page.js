@@ -75,64 +75,114 @@ export default async function AdminMerchantBuyersPage({
 
   const total = Number(countRow?.count || 0) || 0;
   const totalPages = Math.max(1, Math.ceil(total / getPageSize));
-
   return (
-    <div className="space-y-4 pb-8">
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-        <div className="text-base font-semibold">Buyers</div>
-        <div className="text-xs text-muted-foreground">
+    <div className="space-y-4 pb-8" data-testid="admin-merchant-buyers">
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+        data-testid="admin-merchant-buyers-summary"
+      >
+        <div className="text-base font-semibold" data-testid="admin-merchant-buyers-title">
+          Buyers
+        </div>
+        <div className="text-xs text-muted-foreground" data-testid="admin-merchant-buyers-description">
           Top buyers for this merchant (USD).
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left p-3">Buyer</th>
-              <th className="text-right p-3">Buyer Paid (USD)</th>
-              <th className="text-right p-3">Coupon Discounts</th>
-              <th className="text-right p-3">Units</th>
-              <th className="text-right p-3">Orders</th>
-              <th className="text-left p-3">Last Purchase</th>
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm overflow-x-auto"
+        data-testid="admin-merchant-buyers-table-card"
+      >
+        <table className="w-full text-sm" data-testid="admin-merchant-buyers-table">
+          <thead data-testid="admin-merchant-buyers-head">
+            <tr className="border-b" data-testid="admin-merchant-buyers-head-row">
+              <th className="text-left p-3" data-testid="admin-merchant-buyers-head-buyer">
+                Buyer
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-buyers-head-paid">
+                Buyer Paid (USD)
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-buyers-head-discount">
+                Coupon Discounts
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-buyers-head-units">
+                Units
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-buyers-head-orders">
+                Orders
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-buyers-head-last-purchase">
+                Last Purchase
+              </th>
             </tr>
           </thead>
-          <tbody>
-            {(rows || []).map((r) => (
-              <tr key={r.buyerId} className="border-b last:border-0">
-                <td className="p-3">
-                  <div className="font-medium">
-                    {r.buyerName || r.buyerEmail || r.buyerId || "-"}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {r.buyerEmail || ""}
-                  </div>
-                </td>
-                <td className="p-3 text-right tabular-nums">
-                  {fmtUsd(
-                    Math.max(
-                      0,
-                      (Number(r.revenue || 0) || 0) - (Number(r.discountTotal || 0) || 0)
-                    )
-                  )}
-                </td>
-                <td className="p-3 text-right tabular-nums">
-                  {fmtUsd(Number(r.discountTotal || 0) || 0)}
-                </td>
-                <td className="p-3 text-right tabular-nums">
-                  {Number(r.units || 0).toLocaleString("en-US")}
-                </td>
-                <td className="p-3 text-right tabular-nums">
-                  {Number(r.orders || 0).toLocaleString("en-US")}
-                </td>
-                <td className="p-3">{fmtDateTimeUtc(r.lastPurchaseAt)}</td>
-              </tr>
-            ))}
+          <tbody data-testid="admin-merchant-buyers-body">
+            {(rows || []).map((r) => {
+              const rowId = r.buyerId || "unknown";
+              return (
+                <tr
+                  key={r.buyerId}
+                  className="border-b last:border-0"
+                  data-testid={`admin-merchant-buyers-row-${rowId}`}
+                >
+                  <td className="p-3" data-testid={`admin-merchant-buyers-row-${rowId}-buyer`}>
+                    <div
+                      className="font-medium"
+                      data-testid={`admin-merchant-buyers-row-${rowId}-buyer-name`}
+                    >
+                      {r.buyerName || r.buyerEmail || r.buyerId || "-"}
+                    </div>
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid={`admin-merchant-buyers-row-${rowId}-buyer-email`}
+                    >
+                      {r.buyerEmail || ""}
+                    </div>
+                  </td>
+                  <td
+                    className="p-3 text-right tabular-nums"
+                    data-testid={`admin-merchant-buyers-row-${rowId}-paid`}
+                  >
+                    {fmtUsd(
+                      Math.max(
+                        0,
+                        (Number(r.revenue || 0) || 0) - (Number(r.discountTotal || 0) || 0)
+                      )
+                    )}
+                  </td>
+                  <td
+                    className="p-3 text-right tabular-nums"
+                    data-testid={`admin-merchant-buyers-row-${rowId}-discount`}
+                  >
+                    {fmtUsd(Number(r.discountTotal || 0) || 0)}
+                  </td>
+                  <td
+                    className="p-3 text-right tabular-nums"
+                    data-testid={`admin-merchant-buyers-row-${rowId}-units`}
+                  >
+                    {Number(r.units || 0).toLocaleString("en-US")}
+                  </td>
+                  <td
+                    className="p-3 text-right tabular-nums"
+                    data-testid={`admin-merchant-buyers-row-${rowId}-orders`}
+                  >
+                    {Number(r.orders || 0).toLocaleString("en-US")}
+                  </td>
+                  <td
+                    className="p-3"
+                    data-testid={`admin-merchant-buyers-row-${rowId}-last-purchase`}
+                  >
+                    {fmtDateTimeUtc(r.lastPurchaseAt)}
+                  </td>
+                </tr>
+              );
+            })}
             {(rows || []).length === 0 ? (
-              <tr>
+              <tr data-testid="admin-merchant-buyers-empty">
                 <td
                   className="p-6 text-center text-muted-foreground"
                   colSpan={6}
+                  data-testid="admin-merchant-buyers-empty-cell"
                 >
                   No buyers found.
                 </td>
@@ -142,15 +192,13 @@ export default async function AdminMerchantBuyersPage({
         </table>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
-          Page {getPage.toLocaleString("en-US")} of{" "}
-          {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")}{" "}
-          buyers)
+      <div className="flex items-center justify-between" data-testid="admin-merchant-buyers-page">
+        <div className="text-xs text-muted-foreground" data-testid="admin-merchant-buyers-page-info">
+          Page {getPage.toLocaleString("en-US")} of {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")} buyers)
         </div>
       </div>
 
-      <div>
+      <div data-testid="admin-merchant-buyers-pagination">
         <MerchantSubpagePagination currentPage={getPage} totalPages={totalPages} />
       </div>
     </div>

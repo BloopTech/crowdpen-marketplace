@@ -94,7 +94,7 @@ export default function ProductReviews() {
 
   if (reviewsLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" data-testid="product-reviews-loading">
         <div className="h-8 bg-gray-200 dark:bg-slate-700 rounded animate-pulse"></div>
         {[...Array(3)].map((_, i) => (
           <Card
@@ -120,9 +120,13 @@ export default function ProductReviews() {
 
   if (reviewsError) {
     return (
-      <div className="text-center py-8">
+      <div className="text-center py-8" data-testid="product-reviews-error">
         <p className="text-red-500 mb-4">Failed to load reviews</p>
-        <Button onClick={() => refetchReviews()} variant="outline">
+        <Button
+          onClick={() => refetchReviews()}
+          variant="outline"
+          data-testid="product-reviews-retry"
+        >
           Try Again
         </Button>
       </div>
@@ -139,10 +143,13 @@ export default function ProductReviews() {
     reviewsData?.pages?.[0]?.data?.pagination?.totalItems || 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="product-reviews">
       {/* Review Statistics */}
       {statistics.totalReviews > 0 && (
-        <div className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900/70 rounded-lg p-6 border border-transparent dark:border-slate-800 shadow-sm">
+        <div
+          className="bg-linear-to-r from-blue-50 to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-900/70 rounded-lg p-6 border border-transparent dark:border-slate-800 shadow-sm"
+          data-testid="product-reviews-stats"
+        >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
               Ratings & Reviews
@@ -171,7 +178,7 @@ export default function ProductReviews() {
           </div>
 
           {/* Rating Distribution */}
-          <div className="space-y-2">
+          <div className="space-y-2" data-testid="product-reviews-distribution">
             {[5, 4, 3, 2, 1].map((rating) => {
               const count = statistics.ratingDistribution?.[rating] || 0;
               const percentage =
@@ -183,6 +190,7 @@ export default function ProductReviews() {
                 <div
                   key={rating}
                   className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200"
+                  data-testid={`product-reviews-distribution-${rating}`}
                 >
                   <span className="w-8">{rating}</span>
                   <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
@@ -202,14 +210,14 @@ export default function ProductReviews() {
 
       {/* Write Review Section */}
       {!isOwner && (
-        <div className="flex justify-center">
+        <div className="flex justify-center" data-testid="product-reviews-write">
           <ReviewBox />
         </div>
       )}
 
       {/* Reviews List */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-4" data-testid="product-reviews-list">
+        <div className="flex items-center justify-between" data-testid="product-reviews-list-header">
           <h3 className="text-lg font-semibold flex items-center gap-2 text-gray-900 dark:text-white">
             <MessageSquare className="h-5 w-5" />
             Reviews ({writtenReviewsTotal || 0})
@@ -217,7 +225,10 @@ export default function ProductReviews() {
         </div>
 
         {writtenReviewsTotal === 0 ? (
-          <div className="text-center py-12 bg-white dark:bg-slate-900 border border-dashed border-gray-200 dark:border-slate-700 rounded-xl">
+          <div
+            className="text-center py-12 bg-white dark:bg-slate-900 border border-dashed border-gray-200 dark:border-slate-700 rounded-xl"
+            data-testid="product-reviews-empty"
+          >
             <MessageSquare className="h-12 w-12 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
             <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               No reviews yet
@@ -232,11 +243,13 @@ export default function ProductReviews() {
               <Card
                 key={review.id}
                 className="hover:shadow-md transition-shadow bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800"
+                data-testid={`review-card-${review.id}`}
+                data-review-id={review.id}
               >
                 <CardContent className="p-6">
                   <div className="flex items-start gap-4">
                     <Avatar
-                      className="bg-gradient-to-r from-blue-500 to-purple-500"
+                      className="bg-linear-to-r from-blue-500 to-purple-500"
                       color={review?.user?.color}
                       imageUrl={review?.user?.image}
                       initials={review?.user?.name.charAt(0)}
@@ -313,6 +326,7 @@ export default function ProductReviews() {
                               onSubmit={(event) =>
                                 handleHelpfulSubmit(event, review.id)
                               }
+                              data-testid={`review-helpful-form-${review.id}`}
                             >
                               <input
                                 type="hidden"
@@ -332,6 +346,7 @@ export default function ProductReviews() {
                                 disabled={isButtonPending || isOwnReview}
                                 aria-pressed={isMarkedHelpful ? "true" : "false"}
                                 aria-disabled={isOwnReview ? "true" : undefined}
+                                data-testid={`review-helpful-${review.id}`}
                               >
                                 {isButtonPending ? (
                                   <Loader2 className="h-4 w-4 mr-1 animate-spin" />
@@ -352,7 +367,11 @@ export default function ProductReviews() {
 
             {/* Infinite scroll loading indicator and sentry */}
             {(hasNextPage || isFetchingNextPage) && (
-              <div ref={sentryRef} className="flex justify-center py-8">
+              <div
+                ref={sentryRef}
+                className="flex justify-center py-8"
+                data-testid="reviews-load-more-container"
+              >
                 {isFetchingNextPage ? (
                   <div className="flex items-center gap-2 text-gray-500 dark:text-slate-300">
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -363,6 +382,7 @@ export default function ProductReviews() {
                     variant="outline"
                     onClick={() => fetchNextPage()}
                     disabled={!hasNextPage}
+                    data-testid="reviews-load-more"
                   >
                     Load More Reviews
                   </Button>

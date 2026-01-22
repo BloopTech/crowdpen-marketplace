@@ -57,16 +57,16 @@ export default function CheckoutContent() {
 
   if (!session) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background" data-testid="checkout-page">
         <MarketplaceHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onSearch={() => {}}
         />
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center gap-2 mb-6">
+        <div className="container mx-auto px-4 py-8" data-testid="checkout-container">
+          <div className="flex items-center gap-2 mb-6" data-testid="checkout-header">
             <Link href="/">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" data-testid="checkout-back-store">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Store
               </Button>
@@ -76,6 +76,7 @@ export default function CheckoutContent() {
             <Button
               onClick={openLoginDialog}
               className="bg-tertiary text-white"
+              data-testid="checkout-signin"
             >
               Sign in to checkout
             </Button>
@@ -86,13 +87,14 @@ export default function CheckoutContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background w-full">
+    <div className="min-h-screen bg-background w-full" data-testid="checkout-page">
       {(beginPending || processing) && (
         <>
           <button
             type="button"
             onClick={cancelStartButton}
-            className="cursor-pointer fixed z-[100005] px-2 py-2 rounded-full bg-background text-foreground text-sm shadow-lg border border-border hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            className="cursor-pointer fixed z-100005 px-2 py-2 rounded-full bg-background text-foreground text-sm shadow-lg border border-border hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            data-testid="checkout-cancel-payment"
             style={{
               top: closePos?.top ?? 24,
               left: closePos?.left ?? undefined,
@@ -101,7 +103,10 @@ export default function CheckoutContent() {
           >
             <X className="h-4 w-4" />
           </button>
-          <div className="fixed inset-0 z-[100005] flex items-center justify-center pointer-events-none">
+          <div
+            className="fixed inset-0 z-100005 flex items-center justify-center pointer-events-none"
+            data-testid="checkout-processing-overlay"
+          >
             <Image
               src="https://res.cloudinary.com/dsuwnvwo1/image/upload/v1731081972/pf6c5fzwp29p8fmloiku.gif"
               alt=""
@@ -120,21 +125,21 @@ export default function CheckoutContent() {
         onSearch={() => {}}
       />
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-2 mb-6">
+      <div className="container mx-auto px-4 py-8" data-testid="checkout-container">
+        <div className="flex items-center gap-2 mb-6" data-testid="checkout-header">
           <Link href="/cart">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" data-testid="checkout-back-cart">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Cart
             </Button>
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" data-testid="checkout-layout">
           {/* Checkout Form */}
           <div className="space-y-6">
-            <Card>
-              <CardHeader>
+            <Card data-testid="checkout-card">
+              <CardHeader data-testid="checkout-card-header">
                 <CardTitle className="flex items-center gap-2">
                   <Lock className="h-5 w-5" />
                   Secure Checkout
@@ -145,6 +150,7 @@ export default function CheckoutContent() {
                   action={beginAction}
                   onSubmit={handleBeginSubmit}
                   className="space-y-6"
+                  data-testid="checkout-form"
                 >
                   <input
                     type="hidden"
@@ -152,8 +158,10 @@ export default function CheckoutContent() {
                     value={existingOrderId || ""}
                   />
                   {/* Contact Information */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold">Contact Information</h3>
+                  <div className="space-y-4" data-testid="checkout-contact">
+                    <h3 className="font-semibold" data-testid="checkout-contact-title">
+                      Contact Information
+                    </h3>
                     <div>
                       <Label htmlFor="email">Email Address</Label>
                       <Input
@@ -166,6 +174,7 @@ export default function CheckoutContent() {
                         }
                         placeholder="you@email.com"
                         required
+                        data-testid="checkout-email"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -179,6 +188,7 @@ export default function CheckoutContent() {
                             handleInputChange("firstName", e.target.value)
                           }
                           required
+                          data-testid="checkout-first-name"
                         />
                       </div>
                       <div>
@@ -191,6 +201,7 @@ export default function CheckoutContent() {
                             handleInputChange("lastName", e.target.value)
                           }
                           required
+                          data-testid="checkout-last-name"
                         />
                       </div>
                     </div>
@@ -199,7 +210,7 @@ export default function CheckoutContent() {
                   <Separator />
 
                   {/* Payment Method (StartButton) */}
-                  <div className="space-y-4">
+                  <div className="space-y-4" data-testid="checkout-payment-method">
                     {/* <h3 className="font-semibold">Payment Method</h3>
                     <RadioGroup
                       value={paymentMethod}
@@ -227,7 +238,7 @@ export default function CheckoutContent() {
                         )}
                       </div>
                     </RadioGroup> */}
-                    <div className="text-xs text-muted-foreground">
+                    <div className="text-xs text-muted-foreground" data-testid="checkout-payment-note">
                       You&apos;ll complete your payment securely in a hosted {providerLabel} checkout.
                     </div>
                     <input
@@ -240,8 +251,10 @@ export default function CheckoutContent() {
                   <Separator />
 
                   {/* Billing Address */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold">Billing Address</h3>
+                  <div className="space-y-4" data-testid="checkout-billing">
+                    <h3 className="font-semibold" data-testid="checkout-billing-title">
+                      Billing Address
+                    </h3>
                     <div>
                       <Label htmlFor="billingAddress">Address</Label>
                       <Input
@@ -253,6 +266,7 @@ export default function CheckoutContent() {
                         }
                         placeholder="123 Main Street"
                         required
+                        data-testid="checkout-address"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -266,6 +280,7 @@ export default function CheckoutContent() {
                             handleInputChange("city", e.target.value)
                           }
                           required
+                          data-testid="checkout-city"
                         />
                       </div>
                       <div>
@@ -278,6 +293,7 @@ export default function CheckoutContent() {
                             handleInputChange("zipCode", e.target.value)
                           }
                           required
+                          data-testid="checkout-zip"
                         />
                       </div>
                     </div>
@@ -288,13 +304,14 @@ export default function CheckoutContent() {
                     />
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Checkbox id="terms" required />
+                  <div className="flex items-center space-x-2" data-testid="checkout-terms-row">
+                    <Checkbox id="terms" required data-testid="checkout-terms" />
                     <Label htmlFor="terms" className="text-sm">
                       I agree to the{" "}
                       <Link
                         href="/terms"
                         className="text-tertiary hover:underline"
+                        data-testid="checkout-terms-link"
                       >
                         Terms of Service
                       </Link>{" "}
@@ -302,6 +319,7 @@ export default function CheckoutContent() {
                       <Link
                         href="/privacy"
                         className="text-tertiary hover:underline"
+                        data-testid="checkout-privacy-link"
                       >
                         Privacy Policy
                       </Link>
@@ -321,6 +339,7 @@ export default function CheckoutContent() {
                       !paymentProviderLoaded ||
                       (requiresStartButton && !startButtonLoaded)
                     }
+                    data-testid="checkout-submit"
                   >
                     {beginPending || finalizePending ? (
                       <span className="inline-flex items-center gap-2">
@@ -337,26 +356,26 @@ export default function CheckoutContent() {
 
           {/* Order Summary */}
           <div>
-            <Card>
-              <CardHeader>
+            <Card data-testid="checkout-summary">
+              <CardHeader data-testid="checkout-summary-header">
                 <CardTitle>Order Summary</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
+              <CardContent className="space-y-4" data-testid="checkout-summary-content">
+                <div className="space-y-3" data-testid="checkout-summary-lines">
                   {isLoading && (
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" /> Loading cart…
                     </div>
                   )}
                   {isError && (
-                    <div className="text-sm text-red-600">
+                    <div className="text-sm text-red-600" data-testid="checkout-summary-error">
                       {error?.message || "Failed to load cart"}
                     </div>
                   )}
                   {!isLoading &&
                     !isError &&
                     cartItems?.map((it) => (
-                      <div key={it.id} className="flex justify-between text-sm">
+                      <div key={it.id} className="flex justify-between text-sm" data-testid={`checkout-summary-item-${it.id}`}>
                         <span className="truncate pr-2">
                           {it?.product?.title || it?.name || "Item"} ×{" "}
                           {it.quantity}
@@ -365,29 +384,32 @@ export default function CheckoutContent() {
                       </div>
                     ))}
                   <Separator />
-                  <div className="flex justify-between">
+                  <div className="flex justify-between" data-testid="checkout-summary-subtotal">
                     <span>Subtotal</span>
                     <span>{fmt(subtotal)}</span>
                   </div>
                   <Separator />
-                  <div className="flex justify-between font-semibold text-lg">
+                  <div className="flex justify-between font-semibold text-lg" data-testid="checkout-summary-total">
                     <span>Total</span>
                     <span>{fmt(total)}</span>
                   </div>
                 </div>
 
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <div className="text-sm font-medium text-green-800 mb-1">
+                <div className="bg-green-50 p-3 rounded-lg" data-testid="checkout-summary-next">
+                  <div
+                    className="text-sm font-medium text-green-800 mb-1"
+                    data-testid="checkout-summary-next-title"
+                  >
                     What happens next?
                   </div>
-                  <div className="text-xs text-green-700 space-y-1">
+                  <div className="text-xs text-green-700 space-y-1" data-testid="checkout-summary-next-list">
                     <div>✓ Instant receipt sent to your email</div>
                     <div>✓ Access purchases in your account</div>
                     <div>✓ Secure, encrypted payment</div>
                   </div>
                 </div>
 
-                <div className="text-xs text-muted-foreground text-center">
+                <div className="text-xs text-muted-foreground text-center" data-testid="checkout-summary-security">
                   🔒 Your payment information is secure and encrypted
                 </div>
               </CardContent>

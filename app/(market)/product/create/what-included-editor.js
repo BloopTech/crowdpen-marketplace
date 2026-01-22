@@ -26,7 +26,13 @@ import {
 import { Input } from "../../../components/ui/input";
 import { Button } from "../../../components/ui/button";
 
-const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
+const WhatIncludedEditor = ({
+  value,
+  onChange,
+  error,
+  disabled = false,
+  dataTestId,
+}) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -208,6 +214,7 @@ const WhatIncludedEditor = ({ value, onChange, error, disabled = false }) => {
         <EditorContent
           editor={editor}
           className="prose prose-sm max-w-none focus-within:outline-none text-gray-900 dark:text-slate-100 [&_.ProseMirror]:outline-none [&_.ProseMirror]:m-0 [&_.ProseMirror]:p-0 [&_.ProseMirror]:border-none [&_.ProseMirror]:min-h-[80px]"
+          data-testid={dataTestId}
         />
       </div>
 

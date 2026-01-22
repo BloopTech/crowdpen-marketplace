@@ -80,12 +80,12 @@ export default function AdminErrorsContent() {
   }, [detailsData?.sample_context]);
 
   return (
-    <div className="px-4 space-y-6">
-      <Card>
+    <div className="px-4 space-y-6" data-testid="admin-errors-page">
+      <Card data-testid="admin-errors-card">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Errors</CardTitle>
-            <Button onClick={refetch} disabled={loading}>
+            <Button onClick={refetch} disabled={loading} data-testid="admin-errors-refresh">
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
@@ -100,6 +100,7 @@ export default function AdminErrorsContent() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-errors-search"
               />
             </div>
             <div>
@@ -109,6 +110,7 @@ export default function AdminErrorsContent() {
                 value={params?.from || ""}
                 onChange={(e) => setFrom(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-errors-from"
               />
             </div>
             <div>
@@ -118,6 +120,7 @@ export default function AdminErrorsContent() {
                 value={params?.to || ""}
                 onChange={(e) => setTo(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-errors-to"
               />
             </div>
             <div>
@@ -126,6 +129,7 @@ export default function AdminErrorsContent() {
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-errors-page-size"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -133,12 +137,12 @@ export default function AdminErrorsContent() {
                 <option value={100}>100</option>
               </select>
             </div>
-            <Button variant="outline" onClick={refetch}>
+            <Button variant="outline" onClick={refetch} data-testid="admin-errors-apply">
               Apply
             </Button>
           </div>
 
-          <Table>
+          <Table data-testid="admin-errors-table">
             <TableHeader>
               <TableRow>
                 <TableHead>Last seen</TableHead>
@@ -155,6 +159,7 @@ export default function AdminErrorsContent() {
                   key={err.fingerprint}
                   className="cursor-pointer"
                   onClick={() => openDetails(err.fingerprint)}
+                  data-testid={`admin-error-row-${err.fingerprint}`}
                 >
                   <TableCell>
                     {err.last_seen_at
@@ -171,7 +176,7 @@ export default function AdminErrorsContent() {
                 </TableRow>
               ))}
               {list.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-errors-empty">
                   <TableCell colSpan={6} className="text-center text-sm text-muted-foreground">
                     No errors.
                   </TableCell>
@@ -180,7 +185,7 @@ export default function AdminErrorsContent() {
             </TableBody>
           </Table>
 
-          <div className="mt-4">
+          <div className="mt-4" data-testid="admin-errors-pagination">
             <PaginationSmart currentPage={page} totalPages={totalPages} onPageChange={setPage} />
           </div>
         </CardContent>
@@ -192,37 +197,50 @@ export default function AdminErrorsContent() {
           setDetailsOpen(open);
           if (!open) setSelectedFingerprint(null);
         }}
+        data-testid="admin-errors-dialog"
       >
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl" data-testid="admin-errors-dialog-content">
           <DialogHeader>
-            <DialogTitle>Error details</DialogTitle>
-            <DialogDescription>
+            <DialogTitle data-testid="admin-errors-dialog-title">Error details</DialogTitle>
+            <DialogDescription data-testid="admin-errors-dialog-description">
               {selectedFingerprint ? `Fingerprint: ${selectedFingerprint}` : ""}
             </DialogDescription>
           </DialogHeader>
 
           {detailsLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="admin-errors-details-loading">
               <Skeleton className="h-5 w-2/3" />
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-11/12" />
               <Skeleton className="h-48 w-full" />
             </div>
           ) : detailsError ? (
-            <div className="text-sm text-red-500">
+            <div className="text-sm text-red-500" data-testid="admin-errors-details-error">
               {detailsError?.message || "Failed to load details"}
             </div>
           ) : detailsData ? (
-            <Tabs defaultValue="overview">
-              <TabsList>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="stack">Stack</TabsTrigger>
-                <TabsTrigger value="context">Context</TabsTrigger>
+            <Tabs defaultValue="overview" data-testid="admin-errors-details-tabs">
+              <TabsList data-testid="admin-errors-details-tabs-list">
+                <TabsTrigger value="overview" data-testid="admin-errors-details-tab-overview">
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="stack" data-testid="admin-errors-details-tab-stack">
+                  Stack
+                </TabsTrigger>
+                <TabsTrigger value="context" data-testid="admin-errors-details-tab-context">
+                  Context
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="overview">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="rounded border border-border p-3">
+              <TabsContent value="overview" data-testid="admin-errors-details-overview">
+                <div
+                  className="grid grid-cols-1 md:grid-cols-2 gap-3"
+                  data-testid="admin-errors-details-overview-grid"
+                >
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-errors-details-last-seen"
+                  >
                     <div className="text-xs text-muted-foreground">Last seen</div>
                     <div className="text-sm font-medium">
                       {detailsData.last_seen_at
@@ -230,19 +248,31 @@ export default function AdminErrorsContent() {
                         : "-"}
                     </div>
                   </div>
-                  <div className="rounded border border-border p-3">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-errors-details-count"
+                  >
                     <div className="text-xs text-muted-foreground">Count</div>
                     <div className="text-sm font-medium">{Number(detailsData.event_count || 0) || 0}</div>
                   </div>
-                  <div className="rounded border border-border p-3">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-errors-details-route"
+                  >
                     <div className="text-xs text-muted-foreground">Route</div>
                     <div className="text-sm font-medium break-all">{detailsData.route || "-"}</div>
                   </div>
-                  <div className="rounded border border-border p-3">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-errors-details-method"
+                  >
                     <div className="text-xs text-muted-foreground">Method</div>
                     <div className="text-sm font-medium">{detailsData.method || "-"}</div>
                   </div>
-                  <div className="rounded border border-border p-3">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-errors-details-error"
+                  >
                     <div className="text-xs text-muted-foreground">Error</div>
                     <div className="text-sm font-medium break-all">{detailsData.error_name || "Error"}</div>
                     {detailsData.sample_message ? (
@@ -251,7 +281,10 @@ export default function AdminErrorsContent() {
                       </div>
                     ) : null}
                   </div>
-                  <div className="rounded border border-border p-3">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-errors-details-pg-code"
+                  >
                     <div className="text-xs text-muted-foreground">PG code</div>
                     <div className="text-sm font-medium">{detailsData.pg_code || "-"}</div>
                     {detailsData.constraint_name ? (
@@ -263,20 +296,28 @@ export default function AdminErrorsContent() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="stack">
-                <pre className="text-xs whitespace-pre-wrap wrap-break-word rounded border border-border bg-muted/20 p-3 max-h-[55vh] overflow-auto">
+              <TabsContent value="stack" data-testid="admin-errors-details-stack">
+                <pre
+                  className="text-xs whitespace-pre-wrap wrap-break-word rounded border border-border bg-muted/20 p-3 max-h-[55vh] overflow-auto"
+                  data-testid="admin-errors-details-stack-content"
+                >
                   {detailsData.sample_stack || "(no stack captured)"}
                 </pre>
               </TabsContent>
 
-              <TabsContent value="context">
-                <pre className="text-xs whitespace-pre-wrap wrap-break-word rounded border border-border bg-muted/20 p-3 max-h-[55vh] overflow-auto">
+              <TabsContent value="context" data-testid="admin-errors-details-context">
+                <pre
+                  className="text-xs whitespace-pre-wrap wrap-break-word rounded border border-border bg-muted/20 p-3 max-h-[55vh] overflow-auto"
+                  data-testid="admin-errors-details-context-content"
+                >
                   {detailsContextText || "(no context captured)"}
                 </pre>
               </TabsContent>
             </Tabs>
           ) : (
-            <div className="text-sm text-muted-foreground">No details.</div>
+            <div className="text-sm text-muted-foreground" data-testid="admin-errors-details-empty">
+              No details.
+            </div>
           )}
         </DialogContent>
       </Dialog>

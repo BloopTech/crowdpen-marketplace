@@ -215,16 +215,19 @@ export default function MyVerification(props) {
 
   return (
     <>
-      <Card>
-        <CardHeader>
+      <Card data-testid="verification-card">
+        <CardHeader data-testid="verification-header">
           <CardTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5" />
             Identity Verification (KYC)
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6" data-testid="verification-content">
           {isKycExempt ? (
-            <div className="p-4 rounded-md border border-border bg-muted/50 text-muted-foreground flex items-start gap-3">
+            <div
+              className="p-4 rounded-md border border-border bg-muted/50 text-muted-foreground flex items-start gap-3"
+              data-testid="verification-exempt"
+            >
               <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5" />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -236,7 +239,11 @@ export default function MyVerification(props) {
               </div>
             </div>
           ) : (
-            <form action={kycFormAction} className="space-y-6">
+            <form
+              action={kycFormAction}
+              className="space-y-6"
+              data-testid="verification-form"
+            >
             {/* Hidden fields for status, level, select value and uploaded URLs */}
             <input type="hidden" name="status" value="pending" />
             <input
@@ -331,7 +338,10 @@ export default function MyVerification(props) {
               value={idBack.size ?? ""}
             />
             <input type="hidden" name="selfie_size" value={selfie.size ?? ""} />
-            <div className="p-4 rounded-md border border-border bg-muted/50 text-muted-foreground flex items-start gap-3">
+            <div
+              className="p-4 rounded-md border border-border bg-muted/50 text-muted-foreground flex items-start gap-3"
+              data-testid="verification-status"
+            >
               {kyc?.status === "approved" ? (
                 <ShieldCheck className="h-5 w-5 text-green-600 mt-0.5" />
               ) : (
@@ -367,6 +377,7 @@ export default function MyVerification(props) {
                 <Alert
                   variant="destructive"
                   className="border-destructive/40 bg-destructive/10"
+                  data-testid="verification-rejected"
                 >
                   <AlertCircle className="h-5 w-5" />
                   <AlertTitle>Verification not approved</AlertTitle>
@@ -386,7 +397,7 @@ export default function MyVerification(props) {
             )}
 
             {kyc?.status === "approved" && (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground" data-testid="verification-approved-summary">
                 <p>Verification Level: {kyc?.level || "standard"}</p>
                 <p>
                   Name:{" "}
@@ -401,7 +412,7 @@ export default function MyVerification(props) {
             {kyc?.status !== "approved" && (
               <>
                 {/* Stepper */}
-                <div className="grid grid-cols-5 gap-2">
+                <div className="grid grid-cols-5 gap-2" data-testid="verification-stepper">
                   {["Personal", "Address", "ID", "Selfie", "Review"].map(
                     (label, idx) => (
                       <div
@@ -413,6 +424,7 @@ export default function MyVerification(props) {
                               ? "bg-blue-50 text-blue-700 border-blue-200"
                               : "bg-background text-foreground"
                         }`}
+                        data-testid={`verification-step-${idx}`}
                       >
                         <span className="mr-2">{idx + 1}</span>
                         <span className="truncate">{label}</span>
@@ -423,13 +435,14 @@ export default function MyVerification(props) {
 
                 {/* Steps */}
                 {kycStep === 0 && (
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-4" data-testid="verification-step-personal">
                     <div>
                       <Label>First Name</Label>
                       <Input
                         name="first_name"
                         value={kycForm.first_name}
                         onChange={(e) => setField("first_name", e.target.value)}
+                        data-testid="verification-first-name"
                       />
                     </div>
                     <div>
@@ -438,6 +451,7 @@ export default function MyVerification(props) {
                         name="last_name"
                         value={kycForm.last_name}
                         onChange={(e) => setField("last_name", e.target.value)}
+                        data-testid="verification-last-name"
                       />
                     </div>
                     <div>
@@ -448,11 +462,12 @@ export default function MyVerification(props) {
                         onChange={(e) =>
                           setField("middle_name", e.target.value)
                         }
+                        data-testid="verification-middle-name"
                       />
                     </div>
                     <div>
                       <Label>Phone Number</Label>
-                      <div className="phone-input-container">
+                      <div className="phone-input-container" data-testid="verification-phone">
                         <PhoneInput
                           placeholder="Enter phone number"
                           value={kycForm.phone_number}
@@ -471,6 +486,7 @@ export default function MyVerification(props) {
                         value={kycForm.dob}
                         max={new Date().toISOString().split("T")[0]}
                         onChange={(e) => setField("dob", e.target.value)}
+                        data-testid="verification-dob"
                       />
                     </div>
                     <div>
@@ -479,13 +495,14 @@ export default function MyVerification(props) {
                         value={kycForm.nationality}
                         onChange={(v) => setField("nationality", v)}
                         placeholder="Select nationality..."
+                        dataTestId="verification-nationality"
                       />
                     </div>
                   </div>
                 )}
 
                 {kycStep === 1 && (
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-4" data-testid="verification-step-address">
                     <div>
                       <Label>Address Line 1</Label>
                       <Input
@@ -494,6 +511,7 @@ export default function MyVerification(props) {
                         onChange={(e) =>
                           setField("address_line1", e.target.value)
                         }
+                        data-testid="verification-address-line1"
                       />
                     </div>
                     <div>
@@ -504,6 +522,7 @@ export default function MyVerification(props) {
                         onChange={(e) =>
                           setField("address_line2", e.target.value)
                         }
+                        data-testid="verification-address-line2"
                       />
                     </div>
                     <div>
@@ -512,6 +531,7 @@ export default function MyVerification(props) {
                         name="city"
                         value={kycForm.city}
                         onChange={(e) => setField("city", e.target.value)}
+                        data-testid="verification-city"
                       />
                     </div>
                     <div>
@@ -520,6 +540,7 @@ export default function MyVerification(props) {
                         name="state"
                         value={kycForm.state}
                         onChange={(e) => setField("state", e.target.value)}
+                        data-testid="verification-state"
                       />
                     </div>
                     <div>
@@ -530,6 +551,7 @@ export default function MyVerification(props) {
                         onChange={(e) =>
                           setField("postal_code", e.target.value)
                         }
+                        data-testid="verification-postal-code"
                       />
                     </div>
                     <div>
@@ -538,20 +560,21 @@ export default function MyVerification(props) {
                         value={kycForm.country}
                         onChange={(v) => setField("country", v)}
                         placeholder="Select country..."
+                        dataTestId="verification-country"
                       />
                     </div>
                   </div>
                 )}
 
                 {kycStep === 2 && (
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid sm:grid-cols-2 gap-4" data-testid="verification-step-id">
                     <div>
                       <Label>Document Type</Label>
                       <Select
                         value={kycForm.id_type}
                         onValueChange={(v) => setField("id_type", v)}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger data-testid="verification-id-type">
                           <SelectValue placeholder="Select document type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -572,6 +595,7 @@ export default function MyVerification(props) {
                         name="id_number"
                         value={kycForm.id_number}
                         onChange={(e) => setField("id_number", e.target.value)}
+                        data-testid="verification-id-number"
                       />
                     </div>
                     <div>
@@ -580,6 +604,7 @@ export default function MyVerification(props) {
                         value={kycForm.id_country}
                         onChange={(v) => setField("id_country", v)}
                         placeholder="Select issuing country..."
+                        dataTestId="verification-id-country"
                       />
                     </div>
                     <div>
@@ -590,18 +615,23 @@ export default function MyVerification(props) {
                         value={kycForm.id_expiry}
                         min={new Date().toISOString().split("T")[0]}
                         onChange={(e) => setField("id_expiry", e.target.value)}
+                        data-testid="verification-id-expiry"
                       />
                     </div>
 
                     {/* Uploads */}
-                    <div className="sm:col-span-2 grid sm:grid-cols-2 gap-4">
-                      <div>
+                    <div
+                      className="sm:col-span-2 grid sm:grid-cols-2 gap-4"
+                      data-testid="verification-id-uploads"
+                    >
+                      <div data-testid="verification-id-front-upload">
                         <Label>ID Front</Label>
                         <div className="mt-1 flex items-center gap-3">
                           <input
                             type="file"
                             accept="image/*"
                             onChange={handleFilePick(setIdFront)}
+                            data-testid="verification-id-front"
                           />
                           {idFront.uploading && (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -611,6 +641,7 @@ export default function MyVerification(props) {
                               href={idFront.uploadedUrl || idFront.preview}
                               target="_blank"
                               className="text-sm text-blue-600 underline flex items-center gap-1"
+                              data-testid="verification-id-front-preview"
                             >
                               <ImageIcon className="h-4 w-4" /> Preview
                             </a>
@@ -628,13 +659,14 @@ export default function MyVerification(props) {
                           value={idFront.size}
                         />
                       </div>
-                      <div>
+                      <div data-testid="verification-id-back-upload">
                         <Label>ID Back</Label>
                         <div className="mt-1 flex items-center gap-3">
                           <input
                             type="file"
                             accept="image/*"
                             onChange={handleFilePick(setIdBack)}
+                            data-testid="verification-id-back"
                           />
                           {idBack.uploading && (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -644,6 +676,7 @@ export default function MyVerification(props) {
                               href={idBack.uploadedUrl || idBack.preview}
                               target="_blank"
                               className="text-sm text-blue-600 underline flex items-center gap-1"
+                              data-testid="verification-id-back-preview"
                             >
                               <ImageIcon className="h-4 w-4" /> Preview
                             </a>
@@ -666,7 +699,7 @@ export default function MyVerification(props) {
                 )}
 
                 {kycStep === 3 && (
-                  <div className="grid gap-4">
+                  <div className="grid gap-4" data-testid="verification-step-selfie">
                     <div>
                       <Label>Selfie</Label>
                       <div className="mt-1 flex items-center gap-3">
@@ -674,6 +707,7 @@ export default function MyVerification(props) {
                           type="file"
                           accept="image/*"
                           onChange={handleFilePick(setSelfie)}
+                          data-testid="verification-selfie"
                         />
                         {selfie.uploading && (
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -683,6 +717,7 @@ export default function MyVerification(props) {
                             href={selfie.uploadedUrl || selfie.preview}
                             target="_blank"
                             className="text-sm text-blue-600 underline flex items-center gap-1"
+                            data-testid="verification-selfie-preview"
                           >
                             <ImageIcon className="h-4 w-4" /> Preview
                           </a>
@@ -708,7 +743,7 @@ export default function MyVerification(props) {
                 )}
 
                 {kycStep === 4 && (
-                  <div className="space-y-4">
+                  <div className="space-y-4" data-testid="verification-step-review">
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
                         <Label>Full Name</Label>
@@ -750,7 +785,7 @@ export default function MyVerification(props) {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm">
+                    <div className="flex items-center gap-4 text-sm" data-testid="verification-review-files">
                       <span>
                         ID Front:{" "}
                         {idFront.uploadedUrl
@@ -780,13 +815,14 @@ export default function MyVerification(props) {
                 )}
 
                 {/* Navigation */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between" data-testid="verification-navigation">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     onClick={() => setKycStep((s) => Math.max(0, s - 1))}
                     disabled={kycStep === 0 || kycIsPending}
+                    data-testid="verification-back"
                   >
                     <ChevronLeft className="h-4 w-4 mr-1" /> Back
                   </Button>
@@ -797,6 +833,7 @@ export default function MyVerification(props) {
                         size="sm"
                         onClick={handleNextStep}
                         disabled={nextDisabled}
+                        data-testid="verification-next"
                       >
                         {isSavingKycDraft ? (
                           <span className="inline-flex items-center">
@@ -814,6 +851,7 @@ export default function MyVerification(props) {
                         type="submit"
                         size="sm"
                         disabled={submitDisabled}
+                        data-testid="verification-submit"
                       >
                         {kycIsPending ? (
                           <span className="inline-flex items-center">

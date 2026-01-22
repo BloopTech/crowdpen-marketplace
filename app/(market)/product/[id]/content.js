@@ -228,8 +228,11 @@ export default function ProductDetailContent(props) {
 
   if (productItemLoading) {
     return (
-      <div className="flex w-full items-center justify-center flex-col space-y-16 my-[2rem]">
-        <LoaderCircle className="animate-spin" />
+      <div
+        className="flex w-full items-center justify-center flex-col space-y-16 my-[2rem]"
+        data-testid="product-detail-loading"
+      >
+        <LoaderCircle className="animate-spin" data-testid="product-detail-loading-spinner" />
       </div>
     );
   }
@@ -294,7 +297,7 @@ export default function ProductDetailContent(props) {
 
   return (
     <TooltipProvider delayDuration={150} skipDelayDuration={0}>
-      <div className="min-h-screen bg-background w-full">
+      <div className="min-h-screen bg-background w-full" data-testid="product-detail-page">
         <MarketplaceHeader
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
@@ -303,10 +306,13 @@ export default function ProductDetailContent(props) {
         />
 
         <div className="mx-auto md:px-10 px-5 py-8 w-full">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8" data-testid="product-detail-layout">
             {/* Product Images */}
-            <div className="space-y-4">
-              <div className="aspect-[3/4] relative overflow-hidden rounded-lg bg-gradient-to-br from-muted to-accent">
+            <div className="space-y-4" data-testid="product-detail-images">
+              <div
+                className="aspect-[3/4] relative overflow-hidden rounded-lg bg-gradient-to-br from-muted to-accent"
+                data-testid="product-detail-main-image"
+              >
                 <Image
                   src={
                     productItemData?.images[selectedImage] || "/placeholder.svg"
@@ -316,10 +322,11 @@ export default function ProductDetailContent(props) {
                   className="object-cover"
                   sizes="(max-width: 768px) 100vw, 50vw"
                   priority
+                  data-testid="product-detail-main-image-img"
                 />
               </div>
               {productItemData.images.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-2">
+                <div className="flex gap-2 overflow-x-auto pb-2" data-testid="product-thumbnails">
                   {productItemData?.images.map((image, index) => (
                     <button
                       key={index}
@@ -332,6 +339,7 @@ export default function ProductDetailContent(props) {
                           ? "border-tertiary"
                           : "border-border"
                       }`}
+                      data-testid={`product-thumbnail-${index}`}
                     >
                       <Image
                         src={image || "/placeholder.svg"}
@@ -348,30 +356,34 @@ export default function ProductDetailContent(props) {
             </div>
 
             {/* Product Info */}
-            <div className="space-y-6 w-full">
-              <div className="w-full">
+            <div className="space-y-6 w-full" data-testid="product-detail-info">
+              <div className="w-full" data-testid="product-detail-header">
                 <div className="text-sm text-muted-foreground mb-2">
                   <Link
                     href={`/category/${productItemData?.MarketplaceCategory?.slug}`}
                     className="hover:underline"
+                    data-testid="product-category-link"
                   >
                     {productItemData?.MarketplaceCategory?.name} ›{" "}
                     {productItemData?.MarketplaceSubCategory?.name}
                   </Link>
                 </div>
                 <div className="flex items-center space-x-4 w-full">
-                  <h1 className="text-3xl font-bold mb-4 w-[85%]">
+                  <h1 className="text-3xl font-bold mb-4 w-[85%]" data-testid="product-title">
                     {productItemData?.title}
                   </h1>
 
                   {session?.user?.id === productItemData?.user_id ? (
                     <div className="flex justify-end items-center w-[10%]">
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="outline-none cursor-pointer">
+                        <DropdownMenuTrigger
+                          className="outline-none cursor-pointer"
+                          data-testid="product-owner-menu"
+                        >
                           <Ellipsis className="h-4 w-4" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="z-20 overflow-y-auto w-36">
-                          <DropdownMenuItem>
+                          <DropdownMenuItem data-testid="product-owner-edit">
                             <Link
                               href={`/product/edit/${productItemData?.id}`}
                               className="w-full"
@@ -389,6 +401,7 @@ export default function ProductDetailContent(props) {
                               setIsDeleteDialogOpen(true);
                             }}
                             disabled={isDeletePending}
+                            data-testid="product-owner-delete"
                           >
                             <div
                               className={`flex w-full items-center rounded-md px-2 py-2 text-sm font-semibold font-poynterroman`}
@@ -404,22 +417,35 @@ export default function ProductDetailContent(props) {
 
                 {/* Author Info */}
                 <div>
-                  <Link href={`/author/${productItemData?.User?.pen_name}`}>
-                    <div className="flex items-center gap-3 mb-4 cursor-pointer hover:bg-accent p-2 rounded-lg -m-2">
+                  <Link
+                    href={`/author/${productItemData?.User?.pen_name}`}
+                    data-testid="product-author-link"
+                  >
+                    <div
+                      className="flex items-center gap-3 mb-4 cursor-pointer hover:bg-accent p-2 rounded-lg -m-2"
+                      data-testid="product-author-summary"
+                    >
                       <Avatar
                         color={productItemData?.User?.color}
                         imageUrl={productItemData?.User?.image}
                         initials={productItemData?.User?.name.charAt(0)}
+                        data-testid="product-author-avatar"
                       >
-                        <AvatarFallback>
+                        <AvatarFallback data-testid="product-author-avatar-fallback">
                           {productItemData?.User?.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-semibold text-foreground hover:text-tertiary">
+                        <div
+                          className="font-semibold text-foreground hover:text-tertiary"
+                          data-testid="product-author-name"
+                        >
                           {productItemData?.User?.name}
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div
+                          className="flex items-center gap-2 text-sm text-muted-foreground"
+                          data-testid="product-author-rating"
+                        >
                           <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                           <span>
                             {productItemData?.authorRating} (
@@ -432,7 +458,7 @@ export default function ProductDetailContent(props) {
                 </div>
 
                 {/* Rating */}
-                <div className="flex items-center gap-4 mb-6">
+                <div className="flex items-center gap-4 mb-6" data-testid="product-rating">
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
                       <Star
@@ -452,20 +478,20 @@ export default function ProductDetailContent(props) {
                 </div>
               </div>
               {/* Price */}
-              <div className="space-y-3">
+              <div className="space-y-3" data-testid="product-price">
                 <div className="flex items-baseline gap-3">
-                  <span className="text-4xl font-extrabold tracking-tight">
+                  <span className="text-4xl font-extrabold tracking-tight" data-testid="product-price-value">
                     {displayFormattedPrice}
                   </span>
                 </div>
                 {showConverted ? (
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-muted-foreground" data-testid="product-price-converted">
                     ≈ {formattedPrice}
                   </div>
                 ) : null}
-                <div className="text-sm">
+                <div className="text-sm" data-testid="product-stock">
                   {isOutOfStock ? (
-                    <Badge className="bg-gray-800/90 text-white text-sm">
+                    <Badge className="bg-gray-800/90 text-white text-sm" data-testid="product-stock-badge">
                       Out of stock
                     </Badge>
                   ) : (
@@ -478,7 +504,7 @@ export default function ProductDetailContent(props) {
                   )}
                 </div>
                 {hasDiscount && (
-                  <div className="space-y-1">
+                  <div className="space-y-1" data-testid="product-discount">
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <span>
                         RRP{" "}
@@ -516,7 +542,7 @@ export default function ProductDetailContent(props) {
 
               {/* Variations */}
               {productItemData?.variations && (
-                <div className="space-y-2">
+                <div className="space-y-2" data-testid="product-variations">
                   <label className="text-sm font-medium">
                     Choose your package:
                   </label>
@@ -529,6 +555,7 @@ export default function ProductDetailContent(props) {
                           : "border-border"
                       }`}
                       onClick={() => setSelectedVariation(index)}
+                      data-testid={`product-variation-${variation.id}`}
                     >
                       <div className="flex justify-between items-center">
                         <div>
@@ -571,6 +598,7 @@ export default function ProductDetailContent(props) {
                     }
                   }}
                   className="w-full"
+                  data-testid="product-cart-form"
                 >
                   <Button
                     type="submit"
@@ -581,6 +609,7 @@ export default function ProductDetailContent(props) {
                       productItemData?.user_id === session?.user?.id ||
                       isOutOfStock
                     }
+                    data-testid="product-add-to-cart"
                   >
                     <ShoppingCart className="h-4 w-4 mr-2" />
                     {isCartPending ? (
@@ -608,6 +637,7 @@ export default function ProductDetailContent(props) {
                         openLoginDialog("login");
                       }
                     }}
+                    data-testid="product-wishlist-form"
                   >
                     <Button
                       variant="outline"
@@ -622,6 +652,7 @@ export default function ProductDetailContent(props) {
                         isPending ||
                         productItemData?.user_id === session?.user?.id
                       }
+                      data-testid="product-wishlist-toggle"
                     >
                       <Heart
                         className={`h-4 w-4 transition-all duration-200 ${
@@ -640,6 +671,7 @@ export default function ProductDetailContent(props) {
                     variant="outline"
                     size="lg"
                     className="flex-1 cursor-pointer"
+                    data-testid="product-share"
                   >
                     <Share2 className="h-4 w-4 mr-2" />
                     {isCopied ? "Copied!" : "Share"}
@@ -648,22 +680,22 @@ export default function ProductDetailContent(props) {
               </div>
 
               {/* Product Features */}
-              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center gap-2">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg" data-testid="product-features">
+                <div className="flex items-center gap-2" data-testid="product-feature-delivery">
                   <Download className="h-4 w-4 text-green-600" />
                   <span className="text-sm">
                     {productItemData.deliveryTime}
                   </span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-testid="product-feature-file-type">
                   <FileText className="h-4 w-4 text-blue-600" />
                   <span className="text-sm">{productItemData.fileType}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-testid="product-feature-license">
                   <CheckCircle className="h-4 w-4 text-purple-600" />
                   <span className="text-sm">{productItemData.license}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-testid="product-feature-downloads">
                   <Users className="h-4 w-4 text-orange-600" />
                   <span className="text-sm">
                     {productItemData?.downloads} downloads
@@ -696,13 +728,18 @@ export default function ProductDetailContent(props) {
             setIsDeleteDialogOpen(open);
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent data-testid="product-delete-dialog">
             <AlertDialogHeader>
               <AlertDialogTitle>{deleteDialogTitle}</AlertDialogTitle>
               <AlertDialogDescription>{deleteDialogDescription}</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeletePending}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel
+                disabled={isDeletePending}
+                data-testid="product-delete-cancel"
+              >
+                Cancel
+              </AlertDialogCancel>
               <form action={deleteFormAction}>
                 <input type="hidden" name="productId" value={productItemData?.id || ""} />
                 <Button
@@ -710,6 +747,7 @@ export default function ProductDetailContent(props) {
                   variant={ownerCanDelete ? "destructive" : "default"}
                   size="sm"
                   disabled={isDeletePending || !productItemData?.id}
+                  data-testid="product-delete-confirm"
                 >
                   {isDeletePending ? (
                     <span className="inline-flex items-center">

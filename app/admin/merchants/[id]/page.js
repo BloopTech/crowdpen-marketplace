@@ -28,8 +28,16 @@ export default async function AdminMerchantOverviewPage({ params }) {
   const merchantId = id;
   if (!merchantId) {
     return (
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
-        <div className="text-lg font-semibold">Missing merchant id</div>
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6"
+        data-testid="admin-merchant-overview-missing"
+      >
+        <div
+          className="text-lg font-semibold"
+          data-testid="admin-merchant-overview-missing-title"
+        >
+          Missing merchant id
+        </div>
       </div>
     );
   }
@@ -41,8 +49,16 @@ export default async function AdminMerchantOverviewPage({ params }) {
 
   if (!merchant) {
     return (
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6">
-        <div className="text-lg font-semibold">Merchant not found</div>
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-6"
+        data-testid="admin-merchant-overview-not-found"
+      >
+        <div
+          className="text-lg font-semibold"
+          data-testid="admin-merchant-overview-not-found-title"
+        >
+          Merchant not found
+        </div>
       </div>
     );
   }
@@ -184,94 +200,171 @@ export default async function AdminMerchantOverviewPage({ params }) {
     : null;
 
   return (
-    <div className="space-y-6 pb-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">KYC</div>
-          <div className="text-base font-semibold capitalize">
+    <div className="space-y-6 pb-8" data-testid="admin-merchant-overview">
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+        data-testid="admin-merchant-overview-stats"
+      >
+        <div
+          className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+          data-testid="admin-merchant-overview-kyc-card"
+        >
+          <div className="text-xs text-muted-foreground" data-testid="admin-merchant-overview-kyc-label">
+            KYC
+          </div>
+          <div
+            className="text-base font-semibold capitalize"
+            data-testid="admin-merchant-overview-kyc-status"
+          >
             {kycStatus}
             {kycLevel ? ` (${kycLevel})` : ""}
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
+          <div className="text-xs text-muted-foreground mt-1" data-testid="admin-merchant-overview-kyc-reviewed">
             Reviewed: {fmtDateTimeUtc(kycAgg?.reviewedAt)}
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">Products</div>
-          <div className="text-base font-semibold tabular-nums">
+        <div
+          className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+          data-testid="admin-merchant-overview-products-card"
+        >
+          <div className="text-xs text-muted-foreground" data-testid="admin-merchant-overview-products-label">
+            Products
+          </div>
+          <div
+            className="text-base font-semibold tabular-nums"
+            data-testid="admin-merchant-overview-products-total"
+          >
             {productsPublished}/{productsTotal}
           </div>
-          <div className="text-xs text-muted-foreground mt-1 tabular-nums">
+          <div
+            className="text-xs text-muted-foreground mt-1 tabular-nums"
+            data-testid="admin-merchant-overview-products-meta"
+          >
             Flagged: {productsFlagged} • Out: {productsOutOfStock} • Low:{" "}
             {productsLowStock}
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">Buyer Paid (30d)</div>
-          <div className="text-base font-semibold tabular-nums">
+        <div
+          className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+          data-testid="admin-merchant-overview-revenue-30d-card"
+        >
+          <div
+            className="text-xs text-muted-foreground"
+            data-testid="admin-merchant-overview-revenue-30d-label"
+          >
+            Buyer Paid (30d)
+          </div>
+          <div
+            className="text-base font-semibold tabular-nums"
+            data-testid="admin-merchant-overview-revenue-30d-value"
+          >
             {fmtUsd(revenue30d)}
           </div>
-          <div className="text-xs text-muted-foreground mt-1 tabular-nums">
+          <div
+            className="text-xs text-muted-foreground mt-1 tabular-nums"
+            data-testid="admin-merchant-overview-revenue-30d-units"
+          >
             Units: {unitsSold30d.toLocaleString("en-US")}
           </div>
         </div>
 
-        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">Payouts</div>
-          <div className="text-base font-semibold tabular-nums">
+        <div
+          className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+          data-testid="admin-merchant-overview-payouts-card"
+        >
+          <div className="text-xs text-muted-foreground" data-testid="admin-merchant-overview-payouts-label">
+            Payouts
+          </div>
+          <div
+            className="text-base font-semibold tabular-nums"
+            data-testid="admin-merchant-overview-payouts-completed"
+          >
             {fmtUsd(payoutsCompleted)}
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
+          <div className="text-xs text-muted-foreground mt-1" data-testid="admin-merchant-overview-payouts-pending">
             Pending: {fmtUsd(payoutsPending)}
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">Buyer Paid (All-time)</div>
-          <div className="text-base font-semibold tabular-nums">
+      <div
+        className="grid grid-cols-1 lg:grid-cols-3 gap-3"
+        data-testid="admin-merchant-overview-metrics"
+      >
+        <div
+          className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+          data-testid="admin-merchant-overview-revenue-alltime-card"
+        >
+          <div
+            className="text-xs text-muted-foreground"
+            data-testid="admin-merchant-overview-revenue-alltime-label"
+          >
+            Buyer Paid (All-time)
+          </div>
+          <div
+            className="text-base font-semibold tabular-nums"
+            data-testid="admin-merchant-overview-revenue-alltime-value"
+          >
             {fmtUsd(revenueAllTime)}
           </div>
-          <div className="text-xs text-muted-foreground mt-1 tabular-nums">
+          <div
+            className="text-xs text-muted-foreground mt-1 tabular-nums"
+            data-testid="admin-merchant-overview-revenue-alltime-units"
+          >
             Units: {unitsSoldAllTime.toLocaleString("en-US")}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">Last Sale</div>
-          <div className="text-base font-semibold">
+        <div
+          className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+          data-testid="admin-merchant-overview-last-sale-card"
+        >
+          <div className="text-xs text-muted-foreground" data-testid="admin-merchant-overview-last-sale-label">
+            Last Sale
+          </div>
+          <div className="text-base font-semibold" data-testid="admin-merchant-overview-last-sale-value">
             {fmtDateTimeUtc(salesAgg?.lastSaleAt)}
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
+          <div className="text-xs text-muted-foreground mt-1" data-testid="admin-merchant-overview-merchant-since">
             Merchant since: {fmtDateTimeUtc(merchant.createdAt)}
           </div>
         </div>
-        <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-          <div className="text-xs text-muted-foreground">Settlement</div>
-          <div className="text-base font-semibold">
+        <div
+          className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+          data-testid="admin-merchant-overview-settlement-card"
+        >
+          <div className="text-xs text-muted-foreground" data-testid="admin-merchant-overview-settlement-label">
+            Settlement
+          </div>
+          <div className="text-base font-semibold" data-testid="admin-merchant-overview-settlement-value">
             {lastSettlementTo || "-"}
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
+          <div className="text-xs text-muted-foreground mt-1" data-testid="admin-merchant-overview-settlement-last-paid">
             Last paid: {fmtDateTimeUtc(payoutAgg?.lastPaidAt)}
           </div>
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+        data-testid="admin-merchant-overview-revenue-card"
+      >
+        <div
+          className="flex items-center justify-between flex-wrap gap-3"
+          data-testid="admin-merchant-overview-revenue-header"
+        >
           <div>
-            <div className="text-base font-semibold">
+            <div className="text-base font-semibold" data-testid="admin-merchant-overview-revenue-title">
               Revenue (last 30 days)
             </div>
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground" data-testid="admin-merchant-overview-revenue-window">
               Window: {from30.toISOString().slice(0, 10)} →{" "}
               {now.toISOString().slice(0, 10)} (USD)
             </div>
           </div>
         </div>
-        <div className="mt-3">
+        <div className="mt-3" data-testid="admin-merchant-overview-revenue-chart">
           <MerchantRevenueChart
             rows={(revenueDailyRows || []).map((r) => ({
               period: safeIso(r?.period),

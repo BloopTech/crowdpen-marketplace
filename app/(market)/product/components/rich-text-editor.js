@@ -33,6 +33,7 @@ export default function RichTextEditor({
   error,
   disabled = false,
   placeholder = "Write something...",
+  dataTestId,
 }) {
   const editor = useEditor({
     extensions: [
@@ -214,6 +215,7 @@ export default function RichTextEditor({
         <EditorContent
           editor={editor}
           className="prose prose-sm max-w-none focus-within:outline-none text-gray-900 dark:text-slate-100 [&_.ProseMirror]:outline-none [&_.ProseMirror]:m-0 [&_.ProseMirror]:p-0 [&_.ProseMirror]:border-none [&_.ProseMirror]:min-h-[80px]"
+          data-testid={dataTestId}
         />
       </div>
 

@@ -23,9 +23,19 @@ export default function AdminHeader() {
 
   return (
     <>
-      <nav className="fixed left-0 top-0 z-10 w-full hidden lg:inline-block">
-        <div className="text-sm flex justify-end items-center space-x-8 md:px-10 py-[0.29rem]">
-          {session ? <ProfileImage /> : null}
+      <nav
+        className="fixed left-0 top-0 z-10 w-full hidden lg:inline-block"
+        data-testid="admin-header"
+      >
+        <div
+          className="text-sm flex justify-end items-center space-x-8 md:px-10 py-[0.29rem]"
+          data-testid="admin-header-inner"
+        >
+          {session ? (
+            <div data-testid="admin-header-profile">
+              <ProfileImage />
+            </div>
+          ) : null}
         </div>
       </nav>
     </>

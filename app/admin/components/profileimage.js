@@ -63,23 +63,30 @@ export default function ProfileImage() {
   }
 
   return (
-    <div>
+    <div data-testid="admin-profile">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <div className="mt-1">
-            <div className="relative">
+          <div className="mt-1" data-testid="admin-profile-trigger">
+            <div className="relative" data-testid="admin-profile-avatar">
               <Avatar className="w-8 h-8 ring-4 ring-border shadow-xl">
                 <AvatarImage
                   src={session.user.image || "/default-avatar.png"}
                   alt={session.user.name}
                   className="object-cover"
+                  data-testid="admin-profile-avatar-image"
                 />
-                <AvatarFallback className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                <AvatarFallback
+                  className="text-lg bg-gradient-to-br from-blue-500 to-purple-600 text-white"
+                  data-testid="admin-profile-avatar-fallback"
+                >
                   {session.user.name?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
               {(session?.user?.subscribed || session?.user?.crowdpen_staff) && (
-                <div className="absolute top-0 right-0 -mr-1 -mt-1">
+                <div
+                  className="absolute top-0 right-0 -mr-1 -mt-1"
+                  data-testid="admin-profile-badge"
+                >
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -100,6 +107,7 @@ export default function ProfileImage() {
           side="bottom"
           align="end"
           className="w-40"
+          data-testid="admin-profile-menu"
         >
           <DropdownMenuItem
             onClick={() => {
@@ -107,6 +115,7 @@ export default function ProfileImage() {
               closeUserDropdown();
             }}
             className="w-full justify-between font-semibold cursor-pointer font-poynterroman"
+            data-testid="admin-profile-dashboard"
           >
             <LayoutDashboard className="mr-2 h-5 w-5" aria-hidden="true" />
             Dashboard
@@ -118,6 +127,7 @@ export default function ProfileImage() {
               closeUserDropdown();
             }}
             className="w-full justify-between font-semibold cursor-pointer font-poynterroman"
+            data-testid="admin-profile-settings"
           >
             <UserRound className="mr-2 h-5 w-5" aria-hidden="true" />
             Profile
@@ -131,6 +141,7 @@ export default function ProfileImage() {
               closeUserDropdown();
             }}
             className="w-full justify-between font-semibold cursor-pointer font-poynterroman"
+            data-testid="admin-profile-logout"
           >
             <LogOut className="mr-2 h-5 w-5" aria-hidden="true" />
             Logout

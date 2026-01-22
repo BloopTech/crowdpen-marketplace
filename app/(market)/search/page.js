@@ -123,7 +123,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50" data-testid="search-page">
       <MarketplaceHeader
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
@@ -141,12 +141,13 @@ export default function SearchPage() {
             suggestions={suggestions}
             showSuggestions={true}
             onSuggestionClick={(s) => handleSearch(s)}
+            dataTestId="search-bar"
           />
         </div>
 
         <div className="flex items-center gap-2 mb-6">
           <Link href="/">
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" data-testid="search-back">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Browse
             </Button>
@@ -154,13 +155,15 @@ export default function SearchPage() {
         </div>
 
         {error && (
-          <div className="text-sm text-red-600 mb-4">
+          <div className="text-sm text-red-600 mb-4" data-testid="search-error">
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="text-muted-foreground text-sm">Searching...</div>
+          <div className="text-muted-foreground text-sm" data-testid="search-loading">
+            Searching...
+          </div>
         ) : (
           <SearchResults
             resources={resources}
@@ -168,6 +171,7 @@ export default function SearchPage() {
             searchTime={searchTime}
             viewMode={viewMode}
             setViewMode={setViewMode}
+            dataTestId="search-results"
           />
         )}
       </div>

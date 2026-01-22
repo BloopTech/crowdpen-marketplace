@@ -91,8 +91,8 @@ export default function AdminAnalyticsContent(props) {
   const aovValue = Number(summary?.aov || 0);
 
   return (
-    <div className="px-4 space-y-6 pb-8">
-      <Card>
+    <div className="px-4 space-y-6 pb-8" data-testid="admin-analytics-page">
+      <Card data-testid="admin-analytics-filters-card">
         <CardHeader>
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Analytics</CardTitle>
@@ -114,6 +114,7 @@ export default function AdminAnalyticsContent(props) {
                 timeToPayoutQuery.refetch();
               }}
               disabled={loading}
+              data-testid="admin-analytics-refresh"
             >
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
@@ -128,6 +129,7 @@ export default function AdminAnalyticsContent(props) {
                 value={qs.from || ""}
                 onChange={(e) => setQs({ from: e.target.value })}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-analytics-from"
               />
             </div>
             <div>
@@ -137,6 +139,7 @@ export default function AdminAnalyticsContent(props) {
                 value={qs.to || ""}
                 onChange={(e) => setQs({ to: e.target.value })}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-analytics-to"
               />
             </div>
             <div>
@@ -145,7 +148,7 @@ export default function AdminAnalyticsContent(props) {
                 value={interval}
                 onValueChange={(v) => setQs({ interval: v })}
               >
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-40" data-testid="admin-analytics-interval">
                   <SelectValue placeholder="Day" />
                 </SelectTrigger>
                 <SelectContent>
@@ -161,7 +164,7 @@ export default function AdminAnalyticsContent(props) {
                 value={String(qs.limit || 10)}
                 onValueChange={(v) => setQs({ limit: Number(v) })}
               >
-                <SelectTrigger className="w-28">
+                <SelectTrigger className="w-28" data-testid="admin-analytics-limit">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -176,151 +179,292 @@ export default function AdminAnalyticsContent(props) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-testid="admin-analytics-summary-card">
         <CardHeader>
           <CardTitle>Summary</CardTitle>
         </CardHeader>
         <CardContent>
           {summaryQuery.isLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              data-testid="admin-analytics-summary-loading"
+            >
               {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="h-[84px] w-full" />
               ))}
             </div>
           ) : summaryQuery.error ? (
-            <div className="text-sm text-red-500">
+            <div className="text-sm text-red-500" data-testid="admin-analytics-summary-error">
               {summaryQuery.error?.message || "Failed to load"}
             </div>
           ) : summary ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="rounded border border-border p-3">
-                <div className="text-xs text-muted-foreground">Paid Orders</div>
-                <div className="text-base font-semibold">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              data-testid="admin-analytics-summary-grid"
+            >
+              <div
+                className="rounded border border-border p-3"
+                data-testid="admin-analytics-summary-paid-orders"
+              >
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-paid-orders-label"
+                >
+                  Paid Orders
+                </div>
+                <div
+                  className="text-base font-semibold"
+                  data-testid="admin-analytics-summary-paid-orders-value"
+                >
                   {Number(summary.paidOrders || 0).toLocaleString("en-US")}
                 </div>
               </div>
-              <div className="rounded border border-border p-3">
-                <div className="text-xs text-muted-foreground">Units Sold</div>
-                <div className="text-base font-semibold">
+              <div
+                className="rounded border border-border p-3"
+                data-testid="admin-analytics-summary-units"
+              >
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-units-label"
+                >
+                  Units Sold
+                </div>
+                <div
+                  className="text-base font-semibold"
+                  data-testid="admin-analytics-summary-units-value"
+                >
                   {Number(summary.unitsSold || 0).toLocaleString("en-US")}
                 </div>
               </div>
-              <div className="rounded border border-border p-3">
-                <div className="text-xs text-muted-foreground">Gross Revenue</div>
-                <div className="text-base font-semibold">
+              <div
+                className="rounded border border-border p-3"
+                data-testid="admin-analytics-summary-gross"
+              >
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-gross-label"
+                >
+                  Gross Revenue
+                </div>
+                <div
+                  className="text-base font-semibold"
+                  data-testid="admin-analytics-summary-gross-value"
+                >
                   {fmtMoney(summary.grossRevenue)}
                 </div>
               </div>
-              <div className="rounded border border-border p-3">
-                <div className="text-xs text-muted-foreground">AOV</div>
-                <div className="text-base font-semibold">
+              <div
+                className="rounded border border-border p-3"
+                data-testid="admin-analytics-summary-aov"
+              >
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-aov-label"
+                >
+                  AOV
+                </div>
+                <div
+                  className="text-base font-semibold"
+                  data-testid="admin-analytics-summary-aov-value"
+                >
                   {fmtMoney(summary.aov)}
                 </div>
               </div>
-
-              <div className="rounded border border-border p-3">
-                <div className="text-xs text-muted-foreground">
+              <div
+                className="rounded border border-border p-3"
+                data-testid="admin-analytics-summary-refunded-orders"
+              >
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-refunded-orders-label"
+                >
                   Refunded Orders
                 </div>
-                <div className="text-base font-semibold">
+                <div
+                  className="text-base font-semibold"
+                  data-testid="admin-analytics-summary-refunded-orders-value"
+                >
                   {Number(summary.refundedOrders || 0).toLocaleString("en-US")}
                 </div>
               </div>
-              <div className="rounded border border-border p-3">
-                <div className="text-xs text-muted-foreground">
+              <div
+                className="rounded border border-border p-3"
+                data-testid="admin-analytics-summary-refund-amount"
+              >
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-refund-amount-label"
+                >
                   Refund Amount
                 </div>
-                <div className="text-base font-semibold">
+                <div
+                  className="text-base font-semibold"
+                  data-testid="admin-analytics-summary-refund-amount-value"
+                >
                   {fmtMoney(summary.refundRevenue)}
                 </div>
               </div>
-              <div className="rounded border border-border p-3">
-                <div className="text-xs text-muted-foreground">Net Revenue</div>
-                <div className="text-base font-semibold">
+              <div
+                className="rounded border border-border p-3"
+                data-testid="admin-analytics-summary-net"
+              >
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-net-label"
+                >
+                  Net Revenue
+                </div>
+                <div
+                  className="text-base font-semibold"
+                  data-testid="admin-analytics-summary-net-value"
+                >
                   {fmtMoney(summary.netRevenue)}
                 </div>
               </div>
-              <div className="rounded border border-border p-3">
-                <div className="text-xs text-muted-foreground">
+              <div
+                className="rounded border border-border p-3"
+                data-testid="admin-analytics-summary-payout-coverage"
+              >
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-payout-coverage-label"
+                >
                   Payout Coverage
                 </div>
-                <div className="text-base font-semibold">
+                <div
+                  className="text-base font-semibold"
+                  data-testid="admin-analytics-summary-payout-coverage-value"
+                >
                   {new Intl.NumberFormat("en-US", {
                     style: "percent",
                     maximumFractionDigits: 0,
                   }).format(Number(summary.payoutCoverage || 0) || 0)}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                <div
+                  className="text-xs text-muted-foreground"
+                  data-testid="admin-analytics-summary-payout-coverage-note"
+                >
                   Completed payouts vs expected creator payout
                 </div>
               </div>
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground" data-testid="admin-analytics-summary-empty">
               No summary data.
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card data-testid="admin-analytics-revenue-card">
         <CardHeader>
           <CardTitle>Revenue Over Time</CardTitle>
         </CardHeader>
         <CardContent>
           {revenueQuery.isLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-3" data-testid="admin-analytics-revenue-loading">
               <Skeleton className="h-6 w-48" />
               <Skeleton className="h-64 w-full" />
             </div>
           ) : revenueQuery.error ? (
-            <div className="text-sm text-red-500">
+            <div className="text-sm text-red-500" data-testid="admin-analytics-revenue-error">
               {revenueQuery.error?.message || "Failed to load"}
             </div>
           ) : (
             <div className="space-y-4">
               {revenueTotals && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                  <div className="rounded border border-border p-3">
-                    <div className="text-xs text-muted-foreground">
+                <div
+                  className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3"
+                  data-testid="admin-analytics-revenue-totals"
+                >
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-analytics-revenue-total"
+                  >
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid="admin-analytics-revenue-total-label"
+                    >
                       Total Revenue
                     </div>
-                    <div className="text-base font-semibold">
+                    <div
+                      className="text-base font-semibold"
+                      data-testid="admin-analytics-revenue-total-value"
+                    >
                       {fmtMoney(totalRevenueValue)}
                     </div>
                   </div>
-                  <div className="rounded border border-border p-3">
-                    <div className="text-xs text-muted-foreground">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-analytics-revenue-crowdpen"
+                  >
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid="admin-analytics-revenue-crowdpen-label"
+                    >
                       Crowdpen Share ({crowdpenFeeLabel})
                     </div>
-                    <div className="text-base font-semibold">
+                    <div
+                      className="text-base font-semibold"
+                      data-testid="admin-analytics-revenue-crowdpen-value"
+                    >
                       {fmtMoney(totalCrowdpenShare)}
                     </div>
                   </div>
-                  <div className="rounded border border-border p-3">
-                    <div className="text-xs text-muted-foreground">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-analytics-revenue-startbutton"
+                  >
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid="admin-analytics-revenue-startbutton-label"
+                    >
                       Startbutton Share ({startbuttonFeeLabel})
                     </div>
-                    <div className="text-base font-semibold">
+                    <div
+                      className="text-base font-semibold"
+                      data-testid="admin-analytics-revenue-startbutton-value"
+                    >
                       {fmtMoney(totalStartbuttonShare)}
                     </div>
                   </div>
-                  <div className="rounded border border-border p-3">
-                    <div className="text-xs text-muted-foreground">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-analytics-revenue-merchant"
+                  >
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid="admin-analytics-revenue-merchant-label"
+                    >
                       Merchant Payout
                     </div>
-                    <div className="text-base font-semibold">
+                    <div
+                      className="text-base font-semibold"
+                      data-testid="admin-analytics-revenue-merchant-value"
+                    >
                       {fmtMoney(totalCreatorShare)}
                     </div>
                   </div>
-                  <div className="rounded border border-border p-3">
-                    <div className="text-xs text-muted-foreground">
+                  <div
+                    className="rounded border border-border p-3"
+                    data-testid="admin-analytics-revenue-split"
+                  >
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid="admin-analytics-revenue-split-label"
+                    >
                       Fee Split
                     </div>
-                    <div className="text-sm font-semibold text-muted-foreground">
+                    <div
+                      className="text-sm font-semibold text-muted-foreground"
+                      data-testid="admin-analytics-revenue-split-value"
+                    >
                       {crowdpenFeeLabel} Crowdpen / {startbuttonFeeLabel} Startbutton
                     </div>
-                    <div className="text-xs text-muted-foreground">
+                    <div
+                      className="text-xs text-muted-foreground"
+                      data-testid="admin-analytics-revenue-split-note"
+                    >
                       Based on each transaction&apos;s platform fee
                     </div>
                   </div>
@@ -331,6 +475,7 @@ export default function AdminAnalyticsContent(props) {
                 id="admin-revenue"
                 config={chartConfig}
                 className="h-[320px]"
+                data-testid="admin-analytics-revenue-chart"
               >
                 <LineChart data={chartData} margin={{ left: 12, right: 12 }}>
                   <CartesianGrid vertical={false} />
@@ -407,22 +552,43 @@ export default function AdminAnalyticsContent(props) {
               </ChartContainer>
 
               {revenueData.length > 0 && (
-                <div className="overflow-x-auto rounded-md border border-border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Period</TableHead>
-                        <TableHead className="text-right">Gross Revenue</TableHead>
-                        <TableHead className="text-right">
+                <div
+                  className="overflow-x-auto rounded-md border border-border"
+                  data-testid="admin-analytics-revenue-table"
+                >
+                  <Table data-testid="admin-analytics-revenue-table-inner">
+                    <TableHeader data-testid="admin-analytics-revenue-table-head">
+                      <TableRow data-testid="admin-analytics-revenue-table-head-row">
+                        <TableHead data-testid="admin-analytics-revenue-table-head-period">
+                          Period
+                        </TableHead>
+                        <TableHead
+                          className="text-right"
+                          data-testid="admin-analytics-revenue-table-head-gross"
+                        >
+                          Gross Revenue
+                        </TableHead>
+                        <TableHead
+                          className="text-right"
+                          data-testid="admin-analytics-revenue-table-head-crowdpen"
+                        >
                           Crowdpen Share ({crowdpenFeeLabel})
                         </TableHead>
-                        <TableHead className="text-right">
+                        <TableHead
+                          className="text-right"
+                          data-testid="admin-analytics-revenue-table-head-startbutton"
+                        >
                           Startbutton Share ({startbuttonFeeLabel})
                         </TableHead>
-                        <TableHead className="text-right">Merchant Payout</TableHead>
+                        <TableHead
+                          className="text-right"
+                          data-testid="admin-analytics-revenue-table-head-payout"
+                        >
+                          Merchant Payout
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
+                    <TableBody data-testid="admin-analytics-revenue-table-body">
                       {revenueData.map((entry) => {
                         const periodLabel = fmtPeriod(entry.period);
                         const revenueValue = Number(entry.revenue || 0);
@@ -430,18 +596,35 @@ export default function AdminAnalyticsContent(props) {
                         const entryStartbutton = Number(entry.startbuttonFee || 0) || 0;
                         const entryCreator = Number(entry.creatorPayout || 0) || 0;
                         return (
-                          <TableRow key={`${entry.period}-${entry.revenue}`}>
-                            <TableCell>{periodLabel}</TableCell>
-                            <TableCell className="text-right">
+                          <TableRow
+                            key={`${entry.period}-${entry.revenue}`}
+                            data-testid={`admin-analytics-revenue-row-${entry.period}`}
+                          >
+                            <TableCell data-testid={`admin-analytics-revenue-row-${entry.period}-period`}>
+                              {periodLabel}
+                            </TableCell>
+                            <TableCell
+                              className="text-right"
+                              data-testid={`admin-analytics-revenue-row-${entry.period}-gross`}
+                            >
                               {fmtMoney(revenueValue)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell
+                              className="text-right"
+                              data-testid={`admin-analytics-revenue-row-${entry.period}-crowdpen`}
+                            >
                               {fmtMoney(entryCrowdpen)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell
+                              className="text-right"
+                              data-testid={`admin-analytics-revenue-row-${entry.period}-startbutton`}
+                            >
                               {fmtMoney(entryStartbutton)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell
+                              className="text-right"
+                              data-testid={`admin-analytics-revenue-row-${entry.period}-payout`}
+                            >
                               {fmtMoney(entryCreator)}
                             </TableCell>
                           </TableRow>
@@ -453,7 +636,10 @@ export default function AdminAnalyticsContent(props) {
               )}
 
               {revenueData.length === 0 && (
-                <div className="text-sm text-muted-foreground">
+                <div
+                  className="text-sm text-muted-foreground"
+                  data-testid="admin-analytics-revenue-empty"
+                >
                   No revenue data for the selected time range.
                 </div>
               )}
@@ -463,67 +649,104 @@ export default function AdminAnalyticsContent(props) {
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card data-testid="admin-analytics-top-products-card">
           <CardHeader>
             <CardTitle>Top Products</CardTitle>
           </CardHeader>
           <CardContent>
             {topProductsQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton
+                className="h-64 w-full"
+                data-testid="admin-analytics-top-products-loading"
+              />
             ) : topProductsQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-red-500" data-testid="admin-analytics-top-products-error">
                 {topProductsQuery.error?.message || "Failed to load"}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Merchant</TableHead>
-                    <TableHead className="text-right">Units</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead className="text-right">Payout</TableHead>
+              <Table data-testid="admin-analytics-top-products-table">
+                <TableHeader data-testid="admin-analytics-top-products-head">
+                  <TableRow data-testid="admin-analytics-top-products-head-row">
+                    <TableHead data-testid="admin-analytics-top-products-head-product">Product</TableHead>
+                    <TableHead data-testid="admin-analytics-top-products-head-merchant">Merchant</TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-products-head-units"
+                    >
+                      Units
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-products-head-revenue"
+                    >
+                      Revenue
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-products-head-payout"
+                    >
+                      Payout
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-top-products-body">
                   {topProducts.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
+                    <TableRow key={p.id} data-testid={`admin-analytics-top-product-row-${p.id}`}>
+                      <TableCell data-testid={`admin-analytics-top-product-row-${p.id}-product`}>
                         <div
                           className="font-medium max-w-[240px] truncate"
                           title={p.title}
+                          data-testid={`admin-analytics-top-product-row-${p.id}-title`}
                         >
                           {p.title}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div
+                          className="text-xs text-muted-foreground"
+                          data-testid={`admin-analytics-top-product-row-${p.id}-product-id`}
+                        >
                           {p.productId ? `ID: ${p.productId}` : ""}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell data-testid={`admin-analytics-top-product-row-${p.id}-merchant`}>
                         {p.merchantPenName ||
                           p.merchantName ||
                           p.merchantId ||
                           "-"}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-product-row-${p.id}-units`}
+                      >
                         {Number(p.unitsSold || 0).toLocaleString("en-US")}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-product-row-${p.id}-revenue`}
+                      >
                         {fmtMoney(p.revenue, p.currency)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-product-row-${p.id}-payout`}
+                      >
                         {fmtMoney(p.creatorPayout, p.currency)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-product-row-${p.id}-crowdpen`}
+                      >
                         {fmtMoney(p.crowdpenFee, p.currency)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-product-row-${p.id}-startbutton`}
+                      >
                         {fmtMoney(p.startbuttonFee, p.currency)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {topProducts.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-analytics-top-products-empty">
                       <TableCell
                         colSpan={5}
                         className="text-center text-sm text-muted-foreground"
@@ -538,71 +761,149 @@ export default function AdminAnalyticsContent(props) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="admin-analytics-top-merchants-card">
           <CardHeader>
             <CardTitle>Top Merchants</CardTitle>
           </CardHeader>
           <CardContent>
             {topMerchantsQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton
+                className="h-64 w-full"
+                data-testid="admin-analytics-top-merchants-loading"
+              />
             ) : topMerchantsQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div
+                className="text-sm text-red-500"
+                data-testid="admin-analytics-top-merchants-error"
+              >
                 {topMerchantsQuery.error?.message || "Failed to load"}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Merchant</TableHead>
-                    <TableHead className="text-right">Orders</TableHead>
-                    <TableHead className="text-right">Units</TableHead>
-                    <TableHead className="text-right">Revenue</TableHead>
-                    <TableHead className="text-right">Coupon Discounts</TableHead>
-                    <TableHead className="text-right">Crowdpen-Funded Discounts</TableHead>
-                    <TableHead className="text-right">Payout</TableHead>
-                    <TableHead className="text-right">Crowdpen Fee ({crowdpenFeeLabel})</TableHead>
-                    <TableHead className="text-right">Startbutton Fee ({startbuttonFeeLabel})</TableHead>
+              <Table data-testid="admin-analytics-top-merchants-table">
+                <TableHeader data-testid="admin-analytics-top-merchants-head">
+                  <TableRow data-testid="admin-analytics-top-merchants-head-row">
+                    <TableHead data-testid="admin-analytics-top-merchants-head-merchant">
+                      Merchant
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-merchants-head-orders"
+                    >
+                      Orders
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-merchants-head-units"
+                    >
+                      Units
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-merchants-head-revenue"
+                    >
+                      Revenue
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-merchants-head-coupon"
+                    >
+                      Coupon Discounts
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-merchants-head-crowdpen-discount"
+                    >
+                      Crowdpen-Funded Discounts
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-merchants-head-payout"
+                    >
+                      Payout
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-merchants-head-crowdpen-fee"
+                    >
+                      Crowdpen Fee ({crowdpenFeeLabel})
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-top-merchants-head-startbutton-fee"
+                    >
+                      Startbutton Fee ({startbuttonFeeLabel})
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-top-merchants-body">
                   {topMerchants.map((m) => (
-                    <TableRow key={m.id}>
-                      <TableCell>
-                        <div className="font-medium">
+                    <TableRow key={m.id} data-testid={`admin-analytics-top-merchant-row-${m.id}`}>
+                      <TableCell data-testid={`admin-analytics-top-merchant-row-${m.id}-merchant`}>
+                        <div
+                          className="font-medium"
+                          data-testid={`admin-analytics-top-merchant-row-${m.id}-name`}
+                        >
                           {m.penName || m.name || m.id}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div
+                          className="text-xs text-muted-foreground"
+                          data-testid={`admin-analytics-top-merchant-row-${m.id}-email`}
+                        >
                           {m.email || ""}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-merchant-row-${m.id}-orders`}
+                      >
                         {Number(m.orderCount || 0).toLocaleString("en-US")}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-merchant-row-${m.id}-units`}
+                      >
                         {Number(m.unitsSold || 0).toLocaleString("en-US")}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-merchant-row-${m.id}-revenue`}
+                      >
                         {fmtMoney(m.revenue)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-merchant-row-${m.id}-coupon`}
+                      >
                         {fmtMoney(m.discountTotal)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-merchant-row-${m.id}-crowdpen-discount`}
+                      >
                         {fmtMoney(m.discountCrowdpenFunded)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-merchant-row-${m.id}-payout`}
+                      >
                         {fmtMoney(m.creatorPayout)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-merchant-row-${m.id}-crowdpen-fee`}
+                      >
                         {fmtMoney(m.crowdpenFee)}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell
+                        className="text-right"
+                        data-testid={`admin-analytics-top-merchant-row-${m.id}-startbutton-fee`}
+                      >
                         {fmtMoney(m.startbuttonFee)}
                       </TableCell>
                     </TableRow>
                   ))}
                   {topMerchants.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-analytics-top-merchants-empty">
                       <TableCell
                         colSpan={9}
                         className="text-center text-sm text-muted-foreground"
@@ -619,28 +920,36 @@ export default function AdminAnalyticsContent(props) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <Card>
+        <Card data-testid="admin-analytics-funnel-card">
           <CardHeader>
             <CardTitle>Conversion Funnel</CardTitle>
           </CardHeader>
           <CardContent>
             {funnelQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" data-testid="admin-analytics-funnel-loading" />
             ) : funnelQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-red-500" data-testid="admin-analytics-funnel-error">
                 {funnelQuery.error?.message || "Failed to load"}
               </div>
             ) : funnel?.stages?.length ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Stage</TableHead>
-                    <TableHead className="text-right">Unique Users</TableHead>
+              <Table data-testid="admin-analytics-funnel-table">
+                <TableHeader data-testid="admin-analytics-funnel-head">
+                  <TableRow data-testid="admin-analytics-funnel-head-row">
+                    <TableHead data-testid="admin-analytics-funnel-head-stage">Stage</TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-funnel-head-users"
+                    >
+                      Unique Users
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-funnel-body">
                   {(funnel.stages || []).map((r) => (
-                    <TableRow key={r.event_name}>
+                    <TableRow
+                      key={r.event_name}
+                      data-testid={`admin-analytics-funnel-row-${r.event_name}`}
+                    >
                       <TableCell className="capitalize">
                         {String(r.event_name || "").replace(/_/g, " ")}
                       </TableCell>
@@ -652,27 +961,39 @@ export default function AdminAnalyticsContent(props) {
                 </TableBody>
               </Table>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div
+                className="text-sm text-muted-foreground"
+                data-testid="admin-analytics-funnel-empty"
+              >
                 No funnel data.
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="admin-analytics-time-to-payout-card">
           <CardHeader>
             <CardTitle>Time to Payout</CardTitle>
           </CardHeader>
           <CardContent>
             {timeToPayoutQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton
+                className="h-64 w-full"
+                data-testid="admin-analytics-time-to-payout-loading"
+              />
             ) : timeToPayoutQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div
+                className="text-sm text-red-500"
+                data-testid="admin-analytics-time-to-payout-error"
+              >
                 {timeToPayoutQuery.error?.message || "Failed to load"}
               </div>
             ) : timeToPayout?.summary ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+              <div
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+                data-testid="admin-analytics-time-to-payout-summary"
+              >
+                <div data-testid="admin-analytics-time-to-payout-p50">
                   <div className="text-sm text-muted-foreground">
                     P50 (hours)
                   </div>
@@ -680,7 +1001,7 @@ export default function AdminAnalyticsContent(props) {
                     {Number(timeToPayout.summary.p50Hours || 0).toFixed(1)}
                   </div>
                 </div>
-                <div>
+                <div data-testid="admin-analytics-time-to-payout-p90">
                   <div className="text-sm text-muted-foreground">
                     P90 (hours)
                   </div>
@@ -688,7 +1009,7 @@ export default function AdminAnalyticsContent(props) {
                     {Number(timeToPayout.summary.p90Hours || 0).toFixed(1)}
                   </div>
                 </div>
-                <div>
+                <div data-testid="admin-analytics-time-to-payout-average">
                   <div className="text-sm text-muted-foreground">
                     Average (hours)
                   </div>
@@ -696,7 +1017,7 @@ export default function AdminAnalyticsContent(props) {
                     {Number(timeToPayout.summary.avgHours || 0).toFixed(1)}
                   </div>
                 </div>
-                <div>
+                <div data-testid="admin-analytics-time-to-payout-count">
                   <div className="text-sm text-muted-foreground">Samples</div>
                   <div className="text-2xl font-semibold">
                     {Number(timeToPayout.summary.count || 0).toLocaleString(
@@ -706,7 +1027,10 @@ export default function AdminAnalyticsContent(props) {
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div
+                className="text-sm text-muted-foreground"
+                data-testid="admin-analytics-time-to-payout-empty"
+              >
                 No payout allocation data.
               </div>
             )}
@@ -715,30 +1039,43 @@ export default function AdminAnalyticsContent(props) {
       </div>
 
       <div className="mt-6">
-        <Card>
+        <Card data-testid="admin-analytics-refunds-card">
           <CardHeader>
             <CardTitle>Refund Reasons</CardTitle>
           </CardHeader>
           <CardContent>
             {refundReasonsQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" data-testid="admin-analytics-refunds-loading" />
             ) : refundReasonsQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-red-500" data-testid="admin-analytics-refunds-error">
                 {refundReasonsQuery.error?.message || "Failed to load"}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead className="text-right">Count</TableHead>
-                    <TableHead className="text-right">Refund Amount</TableHead>
+              <Table data-testid="admin-analytics-refunds-table">
+                <TableHeader data-testid="admin-analytics-refunds-head">
+                  <TableRow data-testid="admin-analytics-refunds-head-row">
+                    <TableHead data-testid="admin-analytics-refunds-head-category">Category</TableHead>
+                    <TableHead data-testid="admin-analytics-refunds-head-reason">Reason</TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-refunds-head-count"
+                    >
+                      Count
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-refunds-head-amount"
+                    >
+                      Refund Amount
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-refunds-body">
                   {refundReasonRows.map((r, idx) => (
-                    <TableRow key={`${r.reasonCategory}-${r.reason}-${idx}`}>
+                    <TableRow
+                      key={`${r.reasonCategory}-${r.reason}-${idx}`}
+                      data-testid={`admin-analytics-refund-row-${idx}`}
+                    >
                       <TableCell>{r.reasonCategory}</TableCell>
                       <TableCell>{r.reason}</TableCell>
                       <TableCell className="text-right">
@@ -750,7 +1087,7 @@ export default function AdminAnalyticsContent(props) {
                     </TableRow>
                   ))}
                   {refundReasonRows.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-analytics-refunds-empty">
                       <TableCell
                         colSpan={4}
                         className="text-center text-sm text-muted-foreground"
@@ -767,31 +1104,60 @@ export default function AdminAnalyticsContent(props) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card data-testid="admin-analytics-payment-status-card">
           <CardHeader>
             <CardTitle>Payment Status Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
             {paymentStatusQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton
+                className="h-64 w-full"
+                data-testid="admin-analytics-payment-status-loading"
+              />
             ) : paymentStatusQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div
+                className="text-sm text-red-500"
+                data-testid="admin-analytics-payment-status-error"
+              >
                 {paymentStatusQuery.error?.message || "Failed to load"}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Orders</TableHead>
-                    <TableHead className="text-right">Gross Revenue</TableHead>
-                    <TableHead className="text-right">Discount</TableHead>
-                    <TableHead className="text-right">Buyer Paid</TableHead>
+              <Table data-testid="admin-analytics-payment-status-table">
+                <TableHeader data-testid="admin-analytics-payment-status-head">
+                  <TableRow data-testid="admin-analytics-payment-status-head-row">
+                    <TableHead data-testid="admin-analytics-payment-status-head-status">Status</TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-payment-status-head-orders"
+                    >
+                      Orders
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-payment-status-head-revenue"
+                    >
+                      Gross Revenue
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-payment-status-head-discount"
+                    >
+                      Discount
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-payment-status-head-paid"
+                    >
+                      Buyer Paid
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-payment-status-body">
                   {paymentStatusRows.map((r) => (
-                    <TableRow key={r.paymentStatus}>
+                    <TableRow
+                      key={r.paymentStatus}
+                      data-testid={`admin-analytics-payment-status-row-${r.paymentStatus}`}
+                    >
                       <TableCell className="capitalize">
                         {r.paymentStatus}
                       </TableCell>
@@ -810,7 +1176,7 @@ export default function AdminAnalyticsContent(props) {
                     </TableRow>
                   ))}
                   {paymentStatusRows.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-analytics-payment-status-empty">
                       <TableCell
                         colSpan={5}
                         className="text-center text-sm text-muted-foreground"
@@ -825,29 +1191,48 @@ export default function AdminAnalyticsContent(props) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="admin-analytics-categories-card">
           <CardHeader>
             <CardTitle>Top Categories</CardTitle>
           </CardHeader>
           <CardContent>
             {categoryBreakdownQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton
+                className="h-64 w-full"
+                data-testid="admin-analytics-categories-loading"
+              />
             ) : categoryBreakdownQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div
+                className="text-sm text-red-500"
+                data-testid="admin-analytics-categories-error"
+              >
                 {categoryBreakdownQuery.error?.message || "Failed to load"}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Category</TableHead>
-                    <TableHead className="text-right">Units</TableHead>
-                    <TableHead className="text-right">Buyer Paid</TableHead>
+              <Table data-testid="admin-analytics-categories-table">
+                <TableHeader data-testid="admin-analytics-categories-head">
+                  <TableRow data-testid="admin-analytics-categories-head-row">
+                    <TableHead data-testid="admin-analytics-categories-head-category">Category</TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-categories-head-units"
+                    >
+                      Units
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-categories-head-paid"
+                    >
+                      Buyer Paid
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-categories-body">
                   {categoryRows.map((c) => (
-                    <TableRow key={c.id || c.name}>
+                    <TableRow
+                      key={c.id || c.name}
+                      data-testid={`admin-analytics-category-row-${c.id || c.name}`}
+                    >
                       <TableCell>{c.name}</TableCell>
                       <TableCell className="text-right">
                         {Number(c.unitsSold || 0).toLocaleString("en-US")}
@@ -858,7 +1243,7 @@ export default function AdminAnalyticsContent(props) {
                     </TableRow>
                   ))}
                   {categoryRows.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-analytics-categories-empty">
                       <TableCell
                         colSpan={3}
                         className="text-center text-sm text-muted-foreground"
@@ -875,24 +1260,27 @@ export default function AdminAnalyticsContent(props) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1" data-testid="admin-analytics-customers-card">
           <CardHeader>
             <CardTitle>Customers</CardTitle>
           </CardHeader>
           <CardContent>
             {customersQuery.isLoading ? (
-              <div className="space-y-3">
+              <div className="space-y-3" data-testid="admin-analytics-customers-loading">
                 <Skeleton className="h-[84px] w-full" />
                 <Skeleton className="h-[84px] w-full" />
                 <Skeleton className="h-[84px] w-full" />
               </div>
             ) : customersQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-red-500" data-testid="admin-analytics-customers-error">
                 {customersQuery.error?.message || "Failed to load"}
               </div>
             ) : customers ? (
-              <div className="space-y-3">
-                <div className="rounded border border-border p-3">
+              <div className="space-y-3" data-testid="admin-analytics-customers-summary">
+                <div
+                  className="rounded border border-border p-3"
+                  data-testid="admin-analytics-customers-unique"
+                >
                   <div className="text-xs text-muted-foreground">
                     Unique Buyers
                   </div>
@@ -902,7 +1290,10 @@ export default function AdminAnalyticsContent(props) {
                     )}
                   </div>
                 </div>
-                <div className="rounded border border-border p-3">
+                <div
+                  className="rounded border border-border p-3"
+                  data-testid="admin-analytics-customers-repeat"
+                >
                   <div className="text-xs text-muted-foreground">
                     Repeat Buyers
                   </div>
@@ -919,7 +1310,10 @@ export default function AdminAnalyticsContent(props) {
                     repeat rate
                   </div>
                 </div>
-                <div className="rounded border border-border p-3">
+                <div
+                  className="rounded border border-border p-3"
+                  data-testid="admin-analytics-customers-first-time"
+                >
                   <div className="text-xs text-muted-foreground">
                     First-time Buyers
                   </div>
@@ -935,38 +1329,70 @@ export default function AdminAnalyticsContent(props) {
                 </div>
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div
+                className="text-sm text-muted-foreground"
+                data-testid="admin-analytics-customers-empty"
+              >
                 No customer data.
               </div>
             )}
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1" data-testid="admin-analytics-payment-methods-card">
           <CardHeader>
             <CardTitle>Payment Methods (Paid Orders)</CardTitle>
           </CardHeader>
           <CardContent>
             {paymentMethodQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton
+                className="h-64 w-full"
+                data-testid="admin-analytics-payment-methods-loading"
+              />
             ) : paymentMethodQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div
+                className="text-sm text-red-500"
+                data-testid="admin-analytics-payment-methods-error"
+              >
                 {paymentMethodQuery.error?.message || "Failed to load"}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Method</TableHead>
-                    <TableHead className="text-right">Orders</TableHead>
-                    <TableHead className="text-right">Gross Revenue</TableHead>
-                    <TableHead className="text-right">Discount</TableHead>
-                    <TableHead className="text-right">Buyer Paid</TableHead>
+              <Table data-testid="admin-analytics-payment-methods-table">
+                <TableHeader data-testid="admin-analytics-payment-methods-head">
+                  <TableRow data-testid="admin-analytics-payment-methods-head-row">
+                    <TableHead data-testid="admin-analytics-payment-methods-head-method">Method</TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-payment-methods-head-orders"
+                    >
+                      Orders
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-payment-methods-head-revenue"
+                    >
+                      Gross Revenue
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-payment-methods-head-discount"
+                    >
+                      Discount
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-payment-methods-head-paid"
+                    >
+                      Buyer Paid
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-payment-methods-body">
                   {paymentMethods.map((r) => (
-                    <TableRow key={r.paymentMethod}>
+                    <TableRow
+                      key={r.paymentMethod}
+                      data-testid={`admin-analytics-payment-method-row-${r.paymentMethod}`}
+                    >
                       <TableCell className="capitalize">
                         {r.paymentMethod}
                       </TableCell>
@@ -985,7 +1411,7 @@ export default function AdminAnalyticsContent(props) {
                     </TableRow>
                   ))}
                   {paymentMethods.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-analytics-payment-methods-empty">
                       <TableCell
                         colSpan={5}
                         className="text-center text-sm text-muted-foreground"
@@ -1000,22 +1426,31 @@ export default function AdminAnalyticsContent(props) {
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-1">
+        <Card className="lg:col-span-1" data-testid="admin-analytics-coupons-card">
           <CardHeader>
             <CardTitle>Coupons (Paid Orders)</CardTitle>
           </CardHeader>
           <CardContent>
             {couponsQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton
+                className="h-64 w-full"
+                data-testid="admin-analytics-coupons-loading"
+              />
             ) : couponsQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-red-500" data-testid="admin-analytics-coupons-error">
                 {couponsQuery.error?.message || "Failed to load"}
               </div>
             ) : (
               <div className="space-y-3">
                 {couponTotals && (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="rounded border border-border p-3">
+                  <div
+                    className="grid grid-cols-1 sm:grid-cols-3 gap-3"
+                    data-testid="admin-analytics-coupons-totals"
+                  >
+                    <div
+                      className="rounded border border-border p-3"
+                      data-testid="admin-analytics-coupons-orders"
+                    >
                       <div className="text-xs text-muted-foreground">
                         Coupon Orders
                       </div>
@@ -1025,7 +1460,10 @@ export default function AdminAnalyticsContent(props) {
                         )}
                       </div>
                     </div>
-                    <div className="rounded border border-border p-3">
+                    <div
+                      className="rounded border border-border p-3"
+                      data-testid="admin-analytics-coupons-discount"
+                    >
                       <div className="text-xs text-muted-foreground">
                         Total Discount
                       </div>
@@ -1033,7 +1471,10 @@ export default function AdminAnalyticsContent(props) {
                         {fmtMoney(couponTotals.discountTotal)}
                       </div>
                     </div>
-                    <div className="rounded border border-border p-3">
+                    <div
+                      className="rounded border border-border p-3"
+                      data-testid="admin-analytics-coupons-buyer-paid"
+                    >
                       <div className="text-xs text-muted-foreground">
                         Total Buyer Paid
                       </div>
@@ -1044,19 +1485,42 @@ export default function AdminAnalyticsContent(props) {
                   </div>
                 )}
 
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Code</TableHead>
-                      <TableHead className="text-right">Orders</TableHead>
-                      <TableHead className="text-right">Gross Revenue</TableHead>
-                      <TableHead className="text-right">Discount</TableHead>
-                      <TableHead className="text-right">Buyer Paid</TableHead>
+                <Table data-testid="admin-analytics-coupons-table">
+                  <TableHeader data-testid="admin-analytics-coupons-head">
+                    <TableRow data-testid="admin-analytics-coupons-head-row">
+                      <TableHead data-testid="admin-analytics-coupons-head-code">Code</TableHead>
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-analytics-coupons-head-orders"
+                      >
+                        Orders
+                      </TableHead>
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-analytics-coupons-head-revenue"
+                      >
+                        Gross Revenue
+                      </TableHead>
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-analytics-coupons-head-discount"
+                      >
+                        Discount
+                      </TableHead>
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-analytics-coupons-head-paid"
+                      >
+                        Buyer Paid
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody data-testid="admin-analytics-coupons-body">
                     {couponRows.map((r) => (
-                      <TableRow key={r.couponCode}>
+                      <TableRow
+                        key={r.couponCode}
+                        data-testid={`admin-analytics-coupon-row-${r.couponCode}`}
+                      >
                         <TableCell className="font-mono">
                           {r.couponCode}
                         </TableCell>
@@ -1075,7 +1539,7 @@ export default function AdminAnalyticsContent(props) {
                       </TableRow>
                     ))}
                     {couponRows.length === 0 && (
-                      <TableRow>
+                      <TableRow data-testid="admin-analytics-coupons-empty">
                         <TableCell
                           colSpan={5}
                           className="text-center text-sm text-muted-foreground"
@@ -1093,31 +1557,45 @@ export default function AdminAnalyticsContent(props) {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card data-testid="admin-analytics-cohorts-card">
           <CardHeader>
             <CardTitle>Cohort Retention (W1/W2/W4)</CardTitle>
           </CardHeader>
           <CardContent>
             {cohortsQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-64 w-full" data-testid="admin-analytics-cohorts-loading" />
             ) : cohortsQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-red-500" data-testid="admin-analytics-cohorts-error">
                 {cohortsQuery.error?.message || "Failed to load"}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Cohort</TableHead>
-                    <TableHead className="text-right">Users</TableHead>
-                    <TableHead className="text-right">W1</TableHead>
-                    <TableHead className="text-right">W2</TableHead>
-                    <TableHead className="text-right">W4</TableHead>
+              <Table data-testid="admin-analytics-cohorts-table">
+                <TableHeader data-testid="admin-analytics-cohorts-head">
+                  <TableRow data-testid="admin-analytics-cohorts-head-row">
+                    <TableHead data-testid="admin-analytics-cohorts-head-cohort">Cohort</TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-cohorts-head-users"
+                    >
+                      Users
+                    </TableHead>
+                    <TableHead className="text-right" data-testid="admin-analytics-cohorts-head-w1">
+                      W1
+                    </TableHead>
+                    <TableHead className="text-right" data-testid="admin-analytics-cohorts-head-w2">
+                      W2
+                    </TableHead>
+                    <TableHead className="text-right" data-testid="admin-analytics-cohorts-head-w4">
+                      W4
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-cohorts-body">
                   {cohortRows.map((r) => (
-                    <TableRow key={r.cohortPeriod}>
+                    <TableRow
+                      key={r.cohortPeriod}
+                      data-testid={`admin-analytics-cohort-row-${r.cohortPeriod}`}
+                    >
                       <TableCell>
                         {r.cohortPeriod
                           ? new Date(r.cohortPeriod).toLocaleDateString(
@@ -1150,7 +1628,7 @@ export default function AdminAnalyticsContent(props) {
                     </TableRow>
                   ))}
                   {cohortRows.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-analytics-cohorts-empty">
                       <TableCell
                         colSpan={5}
                         className="text-center text-sm text-muted-foreground"
@@ -1165,34 +1643,53 @@ export default function AdminAnalyticsContent(props) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card data-testid="admin-analytics-inventory-card">
           <CardHeader>
             <CardTitle>Inventory Risk</CardTitle>
           </CardHeader>
           <CardContent>
             {inventoryRiskQuery.isLoading ? (
-              <Skeleton className="h-64 w-full" />
+              <Skeleton
+                className="h-64 w-full"
+                data-testid="admin-analytics-inventory-loading"
+              />
             ) : inventoryRiskQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div
+                className="text-sm text-red-500"
+                data-testid="admin-analytics-inventory-error"
+              >
                 {inventoryRiskQuery.error?.message || "Failed to load"}
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Risk</TableHead>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Merchant</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Units (30d)</TableHead>
-                    <TableHead className="text-right">
+              <Table data-testid="admin-analytics-inventory-table">
+                <TableHeader data-testid="admin-analytics-inventory-head">
+                  <TableRow data-testid="admin-analytics-inventory-head-row">
+                    <TableHead data-testid="admin-analytics-inventory-head-risk">Risk</TableHead>
+                    <TableHead data-testid="admin-analytics-inventory-head-product">Product</TableHead>
+                    <TableHead data-testid="admin-analytics-inventory-head-merchant">Merchant</TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-inventory-head-stock"
+                    >
+                      Stock
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-inventory-head-units"
+                    >
+                      Units (30d)
+                    </TableHead>
+                    <TableHead
+                      className="text-right"
+                      data-testid="admin-analytics-inventory-head-coverage"
+                    >
                       Coverage (days)
                     </TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
+                <TableBody data-testid="admin-analytics-inventory-body">
                   {inventoryRiskRows.map((r) => (
-                    <TableRow key={r.id}>
+                    <TableRow key={r.id} data-testid={`admin-analytics-inventory-row-${r.id}`}>
                       <TableCell className="capitalize">{r.risk}</TableCell>
                       <TableCell>
                         <div
@@ -1227,7 +1724,7 @@ export default function AdminAnalyticsContent(props) {
                     </TableRow>
                   ))}
                   {inventoryRiskRows.length === 0 && (
-                    <TableRow>
+                    <TableRow data-testid="admin-analytics-inventory-empty">
                       <TableCell
                         colSpan={6}
                         className="text-center text-sm text-muted-foreground"

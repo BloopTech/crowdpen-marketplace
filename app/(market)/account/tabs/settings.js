@@ -85,40 +85,50 @@ export default function AccountSettings() {
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+      <Card data-testid="account-settings-card">
+        <CardHeader data-testid="account-settings-header">
+          <CardTitle className="flex items-center gap-2" data-testid="account-settings-title">
             <Settings className="h-5 w-5" />
             Account Settings
-            {saving && <Loader2 className="h-4 w-4 animate-spin ml-2" />}
+            {saving && (
+              <Loader2
+                className="h-4 w-4 animate-spin ml-2"
+                data-testid="account-settings-saving"
+              />
+            )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <h3 className="font-semibold mb-3">Email Preferences</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+        <CardContent className="space-y-6" data-testid="account-settings-content">
+          <div data-testid="settings-email-section">
+            <h3 className="font-semibold mb-3" data-testid="settings-email-title">
+              Email Preferences
+            </h3>
+            <div className="space-y-4" data-testid="settings-email-list">
+              <div className="flex items-center justify-between" data-testid="settings-email-row-new-products">
                 <span className="text-sm">New product notifications</span>
                 <Switch
                   checked={settings.newProductNotifications}
                   onCheckedChange={(checked) => handleSettingChange('newProductNotifications', checked)}
                   disabled={saving}
+                  data-testid="settings-new-product-notifications"
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" data-testid="settings-email-row-weekly">
                 <span className="text-sm">Weekly newsletter</span>
                 <Switch
                   checked={settings.weeklyNewsletter}
                   onCheckedChange={(checked) => handleSettingChange('weeklyNewsletter', checked)}
                   disabled={saving}
+                  data-testid="settings-weekly-newsletter"
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" data-testid="settings-email-row-marketing">
                 <span className="text-sm">Marketing emails</span>
                 <Switch
                   checked={settings.marketingEmails}
                   onCheckedChange={(checked) => handleSettingChange('marketingEmails', checked)}
                   disabled={saving}
+                  data-testid="settings-marketing-emails"
                 />
               </div>
             </div>
@@ -126,33 +136,37 @@ export default function AccountSettings() {
 
           <Separator />
 
-          <div>
-            <h3 className="font-semibold mb-3">Privacy Settings</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+          <div data-testid="settings-privacy-section">
+            <h3 className="font-semibold mb-3" data-testid="settings-privacy-title">
+              Privacy Settings
+            </h3>
+            <div className="space-y-4" data-testid="settings-privacy-list">
+              <div className="flex items-center justify-between" data-testid="settings-privacy-row-purchases">
                 <span className="text-sm">Make my purchases public</span>
                 <Switch
                   checked={settings.publicPurchases}
                   onCheckedChange={(checked) => handleSettingChange('publicPurchases', checked)}
                   disabled={saving}
+                  data-testid="settings-public-purchases"
                 />
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between" data-testid="settings-privacy-row-wishlist">
                 <span className="text-sm">Allow others to see my wishlist</span>
                 <Switch
                   checked={settings.publicWishlist}
                   onCheckedChange={(checked) => handleSettingChange('publicWishlist', checked)}
                   disabled={saving}
+                  data-testid="settings-public-wishlist"
                 />
               </div>
 
               {settings.publicWishlist && wishlistShareUrl ? (
-                <div className="space-y-2">
-                  <div className="text-xs text-muted-foreground">
+                <div className="space-y-2" data-testid="settings-wishlist-share">
+                  <div className="text-xs text-muted-foreground" data-testid="settings-wishlist-share-label">
                     Share this link:
                   </div>
-                  <div className="flex gap-2">
-                    <Input value={wishlistShareUrl} readOnly />
+                  <div className="flex gap-2" data-testid="settings-wishlist-share-actions">
+                    <Input value={wishlistShareUrl} readOnly data-testid="settings-wishlist-url" />
                     <Button
                       type="button"
                       variant="outline"
@@ -164,6 +178,7 @@ export default function AccountSettings() {
                           toast.error("Failed to copy link");
                         }
                       }}
+                      data-testid="settings-wishlist-copy"
                     >
                       Copy
                     </Button>
@@ -175,9 +190,11 @@ export default function AccountSettings() {
 
           <Separator />
 
-          <div>
-            <h3 className="font-semibold mb-3 text-red-600">Danger Zone</h3>
-            <Button variant="destructive" size="sm">
+          <div data-testid="settings-danger-zone">
+            <h3 className="font-semibold mb-3 text-red-600" data-testid="settings-danger-title">
+              Danger Zone
+            </h3>
+            <Button variant="destructive" size="sm" data-testid="settings-delete-account">
               Delete Account
             </Button>
           </div>

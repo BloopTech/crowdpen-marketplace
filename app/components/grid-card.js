@@ -37,7 +37,11 @@ export default function GridCard({ resource }) {
       maximumFractionDigits: 2,
     }).format(Number(v || 0) * displayRate);
   return (
-    <Card className="h-full flex flex-col hover:shadow-md transition-shadow">
+    <Card
+      className="h-full flex flex-col hover:shadow-md transition-shadow"
+      data-testid={`grid-card-${resource.id}`}
+      data-product-id={resource.id}
+    >
       <div className="relative aspect-square overflow-hidden">
         <Image
           src={resource.image || "/placeholder.svg"}
@@ -68,6 +72,7 @@ export default function GridCard({ resource }) {
       <CardContent className="flex-1 p-4">
         <Link
           href={`/product/${resource.product_id ? resource.product_id : resource.id}`}
+          data-testid={`grid-card-link-${resource.id}`}
         >
           <h3 className="font-semibold text-foreground hover:text-tertiary hover:underline cursor-pointer line-clamp-1">
             {resource.title}
@@ -76,6 +81,7 @@ export default function GridCard({ resource }) {
 
         <Link
           href={`/author/${resource.author.toLowerCase().replace(/\s+/g, "-")}`}
+          data-testid={`grid-card-author-${resource.id}`}
         >
           <div className="text-xs text-muted-foreground mt-1 mb-2 hover:text-tertiary hover:underline cursor-pointer">
             {resource.author}
@@ -129,6 +135,7 @@ export default function GridCard({ resource }) {
               openLoginDialog("login");
             }
           }}
+          data-testid={`grid-card-cart-${resource.id}`}
         >
           {isOutOfStock ? "Out of Stock" : "Add"}
         </Button>

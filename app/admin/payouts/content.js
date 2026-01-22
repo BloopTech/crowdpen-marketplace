@@ -84,20 +84,32 @@ export default function AdminPayoutsContent() {
   } = useAdminPayouts();
 
   return (
-    <div className="px-4 space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Payouts</CardTitle>
-            <Button onClick={refreshPayouts} disabled={loading}>
+    <div className="px-4 space-y-6" data-testid="admin-payouts-page">
+      <Card data-testid="admin-payouts-card">
+        <CardHeader data-testid="admin-payouts-header">
+          <div className="flex items-center justify-between" data-testid="admin-payouts-title-row">
+            <CardTitle data-testid="admin-payouts-title">Payouts</CardTitle>
+            <Button
+              onClick={refreshPayouts}
+              disabled={loading}
+              data-testid="admin-payouts-refresh"
+            >
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
 
-          <div className="rounded-md border border-border p-4 mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-              <h3 className="text-base font-semibold">Bulk Payouts</h3>
-              <div className="text-xs text-muted-foreground">
+          <div
+            className="rounded-md border border-border p-4 mb-6"
+            data-testid="admin-payouts-bulk-section"
+          >
+            <div
+              className="flex items-center justify-between flex-wrap gap-2 mb-3"
+              data-testid="admin-payouts-bulk-header"
+            >
+              <h3 className="text-base font-semibold" data-testid="admin-payouts-bulk-title">
+                Bulk Payouts
+              </h3>
+              <div className="text-xs text-muted-foreground" data-testid="admin-payouts-bulk-description">
                 Creates <span className="font-medium">pending</span> payouts
                 (USD). Mark completed after sending money.
               </div>
@@ -115,10 +127,11 @@ export default function AdminPayoutsContent() {
                   }}
                   placeholder="Search merchants by name or email…"
                   className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="admin-payouts-bulk-search"
                 />
               </div>
 
-              <div className="flex items-end gap-2">
+              <div className="flex items-end gap-2" data-testid="admin-payouts-bulk-pagination">
                 <Button
                   type="button"
                   variant="outline"
@@ -130,10 +143,11 @@ export default function AdminPayoutsContent() {
                     (Number(recipientPage || 1) <= 1) ||
                     recipientsQuery.isFetching
                   }
+                  data-testid="admin-payouts-bulk-prev"
                 >
                   Prev
                 </Button>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground" data-testid="admin-payouts-bulk-page">
                   Page <span className="font-medium">{recipientPage}</span> / {recipientTotalPages}
                 </div>
                 <Button
@@ -152,6 +166,7 @@ export default function AdminPayoutsContent() {
                     (Number(recipientPage || 1) >= Number(recipientTotalPages || 1)) ||
                     recipientsQuery.isFetching
                   }
+                  data-testid="admin-payouts-bulk-next"
                 >
                   Next
                 </Button>
@@ -166,6 +181,7 @@ export default function AdminPayoutsContent() {
                     resetBulkBatch();
                   }}
                   className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-44 focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="admin-payouts-bulk-mode"
                 >
                   <option value="settle_all">Settle all outstanding</option>
                   <option value="cutoff">Settle up to cutoff date</option>
@@ -178,6 +194,7 @@ export default function AdminPayoutsContent() {
                   value={bulkPayoutProvider}
                   onChange={(e) => setBulkPayoutProvider(e.target.value)}
                   className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="admin-payouts-bulk-provider"
                 >
                   <option value="manual">manual</option>
                   <option value="paystack">paystack</option>
@@ -197,6 +214,7 @@ export default function AdminPayoutsContent() {
                     }}
                     max={todayIso}
                     className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                    data-testid="admin-payouts-bulk-cutoff"
                   />
                 </div>
               )}
@@ -210,6 +228,7 @@ export default function AdminPayoutsContent() {
                     resetBulkBatch();
                   }}
                   className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="admin-payouts-bulk-scope"
                 >
                   <option value="all">All merchants</option>
                   <option value="selected">Selected merchants</option>
@@ -226,6 +245,7 @@ export default function AdminPayoutsContent() {
                       resetBulkBatch();
                     }}
                     disabled={users.length === 0}
+                    data-testid="admin-payouts-bulk-select-page"
                   >
                     Select page
                   </Button>
@@ -236,6 +256,7 @@ export default function AdminPayoutsContent() {
                       setBulkSelectedIds([]);
                       resetBulkBatch();
                     }}
+                    data-testid="admin-payouts-bulk-clear"
                   >
                     Clear
                   </Button>
@@ -243,10 +264,14 @@ export default function AdminPayoutsContent() {
                     type="button"
                     variant="outline"
                     onClick={resetBulkBatch}
+                    data-testid="admin-payouts-bulk-reset"
                   >
                     Reset batch
                   </Button>
-                  <div className="text-xs text-muted-foreground">
+                  <div
+                    className="text-xs text-muted-foreground"
+                    data-testid="admin-payouts-bulk-selected-count"
+                  >
                     {bulkSelectedIds.length} selected
                   </div>
                 </div>
@@ -265,6 +290,7 @@ export default function AdminPayoutsContent() {
                     resetBulkBatch();
                   }}
                   className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="admin-payouts-bulk-limit"
                 />
               </div>
 
@@ -277,6 +303,7 @@ export default function AdminPayoutsContent() {
                     bulkPreviewQuery.refetch();
                   }}
                   disabled={!bulkCanPreview || bulkPreviewQuery.isFetching}
+                  data-testid="admin-payouts-bulk-preview"
                 >
                   {bulkPreviewQuery.isFetching ? "Previewing…" : "Preview"}
                 </Button>
@@ -285,6 +312,7 @@ export default function AdminPayoutsContent() {
                   type="button"
                   onClick={runBulkCreate}
                   disabled={!bulkCanCreate || bulkCreating}
+                  data-testid="admin-payouts-bulk-create"
                 >
                   {bulkCreating ? "Creating…" : "Create pending payouts"}
                 </Button>
@@ -297,19 +325,20 @@ export default function AdminPayoutsContent() {
                     bulkPreviewQuery.refetch();
                   }}
                   disabled={!bulkHasMore || bulkPreviewQuery.isFetching}
+                  data-testid="admin-payouts-bulk-next-batch"
                 >
                   Next batch
                 </Button>
               </div>
 
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground" data-testid="admin-payouts-bulk-total-preview">
                 Total preview:{" "}
                 <span className="font-medium">
                   {fmt(bulkPreviewTotal, "USD")}
                 </span>
               </div>
 
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground" data-testid="admin-payouts-bulk-batch-status">
                 Batch:{" "}
                 <span className="font-medium">
                   {bulkCursor ? "continuing" : "start"}
@@ -321,14 +350,18 @@ export default function AdminPayoutsContent() {
             </div>
 
             {bulkScope === "selected" && users.length > 0 && (
-              <div className="mb-3 max-h-44 overflow-auto border border-border rounded p-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div
+                className="mb-3 max-h-44 overflow-auto border border-border rounded p-2"
+                data-testid="admin-payouts-bulk-selected-list"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2" data-testid="admin-payouts-bulk-selected">
                   {users.map((u) => {
                     const checked = bulkSelectedIds.includes(u.id);
                     return (
                       <label
                         key={u.id}
                         className="flex items-center gap-2 text-sm"
+                        data-testid={`admin-payouts-bulk-select-${u.id}`}
                       >
                         <input
                           type="checkbox"
@@ -341,6 +374,7 @@ export default function AdminPayoutsContent() {
                               return prev.filter((id) => id !== u.id);
                             });
                           }}
+                          data-testid={`admin-payouts-bulk-checkbox-${u.id}`}
                         />
                         <span className="truncate">
                           {u.name || u.email || u.id}
@@ -353,33 +387,47 @@ export default function AdminPayoutsContent() {
             )}
 
             {bulkPreviewQuery.error ? (
-              <div className="text-sm text-red-500">
+              <div className="text-sm text-red-500" data-testid="admin-payouts-bulk-preview-error">
                 {bulkPreviewQuery.error?.message || "Failed to preview"}
               </div>
             ) : bulkPreviewQuery.isSuccess && bulkPreviewRows.length === 0 ? (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-sm text-muted-foreground" data-testid="admin-payouts-bulk-preview-empty">
                 No eligible merchants found.
               </div>
             ) : bulkPreviewRows.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Merchant</TableHead>
-                      <TableHead>From</TableHead>
-                      <TableHead>To</TableHead>
-                      <TableHead className="text-right">Remaining</TableHead>
+              <div className="overflow-x-auto" data-testid="admin-payouts-bulk-preview">
+                <Table data-testid="admin-payouts-bulk-preview-table">
+                  <TableHeader data-testid="admin-payouts-bulk-preview-head">
+                    <TableRow data-testid="admin-payouts-bulk-preview-head-row">
+                      <TableHead data-testid="admin-payouts-bulk-preview-head-merchant">
+                        Merchant
+                      </TableHead>
+                      <TableHead data-testid="admin-payouts-bulk-preview-head-from">From</TableHead>
+                      <TableHead data-testid="admin-payouts-bulk-preview-head-to">To</TableHead>
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-payouts-bulk-preview-head-remaining"
+                      >
+                        Remaining
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody data-testid="admin-payouts-bulk-preview-body">
                     {bulkPreviewRows.map((r) => (
-                      <TableRow key={r.merchantId}>
-                        <TableCell>
+                      <TableRow key={r.merchantId} data-testid={`admin-payouts-bulk-preview-row-${r.merchantId}`}>
+                        <TableCell data-testid={`admin-payouts-bulk-preview-row-${r.merchantId}-merchant`}>
                           {r.merchantName || r.merchantEmail || r.merchantId}
                         </TableCell>
-                        <TableCell>{r.from}</TableCell>
-                        <TableCell>{r.to}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell data-testid={`admin-payouts-bulk-preview-row-${r.merchantId}-from`}>
+                          {r.from}
+                        </TableCell>
+                        <TableCell data-testid={`admin-payouts-bulk-preview-row-${r.merchantId}-to`}>
+                          {r.to}
+                        </TableCell>
+                        <TableCell
+                          className="text-right"
+                          data-testid={`admin-payouts-bulk-preview-row-${r.merchantId}-remaining`}
+                        >
                           {fmt(r.remaining, "USD")}
                         </TableCell>
                       </TableRow>
@@ -390,37 +438,55 @@ export default function AdminPayoutsContent() {
             ) : null}
 
             {bulkCreateResult && (
-              <div className="mt-3">
-                <div className="text-sm">
+              <div className="mt-3" data-testid="admin-payouts-bulk-results-section">
+                <div className="text-sm" data-testid="admin-payouts-bulk-results-summary">
                   Created {bulkCreateResult.created} of{" "}
                   {bulkCreateResult.attempted} payouts
                 </div>
-                <div className="mt-2 max-h-48 overflow-auto border border-border rounded p-2">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Merchant</TableHead>
-                        <TableHead>Period</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                        <TableHead>Status</TableHead>
+                <div
+                  className="mt-2 max-h-48 overflow-auto border border-border rounded p-2"
+                  data-testid="admin-payouts-bulk-results"
+                >
+                  <Table data-testid="admin-payouts-bulk-results-table">
+                    <TableHeader data-testid="admin-payouts-bulk-results-head">
+                      <TableRow data-testid="admin-payouts-bulk-results-head-row">
+                        <TableHead data-testid="admin-payouts-bulk-results-head-merchant">
+                          Merchant
+                        </TableHead>
+                        <TableHead data-testid="admin-payouts-bulk-results-head-period">
+                          Period
+                        </TableHead>
+                        <TableHead
+                          className="text-right"
+                          data-testid="admin-payouts-bulk-results-head-amount"
+                        >
+                          Amount
+                        </TableHead>
+                        <TableHead data-testid="admin-payouts-bulk-results-head-status">
+                          Status
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
+                    <TableBody data-testid="admin-payouts-bulk-results-body">
                       {(bulkCreateResult.results || []).map((r) => (
                         <TableRow
                           key={`${r.merchantId}-${r.from || ""}-${r.to || ""}`}
                           className={r.ok ? "" : "text-red-500"}
+                          data-testid={`admin-payouts-bulk-result-${r.merchantId}`}
                         >
-                          <TableCell>
+                          <TableCell data-testid={`admin-payouts-bulk-result-${r.merchantId}-merchant`}>
                             {r.merchantName || r.merchantId}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-testid={`admin-payouts-bulk-result-${r.merchantId}-period`}>
                             {r.from && r.to ? `${r.from} → ${r.to}` : "-"}
                           </TableCell>
-                          <TableCell className="text-right">
+                          <TableCell
+                            className="text-right"
+                            data-testid={`admin-payouts-bulk-result-${r.merchantId}-amount`}
+                          >
                             {r.ok ? fmt(r.amount, "USD") : "-"}
                           </TableCell>
-                          <TableCell>
+                          <TableCell data-testid={`admin-payouts-bulk-result-${r.merchantId}-status`}>
                             {r.ok ? "created" : r.error || "failed"}
                           </TableCell>
                         </TableRow>
@@ -433,7 +499,7 @@ export default function AdminPayoutsContent() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap items-end gap-3 mb-4">
+          <div className="flex flex-wrap items-end gap-3 mb-4" data-testid="admin-payouts-filters">
             <div>
               <label className="block text-xs mb-1">From</label>
               <input
@@ -444,6 +510,7 @@ export default function AdminPayoutsContent() {
                 max={eligibilityFrom || undefined}
                 disabled
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-from"
               />
             </div>
             <div>
@@ -456,11 +523,12 @@ export default function AdminPayoutsContent() {
                 max={eligibilityMaxTo || undefined}
                 disabled
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-to"
               />
             </div>
 
-            <div className="min-w-[260px]">
-              <div className="text-xs text-muted-foreground">
+            <div className="min-w-[260px]" data-testid="admin-payouts-eligibility">
+              <div className="text-xs text-muted-foreground" data-testid="admin-payouts-eligibility-status">
                 {payoutEligibilityQuery.isLoading
                   ? "Checking merchant eligibility…"
                   : payoutEligibilityQuery.error
@@ -478,6 +546,7 @@ export default function AdminPayoutsContent() {
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-page-size"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -485,7 +554,11 @@ export default function AdminPayoutsContent() {
                 <option value={100}>100</option>
               </select>
             </div>
-            <Button variant="outline" onClick={refreshPayouts}>
+            <Button
+              variant="outline"
+              onClick={refreshPayouts}
+              data-testid="admin-payouts-apply"
+            >
               Apply
             </Button>
             <Button
@@ -497,14 +570,21 @@ export default function AdminPayoutsContent() {
                 qs.set("format", "csv");
                 window.open(`/api/admin/payouts?${qs.toString()}`, "_blank");
               }}
+              data-testid="admin-payouts-export"
             >
               Export CSV
             </Button>
           </div>
 
-          <div className="rounded-md border border-border p-4 mb-6">
-            <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-              <h3 className="text-base font-semibold">
+          <div
+            className="rounded-md border border-border p-4 mb-6"
+            data-testid="admin-payouts-earnings-section"
+          >
+            <div
+              className="flex items-center justify-between flex-wrap gap-2 mb-3"
+              data-testid="admin-payouts-earnings-header"
+            >
+              <h3 className="text-base font-semibold" data-testid="admin-payouts-earnings-title">
                 Merchant earnings after platform fees
               </h3>
               <Button
@@ -512,77 +592,123 @@ export default function AdminPayoutsContent() {
                 size="sm"
                 onClick={() => merchantPayoutsQuery.refetch()}
                 disabled={merchantPayoutsQuery.isFetching}
+                data-testid="admin-payouts-earnings-refresh"
               >
                 {merchantPayoutsQuery.isFetching ? "Updating…" : "Refresh"}
               </Button>
             </div>
             {merchantPayoutsQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground" data-testid="admin-payouts-earnings-loading">
                 Loading merchant payout data…
               </p>
             ) : merchantPayoutsQuery.error ? (
-              <p className="text-sm text-red-500">
+              <p className="text-sm text-red-500" data-testid="admin-payouts-earnings-error">
                 {merchantPayoutsQuery.error?.message ||
                   "Failed to load merchant payouts"}
               </p>
             ) : eligibleMerchantPayouts.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground" data-testid="admin-payouts-earnings-empty">
                 No eligible merchants found for the selected period.
               </p>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Merchant</TableHead>
-                      <TableHead className="text-right">Gross Sales</TableHead>
-                      <TableHead className="text-right">
+                <Table data-testid="admin-payouts-earnings-table">
+                  <TableHeader data-testid="admin-payouts-earnings-head">
+                    <TableRow data-testid="admin-payouts-earnings-head-row">
+                      <TableHead data-testid="admin-payouts-earnings-head-merchant">Merchant</TableHead>
+                      <TableHead className="text-right" data-testid="admin-payouts-earnings-head-gross">
+                        Gross Sales
+                      </TableHead>
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-payouts-earnings-head-coupon"
+                      >
                         Coupon Discounts
                       </TableHead>
-                      <TableHead className="text-right">
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-payouts-earnings-head-crowdpen-discount"
+                      >
                         Crowdpen-Funded Discounts
                       </TableHead>
-                      <TableHead className="text-right">
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-payouts-earnings-head-merchant-discount"
+                      >
                         Merchant-Funded Discounts
                       </TableHead>
-                      <TableHead className="text-right">
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-payouts-earnings-head-crowdpen-fee"
+                      >
                         Crowdpen Share ({crowdpenFeeLabel})
                       </TableHead>
-                      <TableHead className="text-right">
+                      <TableHead
+                        className="text-right"
+                        data-testid="admin-payouts-earnings-head-startbutton-fee"
+                      >
                         Startbutton Share ({startbuttonFeeLabel})
                       </TableHead>
-                      <TableHead className="text-right">Net Payout</TableHead>
+                      <TableHead className="text-right" data-testid="admin-payouts-earnings-head-net">
+                        Net Payout
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
+                  <TableBody data-testid="admin-payouts-earnings-body">
                     {eligibleMerchantPayouts.map((merchant) => (
-                      <TableRow key={merchant.merchantId}>
-                        <TableCell>{merchant.merchantName}</TableCell>
-                        <TableCell className="text-right">
+                      <TableRow
+                        key={merchant.merchantId}
+                        data-testid={`admin-payouts-earnings-row-${merchant.merchantId}`}
+                      >
+                        <TableCell data-testid={`admin-payouts-earnings-row-${merchant.merchantId}-merchant`}>
+                          {merchant.merchantName}
+                        </TableCell>
+                        <TableCell
+                          className="text-right"
+                          data-testid={`admin-payouts-earnings-row-${merchant.merchantId}-gross`}
+                        >
                           {fmt(merchant.revenue, merchant.currency)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell
+                          className="text-right"
+                          data-testid={`admin-payouts-earnings-row-${merchant.merchantId}-coupon`}
+                        >
                           {fmt(merchant.discountTotal, merchant.currency)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell
+                          className="text-right"
+                          data-testid={`admin-payouts-earnings-row-${merchant.merchantId}-crowdpen-discount`}
+                        >
                           {fmt(
                             merchant.discountCrowdpenFunded,
                             merchant.currency
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell
+                          className="text-right"
+                          data-testid={`admin-payouts-earnings-row-${merchant.merchantId}-merchant-discount`}
+                        >
                           {fmt(
                             merchant.discountMerchantFunded,
                             merchant.currency
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell
+                          className="text-right"
+                          data-testid={`admin-payouts-earnings-row-${merchant.merchantId}-crowdpen-fee`}
+                        >
                           {fmt(merchant.crowdpenFee, merchant.currency)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell
+                          className="text-right"
+                          data-testid={`admin-payouts-earnings-row-${merchant.merchantId}-startbutton-fee`}
+                        >
                           {fmt(merchant.startbuttonFee, merchant.currency)}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell
+                          className="text-right"
+                          data-testid={`admin-payouts-earnings-row-${merchant.merchantId}-net`}
+                        >
                           {fmt(merchant.creatorPayout, merchant.currency)}
                         </TableCell>
                       </TableRow>
@@ -596,6 +722,7 @@ export default function AdminPayoutsContent() {
           <form
             action={createPayout}
             className="flex flex-wrap items-end gap-2 mb-4"
+            data-testid="admin-payouts-create-form"
           >
             <input type="hidden" name="from" value={payoutsParams.from || ""} />
             <input type="hidden" name="to" value={payoutsParams.to || ""} />
@@ -606,6 +733,7 @@ export default function AdminPayoutsContent() {
                 value={selectedRecipientId}
                 onChange={(e) => setSelectedRecipientId(e.target.value)}
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm min-w-48 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-recipient"
               >
                 {recipientSelectUsers.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -628,6 +756,7 @@ export default function AdminPayoutsContent() {
                 }
                 readOnly
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-amount"
               />
             </div>
             <div className="flex items-end">
@@ -643,6 +772,7 @@ export default function AdminPayoutsContent() {
                       ? "Calculating..."
                       : "Recalculate suggested payout"
                 }
+                data-testid="admin-payouts-recalculate"
               >
                 {payoutSummaryQuery.isFetching ? "Calculating…" : "Recalculate"}
               </Button>
@@ -653,6 +783,7 @@ export default function AdminPayoutsContent() {
                 name="currency"
                 defaultValue="USD"
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-24 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-currency"
               />
             </div>
             <div>
@@ -661,6 +792,7 @@ export default function AdminPayoutsContent() {
                 name="status"
                 defaultValue="pending"
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-32 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-status"
               >
                 <option value="pending">pending</option>
                 <option value="completed">completed</option>
@@ -674,6 +806,7 @@ export default function AdminPayoutsContent() {
                 name="payout_provider"
                 defaultValue="manual"
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm w-40 focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-provider"
               >
                 <option value="manual">manual</option>
                 <option value="paystack">paystack</option>
@@ -686,6 +819,7 @@ export default function AdminPayoutsContent() {
                 name="transaction_reference"
                 placeholder="optional"
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-reference"
               />
             </div>
             <div>
@@ -694,35 +828,41 @@ export default function AdminPayoutsContent() {
                 name="note"
                 placeholder="optional"
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-payouts-note"
               />
             </div>
-            <Button type="submit" disabled={!canCreatePayout}>
+            <Button
+              type="submit"
+              disabled={!canCreatePayout}
+              data-testid="admin-payouts-submit"
+            >
               Create Payout
             </Button>
           </form>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Recipient</TableHead>
-                <TableHead>Created By</TableHead>
-                <TableHead>Source</TableHead>
-                <TableHead>Amount</TableHead>
-                <TableHead>Currency</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Reference</TableHead>
-                <TableHead>Date</TableHead>
+          <Table data-testid="admin-payouts-list-table">
+            <TableHeader data-testid="admin-payouts-list-head">
+              <TableRow data-testid="admin-payouts-list-head-row">
+                <TableHead data-testid="admin-payouts-list-head-recipient">Recipient</TableHead>
+                <TableHead data-testid="admin-payouts-list-head-created-by">Created By</TableHead>
+                <TableHead data-testid="admin-payouts-list-head-source">Source</TableHead>
+                <TableHead data-testid="admin-payouts-list-head-amount">Amount</TableHead>
+                <TableHead data-testid="admin-payouts-list-head-currency">Currency</TableHead>
+                <TableHead data-testid="admin-payouts-list-head-status">Status</TableHead>
+                <TableHead data-testid="admin-payouts-list-head-reference">Reference</TableHead>
+                <TableHead data-testid="admin-payouts-list-head-date">Date</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody data-testid="admin-payouts-list-body">
               {list.map((tx) => (
-                <TableRow key={tx.id}>
-                  <TableCell>
+                <TableRow key={tx.id} data-testid={`admin-payout-row-${tx.id}`}>
+                  <TableCell data-testid={`admin-payout-row-${tx.id}-recipient`}>
                     <div className="flex items-center gap-3">
                       <Avatar
                         imageUrl={tx?.User?.image}
                         color={tx?.User?.color}
                         className="h-8 w-8"
+                        data-testid={`admin-payout-row-${tx.id}-avatar`}
                       >
                         <AvatarFallback>
                           {(tx?.User?.name || tx?.User?.email || "")
@@ -731,26 +871,48 @@ export default function AdminPayoutsContent() {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">
+                        <div
+                          className="font-medium"
+                          data-testid={`admin-payout-row-${tx.id}-recipient-name`}
+                        >
                           {tx?.User?.name ||
                             tx?.User?.email ||
                             tx.recipient_id}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div
+                          className="text-xs text-muted-foreground"
+                          data-testid={`admin-payout-row-${tx.id}-recipient-email`}
+                        >
                           {tx?.User?.email}
                         </div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-payout-row-${tx.id}-created-by`}>
                     {tx?.CreatedBy?.name || tx?.CreatedBy?.email || tx.created_by || "-"}
                   </TableCell>
-                  <TableCell className="capitalize">{tx.created_via || "-"}</TableCell>
-                  <TableCell>{fmt(Number(tx.amount || 0), tx.currency)}</TableCell>
-                  <TableCell>{tx.currency}</TableCell>
-                  <TableCell className="capitalize">{tx.status}</TableCell>
-                  <TableCell>{tx.transaction_reference || "-"}</TableCell>
-                  <TableCell>
+                  <TableCell
+                    className="capitalize"
+                    data-testid={`admin-payout-row-${tx.id}-source`}
+                  >
+                    {tx.created_via || "-"}
+                  </TableCell>
+                  <TableCell data-testid={`admin-payout-row-${tx.id}-amount`}>
+                    {fmt(Number(tx.amount || 0), tx.currency)}
+                  </TableCell>
+                  <TableCell data-testid={`admin-payout-row-${tx.id}-currency`}>
+                    {tx.currency}
+                  </TableCell>
+                  <TableCell
+                    className="capitalize"
+                    data-testid={`admin-payout-row-${tx.id}-status`}
+                  >
+                    {tx.status}
+                  </TableCell>
+                  <TableCell data-testid={`admin-payout-row-${tx.id}-reference`}>
+                    {tx.transaction_reference || "-"}
+                  </TableCell>
+                  <TableCell data-testid={`admin-payout-row-${tx.id}-date`}>
                     {tx.createdAt
                       ? new Date(tx.createdAt).toLocaleString("en-US", {
                           timeZone: "UTC",
@@ -760,10 +922,11 @@ export default function AdminPayoutsContent() {
                 </TableRow>
               ))}
               {list.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-payouts-empty">
                   <TableCell
                     colSpan={8}
                     className="text-center text-sm text-muted-foreground"
+                    data-testid="admin-payouts-empty-cell"
                   >
                     No payouts yet.
                   </TableCell>
@@ -772,7 +935,7 @@ export default function AdminPayoutsContent() {
             </TableBody>
           </Table>
 
-          <div className="mt-4">
+          <div className="mt-4" data-testid="admin-payouts-pagination">
             <PaginationSmart
               currentPage={page}
               totalPages={totalPages}

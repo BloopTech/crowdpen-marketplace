@@ -26,10 +26,12 @@ export default function MerchantSubpagePagination({
   if (!totalPages || totalPages <= 1) return null;
 
   return (
-    <PaginationSmart
-      totalPages={totalPages}
-      currentPage={currentPage}
-      onPageChange={onPageChange}
-    />
+    <div data-testid="admin-merchant-pagination">
+      <PaginationSmart
+        totalPages={totalPages}
+        currentPage={currentPage}
+        onPageChange={onPageChange}
+      />
+    </div>
   );
 }

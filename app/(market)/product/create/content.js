@@ -1036,24 +1036,24 @@ export default function CreateProductContent({ draftId }) {
   }, [submitQueued, hasPendingUploads, hasUploadErrors]);
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-5xl">
+    <div className="container mx-auto py-8 px-4 max-w-5xl" data-testid="product-create-page">
       {isLoadingDraft ? (
-        <div className="flex items-center gap-2 text-muted-foreground mb-4">
+        <div className="flex items-center gap-2 text-muted-foreground mb-4" data-testid="product-create-loading">
           <Loader2 className="h-5 w-5 animate-spin" />
           Loading draft...
         </div>
       ) : null}
       <div className="mb-4">
         <Button asChild variant="ghost" size="sm">
-          <Link href="/">
+          <Link href="/" data-testid="product-create-back">
             <span className="inline-flex items-center">
               <ArrowLeft className="mr-2 h-4 w-4" /> Back to Home
             </span>
           </Link>
         </Button>
       </div>
-      <Card>
-        <CardHeader>
+      <Card data-testid="product-create-card">
+        <CardHeader data-testid="product-create-header">
           <CardTitle className="text-2xl font-bold">
             Create New Product
           </CardTitle>
@@ -1095,6 +1095,7 @@ export default function CreateProductContent({ draftId }) {
             formData.append("productFileUrl", productFile.uploadedUrl);
             formAction(formData);
           }}
+          data-testid="product-create-form"
         >
           <CardContent className="space-y-6">
             {/* Basic Information */}
@@ -1118,6 +1119,7 @@ export default function CreateProductContent({ draftId }) {
                       : "focus:ring-tertiary"
                   }`}
                   disabled={isPending}
+                  data-testid="product-create-title"
                   onChange={(e) => {
                     // keep existing uncontrolled behavior
                     queueDraftSave();
@@ -1141,6 +1143,7 @@ export default function CreateProductContent({ draftId }) {
                   onChange={setDescription}
                   placeholder="Enter detailed product description"
                   disabled={isPending}
+                  dataTestId="product-create-description"
                   error={
                     Object.keys(state?.errors).length !== 0 &&
                     state?.errors?.description?.length
@@ -1166,6 +1169,7 @@ export default function CreateProductContent({ draftId }) {
                     state?.errors?.what_included?.length
                   }
                   disabled={isPending}
+                  dataTestId="product-create-what-included"
                 />
                 {/* Hidden input for form submission */}
                 <input
@@ -1193,7 +1197,7 @@ export default function CreateProductContent({ draftId }) {
                     required
                     disabled={isPending}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="product-create-category">
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1227,7 +1231,7 @@ export default function CreateProductContent({ draftId }) {
                     required
                     disabled={isPending || !categoryID}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="product-create-subcategory">
                       <SelectValue placeholder="Select a subcategory" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1262,7 +1266,7 @@ export default function CreateProductContent({ draftId }) {
                     onValueChange={setProductStatus}
                     disabled={isPending}
                   >
-                    <SelectTrigger id="product_status">
+                    <SelectTrigger id="product_status" data-testid="product-create-status">
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -1299,6 +1303,7 @@ export default function CreateProductContent({ draftId }) {
                         }
                       }}
                       disabled={isPending}
+                      data-testid="product-create-discount-toggle"
                     />
                   </div>
                   <div className="text-xs text-muted-foreground dark:text-slate-400">
@@ -1331,6 +1336,7 @@ export default function CreateProductContent({ draftId }) {
                           : ""
                       }`}
                       disabled={isPending}
+                      data-testid="product-create-original-price"
                     />
                     <span className="text-xs text-red-500">
                       {Object.keys(state?.errors).length !== 0 &&
@@ -1375,6 +1381,7 @@ export default function CreateProductContent({ draftId }) {
                               : "focus:ring-tertiary"
                           }`}
                           disabled={isPending}
+                          data-testid="product-create-sale-price"
                         />
                         <span className="text-xs text-red-500">
                           {Object.keys(state?.errors).length !== 0 &&
@@ -1397,6 +1404,7 @@ export default function CreateProductContent({ draftId }) {
                                 : "focus:ring-tertiary"
                             }`}
                             disabled={isPending}
+                            data-testid="product-create-sale-end"
                           />
                           <span className="text-xs text-red-500">
                             {Object.keys(state?.errors).length !== 0 &&
@@ -1446,6 +1454,7 @@ export default function CreateProductContent({ draftId }) {
                     onChange={(e) => setStock(e.target.value)}
                     className="w-full border border-gray-200 rounded-md p-2 form-input focus:outline-none focus:ring-2 focus:ring-tertiary"
                     disabled={isPending}
+                    data-testid="product-create-stock"
                   />
                   <span className="text-xs text-red-500">
                     {Object.keys(state?.errors).length !== 0 && state?.errors?.stock?.length
@@ -1500,6 +1509,7 @@ export default function CreateProductContent({ draftId }) {
                             type="button"
                             onClick={() => retryImageUpload(index)}
                             className="text-[10px] underline"
+                            data-testid={`product-create-image-retry-${index}`}
                           >
                             Retry
                           </button>
@@ -1509,6 +1519,7 @@ export default function CreateProductContent({ draftId }) {
                         type="button"
                         onClick={() => removeImage(index)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                        data-testid={`product-create-image-remove-${index}`}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -1523,6 +1534,7 @@ export default function CreateProductContent({ draftId }) {
                   <label
                     htmlFor="images"
                     className="h-24 w-24 border-2 border-dashed rounded-md flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50"
+                    data-testid="product-create-images-trigger"
                   >
                     {uploadingImage ? (
                       <Loader2 className="h-6 w-6 animate-spin" />
@@ -1541,6 +1553,7 @@ export default function CreateProductContent({ draftId }) {
                       className="hidden"
                       onChange={handleImageUpload}
                       disabled={uploadingImage || isPending}
+                      data-testid="product-create-images"
                     />
                   </label>
                 </div>
@@ -1595,6 +1608,7 @@ export default function CreateProductContent({ draftId }) {
                                 onClick={retryFileUpload}
                                 className="underline"
                                 disabled={uploadingFile || isPending}
+                                data-testid="product-create-file-retry"
                               >
                                 Retry
                               </button>
@@ -1607,6 +1621,7 @@ export default function CreateProductContent({ draftId }) {
                         onClick={removeFile}
                         className="text-red-500 hover:text-red-700 p-1"
                         disabled={uploadingFile || isPending}
+                        data-testid="product-create-file-remove"
                       >
                         <X className="h-5 w-5" />
                       </button>
@@ -1615,6 +1630,7 @@ export default function CreateProductContent({ draftId }) {
                     <label
                       htmlFor="productFile"
                       className="flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 rounded-lg p-4"
+                      data-testid="product-create-file-trigger"
                     >
                       {uploadingFile ? (
                         <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
@@ -1637,6 +1653,7 @@ export default function CreateProductContent({ draftId }) {
                         className="hidden"
                         onChange={handleFileUpload}
                         disabled={uploadingFile || isPending}
+                        data-testid="product-create-file"
                       />
                     </label>
                   )}
@@ -1684,6 +1701,7 @@ export default function CreateProductContent({ draftId }) {
                     placeholder="Auto-detected from uploaded file"
                     readOnly
                     className="border border-gray-200 dark:border-slate-700 rounded-md p-2 form-input bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-tertiary dark:focus:ring-slate-500"
+                    data-testid="product-create-file-type"
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400">
                     File type is automatically detected from the uploaded file
@@ -1706,6 +1724,7 @@ export default function CreateProductContent({ draftId }) {
                     placeholder="Auto-calculated from uploaded file"
                     readOnly
                     className="border border-gray-200 dark:border-slate-700 rounded-md p-2 form-input bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-tertiary dark:focus:ring-slate-500"
+                    data-testid="product-create-file-size"
                   />
                   <p className="text-xs text-gray-500 dark:text-slate-400">
                     File size is automatically calculated when you upload a file
@@ -1724,9 +1743,9 @@ export default function CreateProductContent({ draftId }) {
                 <div className="space-y-2">
                   <Label htmlFor="license">License</Label>
                   <Select name="license" disabled={isPending}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select license type" />
-                    </SelectTrigger>
+                    <SelectTrigger data-testid="product-create-license">
+                    <SelectValue placeholder="Select license type" />
+                  </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Standard">Standard License</SelectItem>
                       <SelectItem value="Extended">Extended License</SelectItem>
@@ -1741,9 +1760,9 @@ export default function CreateProductContent({ draftId }) {
                 <div className="space-y-2">
                   <Label htmlFor="deliveryTime">Delivery Time</Label>
                   <Select name="deliveryTime" disabled={isPending}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select delivery time" />
-                    </SelectTrigger>
+                    <SelectTrigger data-testid="product-create-delivery">
+                    <SelectValue placeholder="Select delivery time" />
+                  </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Instant">Instant Delivery</SelectItem>
                       <SelectItem value="1 day">Within 1 day</SelectItem>
@@ -1761,6 +1780,7 @@ export default function CreateProductContent({ draftId }) {
               variant="outline"
               type="button"
               onClick={() => router.back()}
+              data-testid="product-create-cancel"
             >
               Cancel
             </Button>
@@ -1769,6 +1789,7 @@ export default function CreateProductContent({ draftId }) {
                 type="submit"
                 disabled={isPending}
                 className="bg-black text-white disabled:cursor-not-allowed cursor-pointer border border-black hover:bg-white hover:text-black"
+                data-testid="product-create-submit"
               >
                 {isPending ? (
                   <>

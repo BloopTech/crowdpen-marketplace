@@ -29,10 +29,13 @@ export default function MerchantTabsNav({ merchantId }) {
   };
 
   return (
-    <div className="border-b border-border">
-      <div className="flex flex-wrap gap-2">
+    <div className="border-b border-border" data-testid="admin-merchant-tabs">
+      <div className="flex flex-wrap gap-2" data-testid="admin-merchant-tabs-list">
         {tabs.map((t) => {
           const active = isActive(t.href);
+          const tabSlug = String(t.key || "")
+            .toLowerCase()
+            .replace(/\s+/g, "-");
           return (
             <Link
               key={t.key}
@@ -43,6 +46,7 @@ export default function MerchantTabsNav({ merchantId }) {
                   ? "border-border border-b-background bg-background text-foreground"
                   : "hover:bg-muted"
               )}
+              data-testid={`admin-merchant-tab-${tabSlug}`}
             >
               {t.label}
             </Link>

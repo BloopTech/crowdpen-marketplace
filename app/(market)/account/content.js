@@ -420,8 +420,14 @@ export default function AccountContentPage() {
 
   if (accountQueryLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex items-center gap-3 text-muted-foreground">
+      <div
+        className="min-h-screen bg-background flex items-center justify-center"
+        data-testid="account-loading"
+      >
+        <div
+          className="flex items-center gap-3 text-muted-foreground"
+          data-testid="account-loading-message"
+        >
           <Loader2 className="h-6 w-6 animate-spin" />
           Loading your account...
         </div>
@@ -431,75 +437,127 @@ export default function AccountContentPage() {
 
   if (accountQueryError) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-3">
+      <div
+        className="min-h-screen bg-background flex items-center justify-center"
+        data-testid="account-error"
+      >
+        <div className="text-center space-y-3" data-testid="account-error-message">
           <p className="text-foreground">Failed to load your account.</p>
-          <Button onClick={() => refetchAccountQuery()}>Retry</Button>
+          <Button onClick={() => refetchAccountQuery()} data-testid="account-retry">
+            Retry
+          </Button>
         </div>
       </div>
     );
   }
   console.log("KYC FORM", kycForm);
   return (
-    <div className="min-h-screen bg-background">
-      <MarketplaceHeader
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onSearch={() => {}}
-        cartItemCount={0}
-      />
+    <div className="min-h-screen bg-background" data-testid="account-page">
+      <div data-testid="account-marketplace-header">
+        <MarketplaceHeader
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onSearch={() => {}}
+          cartItemCount={0}
+        />
+      </div>
 
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Avatar className="w-16 h-16 ring-4 ring-border shadow-xl">
+      <div className="container mx-auto px-4 py-8" data-testid="account-container">
+        <div className="flex items-center gap-4 mb-8" data-testid="account-header">
+          <Avatar className="w-16 h-16 ring-4 ring-border shadow-xl" data-testid="account-avatar">
             <AvatarImage
               src={profile?.image || "/default-avatar.png"}
               alt={displayName}
               className="object-cover"
+              data-testid="account-avatar-image"
             />
-            <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+            <AvatarFallback
+              className="text-2xl bg-linear-to-br from-blue-500 to-purple-600 text-white"
+              data-testid="account-avatar-fallback"
+            >
               {displayName?.charAt(0)}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-2xl font-bold" data-testid="account-name">
               {displayFirstName || displayLastName
                 ? `${displayFirstName} ${displayLastName}`.trim()
                 : displayName}
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground" data-testid="account-member-since">
               {memberSinceText ? `Member since ${memberSinceText}` : null}
             </p>
           </div>
         </div>
 
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1">
-            <TabsTrigger value="purchases" className="flex-1 min-w-[100px] text-xs sm:text-sm">Purchases</TabsTrigger>
-            <TabsTrigger value="my-products" className="flex-1 min-w-[100px] text-xs sm:text-sm">Products</TabsTrigger>
-            <TabsTrigger value="payouts" className="flex-1 min-w-[80px] text-xs sm:text-sm">Payouts</TabsTrigger>
-            <TabsTrigger value="billing" className="flex-1 min-w-[80px] text-xs sm:text-sm">Billing</TabsTrigger>
-            <TabsTrigger value="settings" className="flex-1 min-w-[80px] text-xs sm:text-sm">Settings</TabsTrigger>
-            <TabsTrigger value="verification" className="flex-1 min-w-[100px] text-xs sm:text-sm">Verification</TabsTrigger>
+        <Tabs
+          value={activeTab}
+          onValueChange={handleTabChange}
+          className="w-full"
+          data-testid="account-tabs"
+        >
+          <TabsList className="flex flex-wrap w-full h-auto gap-1 p-1" data-testid="account-tabs-list">
+            <TabsTrigger
+              value="purchases"
+              className="flex-1 min-w-[100px] text-xs sm:text-sm"
+              data-testid="account-tab-purchases"
+            >
+              Purchases
+            </TabsTrigger>
+            <TabsTrigger
+              value="my-products"
+              className="flex-1 min-w-[100px] text-xs sm:text-sm"
+              data-testid="account-tab-products"
+            >
+              Products
+            </TabsTrigger>
+            <TabsTrigger
+              value="payouts"
+              className="flex-1 min-w-[80px] text-xs sm:text-sm"
+              data-testid="account-tab-payouts"
+            >
+              Payouts
+            </TabsTrigger>
+            <TabsTrigger
+              value="billing"
+              className="flex-1 min-w-[80px] text-xs sm:text-sm"
+              data-testid="account-tab-billing"
+            >
+              Billing
+            </TabsTrigger>
+            <TabsTrigger
+              value="settings"
+              className="flex-1 min-w-[80px] text-xs sm:text-sm"
+              data-testid="account-tab-settings"
+            >
+              Settings
+            </TabsTrigger>
+            <TabsTrigger
+              value="verification"
+              className="flex-1 min-w-[100px] text-xs sm:text-sm"
+              data-testid="account-tab-verification"
+            >
+              Verification
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="purchases" className="mt-6">
+          <TabsContent value="purchases" className="mt-6" data-testid="account-tab-content-purchases">
             <MyPurchases />
           </TabsContent>
 
-          <TabsContent value="my-products" className="mt-6">
+          <TabsContent value="my-products" className="mt-6" data-testid="account-tab-content-products">
             <MyProducts />
           </TabsContent>
 
-          <TabsContent value="payouts" className="mt-6">
+          <TabsContent value="payouts" className="mt-6" data-testid="account-tab-content-payouts">
             <PayoutsTab />
           </TabsContent>
 
-          <TabsContent value="billing" className="mt-6">
+          <TabsContent value="billing" className="mt-6" data-testid="account-tab-content-billing">
             <MyBillings />
           </TabsContent>
 
-          <TabsContent value="verification" className="mt-6">
+          <TabsContent value="verification" className="mt-6" data-testid="account-tab-content-verification">
             <MyVerification
               kycFormAction={kycFormAction}
               kycForm={kycForm}
@@ -521,7 +579,7 @@ export default function AccountContentPage() {
             />
           </TabsContent>
 
-          <TabsContent value="settings" className="mt-6">
+          <TabsContent value="settings" className="mt-6" data-testid="account-tab-content-settings">
             <AccountSettings />
           </TabsContent>
         </Tabs>

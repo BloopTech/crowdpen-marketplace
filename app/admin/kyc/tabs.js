@@ -123,32 +123,34 @@ export default function KYCTabs(props) {
           setTab(v);
           setQs({ kycTab: v });
         }}
+        data-testid="admin-kyc-tabs"
       >
-        <TabsList>
-          <TabsTrigger value="pending">Pending</TabsTrigger>
-          <TabsTrigger value="approved">Approved</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
+        <TabsList data-testid="admin-kyc-tabs-list">
+          <TabsTrigger value="pending" data-testid="admin-kyc-tab-pending">Pending</TabsTrigger>
+          <TabsTrigger value="approved" data-testid="admin-kyc-tab-approved">Approved</TabsTrigger>
+          <TabsTrigger value="rejected" data-testid="admin-kyc-tab-rejected">Rejected</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pending">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead>Submitted</TableHead>
-                <TableHead>Actions</TableHead>
+        <TabsContent value="pending" data-testid="admin-kyc-pending">
+          <Table data-testid="admin-kyc-pending-table">
+            <TableHeader data-testid="admin-kyc-pending-head">
+              <TableRow data-testid="admin-kyc-pending-head-row">
+                <TableHead data-testid="admin-kyc-pending-head-user">User</TableHead>
+                <TableHead data-testid="admin-kyc-pending-head-level">Level</TableHead>
+                <TableHead data-testid="admin-kyc-pending-head-submitted">Submitted</TableHead>
+                <TableHead data-testid="admin-kyc-pending-head-actions">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody data-testid="admin-kyc-pending-body">
               {pending.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>
+                <TableRow key={r.id} data-testid={`admin-kyc-pending-row-${r.id}`}>
+                  <TableCell data-testid={`admin-kyc-pending-row-${r.id}-user`}>
                     <div className="flex items-center gap-3">
                       <Avatar
                         imageUrl={r?.User?.image}
                         color={r?.User?.color}
                         className="h-8 w-8"
+                        data-testid={`admin-kyc-pending-row-${r.id}-avatar`}
                       >
                         <AvatarFallback>
                           {(r?.User?.name || r?.User?.email || "")
@@ -157,22 +159,33 @@ export default function KYCTabs(props) {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">
+                        <div
+                          className="font-medium"
+                          data-testid={`admin-kyc-pending-row-${r.id}-user-name`}
+                        >
                           {r?.User?.name || r?.User?.email || r.user_id}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div
+                          className="text-xs text-muted-foreground"
+                          data-testid={`admin-kyc-pending-row-${r.id}-user-email`}
+                        >
                           {r?.User?.email}
                         </div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="capitalize">{r.level}</TableCell>
-                  <TableCell>
+                  <TableCell
+                    className="capitalize"
+                    data-testid={`admin-kyc-pending-row-${r.id}-level`}
+                  >
+                    {r.level}
+                  </TableCell>
+                  <TableCell data-testid={`admin-kyc-pending-row-${r.id}-submitted`}>
                     {r.submitted_at
                       ? new Date(r.submitted_at).toLocaleString("en-US", { timeZone: "UTC" })
                       : "-"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-kyc-pending-row-${r.id}-actions`}>
                     <div className="flex gap-2 items-center">
                       <Button
                         size="sm"
@@ -181,6 +194,7 @@ export default function KYCTabs(props) {
                           setReviewId(r.id);
                           setQs({ kycReviewId: r.id });
                         }}
+                        data-testid={`admin-kyc-pending-review-${r.id}`}
                       >
                         Review
                       </Button>
@@ -193,22 +207,30 @@ export default function KYCTabs(props) {
                           }
                         }}
                       >
-                        <DialogContent className="mx-auto w-full max-w-3xl font-poynterroman flex flex-col gap-6">
+                        <DialogContent
+                          className="mx-auto w-full max-w-3xl font-poynterroman flex flex-col gap-6"
+                          data-testid={`admin-kyc-review-dialog-${r.id}`}
+                        >
                           <DialogHeader>
                             <DialogTitle>KYC Review</DialogTitle>
                           </DialogHeader>
                           <Tabs
                             defaultValue="info"
                             className="flex flex-col gap-4"
+                            data-testid={`admin-kyc-review-tabs-${r.id}`}
                           >
-                            <TabsList>
-                              <TabsTrigger value="info">Info</TabsTrigger>
-                              <TabsTrigger value="docs">Documents</TabsTrigger>
-                              <TabsTrigger value="decision">
+                            <TabsList data-testid={`admin-kyc-review-tabs-list-${r.id}`}>
+                              <TabsTrigger value="info" data-testid={`admin-kyc-review-tab-info-${r.id}`}>
+                                Info
+                              </TabsTrigger>
+                              <TabsTrigger value="docs" data-testid={`admin-kyc-review-tab-docs-${r.id}`}>
+                                Documents
+                              </TabsTrigger>
+                              <TabsTrigger value="decision" data-testid={`admin-kyc-review-tab-decision-${r.id}`}>
                                 Decision
                               </TabsTrigger>
                             </TabsList>
-                            <TabsContent value="info">
+                            <TabsContent value="info" data-testid={`admin-kyc-review-info-${r.id}`}>
                               <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div>
                                   <span className="text-muted-foreground font-semibold">
@@ -257,7 +279,7 @@ export default function KYCTabs(props) {
                                 </div>
                               </div>
                             </TabsContent>
-                            <TabsContent value="docs">
+                            <TabsContent value="docs" data-testid={`admin-kyc-review-docs-${r.id}`}>
                               <div className="grid grid-cols-3 gap-4 w-full">
                                 <div>
                                   <h1 className="font-medium font-poynterroman mt-1">
@@ -268,6 +290,7 @@ export default function KYCTabs(props) {
                                       href={r.id_front_url}
                                       target="_blank"
                                       className="block"
+                                      data-testid={`admin-kyc-review-id-front-${r.id}`}
                                     >
                                       <Image
                                         src={r.id_front_url}
@@ -291,6 +314,7 @@ export default function KYCTabs(props) {
                                       href={r.id_back_url}
                                       target="_blank"
                                       className="block"
+                                      data-testid={`admin-kyc-review-id-back-${r.id}`}
                                     >
                                       <Image
                                         src={r.id_back_url}
@@ -314,6 +338,7 @@ export default function KYCTabs(props) {
                                       href={r.selfie_url}
                                       target="_blank"
                                       className="block"
+                                      data-testid={`admin-kyc-review-selfie-${r.id}`}
                                     >
                                       <Image
                                         src={r.selfie_url}
@@ -329,7 +354,7 @@ export default function KYCTabs(props) {
                                 </div>
                               </div>
                             </TabsContent>
-                            <TabsContent value="decision">
+                            <TabsContent value="decision" data-testid={`admin-kyc-review-decision-${r.id}`}>
                               <div className="flex flex-col gap-3">
                                 {/* Approve flow with confirmation */}
                                 <AlertDialog
@@ -343,6 +368,7 @@ export default function KYCTabs(props) {
                                       type="button"
                                       disabled={rejectIsPending || approveIsPending}
                                       aria-busy={approveIsPending}
+                                      data-testid={`admin-kyc-approve-${r.id}`}
                                     >
                                       {approveIsPending ? (
                                         <span className="inline-flex items-center">
@@ -354,7 +380,7 @@ export default function KYCTabs(props) {
                                       )}
                                     </Button>
                                   </AlertDialogTrigger>
-                                  <AlertDialogContent>
+                                  <AlertDialogContent data-testid={`admin-kyc-approve-confirm-${r.id}`}>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>Approve verification?</AlertDialogTitle>
                                       <AlertDialogDescription>
@@ -369,6 +395,7 @@ export default function KYCTabs(props) {
                                           type="submit"
                                           disabled={rejectIsPending || approveIsPending}
                                           aria-busy={approveIsPending}
+                                          data-testid={`admin-kyc-approve-confirm-submit-${r.id}`}
                                         >
                                           {approveIsPending ? (
                                             <span className="inline-flex items-center">
@@ -397,6 +424,7 @@ export default function KYCTabs(props) {
                                     onChange={(e) =>
                                       setRejectReasons((prev) => ({ ...prev, [r.id]: e.target.value }))
                                     }
+                                    data-testid={`admin-kyc-reject-reason-${r.id}`}
                                   />
                                   <AlertDialog
                                     open={!!rejectConfirmOpen[r.id]}
@@ -410,6 +438,7 @@ export default function KYCTabs(props) {
                                         variant="outline"
                                         disabled={rejectIsPending || approveIsPending}
                                         aria-busy={rejectIsPending}
+                                        data-testid={`admin-kyc-reject-${r.id}`}
                                       >
                                         {rejectIsPending ? (
                                           <span className="inline-flex items-center">
@@ -421,7 +450,7 @@ export default function KYCTabs(props) {
                                         )}
                                       </Button>
                                     </AlertDialogTrigger>
-                                    <AlertDialogContent>
+                                    <AlertDialogContent data-testid={`admin-kyc-reject-confirm-${r.id}`}>
                                       <AlertDialogHeader>
                                         <AlertDialogTitle>Reject verification?</AlertDialogTitle>
                                         <AlertDialogDescription>
@@ -437,6 +466,7 @@ export default function KYCTabs(props) {
                                             type="submit"
                                             disabled={!rejectReasons[r.id] || rejectIsPending || approveIsPending}
                                             aria-busy={rejectIsPending}
+                                            data-testid={`admin-kyc-reject-confirm-submit-${r.id}`}
                                           >
                                             {rejectIsPending ? (
                                               <span className="inline-flex items-center">
@@ -541,10 +571,11 @@ export default function KYCTabs(props) {
                 </TableRow>
               ))}
               {pending.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-kyc-pending-empty">
                   <TableCell
                     colSpan={4}
                     className="text-center text-sm text-muted-foreground"
+                    data-testid="admin-kyc-pending-empty-cell"
                   >
                     No pending KYC.
                   </TableCell>
@@ -561,29 +592,31 @@ export default function KYCTabs(props) {
                 setQs({ pendingPage: np });
                 kycPendingQueryRefetch();
               }}
+              data-testid="admin-kyc-pending-pagination"
             />
           </div>
         </TabsContent>
 
-        <TabsContent value="approved">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead>Reviewed At</TableHead>
-                <TableHead>Reviewer</TableHead>
+        <TabsContent value="approved" data-testid="admin-kyc-approved">
+          <Table data-testid="admin-kyc-approved-table">
+            <TableHeader data-testid="admin-kyc-approved-head">
+              <TableRow data-testid="admin-kyc-approved-head-row">
+                <TableHead data-testid="admin-kyc-approved-head-user">User</TableHead>
+                <TableHead data-testid="admin-kyc-approved-head-level">Level</TableHead>
+                <TableHead data-testid="admin-kyc-approved-head-reviewed">Reviewed At</TableHead>
+                <TableHead data-testid="admin-kyc-approved-head-reviewer">Reviewer</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody data-testid="admin-kyc-approved-body">
               {approved.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell>
+                <TableRow key={r.id} data-testid={`admin-kyc-approved-row-${r.id}`}>
+                  <TableCell data-testid={`admin-kyc-approved-row-${r.id}-user`}>
                     <div className="flex items-center gap-3">
                       <Avatar
                         imageUrl={r?.User?.image}
                         color={r?.User?.color}
                         className="h-8 w-8"
+                        data-testid={`admin-kyc-approved-row-${r.id}-avatar`}
                       >
                         <AvatarFallback>
                           {(r?.User?.name || r?.User?.email || "")
@@ -592,22 +625,33 @@ export default function KYCTabs(props) {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">
+                        <div
+                          className="font-medium"
+                          data-testid={`admin-kyc-approved-row-${r.id}-user-name`}
+                        >
                           {r?.User?.name || r?.User?.email || r.user_id}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div
+                          className="text-xs text-muted-foreground"
+                          data-testid={`admin-kyc-approved-row-${r.id}-user-email`}
+                        >
                           {r?.User?.email}
                         </div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="capitalize">{r.level}</TableCell>
-                  <TableCell>
+                  <TableCell
+                    className="capitalize"
+                    data-testid={`admin-kyc-approved-row-${r.id}-level`}
+                  >
+                    {r.level}
+                  </TableCell>
+                  <TableCell data-testid={`admin-kyc-approved-row-${r.id}-reviewed`}>
                     {r.reviewed_at
                       ? new Date(r.reviewed_at).toLocaleString("en-US", { timeZone: "UTC" })
                       : "-"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-kyc-approved-row-${r.id}-reviewer`}>
                     <HoverCard>
                       <HoverCardTrigger asChild>
                         <div className="flex items-center gap-2 cursor-default">
@@ -642,10 +686,11 @@ export default function KYCTabs(props) {
                 </TableRow>
               ))}
               {approved.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-kyc-approved-empty">
                   <TableCell
                     colSpan={4}
                     className="text-center text-sm text-muted-foreground"
+                    data-testid="admin-kyc-approved-empty-cell"
                   >
                     No approved KYC.
                   </TableCell>
@@ -662,22 +707,23 @@ export default function KYCTabs(props) {
                 setQs({ approvedPage: np });
                 kycApprovedQueryRefetch();
               }}
+              data-testid="admin-kyc-approved-pagination"
             />
           </div>
         </TabsContent>
 
-        <TabsContent value="rejected">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>User</TableHead>
-                <TableHead>Reason</TableHead>
-                <TableHead>Reviewed At</TableHead>
-                <TableHead>Reviewer</TableHead>
-                <TableHead>Actions</TableHead>
+        <TabsContent value="rejected" data-testid="admin-kyc-rejected">
+          <Table data-testid="admin-kyc-rejected-table">
+            <TableHeader data-testid="admin-kyc-rejected-head">
+              <TableRow data-testid="admin-kyc-rejected-head-row">
+                <TableHead data-testid="admin-kyc-rejected-head-user">User</TableHead>
+                <TableHead data-testid="admin-kyc-rejected-head-reason">Reason</TableHead>
+                <TableHead data-testid="admin-kyc-rejected-head-reviewed">Reviewed At</TableHead>
+                <TableHead data-testid="admin-kyc-rejected-head-reviewer">Reviewer</TableHead>
+                <TableHead data-testid="admin-kyc-rejected-head-actions">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody data-testid="admin-kyc-rejected-body">
               {rejected.map((r) => (
                 <TableRow
                   key={r.id}
@@ -690,13 +736,15 @@ export default function KYCTabs(props) {
                     setReviewId(r.id);
                     setQs({ kycReviewId: r.id });
                   }}
+                  data-testid={`admin-kyc-rejected-row-${r.id}`}
                 >
-                  <TableCell>
+                  <TableCell data-testid={`admin-kyc-rejected-row-${r.id}-user`}>
                     <div className="flex items-center gap-3">
                       <Avatar
                         imageUrl={r?.User?.image}
                         color={r?.User?.color}
                         className="h-8 w-8"
+                        data-testid={`admin-kyc-rejected-row-${r.id}-avatar`}
                       >
                         <AvatarFallback>
                           {(r?.User?.name || r?.User?.email || "")
@@ -705,22 +753,30 @@ export default function KYCTabs(props) {
                         </AvatarFallback>
                       </Avatar>
                       <div>
-                        <div className="font-medium">
+                        <div
+                          className="font-medium"
+                          data-testid={`admin-kyc-rejected-row-${r.id}-user-name`}
+                        >
                           {r?.User?.name || r?.User?.email || r.user_id}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div
+                          className="text-xs text-muted-foreground"
+                          data-testid={`admin-kyc-rejected-row-${r.id}-user-email`}
+                        >
                           {r?.User?.email}
                         </div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell>{r.rejection_reason || "-"}</TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-kyc-rejected-row-${r.id}-reason`}>
+                    {r.rejection_reason || "-"}
+                  </TableCell>
+                  <TableCell data-testid={`admin-kyc-rejected-row-${r.id}-reviewed`}>
                     {r.reviewed_at
                       ? new Date(r.reviewed_at).toLocaleString("en-US", { timeZone: "UTC" })
                       : "-"}
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-testid={`admin-kyc-rejected-row-${r.id}-reviewer`}>
                     <HoverCard>
                       <HoverCardTrigger asChild>
                         <div className="flex items-center gap-2 cursor-default">
@@ -752,7 +808,10 @@ export default function KYCTabs(props) {
                       </HoverCardContent>
                     </HoverCard>
                   </TableCell>
-                  <TableCell onClick={(e) => e.stopPropagation()}>
+                  <TableCell
+                    onClick={(e) => e.stopPropagation()}
+                    data-testid={`admin-kyc-rejected-row-${r.id}-actions`}
+                  >
                     <div className="flex gap-2 items-center">
                       <Button
                         size="sm"
@@ -767,6 +826,7 @@ export default function KYCTabs(props) {
                           setReviewId(r.id);
                           setQs({ kycReviewId: r.id });
                         }}
+                        data-testid={`admin-kyc-rejected-review-${r.id}`}
                       >
                         Review / Update
                       </Button>
@@ -779,9 +839,14 @@ export default function KYCTabs(props) {
                           }
                         }}
                       >
-                        <DialogContent className="mx-auto w-full max-w-3xl font-poynterroman flex flex-col gap-6">
+                        <DialogContent
+                          className="mx-auto w-full max-w-3xl font-poynterroman flex flex-col gap-6"
+                          data-testid={`admin-kyc-rejected-dialog-${r.id}`}
+                        >
                           <DialogHeader>
-                            <DialogTitle>Rejected KYC</DialogTitle>
+                            <DialogTitle data-testid={`admin-kyc-rejected-dialog-title-${r.id}`}>
+                              Rejected KYC
+                            </DialogTitle>
                           </DialogHeader>
 
                           <div className="grid grid-cols-2 gap-3 text-sm">
@@ -817,7 +882,12 @@ export default function KYCTabs(props) {
                             <div>
                               <h1 className="font-medium font-poynterroman mt-1">ID Front</h1>
                               {r.id_front_url ? (
-                                <Link href={r.id_front_url} target="_blank" className="block">
+                                <Link
+                                  href={r.id_front_url}
+                                  target="_blank"
+                                  className="block"
+                                  data-testid={`admin-kyc-rejected-id-front-${r.id}`}
+                                >
                                   <Image
                                     src={r.id_front_url}
                                     alt="ID Front"
@@ -834,7 +904,12 @@ export default function KYCTabs(props) {
                             <div>
                               <h1 className="font-medium mt-1 font-poynterroman">ID Back</h1>
                               {r.id_back_url ? (
-                                <Link href={r.id_back_url} target="_blank" className="block">
+                                <Link
+                                  href={r.id_back_url}
+                                  target="_blank"
+                                  className="block"
+                                  data-testid={`admin-kyc-rejected-id-back-${r.id}`}
+                                >
                                   <Image
                                     src={r.id_back_url}
                                     alt="ID Back"
@@ -851,7 +926,12 @@ export default function KYCTabs(props) {
                             <div>
                               <h1 className="font-medium mt-1 font-poynterroman">Selfie</h1>
                               {r.selfie_url ? (
-                                <Link href={r.selfie_url} target="_blank" className="block">
+                                <Link
+                                  href={r.selfie_url}
+                                  target="_blank"
+                                  className="block"
+                                  data-testid={`admin-kyc-rejected-selfie-${r.id}`}
+                                >
                                   <Image
                                     src={r.selfie_url}
                                     alt="Selfie"
@@ -882,6 +962,7 @@ export default function KYCTabs(props) {
                                     [r.id]: e.target.value,
                                   }))
                                 }
+                                data-testid={`admin-kyc-rejected-reason-${r.id}`}
                               />
                               <form action={rejectFormAction}>
                                 <input type="hidden" name="kycId" value={r.id} />
@@ -895,6 +976,7 @@ export default function KYCTabs(props) {
                                   variant="outline"
                                   disabled={!rejectReasons[r.id] || rejectIsPending || approveIsPending || reopenIsPending}
                                   aria-busy={rejectIsPending}
+                                  data-testid={`admin-kyc-rejected-update-${r.id}`}
                                 >
                                   {rejectIsPending ? (
                                     <span className="inline-flex items-center">
@@ -913,6 +995,7 @@ export default function KYCTabs(props) {
                                 type="submit"
                                 disabled={rejectIsPending || approveIsPending || reopenIsPending}
                                 aria-busy={approveIsPending}
+                                data-testid={`admin-kyc-rejected-approve-${r.id}`}
                               >
                                 {approveIsPending ? (
                                   <span className="inline-flex items-center">
@@ -932,6 +1015,7 @@ export default function KYCTabs(props) {
                                 variant="secondary"
                                 disabled={rejectIsPending || approveIsPending || reopenIsPending}
                                 aria-busy={reopenIsPending}
+                                data-testid={`admin-kyc-rejected-reopen-${r.id}`}
                               >
                                 {reopenIsPending ? (
                                   <span className="inline-flex items-center">
@@ -987,10 +1071,11 @@ export default function KYCTabs(props) {
                 </TableRow>
               ))}
               {rejected.length === 0 && (
-                <TableRow>
+                <TableRow data-testid="admin-kyc-rejected-empty">
                   <TableCell
                     colSpan={5}
                     className="text-center text-sm text-muted-foreground"
+                    data-testid="admin-kyc-rejected-empty-cell"
                   >
                     No rejected KYC.
                   </TableCell>
@@ -1007,6 +1092,7 @@ export default function KYCTabs(props) {
                 setQs({ rejectedPage: np });
                 kycRejectedQueryRefetch();
               }}
+              data-testid="admin-kyc-rejected-pagination"
             />
           </div>
         </TabsContent>

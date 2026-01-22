@@ -72,6 +72,7 @@ export default function ProductCard(props) {
     (resource?.stock !== null &&
       typeof resource?.stock !== "undefined" &&
       Number(resource?.stock) <= 0);
+  const testId = `product-card-${resource.id}`;
 
   const baseCurrency = (resource?.currency || "USD").toString().toUpperCase();
   const { viewerCurrency, viewerFxRate } = useViewerCurrency(baseCurrency);
@@ -258,7 +259,11 @@ export default function ProductCard(props) {
   // List view layout
   if (viewMode === "list") {
     return (
-      <Card className="group hover:shadow-lg transition-all duration-300 shadow-sm">
+      <Card
+        className="group hover:shadow-lg transition-all duration-300 shadow-sm"
+        data-testid={testId}
+        data-product-id={resource.id}
+      >
         <CardContent className="p-0">
           <div className="flex flex-col sm:flex-row gap-4 p-4">
             {/* Image */}
@@ -273,13 +278,28 @@ export default function ProductCard(props) {
               {/* Badges */}
               <div className="absolute top-2 left-2 flex gap-2">
                 {resource.featured && (
-                  <StatusPill icon={Sparkles} label="Featured" className="bg-purple-500/90 backdrop-blur text-xs" />
+                  <StatusPill
+                    icon={Sparkles}
+                    label="Featured"
+                    className="bg-purple-500/90 backdrop-blur text-xs"
+                    dataTestId={`${testId}-badge-featured`}
+                  />
                 )}
                 {resource.isBestseller && (
-                  <StatusPill icon={Crown} label="Bestseller" className="bg-amber-500/90 backdrop-blur text-xs" />
+                  <StatusPill
+                    icon={Crown}
+                    label="Bestseller"
+                    className="bg-amber-500/90 backdrop-blur text-xs"
+                    dataTestId={`${testId}-badge-bestseller`}
+                  />
                 )}
                 {discountPercentage > 0 && (
-                  <Badge className="!bg-red-500 hover:!bg-red-600 !text-white text-xs">-{discountPercentage}%</Badge>
+                  <Badge
+                    className="!bg-red-500 hover:!bg-red-600 !text-white text-xs"
+                    data-testid={`${testId}-badge-discount`}
+                  >
+                    -{discountPercentage}%
+                  </Badge>
                 )}
               </div>
             </div>
@@ -289,13 +309,20 @@ export default function ProductCard(props) {
               <div>
                 {/* Category */}
                 <div className="text-xs text-muted-foreground mb-1">
-                  <Link href={`/category/${resource.MarketplaceCategory?.slug}`} className="hover:underline">
+                  <Link
+                    href={`/category/${resource.MarketplaceCategory?.slug}`}
+                    className="hover:underline"
+                    data-testid={`${testId}-category`}
+                  >
                     {resource.MarketplaceCategory?.name} › {resource.MarketplaceSubCategory?.name}
                   </Link>
                 </div>
 
                 {/* Title */}
-                <Link href={`/product/${resource.product_id || resource.id}`}>
+                <Link
+                  href={`/product/${resource.product_id || resource.id}`}
+                  data-testid={`${testId}-title`}
+                >
                   <h3 className="font-semibold text-base mb-2 line-clamp-2 group-hover:text-tertiary cursor-pointer">
                     {resource.title}
                   </h3>
@@ -308,19 +335,22 @@ export default function ProductCard(props) {
 
                 {/* Author & Rating */}
                 <div className="flex items-center gap-3 mb-2">
-                  <Link href={`/author/${resource?.User?.pen_name}`}>
+                  <Link
+                    href={`/author/${resource?.User?.pen_name}`}
+                    data-testid={`${testId}-author`}
+                  >
                     <span className="text-sm text-foreground hover:text-tertiary hover:underline cursor-pointer">
                       by {resource.User?.name}
                     </span>
                   </Link>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1" data-testid={`${testId}-rating`}>
                     <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
                     <span className="text-sm text-muted-foreground">{resource?.rating} ({resource?.reviewCount})</span>
                   </div>
                 </div>
 
                 {/* Features */}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground" data-testid={`${testId}-features`}>
                   <div className="flex items-center gap-1">
                     <Download className="h-3 w-3" />
                     <span>{resource?.deliveryTime}</span>
@@ -330,28 +360,39 @@ export default function ProductCard(props) {
                     <span>{resource?.fileType}</span>
                   </div>
                   {isOutOfStock && (
-                    <Badge className="bg-red-800/90 text-white text-xs">Out of stock</Badge>
+                    <Badge
+                      className="bg-red-800/90 text-white text-xs"
+                      data-testid={`${testId}-stock-badge`}
+                    >
+                      Out of stock
+                    </Badge>
                   )}
                 </div>
               </div>
 
               {/* Price & Actions */}
               <div className="flex items-center justify-between mt-3 gap-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" data-testid={`${testId}-price`}>
                   <span className="text-xl font-bold">{fmt(resource?.price)}</span>
                   {resource?.originalPrice && discountPercentage > 0 && (
-                    <span className="text-sm text-muted-foreground line-through">{fmt(resource?.originalPrice)}</span>
+                    <span
+                      className="text-sm text-muted-foreground line-through"
+                      data-testid={`${testId}-price-original`}
+                    >
+                      {fmt(resource?.originalPrice)}
+                    </span>
                   )}
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <form action={handleWishlistAction}>
+                  <form action={handleWishlistAction} data-testid={`${testId}-wishlist-form`}>
                     <Button
                       variant="outline"
                       size="sm"
                       type="submit"
                       disabled={isPending || resource?.user_id === session?.user?.id}
                       className={isPending ? "opacity-50" : ""}
+                      data-testid={`${testId}-wishlist`}
                     >
                       <Heart className={`h-4 w-4 ${isWished ? "fill-red-500 text-red-500" : ""}`} />
                     </Button>
@@ -375,11 +416,13 @@ export default function ProductCard(props) {
                         setHasLocalCartOverride(true);
                       }
                     }}
+                    data-testid={`${testId}-cart-form`}
                   >
                     <Button
                       type="submit"
                       size="sm"
                       disabled={isCartPending || resource.user_id === session?.user?.id}
+                      data-testid={`${testId}-cart`}
                     >
                       <ShoppingCart className="h-4 w-4 mr-2" />
                       {isCartPending ? <LoaderCircle className="h-4 w-4 animate-spin" /> : isCarted ? "Remove" : "Add to Cart"}
@@ -398,7 +441,11 @@ export default function ProductCard(props) {
 
   // Grid view layout (default)
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 shadow-sm">
+    <Card
+      className="group hover:shadow-lg transition-all duration-300 shadow-sm"
+      data-testid={testId}
+      data-product-id={resource.id}
+    >
       <CardContent className="p-0">
         {/* Image Container */}
         <div className="relative aspect-[3/4] overflow-hidden rounded-t-lg bg-gradient-to-br from-muted to-accent">
@@ -418,6 +465,7 @@ export default function ProductCard(props) {
                 icon={Sparkles}
                 label="Featured"
                 className="bg-purple-500/90 backdrop-blur"
+                dataTestId={`${testId}-badge-featured`}
               />
             )}
             {resource.isBestseller && (
@@ -425,10 +473,14 @@ export default function ProductCard(props) {
                 icon={Crown}
                 label="Bestseller"
                 className="bg-amber-500/90 backdrop-blur"
+                dataTestId={`${testId}-badge-bestseller`}
               />
             )}
             {discountPercentage > 0 && (
-              <Badge className="!bg-red-500 hover:!bg-red-600 !text-white">
+              <Badge
+                className="!bg-red-500 hover:!bg-red-600 !text-white"
+                data-testid={`${testId}-badge-discount`}
+              >
                 -{discountPercentage}%
               </Badge>
             )}
@@ -467,7 +519,7 @@ export default function ProductCard(props) {
             <input type="hidden" name="productId" value={resource.id} />
           </form> */}
 
-          <form action={handleWishlistAction}>
+          <form action={handleWishlistAction} data-testid={`${testId}-wishlist-form`}>
             <Button
               variant="ghost"
               size="sm"
@@ -481,6 +533,7 @@ export default function ProductCard(props) {
                 isPending ||
                 resource?.user_id === session?.user?.id
               }
+              data-testid={`${testId}-wishlist`}
               title={
                 !session?.user
                   ? "Please login to add to wishlist"
@@ -502,11 +555,13 @@ export default function ProductCard(props) {
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
             <Link
               href={`/product/${resource.product_id ? resource.product_id : resource.id}`}
+              data-testid={`${testId}-preview`}
             >
               <Button
                 variant="secondary"
                 size="sm"
                 className="pointer-events-auto"
+                data-testid={`${testId}-preview-button`}
               >
                 Preview
               </Button>
@@ -521,6 +576,7 @@ export default function ProductCard(props) {
             <Link
               href={`/category/${resource.MarketplaceCategory?.slug}`}
               className="hover:underline"
+              data-testid={`${testId}-category`}
             >
               {resource.MarketplaceCategory?.name} ›{" "}
               {resource.MarketplaceSubCategory?.name}
@@ -530,6 +586,7 @@ export default function ProductCard(props) {
           {/* Title */}
           <Link
             href={`/product/${resource.product_id ? resource.product_id : resource.id}`}
+            data-testid={`${testId}-title`}
           >
             <h3 className="font-semibold text-sm mb-2 line-clamp-2 group-hover:text-tertiary cursor-pointer">
               {resource.title}
@@ -537,8 +594,11 @@ export default function ProductCard(props) {
           </Link>
 
           {/* Author */}
-          <div className="flex items-center gap-1 mb-2">
-            <Link href={`/author/${resource?.User?.pen_name}`}>
+          <div className="flex items-center gap-1 mb-2" data-testid={`${testId}-author-rating`}>
+            <Link
+              href={`/author/${resource?.User?.pen_name}`}
+              data-testid={`${testId}-author`}
+            >
               <span className="text-xs text-foreground hover:text-tertiary hover:underline cursor-pointer">
                 {resource.User?.name}
               </span>
@@ -553,8 +613,8 @@ export default function ProductCard(props) {
           </div>
 
           {/* Rating & Reviews */}
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 mb-3" data-testid={`${testId}-rating`}>
+            <div className="flex items-center gap-1" data-testid={`${testId}-rating-stars`}>
               {[...Array(5)].map((_, i) => (
                 <Star
                   key={i}
@@ -566,13 +626,16 @@ export default function ProductCard(props) {
                 />
               ))}
             </div>
-            <span className="text-xs text-muted-foreground" title="Rating">
+            <span className="text-xs text-muted-foreground" title="Rating" data-testid={`${testId}-rating-value`}>
               ({resource?.rating})
             </span>
           </div>
 
           {/* Features */}
-          <div className="flex items-center gap-2 mb-3 text-xs text-muted-foreground">
+          <div
+            className="flex items-center gap-2 mb-3 text-xs text-muted-foreground"
+            data-testid={`${testId}-features`}
+          >
             <div className="flex items-center gap-1">
               <Download className="h-3 w-3" />
               <span>{resource?.deliveryTime}</span>
@@ -584,22 +647,28 @@ export default function ProductCard(props) {
           </div>
 
           {/* Price */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2 mb-3" data-testid={`${testId}-price`}>
             <span className="text-lg font-bold">{fmt(resource?.price)}</span>
             {resource?.originalPrice && discountPercentage > 0 && (
-              <span className="text-sm text-muted-foreground line-through">
+              <span
+                className="text-sm text-muted-foreground line-through"
+                data-testid={`${testId}-price-original`}
+              >
                 {fmt(resource?.originalPrice)}
               </span>
             )}
           </div>
           <div className="text-xs mb-3">
             {isOutOfStock ? (
-              <Badge className="bg-red-800/90 text-white text-xs">
+              <Badge
+                className="bg-red-800/90 text-white text-xs"
+                data-testid={`${testId}-stock-badge`}
+              >
                 Out of stock
               </Badge>
             ) : typeof resource?.stock !== "undefined" &&
               resource?.stock !== null ? (
-              `In stock: ${resource?.stock}`
+              <span data-testid={`${testId}-stock`}>In stock: {resource?.stock}</span>
             ) : null}
           </div>
 
@@ -649,6 +718,7 @@ export default function ProductCard(props) {
                 setHasLocalCartOverride(true);
               }
             }}
+            data-testid={`${testId}-cart-form`}
           >
             <Button
               type="submit"
@@ -659,6 +729,7 @@ export default function ProductCard(props) {
                 resource?.user_id === session?.user?.id ||
                 isOutOfStock  
               }
+              data-testid={`${testId}-cart`}
             >
               <ShoppingCart className="h-4 w-4 mr-2" />
               {isCartPending ? (

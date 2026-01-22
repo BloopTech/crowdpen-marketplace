@@ -55,12 +55,16 @@ export default function AdminKycContent() {
   };
 
   return (
-    <div className="px-4 space-y-6">
+    <div className="px-4 space-y-6" data-testid="admin-kyc-page">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>KYC</CardTitle>
-            <Button onClick={handleRefresh} disabled={loading}>
+            <Button
+              onClick={handleRefresh}
+              disabled={loading}
+              data-testid="admin-kyc-refresh"
+            >
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
@@ -79,6 +83,7 @@ export default function AdminKycContent() {
                   }))
                 }
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-kyc-filter-level"
               >
                 <option value="">All</option>
                 <option value="basic">Basic</option>
@@ -99,6 +104,7 @@ export default function AdminKycContent() {
                     }))
                   }
                   className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm min-w-56 focus:outline-none focus:ring-2 focus:ring-ring"
+                  data-testid="admin-kyc-filter-reviewer"
                 >
                   <option value="">All</option>
                   {reviewers.map((u) => (
@@ -121,6 +127,7 @@ export default function AdminKycContent() {
                   }))
                 }
                 className="border border-border bg-background text-foreground rounded px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                data-testid="admin-kyc-page-size"
               >
                 <option value={10}>10</option>
                 <option value={20}>20</option>
@@ -128,7 +135,11 @@ export default function AdminKycContent() {
                 <option value={100}>100</option>
               </select>
             </div>
-            <Button variant="outline" onClick={handleRefresh}>
+            <Button
+              variant="outline"
+              onClick={handleRefresh}
+              data-testid="admin-kyc-apply"
+            >
               Apply
             </Button>
           </div>

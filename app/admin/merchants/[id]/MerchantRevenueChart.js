@@ -44,8 +44,16 @@ export default function MerchantRevenueChart({ rows }) {
   };
 
   return (
-    <ChartContainer className="h-[240px] w-full" config={chartConfig}>
-      <LineChart data={data} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+    <ChartContainer
+      className="h-[240px] w-full"
+      config={chartConfig}
+      data-testid="admin-merchant-revenue-chart"
+    >
+      <LineChart
+        data={data}
+        margin={{ left: 8, right: 8, top: 8, bottom: 8 }}
+        data-testid="admin-merchant-revenue-line-chart"
+      >
         <CartesianGrid strokeDasharray="3 3" />
         <XAxis
           dataKey="period"

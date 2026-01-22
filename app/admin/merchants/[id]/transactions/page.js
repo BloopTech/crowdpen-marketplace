@@ -69,42 +69,79 @@ export default async function AdminMerchantTransactionsPage({
   };
 
   return (
-    <div className="space-y-4 pb-8">
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4">
-        <div className="text-base font-semibold">Transactions</div>
-        <div className="text-xs text-muted-foreground">
+    <div className="space-y-4 pb-8" data-testid="admin-merchant-transactions">
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm p-4"
+        data-testid="admin-merchant-transactions-summary"
+      >
+        <div className="text-base font-semibold" data-testid="admin-merchant-transactions-title">
+          Transactions
+        </div>
+        <div
+          className="text-xs text-muted-foreground"
+          data-testid="admin-merchant-transactions-description"
+        >
           All admin transactions for this merchant (USD).
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card text-card-foreground shadow-sm overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left p-3">Date</th>
-              <th className="text-left p-3">Type</th>
-              <th className="text-left p-3">Status</th>
-              <th className="text-right p-3">Amount (USD)</th>
-              <th className="text-left p-3">Reference</th>
+      <div
+        className="rounded-lg border border-border bg-card text-card-foreground shadow-sm overflow-x-auto"
+        data-testid="admin-merchant-transactions-table-card"
+      >
+        <table className="w-full text-sm" data-testid="admin-merchant-transactions-table">
+          <thead data-testid="admin-merchant-transactions-head">
+            <tr className="border-b" data-testid="admin-merchant-transactions-head-row">
+              <th className="text-left p-3" data-testid="admin-merchant-transactions-head-date">
+                Date
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-transactions-head-type">
+                Type
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-transactions-head-status">
+                Status
+              </th>
+              <th className="text-right p-3" data-testid="admin-merchant-transactions-head-amount">
+                Amount (USD)
+              </th>
+              <th className="text-left p-3" data-testid="admin-merchant-transactions-head-reference">
+                Reference
+              </th>
             </tr>
           </thead>
-          <tbody>
+          <tbody data-testid="admin-merchant-transactions-body">
             {(rows || []).map((r) => (
-              <tr key={r.id} className="border-b last:border-0">
-                <td className="p-3">{fmtDateTimeUtc(r.createdAt)}</td>
-                <td className="p-3 capitalize">{r.type}</td>
-                <td className="p-3 capitalize">{r.status}</td>
-                <td className="p-3 text-right tabular-nums">
+              <tr
+                key={r.id}
+                className="border-b last:border-0"
+                data-testid={`admin-merchant-transactions-row-${r.id}`}
+              >
+                <td className="p-3" data-testid={`admin-merchant-transactions-row-${r.id}-date`}>
+                  {fmtDateTimeUtc(r.createdAt)}
+                </td>
+                <td className="p-3 capitalize" data-testid={`admin-merchant-transactions-row-${r.id}-type`}>
+                  {r.type}
+                </td>
+                <td className="p-3 capitalize" data-testid={`admin-merchant-transactions-row-${r.id}-status`}>
+                  {r.status}
+                </td>
+                <td
+                  className="p-3 text-right tabular-nums"
+                  data-testid={`admin-merchant-transactions-row-${r.id}-amount`}
+                >
                   {fmtUsd(toMajor(r.amountCents))}
                 </td>
-                <td className="p-3">{r.reference || "-"}</td>
+                <td className="p-3" data-testid={`admin-merchant-transactions-row-${r.id}-reference`}>
+                  {r.reference || "-"}
+                </td>
               </tr>
             ))}
             {(rows || []).length === 0 ? (
-              <tr>
+              <tr data-testid="admin-merchant-transactions-empty">
                 <td
                   className="p-6 text-center text-muted-foreground"
                   colSpan={5}
+                  data-testid="admin-merchant-transactions-empty-cell"
                 >
                   No transactions found.
                 </td>
@@ -114,15 +151,16 @@ export default async function AdminMerchantTransactionsPage({
         </table>
       </div>
 
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-muted-foreground">
-          Page {getPage.toLocaleString("en-US")} of{" "}
-          {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")}{" "}
-          rows)
+      <div className="flex items-center justify-between" data-testid="admin-merchant-transactions-page">
+        <div
+          className="text-xs text-muted-foreground"
+          data-testid="admin-merchant-transactions-page-info"
+        >
+          Page {getPage.toLocaleString("en-US")} of {totalPages.toLocaleString("en-US")} ({total.toLocaleString("en-US")} rows)
         </div>
       </div>
 
-      <div>
+      <div data-testid="admin-merchant-transactions-pagination">
         <MerchantSubpagePagination currentPage={getPage} totalPages={totalPages} />
       </div>
     </div>

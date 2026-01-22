@@ -94,7 +94,7 @@ export default function SSOSignInPage() {
   
   if (status === 'processing') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" data-testid="auth-sso-processing">
         <div className="text-center">
           <LoaderCircle className="h-8 w-8 animate-spin mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Signing you in...</h2>
@@ -106,13 +106,14 @@ export default function SSOSignInPage() {
   
   if (status === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" data-testid="auth-sso-error">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2 text-red-600">Sign-in Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button 
             onClick={() => router.push('/')}
             className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            data-testid="auth-sso-error-home"
           >
             Return to Home
           </button>
@@ -123,7 +124,7 @@ export default function SSOSignInPage() {
   
   if (status === 'success') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" data-testid="auth-sso-success">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2 text-green-600">Sign-in Successful!</h2>
           <p className="text-gray-600">Redirecting you now...</p>

@@ -20,6 +20,7 @@ export default function MerchantBackButton({ href = "/admin/merchants" }) {
         } catch {}
         router.push(href);
       }}
+      data-testid="admin-merchant-back-button"
     >
       Back
     </Button>

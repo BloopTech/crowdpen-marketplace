@@ -19,7 +19,12 @@ export default function FilterCategorySidebar(props) {
       {/* Clear Filters */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold">Filters</h3>
-        <Button variant="ghost" size="sm" onClick={onClearFilters}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onClearFilters}
+          data-testid="category-filters-clear"
+        >
           Clear All
         </Button>
       </div>
@@ -43,6 +48,7 @@ export default function FilterCategorySidebar(props) {
                         subcategory: "" // Clear subcategory when category changes
                       })
                     }
+                    data-testid={`category-filter-category-${category.id}`}
                   />
                   <Label htmlFor={category.name} className="text-sm font-normal">
                     {category.name}
@@ -62,6 +68,7 @@ export default function FilterCategorySidebar(props) {
                             subcategory: checked ? sub.name : ""
                           })
                         }
+                        data-testid={`category-filter-subcategory-${sub.id}`}
                       />
                       <Label htmlFor={sub.name} className="text-xs text-muted-foreground">
                         {sub.name}
@@ -91,6 +98,7 @@ export default function FilterCategorySidebar(props) {
             min={0}
             step={5}
             className="w-full"
+            data-testid="category-filter-price"
           />
           <div className="flex justify-between text-xs mt-2">
             <span>${filters.minPrice || 0}</span>
@@ -111,7 +119,11 @@ export default function FilterCategorySidebar(props) {
           >
             {[4, 3, 2, 1].map((rating) => (
               <div key={rating} className="flex items-center space-x-2">
-                <RadioGroupItem value={rating.toString()} id={`rating-${rating}`} />
+                <RadioGroupItem
+                  value={rating.toString()}
+                  id={`rating-${rating}`}
+                  data-testid={`category-filter-rating-${rating}`}
+                />
                 <Label htmlFor={`rating-${rating}`} className="flex items-center gap-1">
                   <div className="flex">
                     {[...Array(5)].map((_, i) => (
@@ -145,6 +157,7 @@ export default function FilterCategorySidebar(props) {
                     fileType: checked ? format : "",
                   })
                 }
+                data-testid={`category-filter-format-${format}`}
               />
               <Label htmlFor={format} className="text-sm font-normal">
                 {format}
@@ -171,6 +184,7 @@ export default function FilterCategorySidebar(props) {
                       tag: checked ? tag.name : "",
                     })
                   }
+                  data-testid={`category-filter-tag-${tag.id}`}
                 />
                 <Label htmlFor={tag.name} className="text-sm font-normal">
                   {tag.name}
@@ -202,6 +216,7 @@ export default function FilterCategorySidebar(props) {
                     contentLength: checked ? value : "",
                   })
                 }
+                data-testid={`category-filter-length-${value}`}
               />
               <Label htmlFor={`content-length-${value}`} className="text-sm font-normal">
                 {label}
