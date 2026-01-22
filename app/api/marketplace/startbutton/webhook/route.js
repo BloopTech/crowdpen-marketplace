@@ -6,6 +6,7 @@ import { render, pretty } from "@react-email/render";
 import { sendEmail } from "../../../../lib/sendEmail";
 import { OrderConfirmationEmail } from "../../../../lib/emails/OrderConfirmation";
 import { PayoutReceiptEmail } from "../../../../lib/emails/PayoutReceipt";
+import { SaleNotificationEmail } from "../../../../lib/emails/SaleNotification";
 import { getMarketplaceFeePercents } from "../../../../lib/marketplaceFees";
 import {
   getClientIpFromHeaders,
@@ -1108,6 +1109,119 @@ export async function POST(request) {
           requestId,
           tag: "startbutton_webhook_order_email",
           extra: { stage: "order_confirmation_email" },
+        });
+      }
+
+      // Send sale notification emails to vendors (best-effort)
+      try {
+        if (!alreadySuccessful) {
+          const { crowdpenPct, startbuttonPct } = await getMarketplaceFeePercents({ db });
+          const orderItems = await MarketplaceOrderItems.findAll({
+            where: { marketplace_order_id: lockedOrder.id },
+            include: [
+              {
+                model: MarketplaceProduct,
+                attributes: ["id", "title", "user_id"],
+                include: [
+                  {
+                    model: User,
+                    as: "owner",
+                    attributes: ["id", "email", "name", "settings"],
+                  },
+                ],
+              },
+            ],
+          });
+
+          const currencyCode = String(
+            lockedOrder.paid_currency || lockedOrder.currency || "USD"
+          )
+            .trim()
+            .toUpperCase();
+
+          // Group items by vendor + product so each product sends one email
+          const vendorSales = {};
+          for (const item of orderItems) {
+            const product = item?.MarketplaceProduct;
+            const vendor = product?.owner;
+            if (!vendor?.email) continue;
+
+            const allowNotifications = vendor?.settings?.publicPurchases !== false;
+            if (!allowNotifications) continue;
+
+            const vendorId = vendor.id;
+            const productId = product?.id || item?.marketplace_product_id;
+            if (!vendorId || !productId) continue;
+
+            const key = `${vendorId}:${productId}`;
+            if (!vendorSales[key]) {
+              vendorSales[key] = {
+                vendor,
+                productId,
+                productName: item.name || product?.title || "Product",
+                quantity: 0,
+                earned: 0,
+              };
+            }
+
+            // Calculate vendor earnings (after fees)
+            const subtotal = Number(item.subtotal || 0);
+            const crowdpenFee = subtotal * Number(crowdpenPct || 0);
+            const gatewayFee = subtotal * Number(startbuttonPct || 0);
+            const vendorEarnings = Math.max(
+              0,
+              subtotal - crowdpenFee - gatewayFee
+            );
+
+            const entry = vendorSales[key];
+            const qty = Number(item.quantity || 1);
+            entry.quantity += Number.isFinite(qty) && qty > 0 ? qty : 1;
+            entry.earned += vendorEarnings;
+          }
+
+          // Send one email per product sold
+          for (const saleKey of Object.keys(vendorSales)) {
+            const { vendor, productId, productName, quantity, earned } =
+              vendorSales[saleKey];
+            try {
+              const saleHtml = await pretty(
+                await render(
+                  <SaleNotificationEmail
+                    productName={productName}
+                    earnedAmount={earned}
+                    orderNumber={lockedOrder.order_number}
+                    orderDate={lockedOrder.createdAt}
+                    quantity={quantity}
+                    currencyCode={currencyCode}
+                  />
+                )
+              );
+              await sendEmail({
+                to: vendor.email,
+                subject: `You made a sale! ${productName}`,
+                html: saleHtml,
+                text: `You made a sale! ${productName}. You earned ${earned.toFixed(2)} ${currencyCode}. Order: ${lockedOrder.order_number}`,
+              });
+            } catch (itemErr) {
+              await reportError(itemErr, {
+                route: "/api/marketplace/startbutton/webhook",
+                method: "POST",
+                status: 200,
+                requestId,
+                tag: "startbutton_webhook_vendor_sale_email",
+                extra: { vendorId: vendor?.id, productId, productName },
+              });
+            }
+          }
+        }
+      } catch (e) {
+        await reportError(e, {
+          route: "/api/marketplace/startbutton/webhook",
+          method: "POST",
+          status: 200,
+          requestId,
+          tag: "startbutton_webhook_vendor_sale_emails",
+          extra: { stage: "vendor_sale_notification" },
         });
       }
 
