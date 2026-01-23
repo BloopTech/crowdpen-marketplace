@@ -1,9 +1,9 @@
 // database.js - Sequelize configuration separate from models
 import { Sequelize } from "sequelize";
 import { assertRequiredEnvInProduction } from "../lib/env";
-import { reportError } from "../lib/observability/reportError";
 
 let sequelize;
+let initError;
 
 try {
   // Check if DB_URL exists in environment variables
@@ -26,24 +26,17 @@ try {
     sequelize
       .authenticate()
       .then(() => console.log("Database connection established successfully."))
-      .catch(async (err) => {
-        await reportError(err, {
-          tag: "db_authenticate_failed",
-          route: "db",
-          method: "sequelize.authenticate",
-          status: 500,
-        });
+      .catch((err) => {
+        console.error("Database connection failed", err);
       });
   }
 } catch (error) {
-  (async () => {
-    await reportError(error, {
-      tag: "db_init_failed",
-      route: "db",
-      method: "init",
-      status: 500,
-    });
-  })().catch(() => {});
+  initError = error;
+  console.error("Failed to initialize Sequelize", error);
+}
+
+if (!sequelize) {
+  throw initError || new Error("Sequelize initialization failed. Check DB_URL.");
 }
 
 export default sequelize;
