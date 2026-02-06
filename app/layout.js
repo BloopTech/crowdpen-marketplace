@@ -88,7 +88,10 @@ export default async function RootLayout({ children }) {
           <SessionProvider session={session}>
             <QueryProvider>
               {process.env.NEXT_PUBLIC_GA_ID && (
-                <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_ID} />
+                <GoogleAnalytics
+                  gaId={process.env.NEXT_PUBLIC_GA_ID}
+                  nonce={nonce || undefined}
+                />
               )}
 
               <NuqsAdapter>

@@ -5,7 +5,17 @@ import { headers } from "next/headers";
 import { render, pretty } from "@react-email/render";
 import { sendEmail } from "@/app/lib/sendEmail";
 import ContactFormSubmission from "@/app/emails/ContactFormSubmission";
-import { getRequestIdFromHeaders, reportError } from "../../lib/observability/reportError";
+import {
+  getRequestIdFromHeaders,
+  reportError,
+} from "../../lib/observability/reportError";
+
+const defaultContactValues = {
+  name: [],
+  email: [],
+  subject: [],
+  message: [],
+};
 
 const contactSchema = z.object({
   name: z
@@ -24,6 +34,7 @@ const contactSchema = z.object({
 });
 
 export async function submitContactForm(prevState, formData) {
+
   const rawData = {
     name: formData.get("name"),
     email: formData.get("email"),
@@ -31,21 +42,23 @@ export async function submitContactForm(prevState, formData) {
     message: formData.get("message"),
   };
 
-  const validation = contactSchema.safeParse(rawData);
+  const validatedFields = contactSchema.safeParse(rawData);
 
-  if (!validation.success) {
-    const errors = {};
-    validation.error.errors.forEach((err) => {
-      errors[err.path[0]] = err.message;
-    });
+  if (!validatedFields.success) {
+    const { fieldErrors } = validatedFields.error.flatten();
     return {
       success: false,
-      errors,
+      message: validatedFields?.error?.issues[0]?.message,
+      errors: {
+        ...defaultContactValues,
+        ...fieldErrors,
+      },
       values: rawData,
+      data: {},
     };
   }
 
-  const { name, email, subject, message } = validation.data;
+  const { name, email, subject, message } = validatedFields.data;
   const submittedAt = new Date().toISOString();
 
   try {
@@ -62,8 +75,8 @@ export async function submitContactForm(prevState, formData) {
           subject={subject}
           message={message}
           submittedAt={submittedAt}
-        />
-      )
+        />,
+      ),
     );
 
     const text = `
@@ -90,9 +103,13 @@ ${message}
       success: true,
       message:
         "Your message has been sent successfully! We'll get back to you soon.",
+      errors: {},
+      values: {},
+      data: rawData,
     };
   } catch (error) {
     let requestId = null;
+
     try {
       requestId = getRequestIdFromHeaders(await headers());
     } catch {
@@ -111,6 +128,7 @@ ${message}
         form: "Failed to send your message. Please try again later or email us directly.",
       },
       values: rawData,
+      data: {},
     };
   }
 }

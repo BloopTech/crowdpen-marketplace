@@ -49,7 +49,7 @@ test.describe('Admin flows @regression', () => {
     await expect(page.getByTestId('admin-merchants-table')).toBeVisible();
 
     await page.getByTestId('admin-merchants-tab-applicants').click();
-    await expect(page.getByTestId('admin-merchants-tab-content')).toBeVisible();
+    await expect(page.getByTestId('admin-applicants-tab-content')).toBeVisible();
   });
 
   test('products filters and pagination', async ({ page }) => {

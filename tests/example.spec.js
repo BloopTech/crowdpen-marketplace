@@ -10,12 +10,13 @@ test.describe('Marketplace public pages @smoke', () => {
 
   test('wishlist prompts login for guests @smoke', async ({ page }) => {
     await page.goto('/wishlist');
-    await expect(page.getByTestId('wishlist-login-card')).toBeVisible();
-    await expect(page.getByTestId('wishlist-login')).toBeVisible();
+    await expect(page).toHaveURL(/[?&]redirect=(?:%2F|\/)wishlist/);
+    await expect(page.getByTestId('marketplace-login-button')).toBeVisible();
   });
 
   test('cart prompts login for guests @smoke', async ({ page }) => {
     await page.goto('/cart');
-    await expect(page.getByTestId('cart-signin')).toBeVisible();
+    await expect(page).toHaveURL(/[?&]redirect=(?:%2F|\/)cart/);
+    await expect(page.getByTestId('marketplace-login-button')).toBeVisible();
   });
 });

@@ -3,12 +3,18 @@ import { marketplaceTest as test, expect } from '../fixtures/auth';
 
 const selectPurchasableCard = async (page) => {
   await page.goto('/');
+  await expect(page.getByTestId('marketplace-header')).toBeVisible();
   const cards = page.locator('[data-testid^="product-card-"]');
+  const emptyState = page.getByText(/no products found/i);
+  await expect
+    .poll(async () => {
+      if ((await cards.count()) > 0) return true;
+      return emptyState.isVisible();
+    })
+    .toBeTruthy();
   const count = await cards.count();
   if (count === 0) {
-    await expect(
-      page.getByRole('heading', { name: /no products found/i })
-    ).toBeVisible();
+    await expect(emptyState).toBeVisible();
     return null;
   }
 
@@ -35,7 +41,12 @@ const addFirstProductToCart = async (page) => {
   const result = await selectPurchasableCard(page);
   if (!result) return null;
   const { card, productId } = result;
-  await card.locator('[data-testid$="-cart"]').first().click();
+  const cartButton = card.locator('[data-testid$="-cart"]').first();
+  const currentLabel = (await cartButton.textContent())?.toLowerCase() || '';
+  if (!currentLabel.includes('remove')) {
+    await cartButton.click();
+    await expect(cartButton).toContainText(/remove/i, { timeout: 15000 });
+  }
   return { productId };
 };
 
@@ -43,6 +54,11 @@ const ensureCartItem = async (page) => {
   const added = await addFirstProductToCart(page);
   if (!added) return null;
   await page.goto('/cart');
+  const loading = page.getByTestId('cart-loading');
+  if (await loading.isVisible()) {
+    await expect(loading).toBeHidden({ timeout: 15000 });
+  }
+  await expect(page.getByTestId('cart-items-list')).toBeVisible();
   const item = page
     .locator(`[data-testid^="cart-item-"][data-product-id="${added.productId}"]`)
     .first();
@@ -142,6 +158,10 @@ test.describe('Marketplace commerce flows @regression', () => {
 
     await page.goto('/wishlist');
     await expect(page.getByTestId('wishlist-page')).toBeVisible();
+    const wishlistLoading = page.getByTestId('wishlist-loading');
+    if (await wishlistLoading.isVisible()) {
+      await expect(wishlistLoading).toBeHidden({ timeout: 15000 });
+    }
 
     const wishlistCard = page
       .locator(`[data-testid="product-card-${productId}"]`)

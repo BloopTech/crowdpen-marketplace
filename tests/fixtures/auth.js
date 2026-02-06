@@ -10,7 +10,7 @@ const emptyStorageState = { cookies: [], origins: [] };
 
 const buildAuthTest = ({ label, storagePath, envPrefix }) =>
   base.extend({
-    storageState: async (_context, applyState, testInfo) => {
+    storageState: async ({}, applyState, testInfo) => {
       if (!fs.existsSync(storagePath)) {
         testInfo.skip(
           true,

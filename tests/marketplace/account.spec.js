@@ -2,9 +2,20 @@
 import path from 'path';
 import { marketplaceTest as test, expect } from '../fixtures/auth';
 
+const waitForAccountReady = async (page) => {
+  const loading = page.getByTestId('account-loading');
+  const accountPage = page.getByTestId('account-page');
+  await expect(accountPage.or(loading)).toBeVisible();
+  if (await loading.isVisible()) {
+    await expect(loading).toBeHidden({ timeout: 15000 });
+  }
+  await expect(accountPage).toBeVisible();
+};
+
 test.describe('Marketplace account flows @regression', () => {
   test('purchases list and downloads', async ({ page }) => {
     await page.goto('/account?tab=purchases');
+    await waitForAccountReady(page);
     await expect(page.getByTestId('account-tabs')).toBeVisible();
     await expect(page.getByTestId('purchases-card')).toBeVisible();
 
@@ -58,8 +69,10 @@ test.describe('Marketplace account flows @regression', () => {
     await expect(page.getByTestId('product-create-form')).toBeVisible();
 
     await page.getByTestId('product-create-title').fill(productTitle);
-    await page.getByTestId('product-create-description').click();
-    await page.keyboard.type(description);
+    const descriptionField = page.getByTestId('product-create-description');
+    await expect(descriptionField).toBeVisible();
+    await descriptionField.click();
+    await descriptionField.fill(description);
 
     await page.getByTestId('product-create-category').click();
     await page.getByRole('option').first().click();
@@ -91,6 +104,7 @@ test.describe('Marketplace account flows @regression', () => {
     await page.waitForURL(new RegExp(`/product/${productId}$`));
 
     await page.goto('/account?tab=my-products');
+    await waitForAccountReady(page);
     await expect(page.getByTestId('account-products-card')).toBeVisible();
     await expect(
       page.getByTestId(`account-product-${productId}`)
@@ -99,6 +113,7 @@ test.describe('Marketplace account flows @regression', () => {
 
   test('payouts bank details and history', async ({ page }) => {
     await page.goto('/account?tab=payouts');
+    await waitForAccountReady(page);
     await expect(page.getByTestId('account-payouts')).toBeVisible();
     await expect(page.getByTestId('account-payouts-analytics')).toBeVisible();
     await expect(page.getByTestId('bank-details-card')).toBeVisible();
@@ -111,6 +126,7 @@ test.describe('Marketplace account flows @regression', () => {
 
   test('billing transactions render', async ({ page }) => {
     await page.goto('/account?tab=billing');
+    await waitForAccountReady(page);
     await expect(page.getByTestId('billing-card')).toBeVisible();
     await expect(page.getByTestId('billing-transactions')).toBeVisible();
 
@@ -129,6 +145,7 @@ test.describe('Marketplace account flows @regression', () => {
 
   test('settings preferences and danger zone', async ({ page }) => {
     await page.goto('/account?tab=settings');
+    await waitForAccountReady(page);
     await expect(page.getByTestId('account-settings-card')).toBeVisible();
     await expect(page.getByTestId('settings-email-section')).toBeVisible();
     await expect(page.getByTestId('settings-privacy-section')).toBeVisible();
@@ -138,6 +155,7 @@ test.describe('Marketplace account flows @regression', () => {
 
   test('verification multi-step KYC', async ({ page }) => {
     await page.goto('/account?tab=verification');
+    await waitForAccountReady(page);
     await expect(page.getByTestId('verification-card')).toBeVisible();
 
     const exemptNotice = page.getByTestId('verification-exempt');
