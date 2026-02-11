@@ -1004,7 +1004,6 @@ export async function POST(request) {
                 include: [
                   {
                     model: User,
-                    as: "owner",
                     attributes: ["id", "email", "name", "settings"],
                   },
                 ],
@@ -1022,7 +1021,7 @@ export async function POST(request) {
           const vendorSales = {};
           for (const item of orderItems) {
             const product = item?.MarketplaceProduct;
-            const vendor = product?.owner;
+            const vendor = product?.User;
             if (!vendor?.email) continue;
 
             const allowNotifications = vendor?.settings?.publicPurchases !== false;
@@ -1130,3 +1129,8 @@ export async function POST(request) {
     );
   }
 }
+
+// 2026-02-11 07:00:02.809 [info] {"level":"error","event":"marketplace.error","requestId":"9642fb77-7135-424b-bbe5-49671ed7c487","fingerprint":"7ccce61aab798b197e1caf0f98738b49ec22f7242f70df5af1a3cbb1ca72927e","route":"instrumentation.cleanupProductDrafts","method":"pgboss","status":500,"errorName":"Error","message":"Connection terminated due to connection timeout","pgCode":null,"constraintName":null}
+// 2026-02-11 07:00:02.810 [info] {"level":"error","event":"marketplace.error","requestId":"b7e9d2e4-c081-4224-8657-66d0f4cdd128","fingerprint":"7ccce61aab798b197e1caf0f98738b49ec22f7242f70df5af1a3cbb1ca72927e","route":"instrumentation.cleanupProductDrafts","method":"pgboss","status":500,"errorName":"Error","message":"Connection terminated due to connection timeout","pgCode":null,"constraintName":null}
+// 2026-02-11 07:00:02.811 [info] {"level":"error","event":"marketplace.error","requestId":"9f16840d-485d-44e9-ad9b-d1c0a9ae8e86","fingerprint":"7ccce61aab798b197e1caf0f98738b49ec22f7242f70df5af1a3cbb1ca72927e","route":"instrumentation.cleanupProductDrafts","method":"pgboss","status":500,"errorName":"Error","message":"Connection terminated due to connection timeout","pgCode":null,"constraintName":null}
+// 2026-02-11 07:00:02.812 [info] {"level":"error","event":"marketplace.error","requestId":"3ebee63e-88d4-4256-b9bc-60b3cc74da93","fingerprint":"7ccce61aab798b197e1caf0f98738b49ec22f7242f70df5af1a3cbb1ca72927e","route":"instrumentation.cleanupProductDrafts","method":"pgboss","status":500,"errorName":"Error","message":"Connection terminated due to connection timeout","pgCode":null,"constraintName":null}
