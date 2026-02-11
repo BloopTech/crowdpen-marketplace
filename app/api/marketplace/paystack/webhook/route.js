@@ -1004,7 +1004,6 @@ export async function POST(request) {
                 include: [
                   {
                     model: User,
-                    as: "owner",
                     attributes: ["id", "email", "name", "settings"],
                   },
                 ],
@@ -1022,7 +1021,7 @@ export async function POST(request) {
           const vendorSales = {};
           for (const item of orderItems) {
             const product = item?.MarketplaceProduct;
-            const vendor = product?.owner;
+            const vendor = product?.User;
             if (!vendor?.email) continue;
 
             const allowNotifications = vendor?.settings?.publicPurchases !== false;
