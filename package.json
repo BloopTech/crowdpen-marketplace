@@ -42,7 +42,7 @@
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.8",
-    "@react-email/body": "^0.2.0",
+    "@react-email/body": "^0.2.1",
     "@react-email/button": "^0.2.0",
     "@react-email/code-block": "^0.2.0",
     "@react-email/code-inline": "^0.0.5",
